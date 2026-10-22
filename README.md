@@ -83,3 +83,9 @@ La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs Yo
 - Les faits importés ont une provenance explicite ; la présence d’une URL ne suffit pas à les vérifier.
 - L'utilisateur reste responsable des droits de voix, musique, images, titres et clips.
 - Toute mise en ligne passe par une validation explicite ; le système produit des brouillons, non des publications autonomes.
+
+## Nouveau : aperçu vidéo complet depuis Android, sans API payante
+
+Le workflow **[One-click offline video preview](https://github.com/dbrckk/Automate-ytb/actions/workflows/one-click-offline-video.yml)** transforme un scénario original en MP4 16:9, illustrations 2D originales cohérentes, voix eSpeak optionnelle, sous-titres SRT, couverture et rapports de production. Il fonctionne dans GitHub Actions, même sans PC, et ne demande aucune clé d'un service de génération d'images.
+
+Ce mode utilise des **dessins procéduraux** et une **voix synthétique** : ce n'est pas encore la qualité visuelle ni la voix neuronale des outils IA montrés dans la vidéo de référence. Il ne recherche pas de faits automatiquement et ne publie rien sur YouTube. Pour les détails, voir [le guide Android](docs/ONE_CLICK_OFFLINE_EPISODE.md).
