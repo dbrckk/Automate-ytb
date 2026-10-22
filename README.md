@@ -1,5 +1,72 @@
-# Automate-ytb
+# Automate-ytb — studio de vidéos YouTube originales
 
-Production de vidéos YouTube originales, avec contrôle humain avant publication. Documentation et première version dans la branche de développement.
+Première version fonctionnelle inspirée des **étapes** de la démonstration vidéo : étudier une niche, définir un concept, écrire une narration, composer des scènes, produire une voix, assembler une vidéo, créer des miniatures et préparer sa diffusion. Ce dépôt **ne copie pas** les vidéos ni les personnages de Murph.
 
-**Note :** les revenus présentés dans des tutoriels externes ne sont pas garantis et la production IA n'autorise pas à copier des créations tierces.
+## Ce que fait la V1
+
+- **Recherche de niches** : analyse en lecture seule des résultats de l’API officielle YouTube, avec vues, ancienneté et abonnés visibles. Ces indicateurs ne prouvent ni les revenus ni la saturation réelle d’une niche.
+- **Création de brouillons** : à partir d’un sujet, d’un angle, d'un script personnel facultatif et de faits accompagnés de leurs sources HTTPS.
+- **Storyboard** : scènes et illustrations originales générées localement avec Pillow. Des images détenues ou licenciées peuvent être placées dans `assets/scene-01.png`, etc.
+- **Montage** : assemblage FFmpeg des scènes avec transitions simples, audio narratif fourni ou TTS eSpeak, sous-titres SRT, et trois miniatures.
+- **Livrables** : projet JSON, narration, plan de montage, vidéo MP4, miniatures, métadonnées YouTube et liste de contrôles éditoriaux.
+- **Depuis Android** : lancer les workflows `Actions` sur GitHub puis récupérer l’artefact téléchargeable. Aucun PC personnel obligatoire.
+
+La V1 **n’inclut pas** de génération cinématique IA photoréaliste, de clone de voix, de recherche factuelle IA sans vérification, de montage identique à la vidéo de référence ni de publication automatique YouTube. Les visuels locaux sont des cartes graphiques originales qui servent de base au montage. Pour des images et animations plus sophistiquées, utiliser des fournisseurs avec droits d’utilisation vérifiés et injecter les médias approuvés dans le storyboard.
+
+## Guide rapide sur GitHub / Android
+
+1. Ouvrir l’onglet **Actions** du dépôt puis **Generate YouTube draft**.
+2. Choisir **Run workflow**, renseigner le sujet, la langue, le style et la durée. On peut également fournir son propre texte.
+3. Ouvrir le run terminé, télécharger l’artefact `automate-ytb-video-draft` dans la rubrique **Artifacts**.
+4. Vérifier les sources, les images, la prononciation, les droits des médias, les métadonnées et la qualité de la vidéo **avant toute publication manuelle**.
+
+Pour découvrir des niches, définir un secret de dépôt nommé `YOUTUBE_API_KEY` (clé personnelle Google Cloud autorisée à utiliser YouTube Data API v3), puis lancer **Discover YouTube niches**. Ne pas placer de clé dans les fichiers ou les logs.
+
+## Utilisation locale
+
+Python 3.11+, FFmpeg, éventuellement `espeak-ng`, et :
+
+```bash
+python -m pip install -e .
+python -m automate_ytb create \
+  --topic "Pourquoi la lune change-t-elle de forme ?" \
+  --angle "Une explication pédagogique et visuelle" \
+  --style cartoon --language fr --duration 90 \
+  --output outputs
+```
+
+Pour uniquement produire le storyboard et les fichiers de plan :
+
+```bash
+python -m automate_ytb create --topic "Une question originale" --plan-only
+```
+
+Pour la recherche officielle YouTube :
+
+```bash
+export YOUTUBE_API_KEY="VOTRE_CLE"
+python -m automate_ytb discover --queries "science animation" "historical facts" \
+  --min-views 20000 --max-subscribers 100000
+```
+
+Tests :
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Repères tirés de la vidéo fournie
+
+La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs YouTube Studio, des exemples de contenu illustré, des instructions textuelles dans Codex et un outil de génération de séquences vidéo. Nous avons transposé **l’organisation de la production**, pas les créations tierces ni les chiffres présentés.
+
+## Intégration à Star List
+
+`dbrckk/star-list` reste le catalogue de ressources à évaluer pour les évolutions. Les familles intéressantes sont : **FFmpeg** et outils de montage, **Kokoro** ou autres solutions de voix autorisées, **StoryDiffusion** et outils visuels, **MoneyPrinterTurbo** pour l'orchestration, et les outils de génération d'assets 3D. Ces dépôts sont des **candidats**, non des dépendances intégrées dans la V1. Examiner licences, droits commerciaux, exigences de calcul et API avant adoption.
+
+## Contrôles de qualité
+
+- Aucune promesse de revenus YouTube ou de monétisation.
+- Aucune récupération automatique de vidéos/images de chaînes concurrentes.
+- Les faits importés ont une provenance explicite ; la présence d’une URL ne suffit pas à les vérifier.
+- L'utilisateur reste responsable des droits de voix, musique, images, titres et clips.
+- Toute mise en ligne passe par une validation explicite ; le système produit des brouillons, non des publications autonomes.

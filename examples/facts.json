@@ -1,0 +1,14 @@
+{
+  "topic": "Pourquoi les couleurs changent au coucher du soleil ?",
+  "angle": "Une exploration visuelle et accessible de la lumière",
+  "facts": [
+    {
+      "claim": "La lumière du Soleil contient différentes longueurs d’onde.",
+      "source": "https://science.nasa.gov/ems/09_visiblelight/"
+    },
+    {
+      "claim": "La diffusion de Rayleigh disperse davantage les courtes longueurs d’onde que les longues dans l’atmosphère.",
+      "source": "https://www.noaa.gov/jetstream/atmosphere/atmospheric-optics"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: Discover YouTube niches
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: "Topic / niche to search"
+        type: string
+        required: true
+        default: "animated educational stories"
+      min_views:
+        description: "Minimum observed views"
+        type: number
+        default: 20000
+      max_subscribers:
+        description: "Maximum disclosed subscribers"
+        type: number
+        default: 100000
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Research via YouTube Data API
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YT_QUERY: ${{ inputs.query }}
+          YT_MIN_VIEWS: ${{ inputs.min_views }}
+          YT_MAX_SUBS: ${{ inputs.max_subscribers }}
+        run: |
+          python -m automate_ytb discover \
+            --queries "$YT_QUERY" --days 90 \
+            --min-views "$YT_MIN_VIEWS" --max-subscribers "$YT_MAX_SUBS" \
+            --limit 20 --output outputs/niches.json
+      - name: Download research report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-niche-research
+          path: outputs/niches.json
+          retention-days: 14
