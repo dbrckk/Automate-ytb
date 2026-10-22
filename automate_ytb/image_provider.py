@@ -1,7 +1,8 @@
 """Optional, budget-limited Hugging Face image provider for reviewed scene plans.
 
 No tokens are logged or written to disk. Dry-run is the default; explicit --execute
-and a finite hard budget are required before any API call.
+and an explicit estimated-cost budget are required before any API call.
+The estimate is not a provider-enforced billing ceiling.
 """
 from __future__ import annotations
 
@@ -12,15 +13,11 @@ import json
 import os
 from pathlib import Path
 import sys
-import urllib.error
-import urllib.request
 
 from .production import audit, ingest, load_plan
 
 DEFAULT_MODEL = "black-forest-labs/FLUX.1-schnell"
-ENDPOINT = "https://router.huggingface.co/hf-inference/models/"
 MAX_IMAGE_BYTES = 25 * 1024 * 1024
-MAX_RESPONSE_BYTES = MAX_IMAGE_BYTES + 1
 
 
 def money(value: str) -> Decimal:
@@ -38,32 +35,28 @@ def _request_image(*, model: str, prompt: str, token: str, timeout: int) -> byte
              "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-/"
              for c in model) or model.count("/") != 1:
         raise ValueError("Model must be a single Hugging Face namespace/model identifier")
-    payload = json.dumps({"inputs": prompt, "parameters": {"num_inference_steps": 4}}).encode()
-    request = urllib.request.Request(
-        ENDPOINT + model, data=payload, method="POST",
-        headers={
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json",
-            "Accept": "image/png,image/jpeg,image/webp",
-            "User-Agent": "AutomateYTB/0.2",
-        })
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            if response.status != 200:
-                raise RuntimeError(f"Image provider returned HTTP {response.status}")
-            content_type = response.headers.get("Content-Type", "").split(";")[0].lower()
-            if content_type not in ("image/png", "image/jpeg", "image/webp",
-                                    "application/octet-stream"):
-                raise RuntimeError(f"Image provider returned non-image content ({content_type})")
-            content = response.read(MAX_RESPONSE_BYTES)
-            if len(content) > MAX_IMAGE_BYTES:
-                raise RuntimeError("Provider image exceeds 25MB limit")
-            return content
-    except urllib.error.HTTPError as error:
-        # Avoid leaking provider responses, tokens or private prompts.
-        raise RuntimeError(f"Image provider returned HTTP {error.code}") from None
-    except urllib.error.URLError:
-        raise RuntimeError("Image provider network request failed") from None
+        from huggingface_hub import InferenceClient
+    except ImportError:
+        raise RuntimeError("Install the optional image dependency: pip install -e '.[images]'") from None
+    try:
+        client = InferenceClient(api_key=token, provider="auto", timeout=timeout)
+        # InferenceClient uses the current routed provider API, not the obsolete
+        # hf-inference-only HTTP path. A specific model may still be unavailable.
+        image = client.text_to_image(prompt=prompt, model=model, width=1024, height=576)
+        if image.width < 256 or image.height < 256 or image.width * image.height > 40_000_000:
+            raise RuntimeError("Provider returned unsupported image dimensions")
+        output = io.BytesIO()
+        image.convert("RGB").save(output, format="PNG")
+        content = output.getvalue()
+        if len(content) > MAX_IMAGE_BYTES:
+            raise RuntimeError("Provider image exceeds 25MB limit")
+        return content
+    except RuntimeError:
+        raise
+    except Exception:
+        # Never print raw server responses: they may expose prompts or credentials.
+        raise RuntimeError("Image inference failed; check model availability, credits and token permissions") from None
 
 
 def generate(*, plan_path: Path, model: str = DEFAULT_MODEL,
@@ -84,7 +77,7 @@ def generate(*, plan_path: Path, model: str = DEFAULT_MODEL,
     pending = [s for s in scenes if s["id"] not in done]
     projected = quote * len(pending)
     result = {
-        "provider": "huggingface-inference", "model": model,
+        "provider": "huggingface-inference-providers", "model": model,
         "mode": "execute" if execute else "dry-run",
         "total": len(scenes), "alreadyReady": len(scenes) - len(pending),
         "pending": len(pending), "maxUnitCostUsd": str(quote),
