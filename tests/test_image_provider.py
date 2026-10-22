@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+import sys
+import types
+from unittest.mock import patch, Mock
 
 from PIL import Image
 
@@ -81,6 +83,33 @@ class ImageProviderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Model"):
             _request_image(model="https://attacker.invalid", prompt="hello",
                            token="test", timeout=30)
+
+    def test_supported_sdk_routing_returns_valid_png(self):
+        fake = types.ModuleType("huggingface_hub")
+        client = Mock()
+        client.text_to_image.return_value = Image.new("RGB", (1024, 576), (99, 170, 204))
+        fake.InferenceClient = Mock(return_value=client)
+        with patch.dict(sys.modules, {"huggingface_hub": fake}):
+            content = _request_image(
+                model="black-forest-labs/FLUX.1-schnell",
+                prompt="Original purple bird on an original forest background",
+                token="secret-token", timeout=20)
+        self.assertEqual(Image.open(io.BytesIO(content)).size, (1024, 576))
+        fake.InferenceClient.assert_called_once_with(
+            api_key="secret-token", provider="auto", timeout=20)
+        self.assertEqual(client.text_to_image.call_args.kwargs["width"], 1024)
+        self.assertEqual(client.text_to_image.call_args.kwargs["height"], 576)
+
+    def test_provider_error_is_sanitized(self):
+        fake = types.ModuleType("huggingface_hub")
+        fake.InferenceClient = Mock(side_effect=ValueError("SECRET_AUTH_DATA"))
+        with patch.dict(sys.modules, {"huggingface_hub": fake}):
+            with self.assertRaises(RuntimeError) as error:
+                _request_image(model="owner/model", prompt="private original text",
+                               token="secret-token", timeout=20)
+        self.assertNotIn("SECRET_AUTH_DATA", str(error.exception))
+        self.assertNotIn("private original text", str(error.exception))
+
 
 
 if __name__ == "__main__":
