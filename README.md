@@ -13,6 +13,14 @@ Première version fonctionnelle inspirée des **étapes** de la démonstration v
 
 La V1 **n’inclut pas** de génération cinématique IA photoréaliste, de clone de voix, de recherche factuelle IA sans vérification, de montage identique à la vidéo de référence ni de publication automatique YouTube. Les visuels locaux sont des cartes graphiques originales qui servent de base au montage. Pour des images et animations plus sophistiquées, utiliser des fournisseurs avec droits d’utilisation vérifiés et injecter les médias approuvés dans le storyboard.
 
+## Nouvelle action Android : vidéo complète de brouillon
+
+**[One-click YouTube preview (free)](https://github.com/dbrckk/Automate-ytb/actions)** permet désormais de préparer des scènes originales depuis un scénario fourni, de générer des illustrations procédurales sans coût d'API, d'enregistrer une voix provisoire eSpeak, de monter un MP4 (720p ou 1080p), de produire les sous-titres et trois miniatures. Le tout est téléchargeable comme artefact GitHub Actions, sans PC personnel.
+
+**Important :** les cartes illustrées sont des **brouillons graphiques** ; ce n'est pas encore une vidéo IA à la qualité de Murph. Aucun contenu n'est publié sur YouTube. Ne pas transmettre de texte confidentiel aux entrées Actions d'un dépôt public.
+
+Guide : [Production Android en un workflow](docs/ONE_CLICK_ANDROID.md).
+
 ## Guide rapide sur GitHub / Android
 
 1. Ouvrir l’onglet **Actions** du dépôt puis **Generate YouTube draft**.
