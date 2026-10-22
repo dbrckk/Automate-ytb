@@ -1,0 +1,126 @@
+name: One-click offline video preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Original subject of the episode"
+        type: string
+        required: true
+        default: "Comment fabriquer une vidéo pédagogique originale ?"
+      original_script:
+        description: "Original narration; one complete sentence per scene"
+        type: string
+        required: true
+        default: "Une vidéo pédagogique commence par une question claire. On rassemble ensuite des informations fiables et vérifiables. Chaque idée du scénario doit être simple et utile. Un storyboard transforme les phrases en scènes visuelles. Une mascotte originale permet de reconnaître la série. Une voix et des sous-titres rendent l'histoire compréhensible. Le montage rythme les images et les explications. Enfin un contrôle qualité précède toujours la publication."
+      character:
+        description: "Original character description"
+        type: string
+        required: true
+        default: "An original violet owl with turquoise eyes and a golden scarf"
+      duration_seconds:
+        description: "Duration: provide enough sentences for this episode length"
+        type: choice
+        options: ["60", "90", "120", "180"]
+        default: "60"
+      shot_seconds:
+        description: "Average scene length in seconds"
+        type: choice
+        options: ["6", "7.5", "10"]
+        default: "7.5"
+      voice:
+        description: "Speech voice: eSpeak is an offline synthetic voice"
+        type: choice
+        options: [fr, en, silent]
+        default: fr
+      resolution:
+        description: "Render resolution; 1080p is slower"
+        type: choice
+        options: [720p, 1080p]
+        default: 720p
+
+permissions:
+  contents: read
+
+jobs:
+  offline-preview:
+    name: Create original video, cover, narration and SRT
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local video tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install -e .
+      - name: Save original script without shell interpolation
+        env:
+          ORIGINAL_SCRIPT: ${{ inputs.original_script }}
+        run: |
+          mkdir -p build
+          python -c 'import os,pathlib; pathlib.Path("build/script.txt").write_text(os.environ["ORIGINAL_SCRIPT"], encoding="utf-8")'
+      - name: Build video from original script
+        env:
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_CHARACTER: ${{ inputs.character }}
+          YT_DURATION: ${{ inputs.duration_seconds }}
+          YT_SHOT: ${{ inputs.shot_seconds }}
+          YT_VOICE: ${{ inputs.voice }}
+          YT_RESOLUTION: ${{ inputs.resolution }}
+        run: |
+          if [ "$YT_VOICE" = "silent" ]; then
+            python -m automate_ytb.offline_studio --topic "$YT_TOPIC" \
+              --script build/script.txt --character "$YT_CHARACTER" \
+              --duration "$YT_DURATION" --shot-seconds "$YT_SHOT" \
+              --resolution "$YT_RESOLUTION" --directory outputs/episode --silent
+          else
+            python -m automate_ytb.offline_studio --topic "$YT_TOPIC" \
+              --script build/script.txt --character "$YT_CHARACTER" \
+              --duration "$YT_DURATION" --shot-seconds "$YT_SHOT" \
+              --resolution "$YT_RESOLUTION" --directory outputs/episode \
+              --language "$YT_VOICE"
+          fi
+      - name: Validate final MP4 and scene report
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, subprocess
+          root = Path("outputs/episode")
+          report = json.loads((root / "episode-report.json").read_text())
+          assert report["externalApiRequests"] == 0
+          assert report["publicationApproved"] is False
+          assert report["assetAudit"]["missing"] == 0
+          assert report["assetAudit"]["changed"] == 0
+          assert (root / "thumbnail-draft.png").stat().st_size > 1000
+          assert (root / "render/draft-captions.srt").stat().st_size > 100
+          probe = subprocess.check_output([
+              "ffprobe", "-v", "error", "-show_entries",
+              "stream=codec_type:format=duration",
+              "-of", "json", str(root / "render/preview.mp4")
+          ])
+          data = json.loads(probe)
+          assert "video" in {s["codec_type"] for s in data["streams"]}
+          assert abs(float(data["format"]["duration"]) -
+                     report["targetDurationSeconds"]) < 0.7
+          if report["voiceEngine"] != "none":
+              assert "audio" in {s["codec_type"] for s in data["streams"]}
+          PY
+      - name: Download all deliverables from Android
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-offline-video
+          path: |
+            outputs/episode/render/preview.mp4
+            outputs/episode/render/draft-captions.srt
+            outputs/episode/render/render-report.json
+            outputs/episode/thumbnail-draft.png
+            outputs/episode/scene-plan.json
+            outputs/episode/episode-report.json
+            outputs/episode/assets/*.png
+            outputs/episode/narration.wav
+          if-no-files-found: error
+          retention-days: 14
