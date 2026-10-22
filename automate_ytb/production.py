@@ -1,0 +1,363 @@
+"""Offline, provider-neutral image production, rights review and resumable video renders.
+
+All generated image prompts are untrusted *data*. This module never invokes an external
+image provider, downloads third-party media, or publishes to YouTube.
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
+PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
+MAX_SCENES = 1200
+VERSION = "render-v1"
+
+
+def _sha(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _write_json(path: Path, obj: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=".scene-plan-", suffix=".json", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(obj, stream, indent=2, ensure_ascii=False)
+            stream.write("\n")
+        os.replace(name, path)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def load_plan(path: Path) -> dict:
+    path = path.resolve()
+    if not path.is_file() or path.stat().st_size > 10 * 1024 * 1024:
+        raise ValueError("Missing or oversized scene plan")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or data.get("schemaVersion") != 1:
+        raise ValueError("Unsupported scene plan schema")
+    scenes = data.get("scenes")
+    if not isinstance(scenes, list) or not 1 <= len(scenes) <= MAX_SCENES:
+        raise ValueError("Scene plan must contain 1-1200 scenes")
+    if data.get("sceneCount") != len(scenes) or data.get("publicationApproved") is not False:
+        raise ValueError("Scene count mismatch or unsafe publication approval")
+    duration = data.get("targetDurationSeconds")
+    if not isinstance(duration, (int, float)) or isinstance(duration, bool) or not 1 <= duration <= 3600:
+        raise ValueError("Invalid target duration")
+    previous = 0
+    for i, scene in enumerate(scenes, start=1):
+        if not isinstance(scene, dict):
+            raise ValueError("Scene data must be objects")
+        sid = scene.get("id")
+        expected = f"scene-{i:03d}"
+        if sid != expected or not SCENE_ID.fullmatch(sid):
+            raise ValueError(f"Unexpected scene identifier at index {i}")
+        if scene.get("imageAsset") != f"assets/{expected}.png":
+            raise ValueError(f"Unsafe image path for {sid}")
+        start, end = scene.get("startMs"), scene.get("endMs")
+        if (not isinstance(start, int) or not isinstance(end, int) or
+                isinstance(start, bool) or isinstance(end, bool) or
+                start != previous or end <= start):
+            raise ValueError(f"Non-contiguous scene timing for {sid}")
+        previous = end
+        if not isinstance(scene.get("narration"), str) or not scene["narration"].strip():
+            raise ValueError(f"Missing narration for {sid}")
+        if not isinstance(scene.get("imagePrompt"), str) or not 1 <= len(scene["imagePrompt"]) <= 9000:
+            raise ValueError(f"Missing or oversized image prompt for {sid}")
+    if previous != round(duration * 1000):
+        raise ValueError("Final timecode does not match target duration")
+    return data
+
+
+def _asset_path(plan_path: Path, scene: dict) -> Path:
+    root = plan_path.resolve().parent
+    dest = root / scene["imageAsset"]
+    if not dest.resolve().is_relative_to(root):
+        raise ValueError("Scene asset points outside the project")
+    return dest
+
+
+def prepare(plan_path: Path, output: Path, price_per_image_usd: str | None = None) -> dict:
+    data = load_plan(plan_path)
+    price = _money(price_per_image_usd) if price_per_image_usd is not None else None
+    output = output.resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as stream:
+        for scene in data["scenes"]:
+            item = {
+                "sceneId": scene["id"], "prompt": scene["imagePrompt"],
+                "camera": scene.get("camera", ""), "width": 1920, "height": 1080,
+                "aspectRatio": "16:9", "outputAsset": scene["imageAsset"],
+                "characterBible": data.get("originalCharacterBible", ""),
+                "styleBible": data.get("visualStyleBible", ""),
+                "startMs": scene["startMs"], "endMs": scene["endMs"],
+                "requiresRightsReview": True,
+            }
+            stream.write(json.dumps(item, ensure_ascii=False) + "\n")
+    return {
+        "prompts": str(output), "scenes": len(data["scenes"]),
+        "quotedEstimateUsd": str(price * len(data["scenes"])) if price is not None else None,
+        "providerRequestsSent": 0, "publicationApproved": False,
+    }
+
+
+def _money(value: str) -> Decimal:
+    try:
+        result = Decimal(value)
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError("Invalid dollar amount") from None
+    if not result.is_finite() or result < 0 or result > 10000:
+        raise ValueError("Dollar amount must be finite and between 0 and 10000")
+    return result.quantize(Decimal("0.0001"))
+
+
+def ingest(*, plan_path: Path, scene_id: str, image_path: Path,
+           provider: str, rights_note: str, cost_usd: str,
+           rights_confirmed: bool = False, replace: bool = False) -> dict:
+    if not rights_confirmed:
+        raise ValueError("Explicit --confirm-rights required before importing media")
+    if not PROVIDER.fullmatch(provider) or not 12 <= len(rights_note.strip()) <= 1000:
+        raise ValueError("Provide a valid provider and detailed source/rights note")
+    cost = _money(cost_usd)
+    data = load_plan(plan_path)
+    match = next((s for s in data["scenes"] if s["id"] == scene_id), None)
+    if match is None:
+        raise ValueError("Unknown scene identifier")
+    source = image_path.resolve(strict=True)
+    if not source.is_file() or source.stat().st_size > 30 * 1024 * 1024:
+        raise ValueError("Missing or oversized image")
+    dest = _asset_path(plan_path, match)
+    if dest.exists() and not replace:
+        raise ValueError("Asset exists; use --replace to explicitly overwrite")
+    if dest.resolve() == source:
+        raise ValueError("Source must be separate from managed asset destination")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=".scene-asset-", suffix=".png", dir=dest.parent)
+    os.close(fd)
+    try:
+        try:
+            with Image.open(source) as im:
+                if im.width < 256 or im.height < 256 or im.width * im.height > 40_000_000:
+                    raise ValueError("Image dimensions must be >=256x256 and <=40MP")
+                if im.format not in ("PNG", "JPEG", "WEBP"):
+                    raise ValueError("Only PNG, JPEG or WEBP images are accepted")
+                converted = ImageOps.exif_transpose(im).convert("RGB")
+                converted.save(tmp_name, format="PNG", optimize=True)
+        except (UnidentifiedImageError, OSError) as error:
+            raise ValueError("Unreadable or unsafe image") from error
+        digest = _sha(Path(tmp_name))
+        os.replace(tmp_name, dest)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+    match.update({
+        "assetApproved": True,
+        "assetLicenseEvidence": rights_note.strip(),
+        "assetSha256": digest,
+        "assetProvider": provider,
+        "assetCostUsd": str(cost),
+        "assetImportedAt": datetime.now(timezone.utc).isoformat(),
+        "reviewStatus": "rights-confirmed-by-user",
+    })
+    # Asset rights approval does NOT approve fact checks, audio, or YouTube publication.
+    data["assetUseApproved"] = all(x.get("assetApproved") for x in data["scenes"])
+    data["publicationApproved"] = False
+    _write_json(plan_path.resolve(), data)
+    return {"sceneId": scene_id, "sha256": digest, "provider": provider,
+            "recordedCostUsd": str(cost), "publicationApproved": False}
+
+
+def audit(plan_path: Path, limit: int | None = None) -> dict:
+    data = load_plan(plan_path)
+    scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
+    if not scenes or (limit is not None and (not isinstance(limit, int) or limit <= 0)):
+        raise ValueError("Invalid scene limit")
+    counts = {"ready": 0, "missing": 0, "unreviewed": 0, "changed": 0}
+    details = []
+    billed = Decimal("0")
+    for scene in scenes:
+        dest = _asset_path(plan_path, scene)
+        if not dest.is_file():
+            state = "missing"
+        elif (not scene.get("assetApproved") or not scene.get("assetLicenseEvidence")
+              or not scene.get("assetSha256")):
+            state = "unreviewed"
+        elif _sha(dest) != scene["assetSha256"]:
+            state = "changed"
+        else:
+            state = "ready"
+            billed += _money(scene.get("assetCostUsd", "0"))
+        counts[state] += 1
+        details.append({"sceneId": scene["id"], "status": state})
+    return {
+        "totalScenes": len(scenes), "counts": counts,
+        "readyForPreview": counts["ready"] == len(scenes),
+        "recordedAssetCostUsd": str(billed.quantize(Decimal("0.0001"))),
+        "details": details, "publicationApproved": False,
+    }
+
+
+def _quoted(path: Path) -> str:
+    # ffconcat uses its own token escaping; all paths resolve to local reviewed media.
+    return "'" + str(path).replace("'", "'\\''") + "'"
+
+
+def _run(args: list[str]) -> None:
+    done = subprocess.run(args, capture_output=True, text=True, timeout=1200, check=False)
+    if done.returncode:
+        raise RuntimeError(f"FFmpeg step failed ({done.returncode}): {done.stderr[-1500:]}")
+
+
+def _srt_time(ms: int) -> str:
+    h, rem = divmod(ms, 3_600_000)
+    m, rem = divmod(rem, 60_000)
+    s, rem = divmod(rem, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{rem:03d}"
+
+
+def render(*, plan_path: Path, output: Path, audio: Path | None = None,
+           limit: int | None = None, resolution: str = "720p", fps: int = 24) -> dict:
+    if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
+        raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
+    data = load_plan(plan_path)
+    scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
+    results = audit(plan_path, limit)
+    if not results["readyForPreview"]:
+        raise ValueError(f"Scene assets not ready: {results['counts']}")
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("FFmpeg is required to render")
+    dims = (1280, 720) if resolution == "720p" else (1920, 1080)
+    output = output.resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    cache = output / ".clip-cache"
+    cache.mkdir(exist_ok=True)
+    clips = []
+    for scene in scenes:
+        seconds = (scene["endMs"] - scene["startMs"]) / 1000
+        stamp = (scene["assetSha256"] + f"|{seconds}|{dims}|{fps}|{VERSION}").encode()
+        key = hashlib.sha256(stamp).hexdigest()[:18]
+        clip = cache / f"{scene['id']}-{key}.mp4"
+        if not clip.exists() or clip.stat().st_size == 0:
+            w, h = dims
+            # Subtle continuous camera push-in; avoids frozen slides.
+            motion = ("scale=" + f"{w}:{h}:force_original_aspect_ratio=increase"
+                      + f",crop={w}:{h},"
+                      + "zoompan=z='min(zoom+0.00045,1.12)':"
+                      + "x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':"
+                      + f"d=1:s={w}x{h}:fps={fps},format=yuv420p")
+            tmp = clip.with_name(clip.stem + ".tmp.mp4")
+            try:
+                _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                      "-loop", "1", "-framerate", str(fps),
+                      "-i", str(_asset_path(plan_path, scene)), "-t", f"{seconds:.3f}",
+                      "-vf", motion, "-c:v", "libx264", "-preset", "veryfast",
+                      "-crf", "20", "-pix_fmt", "yuv420p", "-an", str(tmp)])
+                os.replace(tmp, clip)
+            finally:
+                tmp.unlink(missing_ok=True)
+        clips.append(clip)
+    concat = output / "clips.ffconcat"
+    concat.write_text("ffconcat version 1.0\n" +
+                      "".join(f"file {_quoted(c)}\n" for c in clips), encoding="utf-8")
+    raw = output / "silent-video.mp4"
+    _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+          "-f", "concat", "-safe", "0", "-i", str(concat),
+          "-c", "copy", "-movflags", "+faststart", str(raw)])
+    result = output / "preview.mp4"
+    if audio is not None:
+        audio = audio.resolve(strict=True)
+        if not audio.is_file():
+            raise ValueError("Narration audio must be a file")
+        _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+              "-i", str(raw), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-af", "apad",
+              "-t", f"{scenes[-1]['endMs']/1000:.3f}", "-movflags", "+faststart",
+              str(result)])
+    else:
+        shutil.copy2(raw, result)
+    srt = output / "draft-captions.srt"
+    srt.write_text("\n".join(
+        f"{i}\n{_srt_time(s['startMs'])} --> {_srt_time(s['endMs'])}\n"
+        f"{s['narration'].replace(chr(10), ' ')}\n"
+        for i, s in enumerate(scenes, start=1)), encoding="utf-8")
+    report = {
+        "video": str(result), "videoSha256": _sha(result),
+        "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
+        "targetDurationSeconds": scenes[-1]["endMs"] / 1000,
+        "hasNarrationAudio": audio is not None, "captions": str(srt),
+        "captionsPreciselyAligned": False, "previewOnly": True,
+        "publicationApproved": False, "assetCostUsd": results["recordedAssetCostUsd"],
+        "warning": "Draft scene timecodes are not forced alignment against final audio.",
+    }
+    _write_json(output / "render-report.json", report)
+    return report
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Reviewable image-to-video production pipeline")
+    sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("prepare", help="Export original prompts for provider-agnostic generation")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--quote-per-image-usd", default=None)
+    p = sub.add_parser("ingest", help="Import a generated/owned image with explicit rights declaration")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--scene", required=True)
+    p.add_argument("--image", type=Path, required=True)
+    p.add_argument("--provider", required=True)
+    p.add_argument("--rights-note", required=True)
+    p.add_argument("--cost-usd", default="0")
+    p.add_argument("--confirm-rights", action="store_true")
+    p.add_argument("--replace", action="store_true")
+    p = sub.add_parser("audit", help="Verify completeness, checksums, review and recorded image costs")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--limit", type=int, default=None)
+    p = sub.add_parser("render", help="Build resumable, animated FFmpeg video preview")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--audio", type=Path)
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
+    p.add_argument("--fps", type=int, choices=[24, 30], default=24)
+    args = parser.parse_args(argv)
+    try:
+        if args.command == "prepare":
+            result = prepare(args.plan, args.output, args.quote_per_image_usd)
+        elif args.command == "ingest":
+            result = ingest(plan_path=args.plan, scene_id=args.scene,
+                            image_path=args.image, provider=args.provider,
+                            rights_note=args.rights_note, cost_usd=args.cost_usd,
+                            rights_confirmed=args.confirm_rights, replace=args.replace)
+        elif args.command == "audit":
+            result = audit(args.plan, args.limit)
+        else:
+            result = render(plan_path=args.plan, output=args.output,
+                            audio=args.audio, limit=args.limit,
+                            resolution=args.resolution, fps=args.fps)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as error:
+        print("ERROR:", error, file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

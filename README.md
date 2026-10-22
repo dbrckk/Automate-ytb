@@ -22,7 +22,20 @@ La V1 **n’inclut pas** de génération cinématique IA photoréaliste, de clon
 
 Pour découvrir des niches, définir un secret de dépôt nommé `YOUTUBE_API_KEY` (clé personnelle Google Cloud autorisée à utiliser YouTube Data API v3), puis lancer **Discover YouTube niches**. Ne pas placer de clé dans les fichiers ou les logs.
 
-## Utilisation locale
+## Production multi-scènes : nouveauté
+
+Le pipeline peut désormais planifier **150 plans pour un épisode de 15 minutes** et
+exporter un lot de prompts image compatibles avec des fournisseurs interchangeables.
+Chaque image importée est contrôlée (source/droits déclarés, empreinte SHA-256, coût),
+puis les scènes prêtes peuvent être assemblées en **MP4 avec léger mouvement de caméra**
+par FFmpeg. Le rendu reprend les segments déjà préparés après une interruption.
+
+Depuis Android, ouvrir **Actions → Prepare original image-scene batch** pour obtenir
+un kit de production sans payer d'API. Les images ne sont **pas générées par ce workflow** ;
+l'intégration au fournisseur d'images sera une étape distincte et soumise au budget.
+
+Voir [le guide de production scène par scène](docs/IMAGE_SCENE_PIPELINE.md).
+
 
 Python 3.11+, FFmpeg, éventuellement `espeak-ng`, et :
 

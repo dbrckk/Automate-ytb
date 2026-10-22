@@ -1,0 +1,81 @@
+name: Prepare original image-scene batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Original video subject (not a copy of an existing episode)"
+        required: true
+        type: string
+        default: "Pourquoi certaines plantes brillent-elles dans la nuit ?"
+      character:
+        description: "Description of your original recurring character"
+        required: true
+        type: string
+        default: "An original friendly violet owl with turquoise glasses and a yellow scarf"
+      visual_style:
+        description: "Original visual style bible"
+        required: true
+        type: string
+        default: "Original illustrated 3D-inspired cartoon, vivid colors, soft cinematic lighting"
+      duration_seconds:
+        description: "Episode target duration, seconds (30 to 3600)"
+        type: number
+        default: 90
+      shot_seconds:
+        description: "Duration per image scene (3 to 20 seconds)"
+        type: number
+        default: 6
+      original_script:
+        description: "Original narration: at least one distinct complete sentence per scene"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project
+        run: python -m pip install -e .
+      - name: Store user-authored story without shell interpolation
+        env:
+          ORIGINAL_SCRIPT: ${{ inputs.original_script }}
+        run: |
+          mkdir -p build
+          python -c 'import os,pathlib; pathlib.Path("build/original-script.txt").write_text(os.environ["ORIGINAL_SCRIPT"],encoding="utf-8")'
+      - name: Prepare original scene plan and provider-independent prompts
+        env:
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_CHARACTER: ${{ inputs.character }}
+          YT_STYLE: ${{ inputs.visual_style }}
+          YT_DURATION: ${{ inputs.duration_seconds }}
+          YT_SHOT: ${{ inputs.shot_seconds }}
+        run: |
+          python -m automate_ytb.scene_plan \
+            --topic "$YT_TOPIC" \
+            --script build/original-script.txt \
+            --character "$YT_CHARACTER" --style "$YT_STYLE" \
+            --duration "$YT_DURATION" --shot-seconds "$YT_SHOT" \
+            --output build/scene-plan.json
+          python -m automate_ytb.production prepare \
+            --plan build/scene-plan.json --output build/image-prompts.jsonl
+          python -m automate_ytb.production audit --plan build/scene-plan.json \
+            > build/asset-audit.json
+      - name: Download scene kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-scene-kit
+          path: |
+            build/scene-plan.json
+            build/image-prompts.jsonl
+            build/asset-audit.json
+          if-no-files-found: error
+          retention-days: 14
