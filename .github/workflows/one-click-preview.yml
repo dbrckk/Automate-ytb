@@ -139,5 +139,6 @@ jobs:
             build/video/episode-report.json
             build/video/render-report.json
             build/video/thumbnails/
+            build/assets/
           retention-days: 7
           if-no-files-found: warn
