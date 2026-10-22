@@ -1,0 +1,89 @@
+name: Generate YouTube draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Sujet de la vidéo originale"
+        type: string
+        required: true
+        default: "Pourquoi les couleurs changent au coucher du soleil ?"
+      angle:
+        description: "Angle éditorial"
+        type: string
+        required: false
+        default: "Une explication visuelle claire et accessible"
+      language:
+        description: "Langue"
+        type: choice
+        options: [fr, en]
+        default: fr
+      style:
+        description: "Direction artistique"
+        type: choice
+        options: [cinematic, cartoon, documentary]
+        default: cinematic
+      duration:
+        description: "Durée minimale en secondes (30-3600)"
+        type: number
+        default: 90
+      original_script:
+        description: "Script original (paragraphes séparés par une ligne vide)"
+        type: string
+        required: false
+      facts_json:
+        description: "Faits sourcés facultatifs au format JSON"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Build preview-only MP4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install media tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install -e .
+      - name: Prepare topic and script
+        env:
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_ANGLE: ${{ inputs.angle }}
+          YT_FACTS_JSON: ${{ inputs.facts_json }}
+          YT_SCRIPT: ${{ inputs.original_script }}
+        run: python scripts/prepare_action.py
+      - name: Render video, subtitles and thumbnails
+        env:
+          YT_LANGUAGE: ${{ inputs.language }}
+          YT_STYLE: ${{ inputs.style }}
+          YT_DURATION: ${{ inputs.duration }}
+        run: |
+          args=(--brief build/brief.json --output outputs
+                --style "$YT_STYLE" --language "$YT_LANGUAGE"
+                --duration "$YT_DURATION" --tts espeak)
+          if test -f build/script.txt; then
+            args+=(--script build/script.txt)
+          fi
+          if test -d assets && find assets -maxdepth 1 -name 'scene-*.png' | grep -q .; then
+            args+=(--assets assets)
+          fi
+          python -m automate_ytb create "${args[@]}"
+      - name: Verify deliverables
+        run: python scripts/check_output.py outputs
+      - name: Download the video package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-video-draft
+          path: outputs/
+          if-no-files-found: warn
+          retention-days: 14

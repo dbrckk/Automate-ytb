@@ -1,0 +1,42 @@
+name: Validate production pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg, speech and project
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install -e .
+      - name: Unit and safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Generate sourced example video
+        run: |
+          python -m automate_ytb create \
+            --brief examples/facts.json \
+            --duration 35 \
+            --style documentary \
+            --output outputs
+      - name: Verify actual MP4/audio and deliverables
+        run: python scripts/check_output.py outputs
+      - name: Archive example deliverables
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-ci-preview
+          path: outputs/
+          retention-days: 7
