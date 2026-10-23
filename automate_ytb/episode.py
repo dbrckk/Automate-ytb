@@ -15,7 +15,7 @@ import wave
 
 from . import production
 from .studio import make_thumbnails, render_art, synthesize_voice
-from .character_art import render_character_scene
+from .animated_owl import render_character_poster, art_brief_sha256
 
 
 LOCAL_RIGHTS = ("Original geometric scene cards generated locally by Automate-ytb "
@@ -32,9 +32,19 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
         raise ValueError("Scene limit must be positive")
     already = {s["sceneId"]: s["status"] for s in production.audit(plan_path)["details"]}
     rendered, reused = 0, 0
+    character_text = data["originalCharacterBible"].casefold()
+    is_owl = any(word in character_text for word in ("owl", "chouette", "hibou"))
     for i, scene in enumerate(scenes, start=1):
         state = already.get(scene["id"])
+        brief_sha = art_brief_sha256(
+            topic=data["topic"], narration=scene["narration"],
+            character=data["originalCharacterBible"], style=style,
+            scene_id=scene["id"])
         if state == "ready":
+            if scene.get("renderStyle") and scene["renderStyle"] != style:
+                raise ValueError("Approved artwork belongs to another style; start a new project")
+            if scene.get("artBriefSha256") and scene["artBriefSha256"] != brief_sha:
+                raise ValueError("Approved artwork belongs to another story/character; reapprove")
             reused += 1
             continue
         if state in ("unreviewed", "changed"):
@@ -42,14 +52,11 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                              "explicitly resolve these before re-generating")
         with tempfile.TemporaryDirectory(prefix="automate-ytb-art-") as folder:
             image = Path(folder) / "original-graphic.png"
-            character_text = data["originalCharacterBible"].casefold()
-            is_owl = any(word in character_text for word in ("owl", "chouette", "hibou"))
             if style == "cartoon" and is_owl:
-                render_character_scene(topic=data["topic"], narration=scene["narration"],
-                                       scene_index=i, scene_count=len(data["scenes"]),
-                                       style=style,
-                                       character=data["originalCharacterBible"],
-                                       destination=image)
+                render_character_poster(
+                    topic=data["topic"], narration=scene["narration"],
+                    scene_index=i, scene_count=len(data["scenes"]),
+                    style=style, destination=image)
             else:
                 render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
                            style, image)
@@ -58,8 +65,17 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                 provider="automate-local-graphics", rights_note=LOCAL_RIGHTS,
                 cost_usd="0", rights_confirmed=True,
             )
+            # Bind the rights-reviewed locally authored PNG to its exact
+            # original narration, character and style for safe future reuse.
+            current = production.load_plan(plan_path)
+            current["scenes"][i-1]["renderStyle"] = style
+            current["scenes"][i-1]["artBriefSha256"] = brief_sha
+            if style == "cartoon" and is_owl:
+                current["scenes"][i-1]["motionRig"] = "original-owl-v1"
+            production._write_json(plan_path, current)
         rendered += 1
     return {"mode": "offline-graphics", "created": rendered, "reused": reused,
+            "characterRig": "original-owl-v1" if style == "cartoon" and is_owl else "none",
             "apiCalls": 0, "providerCostUsd": "0.0000"}
 
 
@@ -154,7 +170,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "reviewBeforePublication": True, "topic": data["topic"],
         "art": art, "voice": details, "render": result,
         "thumbnails": [str(x) for x in pictures],
-        "warnings": ["Owl characters in cartoon style use original procedural art; other characters/styles use draft cards, not AI images.",
+        "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
                      "Narration uses the basic eSpeak voice, not natural professional TTS.",
                      "Captions are aligned per scene, not word-by-word.",
                      "Factual and rights review required before YouTube publication."],
