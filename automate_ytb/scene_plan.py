@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import re
 
+from .director import direct_scenes
+
 STYLE = "Original cinematic 3D illustration, rounded character, soft film lighting"
 CAMERAS = ("wide establishing", "medium", "close-up", "over-the-shoulder", "low-angle", "macro")
 
@@ -46,6 +48,9 @@ def plan(*, topic: str, script: str, duration: int, character: str,
             "assetApproved": False, "assetLicenseEvidence": None,
             "reviewStatus": "pending",
         })
+    directions = direct_scenes(scenes)
+    for scene, cue in zip(scenes, directions):
+        scene["direction"] = cue
     return {"schemaVersion": 1, "topic": topic, "status": "draft",
             "targetDurationSeconds": duration, "sceneCount": count,
             "sourceScriptSha256": hashlib.sha256(script.encode("utf-8")).hexdigest(),

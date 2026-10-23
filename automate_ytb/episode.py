@@ -42,7 +42,7 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
         brief_sha = art_brief_sha256(
             topic=data["topic"], narration=scene["narration"],
             character=data["originalCharacterBible"], style=style,
-            scene_id=scene["id"])
+            scene_id=scene["id"], direction=scene.get("direction"))
         if state == "ready":
             if scene.get("renderStyle") and scene["renderStyle"] != style:
                 raise ValueError("Approved artwork belongs to another style; start a new project")
@@ -59,7 +59,8 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                 render_character_poster(
                     topic=data["topic"], narration=scene["narration"],
                     scene_index=i, scene_count=len(data["scenes"]),
-                    style=style, destination=image)
+                    style=style, destination=image,
+                    direction=scene.get("direction"))
             else:
                 render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
                            style, image)
