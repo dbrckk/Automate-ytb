@@ -5,10 +5,10 @@
 1. Ouvrir [Actions](https://github.com/dbrckk/Automate-ytb/actions) dans le dépôt.
 2. Sélectionner **One-click YouTube preview (free)**, puis **Run workflow**.
 3. Renseigner le sujet, un **scénario original**, une description de personnage original, la durée, la langue et le style. Le scénario doit avoir **au moins une phrase par scène** ; par exemple 30 secondes / 6 secondes = 5 phrases.
-4. Laisser la voix **espeak** pour une première démonstration avec narration, ou **none** pour un aperçu silencieux.
+4. Sélectionner **kokoro** pour une voix neuronale naturelle (français : ff_siwis ; anglais : af_heart), **espeak** pour un brouillon plus léger, ou **none** pour un aperçu silencieux. Kokoro télécharge un modèle local sur GitHub Actions et peut consommer beaucoup de temps de calcul. Aucun service TTS payant n'est appelé.
 5. À la fin du run, télécharger l'artefact **automate-ytb-free-preview** dans la rubrique **Artifacts**. Il contient MP4, narration WAV, sous-titres SRT, trois miniatures, scénario, JSON de scènes et compte rendu.
 
-Ce workflow crée **gratuitement des illustrations procédurales de brouillon**, pas des images IA photoréalistes ni une animation comparable à Murph. Il produit une piste de narration **eSpeak de qualité provisoire**, pas une voix professionnelle. Le résultat est un **brouillon à revoir**, sans publication automatique.
+Ce workflow crée **sans API d'inférence payante des illustrations procédurales de brouillon**, pas des images IA photoréalistes. La chouette originale dispose d'un moteur d'animation 2D. Il produit une narration **eSpeak provisoire** ou, sur demande, une voix **Kokoro neuronale** dont la prononciation doit être écoutée et validée. Le résultat est un **brouillon à revoir**, sans publication automatique.
 
 ### Précautions
 
@@ -36,7 +36,7 @@ Par défaut, il affiche le budget estimé **sans envoyer la moindre requête**. 
 
 L'Action existante prépare le plan de scènes, notre moteur crée les images de brouillon, eSpeak fabrique une piste PCM dont les segments sont calés sur le planning, FFmpeg produit les clips puis le MP4, et trois miniatures sont exportées.
 
-Les prochaines améliorations qualitatives les plus importantes sont : une charte graphique originale avec personnage réellement visible et cohérent, une API ou un modèle TTS naturel, une génération IA à coût contrôlé et une synchronisation mot-à-mot. Ces fonctions ne sont **pas** promises par le workflow gratuit de cette version.
+Les prochaines améliorations qualitatives les plus importantes sont : des gestes guidés par le storyboard, des univers et personnages originaux supplémentaires, la qualité artistique des images, une génération IA à coût contrôlé et une synchronisation mot-à-mot. Kokoro constitue désormais une option de TTS naturel, sans garantir automatiquement une narration professionnelle. Ces fonctions ne sont **pas** promises par le workflow gratuit de cette version.
 
 ## Personnage animé : illustration originale améliorée
 
@@ -72,3 +72,17 @@ Les tests comparent des images réellement décodées du MP4 à différents
 instants : ils vérifient que le personnage bouge tandis que le décor reste
 stable. Ils vérifient aussi la reproductibilité des visuels et le refus
 des anciennes images si le scénario change.
+
+
+## Voix neuronale optionnelle (Kokoro)
+
+Le workflow gratuit conserve **espeak** par défaut. Sélectionner **kokoro** dans GitHub Actions active l'installation CPU et le téléchargement du modèle public au premier lancement. Le modèle [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) est décrit sous licence Apache-2.0 ; vérifier les informations relatives aux voix et attributions amont pour la distribution. Les voix permises sont ff_siwis en français, af_heart, af_bella et am_michael en anglais. Le workflow sélectionne automatiquement ff_siwis en français et af_heart en anglais.
+
+Localement, installer les dépendances de voix, puis lancer :
+
+    python -m pip install -e '.[speech]'
+    python -m automate_ytb.episode --plan build/scene-plan.json --output build/video --voice kokoro --language fr
+
+Le moteur instancie Kokoro une seule fois par épisode, génère l'audio des scènes, ajoute une respiration entre les fragments et prolonge les scènes trop courtes. Aucune phrase n'est tronquée pour rentrer artificiellement dans six secondes. Les sous-titres restent alignés à la scène et non mot par mot. La génération peut échouer si le téléchargement, la mémoire ou le moteur CPU ne sont pas disponibles. GitHub Actions peut appliquer ses quotas habituels.
+
+Le mode Kokoro ne déclenche ni API TTS payante ni publication YouTube.

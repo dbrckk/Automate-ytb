@@ -29,8 +29,8 @@ on:
         default: fr
       voice:
         type: choice
-        description: "eSpeak draft voice or silent"
-        options: [espeak, none]
+        description: "eSpeak draft, optional Kokoro neural voice, or silent"
+        options: [espeak, kokoro, none]
         default: espeak
       duration_seconds:
         type: number
@@ -67,6 +67,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
           python -m pip install -e .
+      - name: Install optional Kokoro natural speech model runner
+        if: ${{ inputs.voice == 'kokoro' }}
+        run: |
+          # CPU-only PyTorch avoids large CUDA-only libraries on GitHub Actions.
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install -e '.[speech]'
       - name: Prepare original script safely
         env:
           YT_SCRIPT: ${{ inputs.original_script }}
