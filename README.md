@@ -76,6 +76,25 @@ Tests :
 python -m unittest discover -s tests -v
 ```
 
+### Son, narration et sous-titres
+
+Le workflow Android gratuit peut désormais produire une **musique de fond
+originale par synthèse locale**, dont l'intensité est réduite pendant la voix
+Kokoro ou eSpeak. Un limiteur protège contre les pics du mixage, et les
+sous-titres SRT sont segmentés en phrases plus courtes. Les durées de ces
+phrases restent des estimations, **pas** une synchronisation mot par mot.
+
+Sur Android, choisir **Soundtrack: ambient** ou **none** dans l'action.
+En local :
+
+~~~bash
+python -m automate_ytb.episode --plan build/scene-plan.json \
+  --output build/video --voice espeak --soundtrack ambient
+~~~
+
+La musique synthétique est une bande provisoire : elle doit être écoutée et
+validée avant publication.
+
 ## Repères tirés de la vidéo fournie
 
 La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs YouTube Studio, des exemples de contenu illustré, des instructions textuelles dans Codex et un outil de génération de séquences vidéo. Nous avons transposé **l’organisation de la production**, pas les créations tierces ni les chiffres présentés.

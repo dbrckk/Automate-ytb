@@ -6,7 +6,12 @@
 2. Sélectionner **One-click YouTube preview (free)**, puis **Run workflow**.
 3. Renseigner le sujet, un **scénario original**, une description de personnage original, la durée, la langue et le style. Le scénario doit avoir **au moins une phrase par scène** ; par exemple 30 secondes / 6 secondes = 5 phrases.
 4. Sélectionner **kokoro** pour une voix neuronale naturelle (français : ff_siwis ; anglais : af_heart), **espeak** pour un brouillon plus léger, ou **none** pour un aperçu silencieux. Kokoro télécharge un modèle local sur GitHub Actions et peut consommer beaucoup de temps de calcul. Aucun service TTS payant n'est appelé.
-5. À la fin du run, télécharger l'artefact **automate-ytb-free-preview** dans la rubrique **Artifacts**. Il contient MP4, narration WAV, sous-titres SRT, trois miniatures, scénario, JSON de scènes et compte rendu.
+5. Dans **Soundtrack**, choisir **ambient** pour une musique instrumentale
+   originale créée gratuitement dans le workflow, ou **none** pour un rendu
+   sans musique. Si une narration est présente, FFmpeg réduit le fond sonore
+   pendant les paroles. Le mastering comprend une limitation des pics, mais
+   il faut encore écouter le résultat pour juger de la qualité.
+6. À la fin du run, télécharger l'artefact **automate-ytb-free-preview** dans la rubrique **Artifacts**. Il contient MP4, narration WAV, sous-titres SRT, trois miniatures, scénario, JSON de scènes et compte rendu.
 
 Ce workflow crée **sans API d'inférence payante des illustrations procédurales de brouillon**, pas des images IA photoréalistes. La chouette originale dispose d'un moteur d'animation 2D. Il produit une narration **eSpeak provisoire** ou, sur demande, une voix **Kokoro neuronale** dont la prononciation doit être écoutée et validée. Le résultat est un **brouillon à revoir**, sans publication automatique.
 
@@ -122,3 +127,28 @@ Le contenu raconté et les horodatages ne sont jamais réécrits par cette
 étape. Les anciens plans sans indications \`direction\` continuent à utiliser
 le rendu historique. Kokoro reste une voix optionnelle et la synchronisation
 des sous-titres demeure au niveau des scènes, pas des mots.
+
+## Bande sonore originale et sous-titres plus lisibles
+
+La nouvelle option **ambient** fabrique une musique d'ambiance minimaliste
+par synthèse locale à partir de sons purs, sans télécharger d'extraits tiers,
+sans bibliothèque musicale et sans API payante. Le thème tonal varie suivant
+les indications déjà présentes dans le storyboard (jour, nuit, pluie et
+émotions simples). Les raccords entre scènes sont adoucis pour éviter les
+clics. Cette bande sonore est une création technique **provisoire**, pas une
+musique de qualité commerciale garantie.
+
+Lorsque **espeak** ou **kokoro** est activé, le moteur mélange la narration
+et la musique en atténuant automatiquement cette dernière pendant la parole ;
+un limiteur réduit le risque de saturation. Le dossier exporté contient
+dorénavant aussi le fichier WAV original de la bande sonore.
+
+Les sous-titres SRT sont segmentés en **petites phrases de deux lignes
+environ**, avec des durées estimées proportionnellement au texte de chaque
+scène. Cela améliore la lisibilité mais **ne correspond pas à un alignement
+phonétique réel au mot**. Vérifier les timecodes en relisant la vidéo.
+
+Le réglage de base de l'outil local reste **sans musique** pour préserver le
+comportement des projets existants. L'action Android propose **ambient** par
+défaut et permet de le désactiver. La génération sonore n'utilise aucune
+donnée ni voix de tiers non autorisée.

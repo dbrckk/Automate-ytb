@@ -150,9 +150,12 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
 def build_preview(*, plan_path: Path, output: Path,
                   style: str = "cartoon", language: str = "fr",
                   voice: str = "espeak", limit: int | None = None,
-                  resolution: str = "720p", voice_name: str | None = None) -> dict:
+                  resolution: str = "720p", voice_name: str | None = None,
+                  soundtrack: str = "none") -> dict:
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
+    if soundtrack not in {"none", "ambient"}:
+        raise ValueError("Soundtrack must be none or ambient")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -163,9 +166,17 @@ def build_preview(*, plan_path: Path, output: Path,
         voice_file = output / "narration.wav"
         details = _narrate_scenes(plan_path, voice_file, language, limit,
                                   engine=voice, voice_name=voice_name)
+    soundtrack_report = {"engine": "none", "externalApiCalls": 0}
+    soundtrack_file = None
+    if soundtrack == "ambient":
+        from .soundtrack import create_bed
+        soundtrack_file = output / "background-original.wav"
+        soundtrack_report = create_bed(plan_path=plan_path,
+                                       output=soundtrack_file, limit=limit)
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
-                               resolution=resolution, fps=24)
+                               resolution=resolution, fps=24,
+                               music=soundtrack_file)
     thumbs = output / "thumbnails"
     thumbs.mkdir(exist_ok=True)
     data = production.load_plan(plan_path)
@@ -173,7 +184,8 @@ def build_preview(*, plan_path: Path, output: Path,
     summary = {
         "status": "draft", "publicationApproved": False, "factChecked": False,
         "reviewBeforePublication": True, "topic": data["topic"],
-        "art": art, "voice": details, "render": result,
+        "art": art, "voice": details, "soundtrack": soundtrack_report,
+        "render": result,
         "thumbnails": [str(x) for x in pictures],
         "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
@@ -193,6 +205,8 @@ def main(argv=None) -> int:
     p.add_argument("--language", choices=["fr", "en"], default="fr")
     p.add_argument("--voice", choices=["espeak", "kokoro", "none"], default="espeak")
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
+    p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
+                   help="Original local ambient backing track with narration ducking")
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--limit", type=int)
     args = p.parse_args(argv)
