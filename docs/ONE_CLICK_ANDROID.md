@@ -42,6 +42,33 @@ Les prochaines améliorations qualitatives les plus importantes sont : une chart
 
 En style **cartoon**, si la description du personnage contient `owl`, `chouette` ou `hibou`, le système produit maintenant une **chouette originale dessinée** avec lunettes turquoise, foulard doré, expressions, poses et décors variant selon les scènes. Les rendus sont déterministes pour permettre la reprise et la comparaison visuelle.
 
-Il s'agit d'illustrations procédurales fixes, animées au montage par un léger mouvement de caméra, **pas** d'animation squelettique ni de vidéo générée par IA. Pour d'autres personnages ou styles, le moteur conserve les cartes graphiques précédentes afin de ne pas représenter un personnage erroné. Les images ne reprennent pas la mascotte d'une chaîne tierce.
+Ce passage décrit le précédent système d'images fixes. Depuis le rig v1 ci-dessous, la chouette est animée par calques mobiles ; il ne s'agit toujours ni de vidéo générée par IA, ni d'animation 3D. Pour d'autres personnages ou styles, le moteur conserve les cartes graphiques précédentes afin de ne pas représenter un personnage erroné. Les images ne reprennent pas la mascotte d'une chaîne tierce.
 
 Les futurs ajouts devront prévoir un catalogue de personnages originaux, des gestes/expressions contrôlés par le storyboard et une validation de cohérence visuelle entre les scènes.
+
+## Animation 2D de la chouette (rig v1)
+
+Le mode cartoon avec une description contenant owl, chouette ou hibou
+ne se limite plus à une illustration fixe. Notre chouette originale est composée
+de calques transparents (ailes gauche/droite, corps, clignements)
+animés indépendamment grâce à FFmpeg. Les ailes battent,
+le corps oscille et les yeux clignent ; l'arrière-plan reste cohérent pendant le
+plan. Les variations de décor et de narration sont conservées à chaque scène.
+
+**Réutilisation :** le moteur associe au visuel approuvé l'empreinte
+du sujet, du texte, du personnage et du style. Si le contenu est modifié après
+la préparation des images, le rendu refuse d'exploiter les anciens médias sans
+nouvelle validation. Le cache des clips est également invalidé si l'image,
+la durée, le nombre d'images par seconde ou le moteur de rendu change.
+
+L'aperçu reste gratuit sans compte IA, sans image copiée, sans génération distante
+ni publication YouTube. **Limites :** l'animation procédurale ne couvre encore
+que la chouette ; ce n'est ni de la vidéo générée par IA, ni une animation 3D
+complexe ; la voix eSpeak est provisoire. Pour les autres personnages, le
+moteur conserve ses propres cartes graphiques au lieu de dessiner une chouette
+qui ne correspondrait pas au scénario.
+
+Les tests comparent des images réellement décodées du MP4 à différents
+instants : ils vérifient que le personnage bouge tandis que le décor reste
+stable. Ils vérifient aussi la reproductibilité des visuels et le refus
+des anciennes images si le scénario change.

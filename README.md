@@ -92,6 +92,16 @@ La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs Yo
 - L'utilisateur reste responsable des droits de voix, musique, images, titres et clips.
 - Toute mise en ligne passe par une validation explicite ; le système produit des brouillons, non des publications autonomes.
 
+### Animation procédurale originale
+
+Le workflow Android gratuit inclut désormais une **chouette 2D articulée**
+(ailes indépendantes, oscillation du corps, clignements) lorsque la description
+du personnage contient owl, chouette ou hibou, en style cartoon.
+La vidéo est calculée à partir de calques originaux avec FFmpeg, sans API payante.
+Les autres personnages restent pour l'instant sur des visuels de brouillon.
+Cette animation est plus vivante qu'un diaporama, mais n'atteint pas encore
+la qualité visuelle de la référence ni une animation universelle des personnages.
+
 ## Nouveau : aperçu vidéo complet depuis Android, sans API payante
 
 Le workflow **[One-click offline video preview](https://github.com/dbrckk/Automate-ytb/actions/workflows/one-click-offline-video.yml)** transforme un scénario original en MP4 16:9, illustrations 2D originales cohérentes, voix eSpeak optionnelle, sous-titres SRT, couverture et rapports de production. Il fonctionne dans GitHub Actions, même sans PC, et ne demande aucune clé d'un service de génération d'images.
