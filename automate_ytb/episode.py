@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -16,6 +18,7 @@ import wave
 from . import production
 from .studio import make_thumbnails, render_art, synthesize_voice
 from .animated_owl import render_character_poster, art_brief_sha256
+from .narration import SpeechEngine
 
 
 LOCAL_RIGHTS = ("Original geometric scene cards generated locally by Automate-ytb "
@@ -80,84 +83,85 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
 
 
 def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
-                    limit: int | None) -> dict:
-    if language not in {"fr", "en"}:
-        raise ValueError("Only fr/en eSpeak drafts are supported")
+                    limit: int | None, *, engine: str = "espeak",
+                    voice_name: str | None = None) -> dict:
+    """Build full scene-level timing from actual speech, never clipping words.
+
+    The scene plan remains an editable DRAFT. This does not claim word-aligned
+    subtitles or accurate human pronunciation; listen before publication.
+    """
     data = production.load_plan(plan_path)
     scenes = data["scenes"][:limit]
+    if not scenes:
+        raise ValueError("No scenes selected for narration")
     voice_path.parent.mkdir(parents=True, exist_ok=True)
-    source_duration = [(s["endMs"] - s["startMs"]) / 1000.0
-                       for s in data["scenes"]]
-    units = []
-    with tempfile.TemporaryDirectory(prefix="automate-ytb-tts-") as temp:
-        for idx, scene in enumerate(scenes):
-            path = Path(temp) / f"voice-{idx:04d}.wav"
-            if not synthesize_voice(scene["narration"], path, language):
-                raise RuntimeError("eSpeak speech engine is unavailable")
-            with wave.open(str(path), "rb") as audio:
-                params = audio.getparams()
-                frames = audio.readframes(audio.getnframes())
-            if params.nchannels != 1 or params.sampwidth != 2 or params.comptype != "NONE":
-                raise RuntimeError("Unsupported eSpeak PCM output format")
-            units.append((frames, params.framerate))
-    if not units:
-        raise ValueError("There are no scenes to narrate")
-    samplerate = units[0][1]
-    if any(rate != samplerate for _, rate in units):
-        raise RuntimeError("Mixed eSpeak output sample rates")
-    # Never clip narration. Longer-than-planned speech expands the affected
-    # scene and shifts subsequent timecodes for scene-level caption accuracy.
-    new_duration = source_duration[:]
-    narration_frames = []
-    for idx, (frames, _) in enumerate(units):
-        actual_frames = len(frames) // 2
-        minimum = actual_frames + int(samplerate * 0.35)
-        desired = max(round(source_duration[idx] * samplerate), minimum)
-        new_duration[idx] = desired / samplerate
-        narration_frames.append(frames + b"\x00" * ((desired - actual_frames) * 2))
-    cumulative = 0
-    for i, scene in enumerate(data["scenes"]):
-        scene["startMs"] = round(cumulative * 1000)
-        cumulative += new_duration[i]
-        scene["endMs"] = round(cumulative * 1000)
-    if cumulative > 3600:
-        raise ValueError("Narration would exceed one hour; shorten the script")
-    data["targetDurationSeconds"] = round(cumulative, 3)
+    synth = SpeechEngine(engine=engine, language=language, voice=voice_name)
+    utterances = [synth.audio(scene["narration"]) for scene in scenes]
+    sample_rate = utterances[0][1]
+    if not 8000 <= sample_rate <= 96000:
+        raise ValueError("Unsupported speech sample rate")
+    if any(rate != sample_rate or not frames or len(frames) % 2
+           for frames, rate in utterances):
+        raise RuntimeError("Invalid or mismatched PCM scene audio")
+
+    # Use integer milliseconds for all timeline boundaries; the actual WAV
+    # may differ by at most one sample due to integer sample conversion.
+    durations_ms = [scene["endMs"] - scene["startMs"] for scene in data["scenes"]]
+    complete_audio = []
+    for i, (frames, _) in enumerate(utterances):
+        actual_samples = len(frames) // 2
+        min_ms = math.ceil((actual_samples / sample_rate + 0.35) * 1000)
+        durations_ms[i] = max(durations_ms[i], min_ms)
+        target_samples = math.ceil(durations_ms[i] * sample_rate / 1000)
+        complete_audio.append(frames + b"\x00" * ((target_samples - actual_samples) * 2))
+    total_ms = sum(durations_ms)
+    if total_ms > 3_600_000:
+        raise ValueError("Narration would exceed the one-hour scene-plan limit")
+    offset = 0
+    for scene, duration_ms in zip(data["scenes"], durations_ms):
+        scene["startMs"] = offset
+        offset += duration_ms
+        scene["endMs"] = offset
+    data["targetDurationSeconds"] = total_ms / 1000
     data["publicationApproved"] = False
-    with wave.open(str(voice_path), "wb") as combined:
-        combined.setnchannels(1)
-        combined.setsampwidth(2)
-        combined.setframerate(samplerate)
-        for frames in narration_frames:
-            combined.writeframes(frames)
-    # Adjust scene timecodes only after the voice was rendered successfully.
-    # Timecodes must remain contiguous in integer milliseconds.
-    last = 0
-    for scene in data["scenes"]:
-        scene["startMs"] = last
-        last = scene["endMs"]
-    data["targetDurationSeconds"] = last / 1000
+    # Audio must be fully written before the manifest is updated.
+    temp_audio = voice_path.with_name("temporary-narration.wav")
+    try:
+        with wave.open(str(temp_audio), "wb") as wavefile:
+            wavefile.setnchannels(1)
+            wavefile.setsampwidth(2)
+            wavefile.setframerate(sample_rate)
+            for frames in complete_audio:
+                wavefile.writeframes(frames)
+        os.replace(temp_audio, voice_path)
+    finally:
+        temp_audio.unlink(missing_ok=True)
     production._write_json(plan_path.resolve(), data)
-    return {"voice": str(voice_path), "engine": "espeak-draft",
-            "sceneBoundaryTiming": "audio-derived", "wordAlignment": False,
-            "audioSeconds": round(sum(new_duration[:len(scenes)]), 3)}
+    return {
+        "voice": str(voice_path), "engine": "kokoro-natural" if engine == "kokoro"
+        else "espeak-draft", "voiceId": synth.voice,
+        "sceneBoundaryTiming": "audio-derived", "wordAlignment": False,
+        "audioSeconds": round(sum(len(audio) for audio in complete_audio) / (2*sample_rate), 3),
+        "sampleRate": sample_rate, "providerApiCalls": 0,
+    }
 
 
 def build_preview(*, plan_path: Path, output: Path,
                   style: str = "cartoon", language: str = "fr",
                   voice: str = "espeak", limit: int | None = None,
-                  resolution: str = "720p") -> dict:
-    if voice not in {"espeak", "none"}:
-        raise ValueError("Voice must be espeak or none")
+                  resolution: str = "720p", voice_name: str | None = None) -> dict:
+    if voice not in {"espeak", "kokoro", "none"}:
+        raise ValueError("Voice must be espeak, kokoro or none")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     art = create_local_art(plan_path, style=style, limit=limit)
     voice_file = None
     details = {"engine": "none", "wordAlignment": False}
-    if voice == "espeak":
+    if voice in {"espeak", "kokoro"}:
         voice_file = output / "narration.wav"
-        details = _narrate_scenes(plan_path, voice_file, language, limit)
+        details = _narrate_scenes(plan_path, voice_file, language, limit,
+                                  engine=voice, voice_name=voice_name)
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
                                resolution=resolution, fps=24)
@@ -171,7 +175,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "art": art, "voice": details, "render": result,
         "thumbnails": [str(x) for x in pictures],
         "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
-                     "Narration uses the basic eSpeak voice, not natural professional TTS.",
+                     "Narration is a provisional synthetic voice; review pronunciation and pacing.",
                      "Captions are aligned per scene, not word-by-word.",
                      "Factual and rights review required before YouTube publication."],
     }
@@ -186,14 +190,15 @@ def main(argv=None) -> int:
     p.add_argument("--style", choices=["cartoon", "cinematic", "documentary"],
                    default="cartoon")
     p.add_argument("--language", choices=["fr", "en"], default="fr")
-    p.add_argument("--voice", choices=["espeak", "none"], default="espeak")
+    p.add_argument("--voice", choices=["espeak", "kokoro", "none"], default="espeak")
+    p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--limit", type=int)
     args = p.parse_args(argv)
     try:
         result = build_preview(plan_path=args.plan, output=args.output,
                                style=args.style, language=args.language,
-                               voice=args.voice, resolution=args.resolution,
+                               voice=args.voice, voice_name=args.voice_name, resolution=args.resolution,
                                limit=args.limit)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],

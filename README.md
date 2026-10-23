@@ -92,6 +92,17 @@ La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs Yo
 - L'utilisateur reste responsable des droits de voix, musique, images, titres et clips.
 - Toute mise en ligne passe par une validation explicite ; le système produit des brouillons, non des publications autonomes.
 
+### Narration neuronale optionnelle
+
+La création de brouillons propose maintenant une voix **Kokoro-82M** en français
+ou anglais, activée uniquement si voice=kokoro est sélectionné dans GitHub Actions.
+La voix eSpeak reste le choix le plus léger par défaut. La durée réelle des
+enregistrements ajuste les scènes afin de ne pas couper la narration.
+Les sous-titres ne sont pas encore alignés mot par mot. Kokoro télécharge
+ses poids et demande davantage de calcul sur le runner.
+
+Voir le [guide de narration neuronale](docs/NATURAL_NARRATION.md).
+
 ### Animation procédurale originale
 
 Le workflow Android gratuit inclut désormais une **chouette 2D articulée**
