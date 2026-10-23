@@ -130,6 +130,13 @@ jobs:
               raise SystemExit("Missing expected audio or video stream")
           print("Playable MP4 created:", metadata["format"]["duration"], "seconds", kinds)
           PY
+      - name: Export vertical 9:16 companion clip
+        run: |
+          python -m automate_ytb.shorts \
+            --video build/video/preview.mp4 \
+            --captions build/video/draft-captions.srt \
+            --start 0 --seconds 30 --size 720p \
+            --output build/video/short
       - name: Download video, thumbnails, script and audit
         if: always()
         uses: actions/upload-artifact@v4
@@ -145,6 +152,7 @@ jobs:
             build/video/episode-report.json
             build/video/render-report.json
             build/video/thumbnails/
+            build/video/short/
             build/assets/
           retention-days: 7
           if-no-files-found: warn
