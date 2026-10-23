@@ -37,3 +37,11 @@ Par défaut, il affiche le budget estimé **sans envoyer la moindre requête**. 
 L'Action existante prépare le plan de scènes, notre moteur crée les images de brouillon, eSpeak fabrique une piste PCM dont les segments sont calés sur le planning, FFmpeg produit les clips puis le MP4, et trois miniatures sont exportées.
 
 Les prochaines améliorations qualitatives les plus importantes sont : une charte graphique originale avec personnage réellement visible et cohérent, une API ou un modèle TTS naturel, une génération IA à coût contrôlé et une synchronisation mot-à-mot. Ces fonctions ne sont **pas** promises par le workflow gratuit de cette version.
+
+## Personnage animé : illustration originale améliorée
+
+En style **cartoon**, si la description du personnage contient `owl`, `chouette` ou `hibou`, le système produit maintenant une **chouette originale dessinée** avec lunettes turquoise, foulard doré, expressions, poses et décors variant selon les scènes. Les rendus sont déterministes pour permettre la reprise et la comparaison visuelle.
+
+Il s'agit d'illustrations procédurales fixes, animées au montage par un léger mouvement de caméra, **pas** d'animation squelettique ni de vidéo générée par IA. Pour d'autres personnages ou styles, le moteur conserve les cartes graphiques précédentes afin de ne pas représenter un personnage erroné. Les images ne reprennent pas la mascotte d'une chaîne tierce.
+
+Les futurs ajouts devront prévoir un catalogue de personnages originaux, des gestes/expressions contrôlés par le storyboard et une validation de cohérence visuelle entre les scènes.

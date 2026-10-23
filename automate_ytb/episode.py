@@ -15,6 +15,7 @@ import wave
 
 from . import production
 from .studio import make_thumbnails, render_art, synthesize_voice
+from .character_art import render_character_scene
 
 
 LOCAL_RIGHTS = ("Original geometric scene cards generated locally by Automate-ytb "
@@ -41,8 +42,17 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                              "explicitly resolve these before re-generating")
         with tempfile.TemporaryDirectory(prefix="automate-ytb-art-") as folder:
             image = Path(folder) / "original-graphic.png"
-            render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
-                       style, image)
+            character_text = data["originalCharacterBible"].casefold()
+            is_owl = any(word in character_text for word in ("owl", "chouette", "hibou"))
+            if style == "cartoon" and is_owl:
+                render_character_scene(topic=data["topic"], narration=scene["narration"],
+                                       scene_index=i, scene_count=len(data["scenes"]),
+                                       style=style,
+                                       character=data["originalCharacterBible"],
+                                       destination=image)
+            else:
+                render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
+                           style, image)
             production.ingest(
                 plan_path=plan_path, scene_id=scene["id"], image_path=image,
                 provider="automate-local-graphics", rights_note=LOCAL_RIGHTS,
@@ -144,7 +154,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "reviewBeforePublication": True, "topic": data["topic"],
         "art": art, "voice": details, "render": result,
         "thumbnails": [str(x) for x in pictures],
-        "warnings": ["Graphic illustrations are procedural draft cards, not AI images.",
+        "warnings": ["Owl characters in cartoon style use original procedural art; other characters/styles use draft cards, not AI images.",
                      "Narration uses the basic eSpeak voice, not natural professional TTS.",
                      "Captions are aligned per scene, not word-by-word.",
                      "Factual and rights review required before YouTube publication."],
