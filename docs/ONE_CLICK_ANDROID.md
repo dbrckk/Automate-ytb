@@ -122,3 +122,31 @@ Le contenu raconté et les horodatages ne sont jamais réécrits par cette
 étape. Les anciens plans sans indications \`direction\` continuent à utiliser
 le rendu historique. Kokoro reste une voix optionnelle et la synchronisation
 des sous-titres demeure au niveau des scènes, pas des mots.
+
+## Short vertical automatique
+
+Le workflow Android gratuit crée maintenant **deux formats** à partir de
+la même vidéo originale : l'épisode horizontal 16:9 et un extrait vertical
+9:16 (720×1280), sans API ou compte supplémentaire.
+
+L'extrait correspond pour le moment aux **30 premières secondes maximum**.
+Il conserve le cadre 16:9 entier au centre, en remplissant l'arrière-plan
+avec une version agrandie et floutée, pour ne pas rogner arbitrairement
+la chouette ou les éléments du décor. Les sous-titres SRT sont découpés
+et remis à zéro sur la fenêtre extraite ; les versions précédentes restent
+accessibles dans les artefacts.
+
+**Important :** le Short est un aperçu, non une sélection intelligente
+de moments forts. Il faut encore vérifier l'intérêt de l'extrait,
+la lisibilité de la scène sur smartphone, l'audio, les sous-titres
+et les règles de publication de YouTube. Le moteur ne publie rien.
+
+La commande manuelle est :
+
+~~~
+python -m automate_ytb.shorts --video projet/preview.mp4 \
+  --captions projet/draft-captions.srt --seconds 30 \
+  --output projet/vertical
+~~~
+
+Les sorties sont short-vertical.mp4, short-captions.srt et short-report.json.

@@ -21,6 +21,14 @@ La V1 **n’inclut pas** de génération cinématique IA photoréaliste, de clon
 
 Guide : [Production Android en un workflow](docs/ONE_CLICK_ANDROID.md).
 
+## Formats YouTube 16:9 et Shorts 9:16
+
+Le workflow Android gratuit exporte désormais aussi un **clip vertical 720×1280**
+à partir du MP4 horizontal, avec fond flouté, audio conservé et sous-titres
+SRT recalés sur l'extrait. Pour l'instant, il prend les 30 premières
+secondes, sans prétendre sélectionner les meilleurs moments.
+Voir le [guide Android](docs/ONE_CLICK_ANDROID.md).
+
 ## Guide rapide sur GitHub / Android
 
 1. Ouvrir l’onglet **Actions** du dépôt puis **Generate YouTube draft**.
