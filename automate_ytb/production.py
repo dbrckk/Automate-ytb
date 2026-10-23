@@ -237,7 +237,8 @@ def _srt_time(ms: int) -> str:
 
 
 def render(*, plan_path: Path, output: Path, audio: Path | None = None,
-           limit: int | None = None, resolution: str = "720p", fps: int = 24) -> dict:
+           limit: int | None = None, resolution: str = "720p", fps: int = 24,
+           music: Path | None = None) -> dict:
     if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
         raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
     data = load_plan(plan_path)
@@ -318,22 +319,56 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
           "-f", "concat", "-safe", "0", "-i", str(concat),
           "-c", "copy", "-movflags", "+faststart", str(raw)])
     result = output / "preview.mp4"
+    duration = scenes[-1]["endMs"] / 1000
     if audio is not None:
         audio = audio.resolve(strict=True)
         if not audio.is_file():
             raise ValueError("Narration audio must be a file")
+    if music is not None:
+        music = music.resolve(strict=True)
+        if not music.is_file():
+            raise ValueError("Soundtrack audio must be a file")
+    if music is not None and audio is not None:
+        # Compress the music against the narration *only while it speaks*,
+        # instead of making the entire episode background unpleasantly quiet.
+        # The final limiter prevents additive clipping.
+        filters = (
+            "[1:a]aresample=48000,highpass=f=70,"
+            "acompressor=threshold=0.15:ratio=2:attack=12:release=160,"
+            "asplit=2[spoken][control];"
+            "[2:a]aresample=48000,highpass=f=70,volume=0.24[background];"
+            "[background][control]sidechaincompress="
+            "threshold=0.02:ratio=7:attack=25:release=350[ducked];"
+            "[spoken][ducked]amix=inputs=2:duration=longest:normalize=0,"
+            "alimiter=limit=0.92[out]"
+        )
+        _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+              "-i", str(raw), "-i", str(audio), "-i", str(music),
+              "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
+    elif music is not None:
+        # Silent storytelling also gets a modest, faded instrumental bed.
+        filters = ("[1:a]aresample=48000,volume=0.27,"
+                   "afade=t=in:d=0.45,"
+                   f"afade=t=out:st={max(0, duration-0.8):.3f}:d=0.8,"
+                   "alimiter=limit=0.90[out]")
+        _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+              "-i", str(raw), "-i", str(music),
+              "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+              "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
+    elif audio is not None:
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
               "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-af", "apad",
-              "-t", f"{scenes[-1]['endMs']/1000:.3f}", "-movflags", "+faststart",
-              str(result)])
+              "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     else:
         shutil.copy2(raw, result)
+    from .captions import subtitles_for_scenes
     srt = output / "draft-captions.srt"
-    srt.write_text("\n".join(
-        f"{i}\n{_srt_time(s['startMs'])} --> {_srt_time(s['endMs'])}\n"
-        f"{s['narration'].replace(chr(10), ' ')}\n"
-        for i, s in enumerate(scenes, start=1)), encoding="utf-8")
+    captions_text, captions_report = subtitles_for_scenes(scenes)
+    srt.write_text(captions_text, encoding="utf-8")
     # Portable, inspectable coverage of the actual storyboard direction.
     from collections import Counter
     directed = [s["direction"] for s in scenes if "direction" in s]
@@ -348,14 +383,21 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "video": str(result), "videoSha256": _sha(result),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "targetDurationSeconds": scenes[-1]["endMs"] / 1000,
-        "hasNarrationAudio": audio is not None, "captions": str(srt),
+        "hasNarrationAudio": audio is not None,
+        "hasBackgroundMusic": music is not None,
+        "audioMixMode": ("ducked-narration-plus-original-bed" if music is not None and audio is not None
+                         else "original-bed-only" if music is not None else "narration-only" if audio is not None
+                         else "silent"),
+        "captions": str(srt),
         "animatedOwlScenes": sum(
             1 for s in scenes
             if s.get("motionRig") == "original-owl-v1"
             and s.get("assetProvider") == "automate-local-graphics"
             and s.get("renderStyle") == "cartoon"
         ),
-        "captionsPreciselyAligned": False, "previewOnly": True,
+        "captionsPreciselyAligned": False,
+        "captionGeneration": captions_report,
+        "previewOnly": True,
         "publicationApproved": False, "assetCostUsd": results["recordedAssetCostUsd"],
         "warning": "Draft scene timecodes are not forced alignment against final audio.",
     }

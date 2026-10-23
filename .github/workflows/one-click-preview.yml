@@ -32,6 +32,11 @@ on:
         description: "eSpeak draft, optional Kokoro neural voice, or silent"
         options: [espeak, kokoro, none]
         default: espeak
+      soundtrack:
+        type: choice
+        description: "Procedural original background music (no copyrighted samples)"
+        options: [ambient, none]
+        default: ambient
       duration_seconds:
         type: number
         default: 30
@@ -100,6 +105,7 @@ jobs:
           YT_STYLE: ${{ inputs.style }}
           YT_LANGUAGE: ${{ inputs.language }}
           YT_VOICE: ${{ inputs.voice }}
+          YT_SOUNDTRACK: ${{ inputs.soundtrack }}
           YT_RESOLUTION: ${{ inputs.resolution }}
         run: |
           python -m automate_ytb.scene_plan \
@@ -111,7 +117,8 @@ jobs:
           python -m automate_ytb.episode \
             --plan build/scene-plan.json --output build/video \
             --style "$YT_STYLE" --language "$YT_LANGUAGE" \
-            --voice "$YT_VOICE" --resolution "$YT_RESOLUTION"
+            --voice "$YT_VOICE" --resolution "$YT_RESOLUTION" \
+            --soundtrack "$YT_SOUNDTRACK"
       - name: Verify actual MP4 video and narration
         env:
           EXPECT_AUDIO: ${{ inputs.voice }}
@@ -141,6 +148,7 @@ jobs:
             build/script.txt
             build/video/preview.mp4
             build/video/narration.wav
+            build/video/background-original.wav
             build/video/draft-captions.srt
             build/video/episode-report.json
             build/video/render-report.json
