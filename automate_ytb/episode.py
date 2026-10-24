@@ -214,7 +214,7 @@ def main(argv=None) -> int:
         result = build_preview(plan_path=args.plan, output=args.output,
                                style=args.style, language=args.language,
                                voice=args.voice, voice_name=args.voice_name, resolution=args.resolution,
-                               limit=args.limit)
+                               soundtrack=args.soundtrack, limit=args.limit)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],
