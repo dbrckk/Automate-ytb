@@ -103,6 +103,20 @@ La vidéo montre une chaîne d'animation explicative (Murph), des indicateurs Yo
 
 `dbrckk/star-list` reste le catalogue de ressources à évaluer pour les évolutions. Les familles intéressantes sont : **FFmpeg** et outils de montage, **Kokoro** ou autres solutions de voix autorisées, **StoryDiffusion** et outils visuels, **MoneyPrinterTurbo** pour l'orchestration, et les outils de génération d'assets 3D. Ces dépôts sont des **candidats**, non des dépendances intégrées dans la V1. Examiner licences, droits commerciaux, exigences de calcul et API avant adoption.
 
+### Mastering audio automatique et contrôles EBU R128
+
+Le MP4 de prévisualisation utilise maintenant une normalisation
+**EBU R128** : environ **–16 LUFS** avec narration, **–24 LUFS** pour
+l'ambiance seule, et un plafond cible de **–1,5 dBTP**.
+Les niveaux réellement mesurés sur le MP4 final (LUFS intégrés,
+pic réel et pic numérique) sont inclus dans `media-report.json` et
+`qa-summary.json`. Le contrôle Android signale les écarts
+importants ; aucun fichier n'est publié automatiquement.
+
+Il s'agit d'un réglage technique et non d'un mastering artistique.
+Les valeurs sont des choix internes au projet, pas des obligations
+officielles de YouTube. L'écoute humaine reste nécessaire.
+
 ## Contrôles de qualité
 
 - Aucune promesse de revenus YouTube ou de monétisation.

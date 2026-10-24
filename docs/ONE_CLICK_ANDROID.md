@@ -198,3 +198,28 @@ Le workflow échoue si une vérification critique ne passe pas. Ces rapports ne
 certifient ni la véracité des faits, ni les licences, ni la qualité artistique, et
 n'autorisent aucune mise en ligne automatiquement. Les deux fichiers d'origine
 ne s'écrasent plus mutuellement.
+
+
+## Contrôle audio et mastering automatique
+
+Les vidéos produites avec une voix (eSpeak ou Kokoro) reçoivent une
+**normalisation EBU R128** visant environ **–16 LUFS** et un plafond
+de pic réel à **–1,5 dBTP**. Si la vidéo ne contient qu'une musique
+ambiante originale, la cible plus discrète est **–24 LUFS**.
+Le mix voix + musique conserve son ducking avant la normalisation.
+
+Le fichier téléchargeable `media-report.json` expose désormais :
+- le niveau intégré LUFS réellement mesuré sur le MP4 ;
+- le véritable pic inter-échantillons (dBTP) et le pic numérique (dBFS) ;
+- la cible utilisée et les avertissements éventuels.
+
+`qa-summary.json` conserve ces mesures dans un seul compte rendu.
+Des niveaux aberrants sont signalés ou refusés par le contrôle qualité ;
+aucune publication automatique n'est autorisée.
+
+**Limites :** la normalisation est en une passe, et non un mastering
+artistique professionnel. Le niveau mesuré dépend du contenu :
+un court passage silencieux ou une voix défectueuse peut toujours
+nécessiter une correction et une écoute humaine. La plate-forme YouTube
+peut effectuer sa propre normalisation ; les cibles citées sont des
+objectifs du projet, pas des exigences officielles de YouTube.

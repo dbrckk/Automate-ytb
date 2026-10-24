@@ -92,22 +92,53 @@ def generate_vtt(srt: Path, destination: Path, *, max_duration_ms: int | None = 
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return {"cues": len(entries), "lastCueMs": previous, "file": str(destination)}
 
-def _audio_peak(path: Path) -> float | None:
+def _audio_measurements(path: Path) -> dict:
+    """EBU R128 integrated loudness and true peak, plus legacy sample peak.
+
+    Measures the *encoded output*, not the input voice or source soundtrack.
+    All three measurements are obtained in a single FFmpeg decoding pass.
+    """
     proc = subprocess.run(
-        ["ffmpeg", "-nostdin", "-hide_banner", "-i", str(path),
-         "-vn", "-af", "volumedetect", "-f", "null", "-"],
-        capture_output=True, text=True, timeout=120, check=False)
+        ["ffmpeg", "-nostdin", "-hide_banner", "-nostats", "-loglevel", "info",
+         "-i", str(path), "-map", "0:a:0", "-vn",
+         "-af", "ebur128=peak=true,volumedetect", "-f", "null", "-"],
+        capture_output=True, text=True, timeout=600, check=False)
     if proc.returncode:
-        raise RuntimeError("Unable to inspect MP4 audio")
-    matches = re.findall(r"max_volume:\s*([-+\d.]+)\s*dB", proc.stderr)
-    return float(matches[-1]) if matches else None
+        raise RuntimeError("Unable to inspect encoded MP4 audio")
+    tail = proc.stderr.rsplit("Summary:", 1)
+    if len(tail) < 2:
+        raise RuntimeError("FFmpeg EBU R128 meter did not return a summary")
+    summary = tail[-1]
+    number = r"(-?(?:\d+(?:\.\d+)?|inf))"
+    integrated = re.search(r"Integrated loudness:\s+I:\s*" + number +
+                           r"\s*LUFS", summary)
+    true_peak = re.search(r"True peak:\s+Peak:\s*" + number +
+                          r"\s*dBFS", summary)
+    sample_peaks = re.findall(r"max_volume:\s*" + number +
+                              r"\s*dB", proc.stderr)
+    if not integrated or not true_peak or not sample_peaks:
+        raise RuntimeError("FFmpeg audio loudness analysis is incomplete")
+    def finite(value):
+        parsed = float(value)
+        return round(parsed, 2) if math.isfinite(parsed) else None
+    return {
+        "integratedLufs": finite(integrated.group(1)),
+        "truePeakDbtp": finite(true_peak.group(1)),
+        "samplePeakDbfs": finite(sample_peaks[-1]),
+        "method": "FFmpeg ebur128=peak=true + volumedetect",
+    }
+
 
 def assess(*, video: Path, captions: Path | None = None,
            expected_duration: float | None = None,
            require_audio: bool = False,
-           destination: Path | None = None) -> dict:
+           destination: Path | None = None,
+           target_lufs: float | None = None) -> dict:
     media = probe_media(video)
     problems, warnings = [], []
+    if target_lufs is not None and (
+            not math.isfinite(target_lufs) or not -30 <= target_lufs <= -9):
+        raise ValueError("Target loudness must be finite between -30 and -9 LUFS")
     if require_audio and not media["hasAudio"]:
         problems.append("Narration audio is missing")
     if expected_duration is not None:
@@ -119,11 +150,28 @@ def assess(*, video: Path, captions: Path | None = None,
         warnings.append("Unexpected video resolution or aspect ratio")
     if media["videoCodec"] != "h264":
         warnings.append("Video codec is not H.264")
-    peak = _audio_peak(video) if media["hasAudio"] else None
-    if peak is not None and peak < -24:
-        warnings.append("Audio peak is very quiet; verify playback volume")
+    levels = _audio_measurements(video) if media["hasAudio"] else None
+    peak = levels["samplePeakDbfs"] if levels else None
+    integrated = levels["integratedLufs"] if levels else None
+    true_peak = levels["truePeakDbtp"] if levels else None
+    if levels and integrated is None:
+        (problems if require_audio else warnings).append(
+            "Encoded audio is effectively silent; check the narration or soundtrack")
+    if integrated is not None:
+        if integrated < -29:
+            warnings.append("Encoded audio is unusually quiet; review playback")
+        if integrated > -9:
+            warnings.append("Encoded audio is unusually loud; review playback")
+        if target_lufs is not None:
+            difference = abs(integrated - target_lufs)
+            if difference > 8:
+                problems.append("Encoded loudness is far from the intended mastering target")
+            elif difference > 4:
+                warnings.append("Encoded loudness differs from the mastering target")
+    if true_peak is not None and true_peak > -0.2:
+        warnings.append("True peak approaches digital full scale; check distortion")
     if peak is not None and peak > -0.2:
-        warnings.append("Audio approaches digital full scale; check for clipping")
+        warnings.append("Sample peak approaches digital full scale; check clipping")
     if captions is not None:
         try:
             subs = _parse_srt(captions)
@@ -144,10 +192,14 @@ def assess(*, video: Path, captions: Path | None = None,
         "status": "fail" if problems else "pass-with-warnings" if warnings else "pass",
         "publicationApproved": False, "humanReviewRequired": True,
         "media": media, "peakDbfs": peak,
+        "integratedLufs": integrated,
+        "truePeakDbtp": true_peak,
+        "targetLufs": target_lufs,
+        "audioMeasurement": levels["method"] if levels else None,
         "subtitleCues": caption_count, "errors": problems, "warnings": warnings,
         "limitations": ["No listening-based speech review or factual verification",
                         "No automated copyrighted-media rights verification",
-                        "Audio peak is not the same as integrated loudness (LUFS)",
+                        "Objective LUFS and true peak measurements do not replace listening-based review",
                         "Subtitle boundaries are scene-based, not forced word alignment"],
     }
     if destination:
@@ -163,11 +215,13 @@ def main(argv=None):
     parser.add_argument("--vtt", type=Path)
     parser.add_argument("--duration", type=float)
     parser.add_argument("--require-audio", action="store_true")
+    parser.add_argument("--target-lufs", type=float,
+                        help="Optional expected integrated loudness target in LUFS")
     args = parser.parse_args(argv)
     try:
         report = assess(video=args.video, captions=args.srt,
                         expected_duration=args.duration, require_audio=args.require_audio,
-                        destination=args.report)
+                        destination=args.report, target_lufs=args.target_lufs)
         if args.vtt:
             if not args.srt:
                 raise ValueError("--vtt requires --srt")
