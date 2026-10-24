@@ -223,3 +223,25 @@ un court passage silencieux ou une voix défectueuse peut toujours
 nécessiter une correction et une écoute humaine. La plate-forme YouTube
 peut effectuer sa propre normalisation ; les cibles citées sont des
 objectifs du projet, pas des exigences officielles de YouTube.
+
+
+## Relecture visuelle rapide sur Android
+
+Le workflow gratuit exporte maintenant, à partir du **MP4 réellement encodé**,
+une planche illustrée nommée storyboard-01.jpg (et des pages supplémentaires
+si nécessaire). Chaque page présente des images extraites au milieu de scènes
+réparties sur la vidéo, leur numéro, l'horodatage et un court extrait
+de la narration. Les pages JPEG sont adaptées à une ouverture directe
+et au zoom sur smartphone après extraction de l'artefact GitHub Actions.
+
+Le fichier visual-review.json conserve l'empreinte SHA-256 du MP4 contrôlé,
+les scènes échantillonnées, leurs niveaux de luminance et les alertes possibles
+(images illisibles, majoritairement noires, cadrages répétés). L'analyse est
+intégrée à qa-summary.json : un échec bloquant empêche de déclarer l'aperçu
+techniquement prêt. Aucune vidéo n'est approuvée pour publication.
+
+Les prélèvements sont **limités à 12 scènes** dans le workflow pour préserver
+le temps de traitement. Les scènes sombres ou visuellement répétitives
+peuvent être intentionnelles : les alertes doivent être examinées avant
+d'en tirer une conclusion. Une planche de quelques images ne remplace pas la
+lecture complète du MP4. Aucune image de la vidéo d'un concurrent n'est utilisée.

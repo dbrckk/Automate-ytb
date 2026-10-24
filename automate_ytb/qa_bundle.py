@@ -27,7 +27,7 @@ def _load(path: Path) -> dict:
 
 def consolidate(*, structural_report: Path, media_report: Path,
                 video: Path, srt: Path, vtt: Path,
-                output: Path) -> dict:
+                output: Path, visual_report: Path | None = None) -> dict:
     structural = _load(structural_report)
     media = _load(media_report)
     if not video.is_file() or not 2048 <= video.stat().st_size <= MAX_VIDEO_BYTES:
@@ -50,6 +50,18 @@ def consolidate(*, structural_report: Path, media_report: Path,
     if stream.get("fileBytes") != video.stat().st_size:
         problems.append("Media report does not describe the present MP4 size")
     video_hash = _sha(video)
+    visual = _load(visual_report) if visual_report is not None else None
+    if visual is not None:
+        if visual.get("status") == "failed" or visual.get("technicalVisualCheckPassed") is not True:
+            problems.append("Visual frame sampling reported invalid or black scenes")
+        if visual.get("errors"):
+            problems.append("Visual review includes blocking errors")
+        if visual.get("publicationApproved") is not False:
+            problems.append("Unexpected visual publication approval flag")
+        if visual.get("videoSha256") != video_hash:
+            problems.append("Visual review does not describe the current video")
+        if not isinstance(visual.get("sampledSceneCount"), int) or visual.get("sampledSceneCount", 0) < 1:
+            problems.append("Visual review did not verify any frames")
     # Structural gate hashes the MP4 independently.
     claimed = structural.get("checks", {})
     if not isinstance(claimed, dict):
@@ -80,6 +92,8 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "mp4Height": stream.get("height"),
             "mp4Sha256": video_hash,
             "subtitleCues": media.get("subtitleCues"),
+            "visualScenesSampled": visual.get("sampledSceneCount") if visual is not None else None,
+            "nearBlackVisualSamples": visual.get("nearBlackSceneCount") if visual is not None else None,
             "integratedLufs": media.get("integratedLufs"),
             "truePeakDbtp": media.get("truePeakDbtp"),
             "masteringTargetLufs": media.get("targetLufs"),
@@ -89,16 +103,19 @@ def consolidate(*, structural_report: Path, media_report: Path,
         "sourceReports": {
             "structural": structural_report.name,
             "media": media_report.name,
+            "visual": visual_report.name if visual_report is not None else None,
         },
         "errors": problems,
         "warnings": list(dict.fromkeys(
             list(structural.get("warnings") or []) +
-            list(media.get("warnings") or []))),
+            list(media.get("warnings") or []) +
+            list(visual.get("warnings") or [] if visual is not None else []))),
         "limitations": [
             "Both checks assess technical validity, not narrative quality.",
             "No human fact-checking, originality or publication permission is implied.",
             "Narration timing is not word-level forced alignment.",
             "EBU R128 loudness measurements do not replace listening-based review.",
+            "Visual inspection samples at most 24 scene midpoints; it is not a full video quality guarantee.",
         ],
     }
     _write_json(output.resolve(), report)
@@ -113,11 +130,14 @@ def main(argv=None) -> int:
     p.add_argument("--srt", required=True, type=Path)
     p.add_argument("--vtt", required=True, type=Path)
     p.add_argument("--output", required=True, type=Path)
+    p.add_argument("--visual", type=Path,
+                   help="Optional sampled real-frame review required to pass when supplied")
     a = p.parse_args(argv)
     try:
         report = consolidate(structural_report=a.structural,
                              media_report=a.media, video=a.video,
-                             srt=a.srt, vtt=a.vtt, output=a.output)
+                             srt=a.srt, vtt=a.vtt, output=a.output,
+                             visual_report=a.visual)
         print(json.dumps({"status": report["status"],
                           "technicalPreviewReady": report["technicalPreviewReady"],
                           "errors": report["errors"]}, ensure_ascii=False))
