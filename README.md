@@ -147,3 +147,11 @@ la qualité visuelle de la référence ni une animation universelle des personna
 Le workflow **[One-click offline video preview](https://github.com/dbrckk/Automate-ytb/actions/workflows/one-click-offline-video.yml)** transforme un scénario original en MP4 16:9, illustrations 2D originales cohérentes, voix eSpeak optionnelle, sous-titres SRT, couverture et rapports de production. Il fonctionne dans GitHub Actions, même sans PC, et ne demande aucune clé d'un service de génération d'images.
 
 Ce mode utilise des **dessins procéduraux** et une **voix synthétique** : ce n'est pas encore la qualité visuelle ni la voix neuronale des outils IA montrés dans la vidéo de référence. Il ne recherche pas de faits automatiquement et ne publie rien sur YouTube. Pour les détails, voir [le guide Android](docs/ONE_CLICK_OFFLINE_EPISODE.md).
+
+## Contrôle technique des aperçus vidéo
+
+Le workflow Android valide le vrai MP4 avec FFprobe/FFmpeg avant d'annoncer
+une réussite. Il compare les pistes de narration/musique présentes, les durées,
+les sous-titres et les rapports aux options sélectionnées. Chaque aperçu
+contient un fichier quality-report.json avec mesures et avertissements.
+Cette validation technique ne remplace pas une revue éditoriale humaine.

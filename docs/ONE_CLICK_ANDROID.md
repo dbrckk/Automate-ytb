@@ -152,3 +152,21 @@ Le réglage de base de l'outil local reste **sans musique** pour préserver le
 comportement des projets existants. L'action Android propose **ambient** par
 défaut et permet de le désactiver. La génération sonore n'utilise aucune
 donnée ni voix de tiers non autorisée.
+
+## Contrôle qualité automatique du MP4
+
+Le workflow Android vérifie maintenant, avant de signaler une exécution réussie :
+
+- la durée, la résolution H.264 et le décodage d'images au début et à la fin du MP4 ;
+- les pistes AAC réellement présentes : voix eSpeak/Kokoro et/ou musique d'ambiance ;
+- la concordance entre le mode audio demandé sur Android et le mixage effectué ;
+- le scénario, l'empreinte SHA-256 du MP4 et l'intégrité des rapports ;
+- la continuité chronologique des sous-titres jusqu'à la fin de l'épisode ;
+- l'absence d'approbation automatique de publication YouTube.
+
+Le fichier quality-report.json est conservé avec le MP4. Un échec signale
+exactement ce qui manque ou ne correspond pas. Ce contrôle ne garantit ni
+la qualité artistique, ni la véracité des faits, ni le droit de publication.
+
+Le choix soundtrack est correctement transmis depuis Android : ambient
+ajoute la musique originale sous la narration ; none désactive cette piste.
