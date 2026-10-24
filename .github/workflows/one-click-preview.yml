@@ -132,10 +132,13 @@ jobs:
       - name: Review technical output and export VTT subtitles
         env:
           EXPECT_AUDIO: ${{ inputs.voice }}
+          EXPECT_SOUNDTRACK: ${{ inputs.soundtrack }}
         run: |
           PARAMS=()
           if [ "$EXPECT_AUDIO" != "none" ]; then
-            PARAMS+=(--require-audio)
+            PARAMS+=(--require-audio --target-lufs -16)
+          elif [ "$EXPECT_SOUNDTRACK" == "ambient" ]; then
+            PARAMS+=(--target-lufs -24)
           fi
           python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/media-report.json "${PARAMS[@]}"
       - name: Preserve both QA reports and consolidate results

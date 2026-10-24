@@ -340,7 +340,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "[background][control]sidechaincompress="
             "threshold=0.02:ratio=7:attack=25:release=350[ducked];"
             "[spoken][ducked]amix=inputs=2:duration=longest:normalize=0,"
-            "alimiter=limit=0.92[out]"
+            "alimiter=limit=0.92,"
+            "loudnorm=I=-16:LRA=11:TP=-1.5[out]"
         )
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-i", str(music),
@@ -352,7 +353,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         filters = ("[1:a]aresample=48000,volume=0.27,"
                    "afade=t=in:d=0.45,"
                    f"afade=t=out:st={max(0, duration-0.8):.3f}:d=0.8,"
-                   "alimiter=limit=0.90[out]")
+                   "alimiter=limit=0.90,"
+                   "loudnorm=I=-24:LRA=11:TP=-1.5[out]")
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(music),
               "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
@@ -361,7 +363,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     elif audio is not None:
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-af", "apad",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-af", "apad,loudnorm=I=-16:LRA=11:TP=-1.5",
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     else:
         shutil.copy2(raw, result)
@@ -385,6 +388,12 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "targetDurationSeconds": scenes[-1]["endMs"] / 1000,
         "hasNarrationAudio": audio is not None,
         "hasBackgroundMusic": music is not None,
+        "audioMastering": ("ffmpeg-loudnorm-ebu-r128-single-pass"
+                           if audio is not None or music is not None else "none"),
+        "targetIntegratedLufs": (-16 if audio is not None else
+                                 -24 if music is not None else None),
+        "targetTruePeakDbtp": (-1.5 if audio is not None or music is not None
+                               else None),
         "audioMixMode": ("ducked-narration-plus-original-bed" if music is not None and audio is not None
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
