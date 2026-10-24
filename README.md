@@ -103,6 +103,16 @@ ses poids et demande davantage de calcul sur le runner.
 
 Voir le [guide de narration neuronale](docs/NATURAL_NARRATION.md).
 
+### Réalisation contextuelle des scènes
+
+Le storyboard peut désormais inférer des **consignes visuelles non factuelles**
+depuis le scénario original : jour/nuit, pluie, vent, nuages, action des ailes,
+expressions et types de plans. Elles pilotent les décors et les calques animés
+dans le workflow gratuit et sont attachées aux images approuvées pour éviter
+la réutilisation de scènes obsolètes. Ce moteur est fondé sur des mots-clés,
+pas sur un modèle de compréhension complète. Voir
+[le guide Android](docs/ONE_CLICK_ANDROID.md).
+
 ### Animation procédurale originale
 
 Le workflow Android gratuit inclut désormais une **chouette 2D articulée**

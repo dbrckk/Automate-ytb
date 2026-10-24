@@ -86,3 +86,39 @@ Localement, installer les dépendances de voix, puis lancer :
 Le moteur instancie Kokoro une seule fois par épisode, génère l'audio des scènes, ajoute une respiration entre les fragments et prolonge les scènes trop courtes. Aucune phrase n'est tronquée pour rentrer artificiellement dans six secondes. Les sous-titres restent alignés à la scène et non mot par mot. La génération peut échouer si le téléchargement, la mémoire ou le moteur CPU ne sont pas disponibles. GitHub Actions peut appliquer ses quotas habituels.
 
 Le mode Kokoro ne déclenche ni API TTS payante ni publication YouTube.
+
+## Direction artistique contextuelle (nouveauté)
+
+Les nouvelles scènes analysent **uniquement la narration rédigée par l'utilisateur** pour
+identifier des indications visuelles simples et explicites :
+
+- **Météo et lumière :** pluie, orage, nuit, soleil/matin, nuages, vent.
+  En l'absence d'une nouvelle indication, l'ambiance est conservée depuis
+  la scène précédente, afin d'éviter les sauts arbitraires.
+- **Actions :** vol (ailes plus amples et corps plus mobile), marche,
+  parole, surprise ou repos.
+- **Expressions :** curiosité, sourire, inquiétude et étonnement.
+- **Cadrage :** le storyboard prévoit plusieurs plans (large, moyen,
+  rapproché, macro et contre-plongée), avec de légères variations de zoom.
+
+Ces indications sont enregistrées dans le JSON de production sous
+\`scenes[*].direction\`, avec quatre propriétés validées :
+\`weather\`, \`action\`, \`emotion\`, \`shot\`.
+Le rendu FFmpeg ajoute des couches de pluie, vent ou nuages animées lorsque
+le texte le justifie. Les illustrations et les mouvements restent **originaux,
+locaux et gratuits** dans le workflow standard.
+
+### Transparence et limites
+
+Le système repose sur un dictionnaire de mots clés français/anglais,
+**pas sur une compréhension sémantique complète**. Il peut se tromper si
+plusieurs événements météorologiques opposés sont décrits dans une seule
+phrase, ou avec une négation. Corriger alors la propriété \`direction\`
+dans le plan avant génération de l'image. Toute modification des indications
+après validation d'un visuel doit déclencher une nouvelle approbation
+au lieu de réutiliser automatiquement une image devenue incohérente.
+
+Le contenu raconté et les horodatages ne sont jamais réécrits par cette
+étape. Les anciens plans sans indications \`direction\` continuent à utiliser
+le rendu historique. Kokoro reste une voix optionnelle et la synchronisation
+des sous-titres demeure au niveau des scènes, pas des mots.

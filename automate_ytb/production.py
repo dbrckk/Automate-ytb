@@ -82,6 +82,9 @@ def load_plan(path: Path) -> dict:
             raise ValueError(f"Missing narration for {sid}")
         if not isinstance(scene.get("imagePrompt"), str) or not 1 <= len(scene["imagePrompt"]) <= 9000:
             raise ValueError(f"Missing or oversized image prompt for {sid}")
+        if "direction" in scene:
+            from .director import validate_direction
+            validate_direction(scene["direction"])
     if previous != round(duration * 1000):
         raise ValueError("Final timecode does not match target duration")
     return data
@@ -258,7 +261,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                 topic=data["topic"], narration=scene["narration"],
                 character=data["originalCharacterBible"],
                 style=scene.get("renderStyle", "cartoon"),
-                scene_id=scene["id"])
+                scene_id=scene["id"],
+                direction=scene.get("direction"))
             if actual != scene["artBriefSha256"]:
                 raise ValueError(f"Artwork brief changed for {scene['id']}; reapproval required")
         seconds = (scene["endMs"] - scene["startMs"]) / 1000
@@ -272,6 +276,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "scene": scene["narration"] if uses_owl_rig else "",
             "topic": data["topic"] if uses_owl_rig else "",
             "character": data.get("originalCharacterBible") if uses_owl_rig else "",
+            "direction": scene.get("direction") if uses_owl_rig else None,
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
@@ -293,6 +298,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         scene_index=index, scene_count=len(data["scenes"]),
                         style="cartoon", duration=seconds,
                         width=w, height=h, fps=fps, destination=tmp,
+                        direction=scene.get("direction"),
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -328,7 +334,17 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         f"{i}\n{_srt_time(s['startMs'])} --> {_srt_time(s['endMs'])}\n"
         f"{s['narration'].replace(chr(10), ' ')}\n"
         for i, s in enumerate(scenes, start=1)), encoding="utf-8")
+    # Portable, inspectable coverage of the actual storyboard direction.
+    from collections import Counter
+    directed = [s["direction"] for s in scenes if "direction" in s]
+    directions_report = {
+        category: dict(sorted(Counter(item[category] for item in directed).items()))
+        for category in ("weather", "action", "emotion", "shot")
+    }
     report = {
+        "director": {"version": "keyword-cues-v1", "directedScenes": len(directed),
+                     "counts": directions_report,
+                     "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "targetDurationSeconds": scenes[-1]["endMs"] / 1000,
