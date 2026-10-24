@@ -236,7 +236,8 @@ def build_preview(*, plan_path: Path, output: Path,
         "thumbnails": [str(x) for x in pictures],
         "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
-                     "Captions are aligned per scene, not word-by-word.",
+                     "Caption boundaries follow actual synthesized phrases in audio mode; "
+                     "they are not verified word-by-word.",
                      "Factual and rights review required before YouTube publication."],
     }
     production._write_json(output / "episode-report.json", summary)
