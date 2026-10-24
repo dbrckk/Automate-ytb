@@ -238,9 +238,13 @@ def _srt_time(ms: int) -> str:
 
 def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            limit: int | None = None, resolution: str = "720p", fps: int = 24,
-           music: Path | None = None) -> dict:
+           music: Path | None = None, caption_timing: str = "estimated") -> dict:
     if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
         raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
+    if caption_timing not in {"estimated", "audio"}:
+        raise ValueError("Caption timing must be estimated or audio")
+    if caption_timing == "audio" and audio is None:
+        raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
     results = audit(plan_path, limit)
@@ -370,7 +374,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         shutil.copy2(raw, result)
     from .captions import subtitles_for_scenes
     srt = output / "draft-captions.srt"
-    captions_text, captions_report = subtitles_for_scenes(scenes)
+    captions_text, captions_report = subtitles_for_scenes(
+        scenes, use_audio_boundaries=(caption_timing == "audio"))
     srt.write_text(captions_text, encoding="utf-8")
     # Portable, inspectable coverage of the actual storyboard direction.
     from collections import Counter
@@ -405,6 +410,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             and s.get("renderStyle") == "cartoon"
         ),
         "captionsPreciselyAligned": False,
+        "captionCueAlignment": captions_report["method"],
         "captionGeneration": captions_report,
         "previewOnly": True,
         "publicationApproved": False, "assetCostUsd": results["recordedAssetCostUsd"],
