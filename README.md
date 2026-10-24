@@ -196,3 +196,15 @@ Les artefacts Android contiennent désormais deux rapports indépendants
 (`qa-summary.json`). Le second contrôle ne remplace plus les mesures du premier.
 Le résultat reste un **brouillon** : l'analyse automatique ne valide pas la
 qualité éditoriale ni la publication sur YouTube.
+
+### Sous-titres synchronisés sur la synthèse vocale
+
+L'action Android **One-click YouTube preview (free)** accepte maintenant
+**Caption timing = audio** (défaut) pour utiliser les durées PCM réellement
+synthétisées de chaque fragment de texte, ou **estimated** pour préserver le
+mode rapide avec voix prononcée d'un seul tenant par scène. Les sous-titres
+SRT/VTT suivent ainsi plus précisément les transitions entre phrases de la
+voix de synthèse, au prix de plusieurs appels locaux au moteur TTS.
+Ce n'est ni de la reconnaissance vocale ni un alignement au mot. Le son,
+la ponctuation et les pauses nécessitent toujours une réécoute humaine.
+Voir [narration naturelle](docs/NATURAL_NARRATION.md).
