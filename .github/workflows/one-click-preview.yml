@@ -129,6 +129,15 @@ jobs:
             --expect-voice "$EXPECT_VOICE" \
             --expect-soundtrack "$EXPECT_SOUNDTRACK" \
             --report build/video/quality-report.json
+      - name: Review technical output and export VTT subtitles
+        env:
+          EXPECT_AUDIO: ${{ inputs.voice }}
+        run: |
+          PARAMS=()
+          if [ "$EXPECT_AUDIO" != "none" ]; then
+            PARAMS+=(--require-audio)
+          fi
+          python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/quality-report.json "${PARAMS[@]}"
       - name: Download video, thumbnails, script and audit
         if: always()
         uses: actions/upload-artifact@v4
@@ -142,6 +151,8 @@ jobs:
             build/video/narration.wav
             build/video/background-original.wav
             build/video/draft-captions.srt
+            build/video/draft-captions.vtt
+            build/video/quality-report.json
             build/video/episode-report.json
             build/video/render-report.json
             build/video/quality-report.json

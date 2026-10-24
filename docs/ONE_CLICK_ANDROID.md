@@ -170,3 +170,17 @@ la qualité artistique, ni la véracité des faits, ni le droit de publication.
 
 Le choix soundtrack est correctement transmis depuis Android : ambient
 ajoute la musique originale sous la narration ; none désactive cette piste.
+
+
+## Contrôle technique avant publication
+
+Le workflow gratuit génère aussi deux nouveaux livrables :
+- **draft-captions.vtt** : sous-titres WebVTT réutilisables depuis YouTube Studio ;
+- **quality-report.json** : vérification FFprobe de la durée, de la résolution,
+  des flux vidéo/audio, de la présence de la narration et des bornes des sous-titres.
+
+Le rapport inclut le pic numérique de la piste audio pour identifier un volume
+anormalement faible ou proche de la saturation. Il ne mesure pas les LUFS et
+ne vérifie pas par écoute la qualité du français. Les sous-titres restent
+synchronisés par scène (pas au mot). Le rapport ne valide ni les faits, ni les
+droits, ni l'autorisation de publier.

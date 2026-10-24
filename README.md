@@ -155,3 +155,10 @@ une réussite. Il compare les pistes de narration/musique présentes, les durée
 les sous-titres et les rapports aux options sélectionnées. Chaque aperçu
 contient un fichier quality-report.json avec mesures et avertissements.
 Cette validation technique ne remplace pas une revue éditoriale humaine.
+
+### Contrôle qualité du MP4
+
+Le workflow Android exporte également les sous-titres WebVTT et le rapport
+`quality-report.json` (flux vidéo/audio, durée, résolution, pic audio,
+cohérence des timecodes). La vérification est technique et ne remplace pas la
+révision de la voix, des faits et des droits.
