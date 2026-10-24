@@ -141,11 +141,19 @@ jobs:
             PARAMS+=(--target-lufs -24)
           fi
           python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/media-report.json "${PARAMS[@]}"
+      - name: Extract smartphone storyboard directly from rendered MP4
+        run: |
+          python -m automate_ytb.review_board \
+            --plan build/scene-plan.json \
+            --video build/video/preview.mp4 \
+            --output build/video/review \
+            --max-samples 12
       - name: Preserve both QA reports and consolidate results
         run: |
           python -m automate_ytb.qa_bundle \
             --structural build/video/quality-report.json \
             --media build/video/media-report.json \
+            --visual build/video/review/visual-review.json \
             --video build/video/preview.mp4 \
             --srt build/video/draft-captions.srt \
             --vtt build/video/draft-captions.vtt \
@@ -169,6 +177,7 @@ jobs:
             build/video/episode-report.json
             build/video/render-report.json
             build/video/thumbnails/
+            build/video/review/
             build/assets/
           retention-days: 7
           if-no-files-found: warn

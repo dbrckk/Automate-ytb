@@ -71,6 +71,44 @@ class QualityBundleTests(unittest.TestCase):
         self.media.write_text(json.dumps(data))
         self.assertFalse(self.run_check()["technicalPreviewReady"])
 
+    def test_visual_report_required_when_explicit_and_checked_against_video(self):
+        from automate_ytb.production import _sha
+        visual_path = self.root / "visual-review.json"
+        data = {
+            "status": "sampled",
+            "technicalVisualCheckPassed": True,
+            "publicationApproved": False,
+            "sampledSceneCount": 4,
+            "nearBlackSceneCount": 0,
+            "videoSha256": _sha(self.video),
+            "errors": [],
+            "warnings": ["Manual visual review required"],
+        }
+        visual_path.write_text(json.dumps(data), encoding="utf8")
+        checked = consolidate(structural_report=self.structural,
+                              media_report=self.media, video=self.video,
+                              srt=self.srt, vtt=self.vtt, output=self.output,
+                              visual_report=visual_path)
+        self.assertTrue(checked["technicalPreviewReady"])
+        self.assertEqual(checked["checks"]["visualScenesSampled"], 4)
+        self.assertIn("Manual visual review required", checked["warnings"])
+        data["videoSha256"] = "0"*64
+        visual_path.write_text(json.dumps(data), encoding="utf8")
+        checked = consolidate(structural_report=self.structural,
+                              media_report=self.media, video=self.video,
+                              srt=self.srt, vtt=self.vtt, output=self.output,
+                              visual_report=visual_path)
+        self.assertFalse(checked["technicalPreviewReady"])
+        data["videoSha256"] = _sha(self.video)
+        data["technicalVisualCheckPassed"] = False
+        data["status"] = "failed"
+        visual_path.write_text(json.dumps(data), encoding="utf8")
+        checked = consolidate(structural_report=self.structural,
+                              media_report=self.media, video=self.video,
+                              srt=self.srt, vtt=self.vtt, output=self.output,
+                              visual_report=visual_path)
+        self.assertFalse(checked["technicalPreviewReady"])
+
     def test_missing_vtt_or_bad_signature_rejected(self):
         self.vtt.unlink()
         with self.assertRaisesRegex(ValueError, "required"):

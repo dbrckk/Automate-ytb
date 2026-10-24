@@ -117,6 +117,17 @@ Il s'agit d'un réglage technique et non d'un mastering artistique.
 Les valeurs sont des choix internes au projet, pas des obligations
 officielles de YouTube. L'écoute humaine reste nécessaire.
 
+### Storyboard visuel vérifié sur MP4
+
+L'action Android produit maintenant une **planche JPEG de relecture**,
+assemblée depuis les images du MP4 effectivement encodé : aperçu rapide
+sur téléphone des scènes, cadrages et transitions de l'épisode.
+Le fichier visual-review.json signale les images impossibles à décoder
+ou majoritairement noires ; qa-summary.json vérifie que cette analyse
+correspond exactement au MP4 présent. Les erreurs bloquantes n'autorisent
+pas à considérer le brouillon comme techniquement prêt. Voir
+[le guide Android](docs/ONE_CLICK_ANDROID.md).
+
 ## Contrôles de qualité
 
 - Aucune promesse de revenus YouTube ou de monétisation.
