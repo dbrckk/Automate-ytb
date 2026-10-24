@@ -85,47 +85,83 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
 
 def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
                     limit: int | None, *, engine: str = "espeak",
-                    voice_name: str | None = None) -> dict:
-    """Build full scene-level timing from actual speech, never clipping words.
+                    voice_name: str | None = None,
+                    caption_timing: str = "estimated") -> dict:
+    """Compose uncut speech with optional boundaries from synthesized phrases.
 
-    The scene plan remains an editable DRAFT. This does not claim word-aligned
-    subtitles or accurate human pronunciation; listen before publication.
+    In audio mode each visible subtitle phrase is synthesized separately, so
+    its start time comes from the exact PCM we write. This is NOT ASR,
+    phoneme alignment or verification of how words sound in the recording.
+    Legacy estimated mode keeps its full-scene speech synthesis behavior.
     """
+    from .captions import caption_phrases
+
+    if caption_timing not in ("estimated", "audio"):
+        raise ValueError("Caption timing must be estimated or audio")
     data = production.load_plan(plan_path)
     scenes = data["scenes"][:limit]
     if not scenes:
         raise ValueError("No scenes selected for narration")
-    voice_path.parent.mkdir(parents=True, exist_ok=True)
     synth = SpeechEngine(engine=engine, language=language, voice=voice_name)
-    utterances = [synth.audio(scene["narration"]) for scene in scenes]
-    sample_rate = utterances[0][1]
-    if not 8000 <= sample_rate <= 96000:
-        raise ValueError("Unsupported speech sample rate")
-    if any(rate != sample_rate or not frames or len(frames) % 2
-           for frames, rate in utterances):
-        raise RuntimeError("Invalid or mismatched PCM scene audio")
-
-    # Use integer milliseconds for all timeline boundaries; the actual WAV
-    # may differ by at most one sample due to integer sample conversion.
     durations_ms = [scene["endMs"] - scene["startMs"] for scene in data["scenes"]]
     complete_audio = []
-    for i, (frames, _) in enumerate(utterances):
-        actual_samples = len(frames) // 2
-        min_ms = math.ceil((actual_samples / sample_rate + 0.35) * 1000)
-        durations_ms[i] = max(durations_ms[i], min_ms)
-        target_samples = math.ceil(durations_ms[i] * sample_rate / 1000)
-        complete_audio.append(frames + b"\x00" * ((target_samples - actual_samples) * 2))
+    phrase_timings = []
+    sample_rate = None
+    phrase_count = 0
+    for index, scene in enumerate(scenes):
+        phrases = (caption_phrases(scene["narration"])
+                   if caption_timing == "audio" else [scene["narration"]])
+        chunks = bytearray()
+        starts = [0]
+        for phrase_index, phrase in enumerate(phrases):
+            frames, rate = synth.audio(phrase)
+            if (not isinstance(rate, int) or not 8000 <= rate <= 96000
+                    or not isinstance(frames, bytes) or not frames
+                    or len(frames) % 2):
+                raise RuntimeError("Invalid PCM scene audio")
+            if sample_rate is None:
+                sample_rate = rate
+            if rate != sample_rate:
+                raise RuntimeError("Invalid or mismatched PCM scene audio")
+            if phrase_index:
+                chunks.extend(b"\x00" * (2 * round(rate * 0.08)))
+                start_ms = round(len(chunks) * 1000 / (2 * rate))
+                if start_ms <= starts[-1]:
+                    raise RuntimeError("Speech phrases are too short to timestamp")
+                starts.append(start_ms)
+            chunks.extend(frames)
+        actual_samples = len(chunks) // 2
+        min_ms = math.ceil(actual_samples * 1000 / sample_rate + 350)
+        durations_ms[index] = max(durations_ms[index], min_ms)
+        target_samples = math.ceil(durations_ms[index] * sample_rate / 1000)
+        chunks.extend(b"\x00" * (2 * (target_samples - actual_samples)))
+        complete_audio.append(bytes(chunks))
+        phrase_timings.append((phrases, starts))
+        phrase_count += len(phrases)
+
     total_ms = sum(durations_ms)
     if total_ms > 3_600_000:
         raise ValueError("Narration would exceed the one-hour scene-plan limit")
     offset = 0
-    for scene, duration_ms in zip(data["scenes"], durations_ms):
+    for i, (scene, duration_ms) in enumerate(zip(data["scenes"], durations_ms)):
         scene["startMs"] = offset
         offset += duration_ms
         scene["endMs"] = offset
+        # Never retain stale audio-boundary metadata across re-renders.
+        scene.pop("captionSegments", None)
+        if i < len(scenes) and caption_timing == "audio":
+            phrases, starts = phrase_timings[i]
+            markers = starts + [duration_ms]
+            if any(b <= a for a, b in zip(markers, markers[1:])):
+                raise RuntimeError("Audio-derived subtitle boundaries are invalid")
+            scene["captionSegments"] = [
+                {"text": phrase, "startMs": scene["startMs"] + a,
+                 "endMs": scene["startMs"] + b}
+                for phrase, a, b in zip(phrases, markers, markers[1:])
+            ]
     data["targetDurationSeconds"] = total_ms / 1000
     data["publicationApproved"] = False
-    # Audio must be fully written before the manifest is updated.
+    voice_path.parent.mkdir(parents=True, exist_ok=True)
     temp_audio = voice_path.with_name("temporary-narration.wav")
     try:
         with wave.open(str(temp_audio), "wb") as wavefile:
@@ -141,21 +177,28 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     return {
         "voice": str(voice_path), "engine": "kokoro-natural" if engine == "kokoro"
         else "espeak-draft", "voiceId": synth.voice,
-        "sceneBoundaryTiming": "audio-derived", "wordAlignment": False,
-        "audioSeconds": round(sum(len(audio) for audio in complete_audio) / (2*sample_rate), 3),
+        "sceneBoundaryTiming": "audio-derived",
+        "captionTiming": ("audio-derived-synthesized-phrases"
+                          if caption_timing == "audio" else "estimated"),
+        "captionPhraseCount": phrase_count,
+        "wordAlignment": False,
+        "audioSeconds": round(sum(len(audio) for audio in complete_audio)
+                              / (2 * sample_rate), 3),
         "sampleRate": sample_rate, "providerApiCalls": 0,
     }
-
 
 def build_preview(*, plan_path: Path, output: Path,
                   style: str = "cartoon", language: str = "fr",
                   voice: str = "espeak", limit: int | None = None,
                   resolution: str = "720p", voice_name: str | None = None,
-                  soundtrack: str = "none") -> dict:
+                  soundtrack: str = "none",
+                  caption_timing: str = "estimated") -> dict:
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
     if soundtrack not in {"none", "ambient"}:
         raise ValueError("Soundtrack must be none or ambient")
+    if caption_timing not in {"estimated", "audio"}:
+        raise ValueError("Caption timing must be estimated or audio")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -165,7 +208,8 @@ def build_preview(*, plan_path: Path, output: Path,
     if voice in {"espeak", "kokoro"}:
         voice_file = output / "narration.wav"
         details = _narrate_scenes(plan_path, voice_file, language, limit,
-                                  engine=voice, voice_name=voice_name)
+                                  engine=voice, voice_name=voice_name,
+                                  caption_timing=caption_timing)
     soundtrack_report = {"engine": "none", "externalApiCalls": 0}
     soundtrack_file = None
     if soundtrack == "ambient":
@@ -176,7 +220,10 @@ def build_preview(*, plan_path: Path, output: Path,
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
                                resolution=resolution, fps=24,
-                               music=soundtrack_file)
+                               music=soundtrack_file,
+                               caption_timing=("audio" if voice_file is not None
+                                               else "estimated") if caption_timing == "audio"
+                                              else "estimated")
     thumbs = output / "thumbnails"
     thumbs.mkdir(exist_ok=True)
     data = production.load_plan(plan_path)
@@ -189,7 +236,8 @@ def build_preview(*, plan_path: Path, output: Path,
         "thumbnails": [str(x) for x in pictures],
         "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
-                     "Captions are aligned per scene, not word-by-word.",
+                     "Caption boundaries follow actual synthesized phrases in audio mode; "
+                     "they are not verified word-by-word.",
                      "Factual and rights review required before YouTube publication."],
     }
     production._write_json(output / "episode-report.json", summary)
@@ -207,6 +255,9 @@ def main(argv=None) -> int:
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
                    help="Original local ambient backing track with narration ducking")
+    p.add_argument("--caption-timing", choices=["estimated", "audio"],
+                   default="estimated",
+                   help="Audio mode measures synthesized phrase boundaries; not word alignment")
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--limit", type=int)
     args = p.parse_args(argv)
@@ -214,7 +265,8 @@ def main(argv=None) -> int:
         result = build_preview(plan_path=args.plan, output=args.output,
                                style=args.style, language=args.language,
                                voice=args.voice, voice_name=args.voice_name, resolution=args.resolution,
-                               soundtrack=args.soundtrack, limit=args.limit)
+                               soundtrack=args.soundtrack, limit=args.limit,
+                               caption_timing=args.caption_timing)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],

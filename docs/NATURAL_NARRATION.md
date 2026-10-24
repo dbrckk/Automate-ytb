@@ -58,3 +58,25 @@ intensité et rythme ne sont pas garantis professionnels.
 Les vidéos longues de 150 scènes en voix Kokoro restent à valider en conditions
 réelles. Il n'y a pas encore d'alignement mot par mot, de lip-sync automatique,
 de publication YouTube ni de génération éditoriale factuellement garantie.
+
+## Sous-titres pilotés par la durée de synthèse (mode `audio`)
+
+Dans **One-click YouTube preview (free)**, l'option **Caption timing** propose
+désormais `audio` (par défaut) ou `estimated` (ancien comportement).
+En mode `audio`, eSpeak ou Kokoro synthétise séparément chaque fragment
+correspondant à un bloc de sous-titres. Le programme enregistre les
+échantillons PCM produits et les débuts réels de chaque fragment, avec une
+courte pause contrôlée entre eux. Ces mesures alimentent directement les
+timecodes des SRT et WebVTT. Aucun service d'alignement distant n'est appelé.
+
+Le mode `estimated` conserve la synthèse complète de chaque scène et les
+durées proportionnelles au nombre de mots ; il peut être plus rapide et
+produire une prosodie plus continue, surtout avec de longues narrations.
+En local : `python -m automate_ytb.episode --plan build/scene-plan.json --output build/video --voice kokoro --caption-timing audio`.
+
+**Limites importantes :** le mode audio n'est pas de l'ASR, ne reconnaît pas
+les mots réellement prononcés et n'effectue pas d'alignement phonétique.
+Les phrases synthétisées séparément peuvent paraître moins fluides.
+Le dernier sous-titre de chaque scène reste affiché jusqu'à la fin du plan,
+y compris pendant un éventuel silence final. La qualité du rendu doit être
+écoutée et examinée avant diffusion ; le programme n'autorise pas la publication.

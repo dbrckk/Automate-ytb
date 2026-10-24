@@ -37,6 +37,11 @@ on:
         description: "Procedural original background music (no copyrighted samples)"
         options: [ambient, none]
         default: ambient
+      caption_timing:
+        type: choice
+        description: "audio = speech-synthesized phrase timing, estimated = fast fallback"
+        options: [audio, estimated]
+        default: audio
       duration_seconds:
         type: number
         default: 30
@@ -106,6 +111,7 @@ jobs:
           YT_LANGUAGE: ${{ inputs.language }}
           YT_VOICE: ${{ inputs.voice }}
           YT_SOUNDTRACK: ${{ inputs.soundtrack }}
+          YT_CAPTION_TIMING: ${{ inputs.caption_timing }}
           YT_RESOLUTION: ${{ inputs.resolution }}
         run: |
           python -m automate_ytb.scene_plan \
@@ -118,7 +124,8 @@ jobs:
             --plan build/scene-plan.json --output build/video \
             --style "$YT_STYLE" --language "$YT_LANGUAGE" \
             --voice "$YT_VOICE" --resolution "$YT_RESOLUTION" \
-            --soundtrack "$YT_SOUNDTRACK"
+            --soundtrack "$YT_SOUNDTRACK" \
+            --caption-timing "$YT_CAPTION_TIMING"
       - name: Quality gate on real exported video, audio and subtitles
         env:
           EXPECT_VOICE: ${{ inputs.voice }}

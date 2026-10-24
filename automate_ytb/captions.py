@@ -57,7 +57,13 @@ def _chunks(text: str) -> list[str]:
     return result
 
 
-def subtitles_for_scenes(scenes: list[dict]) -> tuple[str, dict]:
+def caption_phrases(text: str) -> list[str]:
+    """Exactly the visible, whitespace-normalized units shown in SRT cues."""
+    return [" ".join(part.split()) for part in _chunks(text)]
+
+
+def subtitles_for_scenes(scenes: list[dict], *,
+                         use_audio_boundaries: bool = False) -> tuple[str, dict]:
     output: list[str] = []
     cue = 0
     warnings = []
@@ -68,6 +74,24 @@ def subtitles_for_scenes(scenes: list[dict]) -> tuple[str, dict]:
         if not 0 <= start < stop:
             raise ValueError("Invalid scene subtitle boundaries")
         duration = stop - start
+        timings = scene.get("captionSegments") if use_audio_boundaries else None
+        if use_audio_boundaries:
+            if not isinstance(timings, list) or len(timings) != len(parts):
+                raise ValueError("Missing audio-derived caption timings for scene")
+            previous = start
+            for segment, part in zip(timings, parts):
+                if not isinstance(segment, dict):
+                    raise ValueError("Invalid audio-derived caption entry")
+                a, b = segment.get("startMs"), segment.get("endMs")
+                if (not isinstance(a, int) or isinstance(a, bool)
+                        or not isinstance(b, int) or isinstance(b, bool)
+                        or a != previous or b <= a or b > stop):
+                    raise ValueError("Invalid audio-derived caption boundary")
+                if " ".join(str(segment.get("text", "")).split()) != " ".join(part.split()):
+                    raise ValueError("Audio caption text differs from the original narration")
+                previous = b
+            if previous != stop:
+                raise ValueError("Audio captions do not reach the scene end")
         if duration < len(parts):
             raise ValueError("Too little time for nonempty subtitle cues")
         weights = [max(1, len(part.replace("\n", " ").split())) for part in parts]
@@ -76,9 +100,10 @@ def subtitles_for_scenes(scenes: list[dict]) -> tuple[str, dict]:
         used = 0
         for i, (part, weight) in enumerate(zip(parts, weights)):
             used += weight
-            next_stamp = (stop if i == len(parts) - 1
-                          else min(stop - len(parts) + i + 1,
-                                   start + round(duration * used / total)))
+            next_stamp = (timings[i]["endMs"] if timings is not None else
+                          stop if i == len(parts) - 1 else
+                          min(stop - len(parts) + i + 1,
+                              start + round(duration * used / total)))
             if next_stamp <= stamp:
                 next_stamp = stamp + 1
             cue += 1
@@ -88,7 +113,8 @@ def subtitles_for_scenes(scenes: list[dict]) -> tuple[str, dict]:
             stamp = next_stamp
     return "\n".join(output), {
         "cueCount": cue,
-        "method": "estimated-proportional-phrases",
+        "method": ("audio-derived-synthesized-phrases" if use_audio_boundaries
+                   else "estimated-proportional-phrases"),
         "wordLevelAligned": False,
         "maxLines": MAX_LINES,
         "maxLineCharsForOrdinaryWords": MAX_LINE_CHARS,
