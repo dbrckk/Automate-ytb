@@ -162,3 +162,12 @@ Le workflow Android exporte également les sous-titres WebVTT et le rapport
 `quality-report.json` (flux vidéo/audio, durée, résolution, pic audio,
 cohérence des timecodes). La vérification est technique et ne remplace pas la
 révision de la voix, des faits et des droits.
+
+
+### Contrôles techniques cumulés
+
+Les artefacts Android contiennent désormais deux rapports indépendants
+(`quality-report.json` et `media-report.json`) et une synthèse
+(`qa-summary.json`). Le second contrôle ne remplace plus les mesures du premier.
+Le résultat reste un **brouillon** : l'analyse automatique ne valide pas la
+qualité éditoriale ni la publication sur YouTube.

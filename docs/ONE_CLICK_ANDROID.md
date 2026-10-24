@@ -184,3 +184,17 @@ anormalement faible ou proche de la saturation. Il ne mesure pas les LUFS et
 ne vérifie pas par écoute la qualité du français. Les sous-titres restent
 synchronisés par scène (pas au mot). Le rapport ne valide ni les faits, ni les
 droits, ni l'autorisation de publier.
+
+
+## Rapports qualité séparés (mise à jour)
+
+Le workflow conserve maintenant **trois rapports distincts** dans l'artefact :
+
+- `quality-report.json` : contrôle structurel du MP4, du scénario, des pistes audio demandées et du nombre de sous-titres.
+- `media-report.json` : deuxième vérification de la durée, des flux audio/vidéo, du volume maximal et des sous-titres.
+- `qa-summary.json` : synthèse des deux contrôles, empreintes SHA-256 du MP4 et des fichiers SRT/VTT, et décision de validité **technique** du brouillon.
+
+Le workflow échoue si une vérification critique ne passe pas. Ces rapports ne
+certifient ni la véracité des faits, ni les licences, ni la qualité artistique, et
+n'autorisent aucune mise en ligne automatiquement. Les deux fichiers d'origine
+ne s'écrasent plus mutuellement.
