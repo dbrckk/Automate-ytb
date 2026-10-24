@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from .production import _write_json, load_plan
+from .caption_guard import audit_caption_text
 
 CUE = re.compile(
     r"(?m)^(?P<n>\d+)\s*\n"
@@ -185,6 +186,10 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         if not 0 < duration <= 3602 or abs(duration - planned_duration) > 0.55:
             errors.append("MP4 duration does not match storyboard")
         text = srt.read_text(encoding="utf-8")
+        caption_audit = audit_caption_text(text, data["scenes"][:count])
+        metrics["captionTextMatchesPlan"] = caption_audit["passed"]
+        metrics["captionScenesVerified"] = caption_audit["scenesVerified"]
+        errors.extend(caption_audit["errors"])
         matches = list(CUE.finditer(text))
         metrics["subtitleCues"] = len(matches)
         if not matches or len(matches) != rendered.get("captionGeneration", {}).get("cueCount"):

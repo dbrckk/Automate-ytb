@@ -172,6 +172,7 @@ jobs:
             build/video/background-original.wav
             build/video/draft-captions.srt
             build/video/draft-captions.vtt
+            build/video/quality-report.json
             build/video/media-report.json
             build/video/qa-summary.json
             build/video/episode-report.json
