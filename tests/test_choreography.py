@@ -36,7 +36,7 @@ def difference(a: Image.Image, b: Image.Image, bbox: tuple) -> float:
 class ChoreographyTests(unittest.TestCase):
     def test_every_director_action_has_safe_distinct_motion(self):
         self.assertEqual(set(PROFILES), ACTIONS)
-        self.assertIn("v1", CHOREOGRAPHY_VERSION)
+        self.assertIn("v2", CHOREOGRAPHY_VERSION)
         for action in ACTIONS:
             x, y = body_position(action, x=180, y=184)
             self.assertIn("180", x)
