@@ -602,3 +602,18 @@ animés ne sont pas réutilisés.
 Cela améliore la **fluidité de cadrage**, mais ne remplace pas une caméra
 3D ou un système de parallaxe complet. Les personnages et décors restent
 des illustrations 2D originales.
+
+### V2 — profondeur visuelle et premier plan animé
+
+Les scènes `cartoon` originales disposent désormais d'un **premier plan
+translucide distinct** du personnage et de son décor. Selon le lieu,
+il dessine localement des feuilles, graminées, roseaux ou petits
+éléments végétaux, avec un lent mouvement autonome.
+Le calque est ajouté après les personnages et la météo puis avant
+le cadrage caméra : un effet de profondeur **2,5D stylisé** sans
+déplacer la narration, les sous-titres ou le montage.
+
+Les silhouettes restent sur les bords pour préserver la lisibilité des
+personnages. Les images approuvées incluent les mêmes assets, et les
+empreintes de rendus changent pour empêcher le réemploi des anciennes
+vidéos. Il ne s'agit pas de géométrie 3D réelle.

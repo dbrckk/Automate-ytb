@@ -453,3 +453,11 @@ d'une animation caméra accélérant progressivement puis ralentissant
 avant le changement de scène. Aucune option Android supplémentaire
 n'est nécessaire. Les panoramas larges restent volontairement stables
 pour préserver la lisibilité du décor.
+
+### Décors V2 plus profonds
+
+Le mode `cartoon` superpose automatiquement un calque de végétation
+au premier plan, animé lentement indépendamment des personnages. Les
+biomes forêt, prairie, rivière et village ont des détails adaptés.
+Aucune option ni application supplémentaire n'est nécessaire. Cet
+effet reste une composition 2D avec profondeur simulée.
