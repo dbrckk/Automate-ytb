@@ -21,7 +21,7 @@ from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
 from .director import validate_direction
 
-FOREST_RIG_VERSION = "forest-animals-v1"
+FOREST_RIG_VERSION = "forest-animals-v2-ambient-particles"
 
 
 def character_kind(character: str) -> str | None:
@@ -220,12 +220,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         )
         final = "c"
         names = ["background", "tail", "body", "blink"]
-        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy"}:
+        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
                 seed=f"{kind}|{topic}|{narration}|{scene_index}",
                 weather=direction["weather"])
-            speed_fx = 240 if direction["weather"] in {"rain", "storm"} else 35
+            speed_fx = {"rain": 240, "storm": 310, "wind": 55,
+                        "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             fps_graph += (
                 f";[c][4:v]overlay=x=0:"
                 f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[d]")
