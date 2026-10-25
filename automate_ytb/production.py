@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v13-animated-gaze-voice-activity"
+VERSION = "render-v14-persistent-story-landscapes"
 
 
 def _sha(path: Path) -> str:
@@ -261,8 +261,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     cache = output / ".clip-cache"
     cache.mkdir(exist_ok=True)
     from .scene_props import carried_props_for_scenes, gaze_target
+    from .scenic_world import landscapes_for_scenes, WORLD_VERSION
     from .voice_activity import activity_intervals, MOUTH_VERSION
     carried_by_scene = carried_props_for_scenes(data["scenes"])
+    scene_landscapes = landscapes_for_scenes(data["scenes"])
     # An external MP3 or stereo audio track remains supported; only supported
     # mono 16-bit WAV narrations enable exact voice-activity mouth cues.
     voice_activity_by_scene = [
@@ -292,7 +294,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                 style=scene.get("renderStyle", "cartoon"),
                 scene_id=scene["id"],
                 direction=scene.get("direction"),
-                held_prop=carried_by_scene[scene_index])
+                held_prop=carried_by_scene[scene_index],
+                landscape=scene_landscapes[scene_index])
             if rig_tag == expected_forest_rig and local_art:
                 from .animated_forest import art_brief_sha256 as forest_hash
                 actual = forest_hash(kind=forest_kind, **brief_args)
@@ -315,6 +318,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "character": data.get("originalCharacterBible") if uses_motion_rig else "",
             "direction": scene.get("direction") if uses_motion_rig else None,
             "carriedProp": carried_by_scene[scene_index] if uses_motion_rig else None,
+            "landscape": scene_landscapes[scene_index] if uses_motion_rig else None,
             "synthesizedGestureCues": (
                 scene.get("captionSegments")
                 if uses_motion_rig and caption_timing == "audio" else None),
@@ -348,6 +352,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                                           if caption_timing == "audio" else None),
                         scene_start_ms=scene["startMs"],
                         mouth_intervals=voice_activity_by_scene[scene_index],
+                        landscape=scene_landscapes[scene_index],
                     )
                 elif uses_forest_rig:
                     from .animated_forest import render_motion_clip as render_forest_clip
@@ -364,6 +369,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                                           if caption_timing == "audio" else None),
                         scene_start_ms=scene["startMs"],
                         mouth_intervals=voice_activity_by_scene[scene_index],
+                        landscape=scene_landscapes[scene_index],
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -507,6 +513,17 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "activeIntervals": sum(len(x) for x in voice_activity_by_scene
                                    if x is not None),
             "fallbackScenes": sum(x is None for x in voice_activity_by_scene),
+        },
+        "landscapes": {
+            "version": WORLD_VERSION,
+            "source": "script-derived-persistent-original-scenes",
+            "sceneCount": len(scenes),
+            "distinctSettings": sorted(set(scene_landscapes[:len(scenes)])),
+            "byScene": [
+                {"sceneId": scene["id"], "setting": scene_landscapes[i]}
+                for i, scene in enumerate(scenes)
+            ],
+            "audioTimelineShiftMs": 0,
         },
         "actionTimeline": {
             "version": "script-action-phases-v1",
