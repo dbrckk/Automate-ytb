@@ -403,3 +403,26 @@ pris en charge, sans permanence des personnages, physique réaliste, suivi
 des regards ou planification multi-objets. La détection d'un dépôt exige
 un verbe pertinent et le nom explicite de l'objet. L'effet est une
 animation 2D stylisée, soumise à relecture avant publication.
+
+### Plusieurs actions dans un seul plan animé
+
+Lorsqu'une seule scène `cartoon` contient **plusieurs gestes distincts et
+explicitement écrits**, séparés par de la ponctuation ou « puis » / « then »,
+les personnages originaux peuvent maintenant enchaîner des poses au cours
+du même MP4. Par exemple : « Le renard marche, puis saute, puis parle ».
+Les trajectoires du corps, des pattes et des ailes/queues évoluent selon
+l'action. Un raccord interpolé de 240 ms atténue le saut de pose, tandis
+que la bouche s'active pendant le segment de parole.
+
+Le nombre de phases est volontairement plafonné à **trois** par scène.
+Une scène trop courte, une action unique ou un texte non explicite conserve
+l'ancien mouvement. Les frontières de phases sont estimées à partir de
+la longueur relative des propositions : **il ne s'agit pas d'un alignement
+sur le son**, d'ASR ou de synchronisation mot par mot. Le rapport de
+rendu inclut `actionTimeline` et les phases temporelles observables.
+Le scénario, la piste audio, les SRT/VTT, les transitions et les autorisations
+de publication restent inchangés.
+
+Tous les gestes sont produits localement à partir de poses 2D originales
+et d'expressions FFmpeg à vocabulaire contrôlé. Cela reste une mise en
+scène procédurale, **sans IK, physique ni lip-sync réaliste**.
