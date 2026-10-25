@@ -445,3 +445,11 @@ Le modèle est gratuit mais nécessite un téléchargement et du temps
 CPU sur le runner ; si un brouillon rapide est nécessaire, choisir
 `espeak`, moins naturel. La seule voix française Kokoro officielle
 est féminine. Consulter les [crédits vocaux](VOICE_CREDITS.md).
+
+### Déplacements caméra plus fluides (V2)
+
+Les plans moyens et rapprochés des personnages originaux bénéficient
+d'une animation caméra accélérant progressivement puis ralentissant
+avant le changement de scène. Aucune option Android supplémentaire
+n'est nécessaire. Les panoramas larges restent volontairement stables
+pour préserver la lisibilité du décor.
