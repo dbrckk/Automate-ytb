@@ -24,7 +24,7 @@ from .choreography import body_position, secondary_position, mouth_expression
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v11-storybook-landscape-biomes"
+RIG_VERSION = "owl-rig-v12-eased-cinematic-motion"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -430,7 +430,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
-            scene_index=scene_index)
+            scene_index=scene_index, duration=duration)
         f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
         for key in keys:
