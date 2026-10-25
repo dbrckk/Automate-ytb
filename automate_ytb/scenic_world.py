@@ -18,7 +18,7 @@ LANDSCAPES = ("forest", "river", "village", "meadow")
 PATTERNS = (
     ("river", r"\b(riviere\w*|fleuve\w*|ruisseau\w*|torrent\w*|river\w*|stream\w*|brook\w*)\b"),
     ("village", r"\b(village\w*|bourg\w*|hameau\w*|maison\w*|cabane\w*|cottage\w*|house\w*|town\w*)\b"),
-    ("meadow", r"\b(prairie\w*|pre\w*|champ\w*|pelouse\w*|meadow\w*|field\w*|grassland\w*)\b"),
+    ("meadow", r"\b(prairie\w*|pres?|champ\w*|pelouse\w*|meadow\w*|field\w*|grassland\w*)\b"),
     ("forest", r"\b(foret\w*|bois\w*|sous-bois\w*|wood\w*|forest\w*|grove\w*|woodland\w*)\b"),
 )
 
