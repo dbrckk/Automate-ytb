@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v10-intrascene-action-phases"
+VERSION = "render-v11-object-aware-eye-pose"
 
 
 def _sha(path: Path) -> str:
@@ -260,7 +260,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     output.mkdir(parents=True, exist_ok=True)
     cache = output / ".clip-cache"
     cache.mkdir(exist_ok=True)
-    from .scene_props import carried_props_for_scenes
+    from .scene_props import carried_props_for_scenes, gaze_target
     carried_by_scene = carried_props_for_scenes(data["scenes"])
     clips = []
     for scene_index, scene in enumerate(scenes):
@@ -459,6 +459,20 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
         "transitions": transitions_report,
+        "objectGaze": {
+            "version": "prop-eye-pose-v1",
+            "method": "static-original-2d-eye-offset-toward-scripted-object",
+            "scenes": [
+                {"sceneId": scene["id"], "direction": gaze_target(
+                    scene["narration"], held_prop=carried_by_scene[i])}
+                for i, scene in enumerate(scenes)
+                if scene.get("motionRig") in {
+                    "original-owl-v1", "original-forest-fox-v1",
+                    "original-forest-rabbit-v1", "original-forest-cat-v1"
+                } and scene.get("renderStyle") == "cartoon"
+            ],
+            "audioTimelineShiftMs": 0,
+        },
         "actionTimeline": {
             "version": "script-action-phases-v1",
             "multiActionScenes": sum(t["phaseCount"] > 1 for t in action_timelines),
