@@ -19,10 +19,10 @@ from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
-from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
+from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v8-action-phases"
+RIG_VERSION = "owl-rig-v9-prop-aware-eye-pose"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -204,7 +204,8 @@ def _wing(path: Path, *, right: bool):
     im.save(path,"PNG")
 
 
-def _body(path: Path, *, blink: bool, emotion: str = "neutral"):
+def _body(path: Path, *, blink: bool, emotion: str = "neutral",
+          gaze: str = "forward"):
     im=Image.new("RGBA",(322,430))
     d=ImageDraw.Draw(im)
     # Feet, horns, torso and a friendly, unmistakably original owl face.
@@ -220,8 +221,16 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral"):
         if blink:
             d.arc((dx-35,162,dx+35,190),0,180,fill=INK,width=8)
         else:
-            d.ellipse((dx-29,139,dx+29,197),fill=INK)
-            d.ellipse((dx-20,146,dx-9,160),fill=(255,255,255,255))
+            if gaze not in ("forward", "right", "down-right"):
+                raise ValueError("Unsupported original owl eye pose")
+            shift_x, shift_y = {
+                "forward": (0, 0), "right": (13, 0),
+                "down-right": (9, 8)}[gaze]
+            eye_x = dx + shift_x
+            d.ellipse((eye_x-29,139+shift_y,
+                       eye_x+29,197+shift_y),fill=INK)
+            d.ellipse((eye_x-20,146+shift_y,
+                       eye_x-9,160+shift_y),fill=(255,255,255,255))
         d.ellipse((dx-62,111,dx+62,231),outline=TEAL,width=9)
     d.line((163,165,163,189),fill=TEAL,width=8)
     d.polygon([(143,229),(180,229),(162,255)],fill=GOLD)
@@ -310,10 +319,13 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction=direction)
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
+    gaze = gaze_target(narration, held_prop=held_prop)
     _body(outputs["body"],blink=False,
-          emotion=direction["emotion"] if direction else "neutral")
+          emotion=direction["emotion"] if direction else "neutral",
+          gaze=gaze)
     _body(outputs["blink"],blink=True,
-          emotion=direction["emotion"] if direction else "neutral")
+          emotion=direction["emotion"] if direction else "neutral",
+          gaze=gaze)
     _mouth(outputs["mouth"])
     cue = create_prop_layers(folder, narration=narration, actor="owl",
                                held_prop=held_prop)
