@@ -563,3 +563,27 @@ mesurer le plaisir du spectateur ni autoriser la publication.
 
 Exécution locale facultative :
 `python -m automate_ytb.story_preflight --plan build/scene-plan.json --report story-preflight.json`.
+
+### Voix neuronale par défaut — Kokoro
+
+Le workflow Android `One-click YouTube preview` sélectionne
+désormais **Kokoro** par défaut (voix française `ff_siwis` ou anglaise
+`af_heart`), en remplacement de la voix eSpeak plus mécanique.
+La voix de synthèse est produite sur GitHub Actions, sans API payante,
+avec débit `natural` de 0,94x par défaut. Deux autres styles sont
+proposés : `gentle` (0,88x) et `lively` (1,04x).
+
+En mode `caption_timing=audio`, les pauses entre phrases suivent
+modérément leur ponctuation : courtes pour une virgule, plus longues
+pour un point ou des points de suspension. Elles sont réellement
+insérées dans le PCM et intégrées aux horodatages SRT/VTT. Le WAV
+complet reste disponible, ainsi qu'un nouveau `voice-sample.mp3`
+de 12 secondes pour écouter la voix sur Android.
+
+Kokoro doit télécharger et initialiser un modèle local sur le runner,
+ce qui peut rallonger fortement la première exécution ; `espeak` ou
+`none` restent des choix manuels. Le français dispose d'une
+**seule voix Kokoro dédiée** dans le catalogue officiel ; le débit
+ne change pas sa personnalité et ne crée pas une voix masculine.
+Ces optimisations ne garantissent pas la qualité esthétique ni la
+prononciation. Voir [crédits et licences](docs/VOICE_CREDITS.md).

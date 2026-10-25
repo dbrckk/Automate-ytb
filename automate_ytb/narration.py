@@ -25,6 +25,7 @@ class SpeechEngine:
         self.engine = engine
         self.language = language
         self.voice = None
+        self.speed = 1.0
         self._pipeline = None
         if engine == "kokoro":
             self.voice = voice or DEFAULT_VOICES[language]
@@ -64,8 +65,12 @@ class SpeechEngine:
             import numpy as np
         except ImportError:
             raise RuntimeError("Kokoro requires NumPy; install speech dependencies") from None
+        if (not isinstance(self.speed, (int, float))
+                or isinstance(self.speed, bool)
+                or not 0.82 <= self.speed <= 1.12):
+            raise ValueError("Unsupported natural narration speaking rate")
         segments = []
-        for generated in self._pipeline(text, voice=self.voice, speed=1.0):
+        for generated in self._pipeline(text, voice=self.voice, speed=self.speed):
             # Kokoro 0.9.4 returns a KPipeline.Result carrying .audio.
             # Older versions also documented (graphemes, phonemes, audio)
             # tuples; accepting both keeps existing user projects readable.

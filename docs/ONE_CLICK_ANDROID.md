@@ -427,3 +427,21 @@ mais n'obtient jamais d'autorisation automatique de publication.
 L'outil fonctionne intégralement hors ligne, conserve strictement le
 texte fourni et ne valide pas la justesse des faits ou la cohérence
 réelle d'une histoire.
+
+### Écouter une belle voix de narration
+
+`Voice = kokoro` est maintenant le **choix par défaut**. En français,
+il utilise la voix neuronale `ff_siwis` ; en anglais, `af_heart`.
+Laisser `Voice style = natural` pour un débit légèrement plus posé,
+ou essayer `gentle` / `lively` pour un autre rythme.
+
+Dans le résultat de GitHub Actions, écouter **`voice-sample.mp3`**
+(12 secondes) avant de visionner tout `preview.mp4`. Le
+`narration.wav` complet est également disponible. Les pauses
+naturelles sont inscrites dans les horodatages des sous-titres lorsque
+`Caption timing = audio` est activé.
+
+Le modèle est gratuit mais nécessite un téléchargement et du temps
+CPU sur le runner ; si un brouillon rapide est nécessaire, choisir
+`espeak`, moins naturel. La seule voix française Kokoro officielle
+est féminine. Consulter les [crédits vocaux](VOICE_CREDITS.md).
