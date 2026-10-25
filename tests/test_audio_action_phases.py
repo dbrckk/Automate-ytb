@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,6 +13,9 @@ from PIL import Image, ImageChops, ImageStat
 
 from automate_ytb.action_timeline import action_phases, choreograph, timeline_report
 from automate_ytb.animated_forest import render_motion_clip
+from automate_ytb.episode import build_preview
+from automate_ytb.scene_plan import plan
+from automate_ytb.production import load_plan
 from automate_ytb.captions import caption_phrases
 from automate_ytb.choreography import body_position
 from automate_ytb.director import direction_for
@@ -142,6 +146,43 @@ class AudioAnchoredGestureTests(unittest.TestCase):
                 a.crop((185, 245, 555, 620)),
                 b.crop((185, 245, 555, 620)))
             self.assertGreater(sum(ImageStat.Stat(diff).mean), .5)
+
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe")
+                         and shutil.which("espeak"),
+                         "Real offline TTS and FFmpeg required")
+    def test_full_offline_synthesized_audio_anchors_real_preview(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            plan_path = root / "scene-plan.json"
+            data = plan(
+                topic="Original illustrated story of a fox",
+                script=(SCRIPT + " ") * 4,
+                duration=30, shot_seconds=6,
+                character="An original red fox in a golden scarf")
+            # Preserve the exact long scene narration so eSpeak synthesizes
+            # enough distinct caption phrases to anchor three actions.
+            data["scenes"][0]["narration"] = SCRIPT
+            plan_path.write_text(
+                json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            preview = build_preview(
+                plan_path=plan_path, output=root / "preview",
+                limit=1, style="cartoon", language="en",
+                voice="espeak", caption_timing="audio",
+                soundtrack="none", transition="cut")
+            saved = load_plan(plan_path)["scenes"][0]
+            self.assertGreaterEqual(len(saved["captionSegments"]), 3)
+            report = preview["render"]["actionTimeline"]
+            self.assertEqual(report["audioAnchoredScenes"], 1)
+            self.assertTrue(report["scenes"][0]["audioAnchored"])
+            self.assertEqual(
+                [p["action"] for p in report["scenes"][0]["phases"]],
+                ["walk", "jump", "talk"])
+            self.assertEqual(report["scenes"][0]["audioTimelineShiftMs"], 0)
+            self.assertEqual(
+                preview["render"]["captionCueAlignment"],
+                "audio-derived-synthesized-phrases")
+            self.assertTrue((root / "preview" / "preview.mp4").is_file())
 
 
 if __name__ == "__main__":
