@@ -360,8 +360,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                      "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             f += f";[e][6:v]overlay=x=0:y='-720+mod(t*{speed},720)':eval=frame:format=auto[f]"
             final_label = "f"
-        else:
-            f += "[e]"
+        # The final [e] overlay output is already labeled when no weather
+        # texture is needed. Do not add the same output label twice.
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
