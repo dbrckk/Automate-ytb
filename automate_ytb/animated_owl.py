@@ -248,7 +248,7 @@ def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
         for band in (0, 720):
             for _ in range(46):
                 x = rand.randrange(42, 1237)
-                y = band + rand.randrange(402, 664)
+                y = band + rand.randrange(420, 665)
                 radius = rand.choice((3, 4, 5, 7))
                 draw.ellipse((x-radius*2, y-radius*2,
                               x+radius*2, y+radius*2),
@@ -263,7 +263,7 @@ def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
         for band in (0, 720):
             for _ in range(58):
                 x = rand.randrange(35, 1240)
-                y = band + rand.randrange(390, 665)
+                y = band + rand.randrange(420, 665)
                 radius = rand.choice((2, 3, 4))
                 color = rand.choice(((247, 224, 166, 128),
                                      (234, 249, 216, 115),
