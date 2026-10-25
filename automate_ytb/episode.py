@@ -104,7 +104,8 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
 def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
                     limit: int | None, *, engine: str = "espeak",
                     voice_name: str | None = None,
-                    caption_timing: str = "estimated") -> dict:
+                    caption_timing: str = "estimated",
+                  transition: str = "dissolve") -> dict:
     """Compose uncut speech with optional boundaries from synthesized phrases.
 
     In audio mode each visible subtitle phrase is synthesized separately, so
@@ -226,13 +227,16 @@ def build_preview(*, plan_path: Path, output: Path,
                   voice: str = "espeak", limit: int | None = None,
                   resolution: str = "720p", voice_name: str | None = None,
                   soundtrack: str = "none",
-                  caption_timing: str = "estimated") -> dict:
+                  caption_timing: str = "estimated",
+                  transition: str = "dissolve") -> dict:
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
     if soundtrack not in {"none", "ambient"}:
         raise ValueError("Soundtrack must be none or ambient")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
+    if transition not in {"cut", "dissolve"}:
+        raise ValueError("Transition must be cut or dissolve")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -255,6 +259,7 @@ def build_preview(*, plan_path: Path, output: Path,
                                audio=voice_file, limit=limit,
                                resolution=resolution, fps=24,
                                music=soundtrack_file,
+                               transition=transition,
                                caption_timing=("audio" if voice_file is not None
                                                else "estimated") if caption_timing == "audio"
                                               else "estimated")
@@ -289,6 +294,9 @@ def main(argv=None) -> int:
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
                    help="Original local ambient backing track with narration ducking")
+    p.add_argument("--transition", choices=["dissolve", "cut"],
+                   default="dissolve",
+                   help="Visual hold-frame dissolve without modifying scene times")
     p.add_argument("--caption-timing", choices=["estimated", "audio"],
                    default="estimated",
                    help="Audio mode measures synthesized phrase boundaries; not word alignment")
@@ -300,7 +308,8 @@ def main(argv=None) -> int:
                                style=args.style, language=args.language,
                                voice=args.voice, voice_name=args.voice_name, resolution=args.resolution,
                                soundtrack=args.soundtrack, limit=args.limit,
-                               caption_timing=args.caption_timing)
+                               caption_timing=args.caption_timing,
+                               transition=args.transition)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],

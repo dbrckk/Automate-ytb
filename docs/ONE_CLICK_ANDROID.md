@@ -264,3 +264,17 @@ Ce mode est original, gratuit et sans IA vidéo distante, mais demeure
 une animation stylisée 2D. Les décors et placements doivent être revus avant
 la mise en ligne ; l'exécution réussie d'Actions ne constitue pas un accord
 éditorial ou juridique.
+
+### Transitions fluides entre les scènes
+
+Le champ `Transition` du workflow propose `dissolve` (défaut) ou `cut`.
+En mode `dissolve`, la dernière image de chaque scène se fond dans les
+premières images de la scène suivante sur environ 320 ms. Ce procédé
+n'enlève ni ne recouvre les temps de narration : il conserve les durées
+et les horodatages SRT/VTT d'origine. Le procédé encode de nouveau la
+partie concernée, puis réutilise les clips de transition mis en cache.
+
+Le fichier `render-report.json` et le contrôle qualité structurel
+documentent les transitions et vérifient que le décalage du montage vidéo
+est nul. Ces fondus sont visuels uniquement ; une vraie transition de
+scènes animées ou un montage artistique reste à perfectionner.

@@ -110,6 +110,20 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         planned_duration = data["scenes"][count-1]["endMs"] / 1000
         metrics["plannedDurationSeconds"] = planned_duration
         metrics["sceneCount"] = count
+        # Crossfades are image-only: they may not shorten scenes or shift
+        # the separately narrated timeline and SRT boundaries.
+        transitions = rendered.get("transitions", {})
+        mode = transitions.get("mode") if isinstance(transitions, dict) else None
+        expected_transitions = count - 1 if mode == "dissolve" else 0
+        metrics["transitionMode"] = mode
+        metrics["transitionCount"] = (
+            transitions.get("count") if isinstance(transitions, dict) else None)
+        metrics["transitionTimelineShiftMs"] = (
+            transitions.get("timelineShiftMs") if isinstance(transitions, dict) else None)
+        if (mode not in ("cut", "dissolve")
+                or transitions.get("count") != expected_transitions
+                or transitions.get("timelineShiftMs") != 0):
+            errors.append("Visual scene transitions changed or misstated the planned timeline")
         metrics["renderedDurationSeconds"] = rendered.get("targetDurationSeconds")
         if abs(float(rendered.get("targetDurationSeconds", -999)) - planned_duration) > 0.01:
             errors.append("Rendered timeline does not match scene plan")
