@@ -329,3 +329,16 @@ Pour essayer depuis Android, indiquer par exemple dans le scénario :
 une pierre. ». Le fichier `preview.mp4` permet d'examiner les gestes
 en mouvement. Ce sont des animations 2D procédurales et non une
 simulation physique du ramassage.
+
+### Objets ramassés conservés entre plusieurs scènes
+
+Dans une histoire `cartoon` avec une chouette, un renard, un lapin ou
+un chat, une pomme, un livre ou une fleur explicitement ramassés peuvent
+maintenant rester visibles près du personnage lors des plans suivants.
+La narration n'a pas besoin de répéter le nom de l'objet. Une mention
+explicite indiquant qu'il est déposé ou consommé met fin à ce suivi.
+
+La mémoire des objets est limitée à un objet à la fois, et se reconstruit
+depuis les scènes du script, sans service payant. Regarder les scènes
+successives dans `preview.mp4` et vérifier le rapport
+`render-report.json` (champ `propContinuity`) avant publication.
