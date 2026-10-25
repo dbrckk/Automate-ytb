@@ -635,3 +635,7 @@ et leur faible opacité vise à préserver la lisibilité des personnages.
 Les déplacements des personnages originalement dessinés utilisent maintenant de légères harmoniques secondaires : respiration non parfaitement cyclique et suivi des ailes et queues avec deux fréquences déterministes. Les poses restent des illustrations 2D, pas de l'IK, du mocap ou des squelettes 3D ; la voix et la durée des scènes ne changent pas.
 
 **Audit ciblé de star-list :** Sakugabooru (références de timing uniquement, aucun extrait réutilisé), SHOT.CAFE (éclairage et cadrage, inspiration uniquement), PoseMy.Art (études de pose avec droits d'export à examiner) sont pertinents immédiatement. PINOC/Viggle, Blender, Three.js et Scenario Labs 3D peuvent ouvrir une future filière de modèles/mouvements, **mais aucune source n'est installée ou importée automatiquement** sans vérification de licence, format, budget GPU et compatibilité FFmpeg. Cette évolution privilégie les améliorations testables et gratuites sur le moteur existant.
+
+### V2 — appui au sol lors de la marche et de la course
+
+Les pattes originales du renard, du chat et du lapin possèdent désormais deux phases : **appui** (pied sans soulèvement) et **retour** (pied relevé), en alternance gauche-droite. Le trajet horizontal est continu, et le saut, le repos ainsi que le vol conservent leur comportement précédent. Le rendu reste un rig 2D procédural, sans cinématique inverse ni collision physique. Les caches de rendu sont invalidés pour éviter de réutiliser d'anciennes vidéos.

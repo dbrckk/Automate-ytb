@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v2-organic-motion"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v3-foot-contact"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -112,6 +112,14 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     parent_x, parent_y = body_position(action, x=body_x, y=body_y)
     reach, lift, frequency = LEG_MOTION[action]
     phase = "3.141593" if side == "right" and action in {"walk", "run"} else "0"
+    if action in {"walk", "run"}:
+        # One half-cycle is grounded (no foot lift); the return swing
+        # rises smoothly. Opposite phases keep the two legs alternating.
+        # Cosine yields continuous foot travel across the contact boundary.
+        angle = f"(t*{frequency}+{phase})"
+        x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*cos({angle})"
+        y = f"({parent_y})+335-{lift}*max(0,-sin({angle}))"
+        return x, y
     x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
     if action == "jump":
         y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}))"
