@@ -155,7 +155,7 @@ jobs:
             PARAMS+=(--target-lufs -24)
           fi
           python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/media-report.json "${PARAMS[@]}"
-      - name: Extract smartphone storyboard directly from rendered MP4
+      - name: Extract mobile storyboard and check for frozen animated MP4 scenes
         run: |
           python -m automate_ytb.review_board \
             --plan build/scene-plan.json \

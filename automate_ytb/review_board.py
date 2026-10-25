@@ -26,6 +26,14 @@ THUMB_W, THUMB_H = 480, 270
 MARGIN = 30
 GAP = 20
 DARK_THRESHOLD = 0.985
+# A near-zero image delta in a scene whose approved rig promises motion is
+# a likely frozen encode. Intentionally static documentary stills are exempt.
+FROZEN_MEAN_THRESHOLD = 0.12
+FROZEN_CHANGED_FRACTION = 0.002
+ANIMATED_RIGS = frozenset({
+    "original-owl-v1", "original-forest-fox-v1",
+    "original-forest-rabbit-v1", "original-forest-cat-v1",
+})
 FRAME_BYTES_MAX = 8_000_000
 
 
@@ -63,6 +71,20 @@ def _metrics(image: Image.Image) -> dict:
         "nearBlackFraction": round(black_fraction, 4),
         "meanLuminance": round(ImageStat.Stat(gray).mean[0], 1),
         "luminanceStdDev": round(ImageStat.Stat(gray).stddev[0], 1),
+    }
+
+
+def _motion_metrics(first: Image.Image, second: Image.Image) -> dict:
+    """Compare actual decoded pixels from two different moments in one scene."""
+    a = ImageOps.grayscale(first.resize((96, 54)))
+    b = ImageOps.grayscale(second.resize((96, 54)))
+    difference = ImageChops.difference(a, b)
+    histogram = difference.histogram()
+    total = 96 * 54
+    return {
+        "meanAbsoluteLumaChange": round(ImageStat.Stat(difference).mean[0], 3),
+        "changedPixelFraction": round(sum(histogram[4:]) / total, 4),
+        "method": "two-decoded-frames-grayscale-96x54",
     }
 
 
@@ -142,6 +164,8 @@ def generate(*, plan: Path, video: Path, destination: Path,
         raise ValueError("Video duration does not match scene plan")
     indices = _selection(len(scenes), max_samples)
     entries, errors, warnings = [], [], []
+    frozen_animated = 0
+    motion_compared = 0
     previous_image = None
     duplicates = 0
     for idx in indices:
@@ -156,7 +180,36 @@ def generate(*, plan: Path, video: Path, destination: Path,
             errors.append(f"Unable to decode middle of scene {idx+1}")
             continue
         metrics = _metrics(image)
-        if metrics["nearBlackFraction"] >= DARK_THRESHOLD:
+        # Sample again towards the end of the *same* scene. An unchanged
+        # frame within an animated rig is more diagnostic than two neighboring
+        # static compositions looking similar across a scene cut.
+        late_second = (scene["startMs"] * 0.22 + scene["endMs"] * 0.78) / 1000
+        scene_motion = None
+        late_metrics = None
+        is_animated = (scene.get("motionRig") in ANIMATED_RIGS
+                       and scene.get("renderStyle") == "cartoon")
+        try:
+            late_image = _frame_at(video, late_second)
+            late_metrics = _metrics(late_image)
+            scene_motion = _motion_metrics(image, late_image)
+            motion_compared += 1
+        except RuntimeError:
+            errors.append(f"Unable to decode later frame of scene {idx+1}")
+        frozen = False
+        if scene_motion is not None and is_animated:
+            frozen = (
+                scene_motion["meanAbsoluteLumaChange"] < FROZEN_MEAN_THRESHOLD
+                and scene_motion["changedPixelFraction"] < FROZEN_CHANGED_FRACTION
+            )
+            if frozen:
+                frozen_animated += 1
+                errors.append(
+                    f"Animated scene {idx+1} appears frozen between sampled frames")
+        # A single almost-black picture is ambiguous (night or fade), so
+        # warn rather than fail unless most sampled scenes are dark.
+        if metrics["nearBlackFraction"] >= DARK_THRESHOLD or (
+                late_metrics is not None
+                and late_metrics["nearBlackFraction"] >= DARK_THRESHOLD):
             warnings.append(f"Scene {idx+1} is nearly black; inspect manually")
         thumb_gray = ImageOps.grayscale(image.resize((64, 36)))
         if previous_image is not None:
@@ -168,10 +221,17 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "sceneIndex": idx+1, "second": second,
             "narration": scene["narration"],
             "frame": image, "metrics": metrics,
+            "lateTimeSeconds": late_second,
+            "lateMetrics": late_metrics, "motion": scene_motion,
+            "animatedRig": is_animated, "frozen": frozen,
         })
     if not entries:
         raise RuntimeError("No video frames could be extracted")
-    dark_count = sum(x["metrics"]["nearBlackFraction"] >= DARK_THRESHOLD for x in entries)
+    dark_count = sum(
+        x["metrics"]["nearBlackFraction"] >= DARK_THRESHOLD or
+        (x["lateMetrics"] is not None
+         and x["lateMetrics"]["nearBlackFraction"] >= DARK_THRESHOLD)
+        for x in entries)
     if len(entries) >= 3 and dark_count > len(entries) // 2:
         errors.append("Most sampled scenes appear almost completely black")
     if len(entries) >= 4 and duplicates >= len(entries)-1:
@@ -188,7 +248,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
                       title=data["topic"],dest=destination/filename)
         pages.append(filename)
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "status": "failed" if errors else "review-required" if warnings else "sampled",
         "technicalVisualCheckPassed": not errors,
         "publicationApproved": False,
@@ -198,13 +258,25 @@ def generate(*, plan: Path, video: Path, destination: Path,
         "totalSceneCount": len(scenes),
         "nearBlackSceneCount": dark_count,
         "nearDuplicateNeighborCount": duplicates,
+        "motionPairsCompared": motion_compared,
+        "frozenAnimatedSceneCount": frozen_animated,
         "pages": pages,
-        "frames": [{"sceneIndex": x["sceneIndex"],
-                    "timeSeconds": round(x["second"], 3),
-                    **x["metrics"]} for x in entries],
+        "frames": [{
+            "sceneIndex": x["sceneIndex"],
+            "timeSeconds": round(x["second"], 3),
+            "laterTimeSeconds": round(x["lateTimeSeconds"], 3),
+            "animatedRigExpected": x["animatedRig"],
+            "frozenMotionDetected": x["frozen"],
+            "motion": x["motion"],
+            "laterNearBlackFraction": (
+                x["lateMetrics"]["nearBlackFraction"]
+                if x["lateMetrics"] is not None else None),
+            **x["metrics"],
+        } for x in entries],
         "errors": errors, "warnings": warnings,
         "limitations": [
-            "At most 24 sampled mid-scene frames; cannot detect every corrupted frame.",
+            "At most 24 scenes sampled twice; this cannot detect every bad frame.",
+            "Still or very subtle motion can resemble a frozen animation at sample times.",
             "Dark scenes and repeated compositions may be artistically intentional.",
             "No fact-checking, copyright assessment or automatic approval to publish.",
         ],

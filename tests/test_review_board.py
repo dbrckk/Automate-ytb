@@ -10,7 +10,7 @@ import unittest
 
 from PIL import Image
 
-from automate_ytb.review_board import _selection, generate
+from automate_ytb.review_board import _selection, _motion_metrics, generate
 from automate_ytb.scene_plan import plan
 
 
@@ -56,7 +56,14 @@ class ReviewBoardTests(unittest.TestCase):
         with Image.open(self.folder/"board"/"storyboard-01.jpg") as image:
             self.assertEqual(image.size, (1120, 2030))
         persisted = json.loads((self.folder/"board"/"visual-review.json").read_text())
+        self.assertEqual(persisted["schemaVersion"], 2)
+        self.assertEqual(persisted["motionPairsCompared"], 5)
+        self.assertEqual(persisted["frozenAnimatedSceneCount"], 0)
         self.assertEqual(len(persisted["frames"]), 5)
+        self.assertIn("meanAbsoluteLumaChange", persisted["frames"][0]["motion"])
+        self.assertGreater(
+            persisted["frames"][0]["laterTimeSeconds"],
+            persisted["frames"][0]["timeSeconds"])
         self.assertNotIn("frame", persisted["frames"][0])
         self.assertFalse(persisted["publicationApproved"])
 
@@ -67,6 +74,58 @@ class ReviewBoardTests(unittest.TestCase):
         self.assertEqual(report["nearBlackSceneCount"], 5)
         self.assertEqual(report["status"], "failed")
         self.assertTrue(report["pages"])
+
+    def test_static_animated_rig_is_blocked_but_static_documentary_is_allowed(self):
+        source = json.loads(self.plan_file.read_text())
+        for scene in source["scenes"]:
+            scene["motionRig"] = "original-owl-v1"
+            scene["renderStyle"] = "cartoon"
+        self.plan_file.write_text(json.dumps(source), encoding="utf8")
+        frozen_video = self._video(color="gray")
+        detected = generate(plan=self.plan_file, video=frozen_video,
+                            destination=self.folder/"static-cartoon",
+                            max_samples=5)
+        self.assertFalse(detected["technicalVisualCheckPassed"])
+        self.assertEqual(detected["frozenAnimatedSceneCount"], 5)
+        self.assertEqual(detected["motionPairsCompared"], 5)
+        self.assertTrue(any("frozen" in err for err in detected["errors"]))
+        # An intentionally static documentary frame is not a broken animated
+        # rig. Report its motion measurements but don't falsely fail it.
+        for scene in source["scenes"]:
+            scene["motionRig"] = None
+            scene["renderStyle"] = "documentary"
+        self.plan_file.write_text(json.dumps(source), encoding="utf8")
+        still = generate(plan=self.plan_file, video=frozen_video,
+                         destination=self.folder/"static-documentary",
+                         max_samples=5)
+        self.assertTrue(still["technicalVisualCheckPassed"])
+        self.assertEqual(still["frozenAnimatedSceneCount"], 0)
+        self.assertEqual(still["motionPairsCompared"], 5)
+
+    def test_actual_moving_encoded_video_is_not_falsely_classified_frozen(self):
+        source = json.loads(self.plan_file.read_text())
+        for scene in source["scenes"]:
+            scene["motionRig"] = "original-owl-v1"
+            scene["renderStyle"] = "cartoon"
+        self.plan_file.write_text(json.dumps(source), encoding="utf8")
+        detected = generate(plan=self.plan_file, video=self._video(),
+                            destination=self.folder/"animated-cartoon",
+                            max_samples=5)
+        self.assertEqual(detected["frozenAnimatedSceneCount"], 0)
+        self.assertTrue(detected["technicalVisualCheckPassed"])
+        self.assertTrue(all(item["motion"]["changedPixelFraction"] > 0.01
+                            for item in detected["frames"]))
+
+    def test_motion_metrics_are_deterministic_without_audio_or_network(self):
+        a = Image.new("RGB", (96, 54), "gray")
+        b = Image.new("RGB", (96, 54), "gray")
+        still = _motion_metrics(a, b)
+        self.assertEqual(still["meanAbsoluteLumaChange"], 0)
+        self.assertEqual(still["changedPixelFraction"], 0)
+        c = Image.new("RGB", (96, 54), "white")
+        moving = _motion_metrics(a, c)
+        self.assertGreater(moving["meanAbsoluteLumaChange"], 30)
+        self.assertEqual(moving["changedPixelFraction"], 1.0)
 
     def test_rejects_mismatched_duration_and_bad_sample_limit(self):
         with self.assertRaisesRegex(ValueError, "Sample count"):
