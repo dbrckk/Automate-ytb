@@ -268,3 +268,24 @@ nouvelle validation, et non la réutilisation silencieuse des assets.
 **Limite :** style cartoon 2D procédural, sans animation squelettique 3D,
 lip-sync réaliste ni garantie d'une direction artistique professionnelle.
 Écouter et visionner le MP4 avant toute publication.
+
+### Transitions cinématiques sans décaler la narration
+
+Le rendu vidéo ajoute désormais une transition **dissolve** entre deux scènes :
+la dernière image de la scène précédente s'estompe pendant environ 0,32 s
+au début de la scène suivante. Ce montage est purement visuel. Chaque scène
+conserve **exactement son nombre d'images** ; la voix, la musique, les
+horodatages SRT/WebVTT et la durée finale du MP4 ne sont pas raccourcis.
+
+Dans le workflow Android **One-click YouTube preview**, choisir
+`Transition = dissolve` (par défaut), ou `cut` pour des coupes franches.
+L'opération est réalisée localement par FFmpeg avec les plans originaux déjà
+approuvés, sans téléchargement, API facturée ni publication automatique.
+Le rapport `render-report.json` précise le mode, le nombre de transitions,
+la durée de fondu et le décalage temporel (toujours 0 ms).
+
+La transition est un **fondu de l'image finale figée** vers la nouvelle
+scène, et non un morphing ou un fondu entre deux scènes animées en temps
+réel. Une scène initiale unique n'a pas de transition. L'effet est léger,
+réversible et peut ajouter du temps de calcul FFmpeg au premier rendu ;
+le résultat doit être revu avant publication.
