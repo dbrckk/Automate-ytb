@@ -291,3 +291,17 @@ de relecture présentes dans l'artefact GitHub Actions.
 
 Aucune banque de vidéos ni API payante n'est utilisée ; les effets sont
 stylistiques et nécessitent une relecture avant publication.
+
+### Actions et mimiques automatiques
+
+Le scénario choisi dans One-click preview peut maintenant déclencher
+des mouvements plus différenciés pour la chouette, le renard, le lapin
+et le chat : marche, course, saut, vol, parole, surprise et repos.
+Le moteur ajoute une bouche qui s'ouvre périodiquement pendant les
+scènes de dialogue, sans perturber le clignement des yeux. Les mêmes
+ambiances de jour/nuit, la météo, les plans de caméra et les transitions
+`dissolve` continuent de fonctionner.
+
+Ces gestes proviennent exclusivement des indices présents dans le
+scénario ; ce ne sont pas des animations 3D ni du lip-sync au mot.
+Le rendu reste un brouillon à examiner sur ton téléphone.
