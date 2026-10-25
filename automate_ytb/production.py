@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v3-cinematic-scenes"
+VERSION = "render-v4-forest-animal-rigs"
 
 
 def _sha(path: Path) -> str:
@@ -259,29 +259,46 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     cache.mkdir(exist_ok=True)
     clips = []
     for scene in scenes:
-        # A local poster cannot authorize an unrelated revised scene.
+        # Posters remain bound to the narration and character-specific rig.
+        rig_tag = scene.get("motionRig")
+        local_art = (scene.get("assetProvider") == "automate-local-graphics"
+                     and scene.get("renderStyle") == "cartoon")
+        from .animated_forest import character_kind
+        forest_kind = character_kind(data["originalCharacterBible"])
+        expected_forest_rig = (
+            f"original-forest-{forest_kind}-v1" if forest_kind else None)
+        if (isinstance(rig_tag, str)
+                and rig_tag.startswith("original-forest-")
+                and (rig_tag != expected_forest_rig or not local_art)):
+            raise ValueError("Forest rig does not match the approved character and style")
         if scene.get("assetProvider") == "automate-local-graphics" and scene.get("artBriefSha256"):
-            from .animated_owl import art_brief_sha256
-            actual = art_brief_sha256(
+            brief_args = dict(
                 topic=data["topic"], narration=scene["narration"],
                 character=data["originalCharacterBible"],
                 style=scene.get("renderStyle", "cartoon"),
                 scene_id=scene["id"],
                 direction=scene.get("direction"))
+            if rig_tag == expected_forest_rig and local_art:
+                from .animated_forest import art_brief_sha256 as forest_hash
+                actual = forest_hash(kind=forest_kind, **brief_args)
+            else:
+                from .animated_owl import art_brief_sha256
+                actual = art_brief_sha256(**brief_args)
             if actual != scene["artBriefSha256"]:
                 raise ValueError(f"Artwork brief changed for {scene['id']}; reapproval required")
         seconds = (scene["endMs"] - scene["startMs"]) / 1000
-        uses_owl_rig = (scene.get("motionRig") == "original-owl-v1"
-                        and scene.get("assetProvider") == "automate-local-graphics"
-                        and scene.get("renderStyle") == "cartoon")
+        uses_owl_rig = (rig_tag == "original-owl-v1" and local_art)
+        uses_forest_rig = (expected_forest_rig is not None
+                           and rig_tag == expected_forest_rig and local_art)
+        uses_motion_rig = uses_owl_rig or uses_forest_rig
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
-            "rig": "original-owl-v1" if uses_owl_rig else None,
-            "scene": scene["narration"] if uses_owl_rig else "",
-            "topic": data["topic"] if uses_owl_rig else "",
-            "character": data.get("originalCharacterBible") if uses_owl_rig else "",
-            "direction": scene.get("direction") if uses_owl_rig else None,
+            "rig": rig_tag if uses_motion_rig else None,
+            "scene": scene["narration"] if uses_motion_rig else "",
+            "topic": data["topic"] if uses_motion_rig else "",
+            "character": data.get("originalCharacterBible") if uses_motion_rig else "",
+            "direction": scene.get("direction") if uses_motion_rig else None,
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
@@ -299,6 +316,17 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                     from .animated_owl import render_motion_clip
                     index = int(scene["id"].split("-")[1])
                     render_motion_clip(
+                        topic=data["topic"], narration=scene["narration"],
+                        scene_index=index, scene_count=len(data["scenes"]),
+                        style="cartoon", duration=seconds,
+                        width=w, height=h, fps=fps, destination=tmp,
+                        direction=scene.get("direction"),
+                    )
+                elif uses_forest_rig:
+                    from .animated_forest import render_motion_clip as render_forest_clip
+                    index = int(scene["id"].split("-")[1])
+                    render_forest_clip(
+                        kind=forest_kind,
                         topic=data["topic"], narration=scene["narration"],
                         scene_index=index, scene_count=len(data["scenes"]),
                         style="cartoon", duration=seconds,
@@ -406,6 +434,16 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "animatedOwlScenes": sum(
             1 for s in scenes
             if s.get("motionRig") == "original-owl-v1"
+            and s.get("assetProvider") == "automate-local-graphics"
+            and s.get("renderStyle") == "cartoon"
+        ),
+        "animatedForestScenes": sum(
+            1 for s in scenes
+            if s.get("motionRig") in {
+                "original-forest-fox-v1",
+                "original-forest-rabbit-v1",
+                "original-forest-cat-v1",
+            }
             and s.get("assetProvider") == "automate-local-graphics"
             and s.get("renderStyle") == "cartoon"
         ),

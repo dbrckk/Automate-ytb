@@ -241,3 +241,30 @@ scènes photoréalistes, des modèles 3D ou des vidéos générées par IA.
 L'animation universelle des autres personnages reste à réaliser. Les
 nouveaux cadrages et compositions demandent une relecture visuelle avant
 toute publication.
+
+### Nouveaux personnages 2D animés : renard, lapin et chat
+
+Le mode **cartoon** sélectionne désormais automatiquement un personnage
+original animé lorsque la description indique explicitement *renard / fox*,
+*lapin / rabbit / bunny* ou *chat / cat*. Chaque animal dispose d'un dessin
+différent (museau, oreilles, couleur, queue), d'un mouvement de corps, d'une
+queue animée et d'un clignement. Les scènes partagent les décors naturels,
+la météo, les six cadrages et les mouvements de caméra de la chouette.
+
+La sélection reste **conservatrice** : les descriptions non reconnues
+continuent d'utiliser le générateur de cartes 2D existant ; aucun personnage
+inconnu n'est remplacé arbitrairement par un animal. Les illustrations sont
+fabriquées localement avec Pillow et la vidéo avec FFmpeg, sans utiliser de
+banque d'images, d'API payante, de modèles 3D ni d'images tierces.
+
+Chaque scène enregistre son moteur `original-forest-fox-v1`,
+`original-forest-rabbit-v1` ou `original-forest-cat-v1`. Les empreintes
+des illustrations incluent la version du moteur, la description du personnage,
+le script et les choix du réalisateur. Modifier l'animal ou l'art exige une
+nouvelle validation, et non la réutilisation silencieuse des assets.
+`render-report.json` indique le nombre de scènes concernées dans
+`animatedForestScenes`.
+
+**Limite :** style cartoon 2D procédural, sans animation squelettique 3D,
+lip-sync réaliste ni garantie d'une direction artistique professionnelle.
+Écouter et visionner le MP4 avant toute publication.

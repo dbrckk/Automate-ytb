@@ -18,6 +18,10 @@ import wave
 from . import production
 from .studio import make_thumbnails, render_art, synthesize_voice
 from .animated_owl import render_character_poster, art_brief_sha256
+from .animated_forest import (
+    character_kind, render_character_poster as render_forest_poster,
+    art_brief_sha256 as forest_art_brief_sha256,
+)
 from .narration import SpeechEngine
 
 
@@ -37,12 +41,19 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
     rendered, reused = 0, 0
     character_text = data["originalCharacterBible"].casefold()
     is_owl = any(word in character_text for word in ("owl", "chouette", "hibou"))
+    forest_kind = None if is_owl else character_kind(data["originalCharacterBible"])
+    rig = ("original-owl-v1" if style == "cartoon" and is_owl else
+           f"original-forest-{forest_kind}-v1" if style == "cartoon" and forest_kind
+           else "none")
     for i, scene in enumerate(scenes, start=1):
         state = already.get(scene["id"])
-        brief_sha = art_brief_sha256(
+        brief_args = dict(
             topic=data["topic"], narration=scene["narration"],
             character=data["originalCharacterBible"], style=style,
             scene_id=scene["id"], direction=scene.get("direction"))
+        brief_sha = (forest_art_brief_sha256(kind=forest_kind, **brief_args)
+                     if rig.startswith("original-forest-")
+                     else art_brief_sha256(**brief_args))
         if state == "ready":
             if scene.get("renderStyle") and scene["renderStyle"] != style:
                 raise ValueError("Approved artwork belongs to another style; start a new project")
@@ -61,6 +72,13 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                     scene_index=i, scene_count=len(data["scenes"]),
                     style=style, destination=image,
                     direction=scene.get("direction"))
+            elif style == "cartoon" and forest_kind:
+                render_forest_poster(
+                    kind=forest_kind,
+                    topic=data["topic"], narration=scene["narration"],
+                    scene_index=i, scene_count=len(data["scenes"]),
+                    style=style, destination=image,
+                    direction=scene.get("direction"))
             else:
                 render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
                            style, image)
@@ -74,12 +92,12 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
             current = production.load_plan(plan_path)
             current["scenes"][i-1]["renderStyle"] = style
             current["scenes"][i-1]["artBriefSha256"] = brief_sha
-            if style == "cartoon" and is_owl:
-                current["scenes"][i-1]["motionRig"] = "original-owl-v1"
+            if rig != "none":
+                current["scenes"][i-1]["motionRig"] = rig
             production._write_json(plan_path, current)
         rendered += 1
     return {"mode": "offline-graphics", "created": rendered, "reused": reused,
-            "characterRig": "original-owl-v1" if style == "cartoon" and is_owl else "none",
+            "characterRig": rig,
             "apiCalls": 0, "providerCostUsd": "0.0000"}
 
 
@@ -250,7 +268,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "art": art, "voice": details, "soundtrack": soundtrack_report,
         "render": result,
         "thumbnails": [str(x) for x in pictures],
-        "warnings": ["Original owl scenes use authored scenic backgrounds and guided camera movement; other characters/styles remain draft cards.",
+        "warnings": ["Original owl, fox, rabbit and cat use original scenic 2D animation in cartoon style; other characters and styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
                      "Caption boundaries follow actual synthesized phrases in audio mode; "
                      "they are not verified word-by-word.",
