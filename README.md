@@ -504,3 +504,35 @@ suivi oculaire 3D. Les mouvements de bouche sont déclenchés par
 l'énergie sonore ; ce n'est ni du lip-sync aux phonèmes ni une analyse
 de l'identité du locuteur. Une voix off ne devient pas automatiquement
 un personnage parlant : le scénario doit indiquer la parole.
+
+### Contrôle qualité du mouvement sur les vidéos réellement encodées
+
+Le contrôle visuel de la prévisualisation YouTube ne se limite plus à
+une image par scène échantillonnée. Il extrait **deux images à des
+instants différents dans le MP4 final**, puis mesure leur différence
+réelle en niveaux de gris à petite résolution. Le rapport
+`review/visual-review.json` documente désormais, pour chaque scène
+examinée, la différence moyenne de luminance, la proportion de pixels
+ayant changé et l'éventuel manque de mouvement.
+
+Lorsqu'un plan déclare explicitement utiliser le rig animé original
+de la chouette, du renard, du lapin ou du chat, **deux images
+pratiquement identiques signalent un rendu figé**, et le contrôle
+qualité bloque sa validation technique. Les scènes documentaires
+volontairement statiques sont exemptées de ce blocage. Les cadres
+presque noirs restent signalés ; si la majorité des scènes
+échantillonnées est presque entièrement noire, le contrôle échoue.
+
+Le rapport global `qa-summary.json` inclut
+`visualMotionPairs` et `frozenAnimatedScenes`, refuse un rapport
+visuel incomplet et conserve toujours
+`humanEditorialReviewRequired=true` et
+`publicationApproved=false`. Les planches JPEG existantes sont
+maintenues et utilisables depuis un smartphone Android.
+
+**Limites :** au plus 24 scènes, échantillonnées à deux instants
+chacune ; ce n'est ni un contrôle de chaque image, ni un jugement
+artistique, un détecteur d'erreur d'animation 3D ou une autorisation
+de publier. Des poses très proches peuvent être prises pour un gel ;
+une vidéo mobile peut comporter d'autres défauts entre les instants
+vérifiés. Une relecture humaine reste obligatoire.
