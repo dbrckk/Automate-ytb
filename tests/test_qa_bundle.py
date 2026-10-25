@@ -109,6 +109,34 @@ class QualityBundleTests(unittest.TestCase):
                               visual_report=visual_path)
         self.assertFalse(checked["technicalPreviewReady"])
 
+    def test_visual_motion_gate_rejects_missing_pairs_or_frozen_animation(self):
+        from automate_ytb.production import _sha
+        path = self.root / "visual-review-v2.json"
+        visual = {
+            "schemaVersion": 2, "status": "sampled",
+            "technicalVisualCheckPassed": True, "publicationApproved": False,
+            "sampledSceneCount": 4, "motionPairsCompared": 4,
+            "frozenAnimatedSceneCount": 0, "nearBlackSceneCount": 0,
+            "videoSha256": _sha(self.video), "errors": [], "warnings": [],
+        }
+
+        def reviewed():
+            path.write_text(json.dumps(visual), encoding="utf8")
+            return consolidate(
+                structural_report=self.structural, media_report=self.media,
+                video=self.video, srt=self.srt, vtt=self.vtt,
+                output=self.output, visual_report=path)
+
+        self.assertTrue(reviewed()["technicalPreviewReady"])
+        self.assertEqual(reviewed()["checks"]["visualMotionPairs"], 4)
+        visual["motionPairsCompared"] = 3
+        self.assertFalse(reviewed()["technicalPreviewReady"])
+        visual["motionPairsCompared"] = 4
+        visual["frozenAnimatedSceneCount"] = 1
+        self.assertFalse(reviewed()["technicalPreviewReady"])
+        visual["frozenAnimatedSceneCount"] = 0
+        self.assertTrue(reviewed()["technicalPreviewReady"])
+
     def test_missing_vtt_or_bad_signature_rejected(self):
         self.vtt.unlink()
         with self.assertRaisesRegex(ValueError, "required"):
