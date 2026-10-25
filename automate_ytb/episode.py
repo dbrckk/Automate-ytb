@@ -250,7 +250,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "art": art, "voice": details, "soundtrack": soundtrack_report,
         "render": result,
         "thumbnails": [str(x) for x in pictures],
-        "warnings": ["Original owl scenes have independent wing, body and blink motion; other characters/styles remain draft cards.",
+        "warnings": ["Original owl scenes use authored scenic backgrounds and guided camera movement; other characters/styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
                      "Caption boundaries follow actual synthesized phrases in audio mode; "
                      "they are not verified word-by-word.",
