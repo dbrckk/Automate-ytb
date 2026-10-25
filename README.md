@@ -2,6 +2,8 @@
 
 Première version fonctionnelle inspirée des **étapes** de la démonstration vidéo : étudier une niche, définir un concept, écrire une narration, composer des scènes, produire une voix, assembler une vidéo, créer des miniatures et préparer sa diffusion. Ce dépôt **ne copie pas** les vidéos ni les personnages de Murph.
 
+Voir aussi [les décors originaux guidés par le scénario](docs/STORY_LANDSCAPES.md), avec paysages persistants en mode cartoon.
+
 ## Ce que fait la V1
 
 - **Recherche de niches** : analyse en lecture seule des résultats de l’API officielle YouTube, avec vues, ancienneté et abonnés visibles. Ces indicateurs ne prouvent ni les revenus ni la saturation réelle d’une niche.
