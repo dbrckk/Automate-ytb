@@ -341,7 +341,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        duration: float, width: int, height: int,
                        fps: int, destination: Path,
                        direction: dict | None = None,
-                       held_prop: str | None = None) -> None:
+                       held_prop: str | None = None,
+                       caption_segments: list[dict] | None = None,
+                       scene_start_ms: int = 0) -> None:
     if not 0 < duration <= 3600 or fps not in (24,30):
         raise ValueError("Unsupported animation parameters")
     if (width,height) not in ((1280,720),(1920,1080)):
@@ -358,7 +360,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
         settings = dict(narration=narration, duration=duration,
-                        fallback_action=action)
+                        fallback_action=action,
+                        caption_segments=caption_segments,
+                        scene_start_ms=scene_start_ms)
         body_x, body_y = choreograph(
             **settings, pose=lambda a: body_position(a, x=204, y=186))
         (left_y,) = choreograph(
