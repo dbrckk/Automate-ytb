@@ -334,3 +334,22 @@ et la bouche de la chouette en dialogue.
 Le rendu reste une **animation 2D stylisée**, pas de l'animation osseuse
 3D ou une synchronisation labiale vérifiée. Écouter et revoir les
 résultats avant toute publication.
+
+### Pattes articulées indépendantes (renard, lapin, chat)
+
+Les mammifères originaux en mode `cartoon` possèdent maintenant **deux
+calques de pattes indépendants** au lieu de pieds peints dans le torse.
+Le rendu FFmpeg applique une trajectoire propre à chaque patte : les
+appuis gauche/droite s'alternent pendant la marche et la course ; les
+pattes se regroupent pendant un saut. Les scènes de repos limitent
+fortement le déplacement des pieds.
+
+Les pattes, les yeux, la bouche, la queue et le corps restent des
+illustrations locales originales dessinées avec Pillow et animées via
+FFmpeg. Les décors, transitions, météo, voix et SRT/VTT sont inchangés.
+Les empreintes d'approbation et le cache de clips évoluent afin que les
+anciennes poses ne soient pas utilisées pour une nouvelle animation.
+
+Ces trajectoires sont encore de la **cinématique 2D procédurale**, pas
+de la capture de mouvements, des articulations 3D, un IK réaliste ou
+une simulation physique du sol. Contrôler le MP4 avant publication.

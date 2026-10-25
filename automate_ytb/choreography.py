@@ -74,3 +74,44 @@ def mouth_expression(action: str) -> str:
     if action not in ACTIONS or action not in PROFILES:
         raise ValueError("Unknown mouth action")
     return MOUTH_ENABLE.get(action, "0")
+
+
+# Relative to the moving body's origin; each limb has its own trajectory.
+# The paired limbs intentionally use opposite phases only while walking or
+# running. Both tuck in the same direction in jumps and during flight.
+LEG_ANCHORS = {"left": 68, "right": 186}
+LEG_MOTION = {
+    "idle": (1, 1, 1.3),
+    "walk": (12, 11, 5.1),
+    "run": (21, 20, 10.2),
+    "jump": (7, 32, 2.2),
+    "fly": (4, 17, 5.3),
+    "talk": (1, 2, 2.0),
+    "surprise": (5, 21, 7.5),
+    "rest": (0, 0, 1.0),
+}
+
+
+def leg_position(action: str, *, side: str, body_x: int = 180,
+                 body_y: int = 184) -> tuple[str, str]:
+    """Independent x/y pose of a visible foot layer, relative to the body.
+
+    For locomotion, feet alternate out of phase. For jumping, both tuck
+    together. There is no user-provided filter expression or arbitrary
+    sprite placement; all numbers are reviewed constants.
+    """
+    if action not in ACTIONS or action not in LEG_MOTION:
+        raise ValueError("Unknown original animation action")
+    if side not in LEG_ANCHORS:
+        raise ValueError("Unknown articulated leg")
+    parent_x, parent_y = body_position(action, x=body_x, y=body_y)
+    reach, lift, frequency = LEG_MOTION[action]
+    phase = "3.141593" if side == "right" and action in {"walk", "run"} else "0"
+    x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
+    if action == "jump":
+        y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}))"
+    elif action == "fly":
+        y = f"({parent_y})+335+{lift}*sin(t*{frequency}+{phase})"
+    else:
+        y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}+{phase}))"
+    return x, y
