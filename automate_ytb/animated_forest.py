@@ -201,7 +201,11 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
-    create_prop_layers(folder, narration=narration, actor=kind)
+    cue = create_prop_layers(folder, narration=narration, actor=kind)
+    if cue:
+        outputs["prop"] = folder / "prop.png"
+        if cue["action"] == "pickup":
+            outputs["reach"] = folder / "reach.png"
     return outputs
 
 
