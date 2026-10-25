@@ -12,7 +12,7 @@ from typing import TypeVar
 
 from .director import ACTIONS, direction_for
 
-TIMELINE_VERSION = "script-action-phases-v1"
+TIMELINE_VERSION = "speech-anchored-action-phases-v2"
 # A conservative, short easing around the boundary avoids teleporting the rig.
 BLEND_SECONDS = 0.24
 MIN_PHASE_SECONDS = 0.55
@@ -26,8 +26,67 @@ _SEPARATORS = re.compile(
     flags=re.IGNORECASE)
 
 
+def _audio_anchored_phases(narration: str, *, duration: float,
+                           segments: list[dict], scene_start_ms: int
+                           ) -> list[dict] | None:
+    """Use *measured synthesis phrase starts*, never unmeasured word timings.
+
+    Conservative contract: each recognized gesture belongs to a different
+    synthesized caption phrase. A phrase containing two different gestures
+    is ambiguous, so we keep the legacy script estimate instead.
+    """
+    from .captions import caption_phrases
+    if not isinstance(segments, list) or not isinstance(scene_start_ms, int) \
+            or isinstance(scene_start_ms, bool) or scene_start_ms < 0:
+        raise ValueError("Invalid synthesized-phrase action metadata")
+    expected = caption_phrases(narration)
+    if len(segments) != len(expected):
+        raise ValueError("Audio cue count differs from the authored script")
+    previous = scene_start_ms
+    stop = scene_start_ms + round(duration * 1000)
+    gestures: list[dict] = []
+    for entry, original in zip(segments, expected):
+        if not isinstance(entry, dict):
+            raise ValueError("Invalid synthesized gesture cue")
+        start, end = entry.get("startMs"), entry.get("endMs")
+        if (not isinstance(start, int) or isinstance(start, bool)
+                or not isinstance(end, int) or isinstance(end, bool)
+                or start != previous or end <= start or end > stop):
+            raise ValueError("Invalid synthesized gesture timestamps")
+        if " ".join(str(entry.get("text", "")).split()) != original:
+            raise ValueError("Synthesized gesture text differs from narration")
+        previous = end
+        # Multiple verbs within the *same* recorded phrase have no measured
+        # internal boundary; they must never receive fake audio alignment.
+        sub_actions = [
+            direction_for(part)["action"]
+            for part in _SEPARATORS.split(original) if part.strip()
+        ]
+        distinct = {a for a in sub_actions if a != "idle"}
+        if len(distinct) > 1:
+            return None
+        action = next(iter(distinct), "idle")
+        if action == "idle":
+            continue
+        if gestures and gestures[-1]["action"] == action:
+            continue
+        gestures.append({"action": action,
+                         "start": round((start - scene_start_ms)/1000, 4)})
+    if previous != stop:
+        raise ValueError("Synthesized gesture cues do not reach the scene end")
+    if not 2 <= len(gestures) <= MAX_PHASES or gestures[0]["start"] != 0:
+        return None
+    boundaries = [p["start"] for p in gestures] + [float(duration)]
+    if any(b-a < MIN_PHASE_SECONDS for a, b in zip(boundaries, boundaries[1:])):
+        return None
+    return [{"action": phase["action"], "start": boundaries[i],
+             "end": boundaries[i+1]} for i, phase in enumerate(gestures)]
+
+
 def action_phases(narration: str, *, duration: float,
-                  fallback_action: str) -> list[dict]:
+                  fallback_action: str,
+                  caption_segments: list[dict] | None = None,
+                  scene_start_ms: int = 0) -> list[dict]:
     """Return approximate visual cue intervals, not word-synchronized times."""
     if not isinstance(narration, str) or len(narration) > 150_000:
         raise ValueError("Narration must be bounded original text")
@@ -35,6 +94,12 @@ def action_phases(narration: str, *, duration: float,
         raise ValueError("Invalid original scene duration")
     if fallback_action not in ACTIONS:
         raise ValueError("Unsupported fallback action")
+    if caption_segments is not None:
+        from_audio = _audio_anchored_phases(
+            narration, duration=duration, segments=caption_segments,
+            scene_start_ms=scene_start_ms)
+        if from_audio is not None:
+            return from_audio
     clauses = [part.strip() for part in _SEPARATORS.split(narration) if part.strip()]
     if len(clauses) < 2:
         return [{"action": fallback_action, "start": 0.0, "end": float(duration)}]
@@ -88,7 +153,9 @@ def _weight(boundary: float) -> str:
 def choreograph(narration: str, *, duration: float,
                 fallback_action: str,
                 pose: Callable[[str], tuple[str, ...]],
-                blend: bool = True) -> tuple[str, ...]:
+                blend: bool = True,
+                caption_segments: list[dict] | None = None,
+                scene_start_ms: int = 0) -> tuple[str, ...]:
     """Blend distinct authored poses within a fixed scene video interval.
 
     The adapter produces expressions only from reviewed action enum values.
@@ -96,7 +163,8 @@ def choreograph(narration: str, *, duration: float,
     instead switches precisely at the nearest phase boundary.
     """
     phases = action_phases(
-        narration, duration=duration, fallback_action=fallback_action)
+        narration, duration=duration, fallback_action=fallback_action,
+        caption_segments=caption_segments, scene_start_ms=scene_start_ms)
     if len(phases) == 1:
         return pose(phases[0]["action"])
     initial = pose(phases[0]["action"])
@@ -122,11 +190,19 @@ def choreograph(narration: str, *, duration: float,
     return combined
 
 
-def timeline_report(narration: str, duration: float, fallback_action: str) -> dict:
-    phases = action_phases(narration, duration=duration,
-                           fallback_action=fallback_action)
+def timeline_report(narration: str, duration: float, fallback_action: str,
+                    *, caption_segments: list[dict] | None = None,
+                    scene_start_ms: int = 0) -> dict:
+    measured = (_audio_anchored_phases(
+        narration, duration=duration, segments=caption_segments,
+        scene_start_ms=scene_start_ms)
+        if caption_segments is not None else None)
+    phases = measured if measured is not None else action_phases(
+        narration, duration=duration, fallback_action=fallback_action)
     return {"version": TIMELINE_VERSION,
-            "phases": phases,
-            "phaseCount": len(phases),
-            "timingMethod": "relative-script-clause-length-not-audio-aligned",
+            "phases": phases, "phaseCount": len(phases),
+            "timingMethod": ("measured-synthesized-phrase-onsets-not-word-aligned"
+                             if measured is not None else
+                             "relative-script-clause-length-not-audio-aligned"),
+            "audioAnchored": measured is not None,
             "audioTimelineShiftMs": 0}
