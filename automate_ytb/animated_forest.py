@@ -19,10 +19,10 @@ from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
-from .choreography import body_position, secondary_position, mouth_expression
+from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 
-FOREST_RIG_VERSION = "forest-animals-v3-expressive-actions"
+FOREST_RIG_VERSION = "forest-animals-v4-articulated-legs"
 
 
 def character_kind(character: str) -> str | None:
@@ -63,13 +63,8 @@ def _sprite_body(path: Path, *, kind: str, blink: bool, emotion: str):
         palette[name] for name in ("fur", "dark", "belly", "ear"))
     image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
-    # Feet reach the visual ground. Rounded limbs give the characters an
-    # unmistakably non-owl mammal silhouette.
-    for x in (119, 237):
-        d.rounded_rectangle((x - 30, 348, x + 33, 419), radius=23,
-                            fill=dark, outline=INK, width=4)
-        d.ellipse((x - 36, 395, x + 43, 430), fill=fur,
-                  outline=INK, width=4)
+    # The legs are now independent articulated sprites. Keeping them out of
+    # the torso image allows each foot to lift and stride on its own.
     d.ellipse((61, 160, 289, 385), fill=fur, outline=INK, width=6)
     d.ellipse((105, 229, 243, 364), fill=belly)
     for x, tilt in ((64, -1), (267, 1)):
@@ -124,6 +119,27 @@ def _sprite_body(path: Path, *, kind: str, blink: bool, emotion: str):
     image.save(path, "PNG")
 
 
+def _sprite_leg(path: Path, *, kind: str, side: str):
+    """A distinct lower limb that can stride without moving the whole torso."""
+    if kind not in COLORS or side not in ("left", "right"):
+        raise ValueError("Unsupported animal leg")
+    image = Image.new("RGBA", (100, 125), (0, 0, 0, 0))
+    d = ImageDraw.Draw(image)
+    fur = COLORS[kind]["fur"]
+    dark = COLORS[kind]["dark"]
+    d.rounded_rectangle((20, 6, 79, 98), radius=25,
+                        fill=dark, outline=INK, width=4)
+    d.rounded_rectangle((27, 13, 72, 94), radius=22, fill=fur)
+    # Clear separate paw/foot silhouette and toes; facing direction is
+    # slightly asymmetric to keep right and left legs visually distinct.
+    d.ellipse((8, 80, 95, 119), fill=fur, outline=INK, width=4)
+    for offset in (33, 55, 73):
+        toe = offset + (3 if side == "right" else -3)
+        d.line((toe, 107, toe - 3, 116), fill=dark, width=3)
+    d.arc((15, 83, 89, 117), 186, 351, fill=(249, 220, 181, 255), width=2)
+    image.save(path, "PNG")
+
+
 def _sprite_mouth(path: Path, *, kind: str):
     """A small mouth-only pose that can switch without resetting the blink."""
     if kind not in COLORS:
@@ -173,7 +189,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "body", "blink", "mouth", "effects")}
+               for name in ("background", "tail", "body", "blink", "mouth", "left_leg", "right_leg", "effects")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction)
@@ -182,6 +198,8 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_body(outputs["body"], kind=kind, blink=False, emotion=emotion)
     _sprite_body(outputs["blink"], kind=kind, blink=True, emotion=emotion)
     _sprite_mouth(outputs["mouth"], kind=kind)
+    _sprite_leg(outputs["left_leg"], kind=kind, side="left")
+    _sprite_leg(outputs["right_leg"], kind=kind, side="right")
     return outputs
 
 
@@ -197,7 +215,9 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                                direction=direction)
         with Image.open(layers["background"]) as background:
             combined = background.convert("RGBA")
-        for name, pos in (("tail", (115, 360)), ("body", (180, 184))):
+        for name, pos in (("tail", (115, 360)), ("body", (180, 184)),
+                          ("left_leg", (248, 519)),
+                          ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -222,6 +242,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                                direction=direction)
         action = direction["action"] if direction else "idle"
         body_x, body_y = body_position(action, x=180, y=184)
+        left_x, left_y = leg_position(action, side="left")
+        right_x, right_y = leg_position(action, side="right")
         tail_y = secondary_position(action, base=357, side="tail")
         mouth = mouth_expression(action)
         fps_graph = (
@@ -234,10 +256,15 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[c];"
             f"[c][4:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
-            f"enable='{mouth}':eval=frame:format=auto[d]"
+            f"enable='{mouth}':eval=frame:format=auto[d];"
+            f"[d][5:v]overlay=x='{left_x}':"
+            f"y='{left_y}':eval=frame:format=auto[e];"
+            f"[e][6:v]overlay=x='{right_x}':"
+            f"y='{right_y}':eval=frame:format=auto[f]"
         )
-        final = "d"
-        names = ["background", "tail", "body", "blink", "mouth"]
+        final = "f"
+        names = ["background", "tail", "body", "blink", "mouth",
+                 "left_leg", "right_leg"]
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
@@ -246,9 +273,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             speed_fx = {"rain": 240, "storm": 310, "wind": 55,
                         "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             fps_graph += (
-                f";[d][5:v]overlay=x=0:"
-                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[e]")
-            final = "e"
+                f";[f][7:v]overlay=x=0:"
+                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[g]")
+            final = "g"
             names.append("effects")
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
