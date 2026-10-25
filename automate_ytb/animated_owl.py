@@ -17,11 +17,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
+from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
 
 
-RIG_VERSION = "owl-rig-v7-carried-scene-props"
+RIG_VERSION = "owl-rig-v8-action-phases"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -344,10 +345,19 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         # Independently animated wings and expression layers; action cues are
         # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
-        body_x, body_y = body_position(action, x=204, y=186)
-        left_y = secondary_position(action, base=348, side="left")
-        right_y = secondary_position(action, base=350, side="right")
-        mouth = mouth_expression(action)
+        settings = dict(narration=narration, duration=duration,
+                        fallback_action=action)
+        body_x, body_y = choreograph(
+            **settings, pose=lambda a: body_position(a, x=204, y=186))
+        (left_y,) = choreograph(
+            **settings, pose=lambda a: (
+                secondary_position(a, base=348, side="left"),))
+        (right_y,) = choreograph(
+            **settings, pose=lambda a: (
+                secondary_position(a, base=350, side="right"),))
+        (mouth,) = choreograph(
+            **settings, pose=lambda a: (mouth_expression(a),),
+            blend=False)
         f=(
           "[0:v][1:v]overlay=x='144+7*sin(t*1.7)':"
           f"y='{left_y}':eval=frame:format=auto[a];"
