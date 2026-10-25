@@ -14,7 +14,7 @@ CAMERA_VERSION = "cinematic-camera-v1"
 PROFILES = {
     "wide": (1280, 720, 0, 0, 0, 0),
     "medium": (1104, 622, 62, 42, 13, 8),
-    "closeup": (880, 496, 12, 112, 15, 11),
+    "closeup": (880, 496, 20, 112, 15, 11),
     "macro": (704, 396, 22, 140, 12, 10),
     "low": (992, 558, 20, 144, 12, 8),
     "shoulder": (1056, 594, 148, 62, 12, 9),
@@ -41,7 +41,7 @@ def framing_filter(shot: str, *, width: int, height: int, fps: int,
             0 <= y-dy <= y+dy <= 720-ch):
         raise ValueError("Unsafe cinematic crop profile")
     if shot == "wide":
-        return f"format=yuv420p,scale={width}:{height}:flags=lanczos"
+        return f"scale={width}:{height}:flags=lanczos,format=yuv420p"
     # Pan slowly within the safe frame. Values are not script-supplied.
     phase = "0.0" if scene_index % 2 else "1.2"
     cx = f"{x}+{dx}*sin(n/{fps}*0.77+{phase})"
