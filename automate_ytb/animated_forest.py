@@ -21,8 +21,9 @@ from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
+from .scene_props import create_layers as create_prop_layers, select_interaction, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v4-articulated-legs"
+FOREST_RIG_VERSION = "forest-animals-v5-scripted-props"
 
 
 def character_kind(character: str) -> str | None:
@@ -200,6 +201,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
+    create_prop_layers(folder, narration=narration, actor=kind)
     return outputs
 
 
@@ -220,6 +222,9 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
+        if select_interaction(narration):
+            with Image.open(layers["background"].parent / "prop.png") as prop:
+                combined.alpha_composite(prop.convert("RGBA"), (652, 474))
         destination.parent.mkdir(parents=True, exist_ok=True)
         combined.convert("RGB").save(destination, "PNG", optimize=True)
 
@@ -265,6 +270,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         final = "f"
         names = ["background", "tail", "body", "blink", "mouth",
                  "left_leg", "right_leg"]
+        fps_graph, final, names = append_overlays(
+            graph=fps_graph, label=final, names=names,
+            narration=narration, duration=duration,
+            body_x=body_x, body_y=body_y)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
@@ -272,10 +281,12 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                 weather=direction["weather"])
             speed_fx = {"rain": 240, "storm": 310, "wind": 55,
                         "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
+            source_index = len(names)
+            next_label = chr(ord(final) + 1)
             fps_graph += (
-                f";[f][7:v]overlay=x=0:"
-                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[g]")
-            final = "g"
+                f";[{final}][{source_index}:v]overlay=x=0:"
+                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[{next_label}]")
+            final = next_label
             names.append("effects")
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
