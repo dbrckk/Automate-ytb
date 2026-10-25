@@ -19,11 +19,12 @@ from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
+from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v6-carried-scene-props"
+FOREST_RIG_VERSION = "forest-animals-v7-action-phases"
 
 
 def character_kind(character: str) -> str | None:
@@ -256,11 +257,22 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                                scene_count=scene_count, style=style,
                                direction=direction, held_prop=held_prop)
         action = direction["action"] if direction else "idle"
-        body_x, body_y = body_position(action, x=180, y=184)
-        left_x, left_y = leg_position(action, side="left")
-        right_x, right_y = leg_position(action, side="right")
-        tail_y = secondary_position(action, base=357, side="tail")
-        mouth = mouth_expression(action)
+        # Within-scene actions follow the authored order (walk, then jump,
+        # then talk). Short scenes or single-action lines remain unchanged.
+        settings = dict(narration=narration, duration=duration,
+                        fallback_action=action)
+        body_x, body_y = choreograph(
+            **settings, pose=lambda a: body_position(a, x=180, y=184))
+        left_x, left_y = choreograph(
+            **settings, pose=lambda a: leg_position(a, side="left"))
+        right_x, right_y = choreograph(
+            **settings, pose=lambda a: leg_position(a, side="right"))
+        (tail_y,) = choreograph(
+            **settings, pose=lambda a: (
+                secondary_position(a, base=357, side="tail"),))
+        (mouth,) = choreograph(
+            **settings, pose=lambda a: (mouth_expression(a),),
+            blend=False)
         fps_graph = (
             "[0:v][1:v]overlay=x='113+8*sin(t*2.4)':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
