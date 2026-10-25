@@ -19,12 +19,13 @@ from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
+from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v8-prop-aware-eye-pose"
+FOREST_RIG_VERSION = "forest-animals-v9-progressive-gaze-speech-envelope"
 
 
 def character_kind(character: str) -> str | None:
@@ -201,13 +202,15 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "body", "blink", "mouth", "left_leg", "right_leg", "effects")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction)
     _sprite_tail(outputs["tail"], kind=kind)
     emotion = direction["emotion"] if direction else "neutral"
     gaze = gaze_target(narration, held_prop=held_prop)
+    _sprite_body(outputs["neutral"], kind=kind, blink=False,
+                 emotion=emotion, gaze="forward")
     _sprite_body(outputs["body"], kind=kind, blink=False,
                  emotion=emotion, gaze=gaze)
     _sprite_body(outputs["blink"], kind=kind, blink=True,
@@ -257,7 +260,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                        destination: Path, direction: dict | None = None,
                        held_prop: str | None = None,
                        caption_segments: list[dict] | None = None,
-                       scene_start_ms: int = 0):
+                       scene_start_ms: int = 0,
+                       mouth_intervals: list[tuple[float, float]] | None = None):
     if not 0 < duration <= 3600 or fps not in (24, 30):
         raise ValueError("Invalid forest animation duration or FPS")
     if (width, height) not in ((1280, 720), (1920, 1080)):
@@ -289,24 +293,35 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
+        gate = mouth_gate_expression(mouth_intervals)
+        if gate is not None:
+            # Never display speech-mouth animation during digital silence.
+            # The separate authored action cue still must be "talk".
+            mouth = f"({mouth})*({gate})"
+        # A transparent fade affects only the pupil pose: the underlying
+        # original sprite is identical in every other detail. Closed-eye
+        # poses are composited last and remain intact throughout the gaze.
         fps_graph = (
             "[0:v][1:v]overlay=x='113+8*sin(t*2.4)':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
             f"[a][2:v]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[b];"
-            f"[b][3:v]overlay=x='{body_x}':"
-            f"y='{body_y}':"
-            "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[c];"
+            "[3:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
+            f"[b][look]overlay=x='{body_x}':"
+            f"y='{body_y}':eval=frame:format=auto[c];"
             f"[c][4:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
-            f"enable='{mouth}':eval=frame:format=auto[d];"
-            f"[d][5:v]overlay=x='{left_x}':"
-            f"y='{left_y}':eval=frame:format=auto[e];"
-            f"[e][6:v]overlay=x='{right_x}':"
-            f"y='{right_y}':eval=frame:format=auto[f]"
+            "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[d];"
+            f"[d][5:v]overlay=x='{body_x}':"
+            f"y='{body_y}':"
+            f"enable='{mouth}':eval=frame:format=auto[e];"
+            f"[e][6:v]overlay=x='{left_x}':"
+            f"y='{left_y}':eval=frame:format=auto[f];"
+            f"[f][7:v]overlay=x='{right_x}':"
+            f"y='{right_y}':eval=frame:format=auto[g]"
         )
-        final = "f"
-        names = ["background", "tail", "body", "blink", "mouth",
+        final = "g"
+        names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg"]
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,

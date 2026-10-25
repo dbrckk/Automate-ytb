@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v12-actual-phrase-gesture-timing"
+VERSION = "render-v13-animated-gaze-voice-activity"
 
 
 def _sha(path: Path) -> str:
@@ -261,7 +261,16 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     cache = output / ".clip-cache"
     cache.mkdir(exist_ok=True)
     from .scene_props import carried_props_for_scenes, gaze_target
+    from .voice_activity import activity_intervals, MOUTH_VERSION
     carried_by_scene = carried_props_for_scenes(data["scenes"])
+    # An external MP3 or stereo audio track remains supported; only supported
+    # mono 16-bit WAV narrations enable exact voice-activity mouth cues.
+    voice_activity_by_scene = [
+        activity_intervals(
+            audio, scene_start_ms=scene["startMs"],
+            scene_end_ms=scene["endMs"])
+        if audio is not None else None for scene in scenes
+    ]
     clips = []
     for scene_index, scene in enumerate(scenes):
         # Posters remain bound to the narration and character-specific rig.
@@ -309,6 +318,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "synthesizedGestureCues": (
                 scene.get("captionSegments")
                 if uses_motion_rig and caption_timing == "audio" else None),
+            "voiceActivityVersion": MOUTH_VERSION if uses_motion_rig else None,
+            "voiceActivity": (voice_activity_by_scene[scene_index]
+                              if uses_motion_rig else None),
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
@@ -335,6 +347,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         caption_segments=(scene.get("captionSegments")
                                           if caption_timing == "audio" else None),
                         scene_start_ms=scene["startMs"],
+                        mouth_intervals=voice_activity_by_scene[scene_index],
                     )
                 elif uses_forest_rig:
                     from .animated_forest import render_motion_clip as render_forest_clip
@@ -350,6 +363,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         caption_segments=(scene.get("captionSegments")
                                           if caption_timing == "audio" else None),
                         scene_start_ms=scene["startMs"],
+                        mouth_intervals=voice_activity_by_scene[scene_index],
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -484,6 +498,15 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                 } and scene.get("renderStyle") == "cartoon"
             ],
             "audioTimelineShiftMs": 0,
+        },
+        "speechMouth": {
+            "version": MOUTH_VERSION,
+            "method": "mono-pcm-80ms-voice-activity-not-phonetic",
+            "audioTimelineShiftMs": 0,
+            "analyzedScenes": sum(x is not None for x in voice_activity_by_scene),
+            "activeIntervals": sum(len(x) for x in voice_activity_by_scene
+                                   if x is not None),
+            "fallbackScenes": sum(x is None for x in voice_activity_by_scene),
         },
         "actionTimeline": {
             "version": "script-action-phases-v1",

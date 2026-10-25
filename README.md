@@ -474,3 +474,33 @@ sont concernées. Les voix, SRT/VTT, ambiances, transitions, durées et
 restrictions de publication restent inchangés. Pour activer ce mode
 sur Android, sélectionner `Caption timing: audio` et une voix de
 synthèse disponible.
+
+### Regard progressif et animation de bouche sensible à la voix
+
+En `cartoon`, les personnages originaux (chouette, renard, lapin et
+chat) passent maintenant **progressivement** du regard neutre au regard
+dirigé vers un objet observé ou tenu. Les deux poses originales sont
+superposées avec un fondu alpha de 420 ms après le début de la scène.
+Les clignements restent prioritaires ; les personnages sans objet
+conservent le regard neutre. La pose utilisée dans l'illustration
+approuvée reste la pose finale du mouvement.
+
+Quand une voix WAV mono PCM 16 bits accompagne la vidéo, le moteur
+analyse localement son énergie par fenêtres de **80 ms**. Dans les
+scènes dont le scénario indique explicitement que le personnage parle,
+les gestes de bouche se ferment désormais pendant les silences et ne
+s'ouvrent qu'aux instants où la piste vocale présente une activité.
+La voix et les sous-titres restent inchangés : seule l'animation
+réagit à l'audio existant. Les pistes audio non prises en charge
+et les vidéos sans voix conservent l'ancienne animation rythmique.
+
+Le rapport `render-report.json` inclut `speechMouth` et ses
+statistiques d'analyse. Le cache MP4 prend en compte les intervalles
+audio détectés ; les empreintes des illustrations ont changé avec le
+nouveau rendu du regard.
+
+**Limites :** les yeux effectuent un déplacement 2D interpolé, pas un
+suivi oculaire 3D. Les mouvements de bouche sont déclenchés par
+l'énergie sonore ; ce n'est ni du lip-sync aux phonèmes ni une analyse
+de l'identité du locuteur. Une voix off ne devient pas automatiquement
+un personnage parlant : le scénario doit indiquer la parole.
