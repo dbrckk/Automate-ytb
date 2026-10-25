@@ -313,7 +313,11 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     _body(outputs["blink"],blink=True,
           emotion=direction["emotion"] if direction else "neutral")
     _mouth(outputs["mouth"])
-    create_prop_layers(folder, narration=narration, actor="owl")
+    cue = create_prop_layers(folder, narration=narration, actor="owl")
+    if cue:
+        outputs["prop"] = folder / "prop.png"
+        if cue["action"] == "pickup":
+            outputs["reach"] = folder / "reach.png"
     return outputs
 
 
