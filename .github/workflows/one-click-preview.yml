@@ -145,6 +145,9 @@ jobs:
             --soundtrack "$YT_SOUNDTRACK" \
             --caption-timing "$YT_CAPTION_TIMING" \
             --transition "$YT_TRANSITION"
+      - name: Package Kokoro voice attribution for editorial review
+        if: ${{ inputs.voice == 'kokoro' }}
+        run: cp docs/VOICE_CREDITS.md build/video/VOICE_CREDITS.md
       - name: Quality gate on real exported video, audio and subtitles
         env:
           EXPECT_VOICE: ${{ inputs.voice }}
@@ -198,6 +201,7 @@ jobs:
             build/video/preview.mp4
             build/video/narration.wav
             build/video/voice-sample.mp3
+            build/video/VOICE_CREDITS.md
             build/video/background-original.wav
             build/video/draft-captions.srt
             build/video/draft-captions.vtt
