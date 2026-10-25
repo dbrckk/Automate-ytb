@@ -315,3 +315,17 @@ pendant les sauts. Les mouvements sont sélectionnés depuis le
 scénario. Aucune option payante ou manipulation Android n'est requise.
 Ils demeurent des mouvements procéduraux stylisés 2D et ne remplacent
 pas la relecture de `preview.mp4`.
+
+### Objets simples et gestes visuels automatiques
+
+Dans les prévisualisations `cartoon`, un personnage original peut
+désormais inspecter, ramasser ou sauter par-dessus certains objets si
+le scénario mentionne **explicitement** une action et une pomme, une
+fleur, un livre ou une pierre. Les illustrations sont gratuites et
+produites localement. Aucun mot n'est ajouté à la narration.
+
+Pour essayer depuis Android, indiquer par exemple dans le scénario :
+« Le renard ramasse une pomme rouge. » ou « Le lapin saute par-dessus
+une pierre. ». Le fichier `preview.mp4` permet d'examiner les gestes
+en mouvement. Ce sont des animations 2D procédurales et non une
+simulation physique du ramassage.

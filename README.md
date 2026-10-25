@@ -353,3 +353,27 @@ anciennes poses ne soient pas utilisées pour une nouvelle animation.
 Ces trajectoires sont encore de la **cinématique 2D procédurale**, pas
 de la capture de mouvements, des articulations 3D, un IK réaliste ou
 une simulation physique du sol. Contrôler le MP4 avant publication.
+
+### Interactions d'objets guidées par le scénario (illustrations originales)
+
+Lorsque **le scénario mentionne explicitement** un objet pris en charge
+(*pomme*, *fleur*, *livre* ou *pierre*) et une action pertinente, les scènes
+`cartoon` de la chouette, du renard, du lapin et du chat peuvent maintenant
+faire apparaître l'objet dans le décor. Trois interactions sont possibles :
+**inspection** (objet animé légèrement sur place), **ramassage** (geste de
+patte/aile et déplacement de l'objet vers le personnage) et **obstacle**
+(pierre restant au sol lorsque le personnage saute).
+
+L'analyse s'effectue uniquement dans le texte narratif original, avec
+un vocabulaire français/anglais limité. Elle n'invente pas d'objets absents
+du récit ; une simple mention sans action ne déclenche pas de mise en scène.
+Tous les PNG sont dessinés localement par Pillow, puis intégrés à la
+vidéo réelle par des calques FFmpeg. Les poses, décors, météo, voix,
+sous-titres et fondus restent compatibles. Les hash d'approbation et le
+cache MP4 changent avec cette révision.
+
+**Limites :** il s'agit de gestes stylisés en 2D, pas de saisie réaliste
+à cinématique inverse ni de suivi du regard. Les objets ne sont pas
+persistants entre plusieurs scènes ; la détection de mots-clés peut
+manquer certains synonymes ou gestes. Toute publication requiert
+une vérification visuelle et éditoriale.
