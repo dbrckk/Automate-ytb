@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-PROP_VERSION = "scene-props-v1"
+PROP_VERSION = "scene-props-v2-continuity"
 
 NOUNS = (
     ("apple", r"\b(pomme\w*|apple\w*)\b"),
@@ -52,6 +52,63 @@ def select_interaction(narration: str) -> dict[str, str] | None:
     else:
         return None
     return {"prop": name, "action": action, "version": PROP_VERSION}
+
+
+# Deliberately require both a release verb and an explicit noun: the script
+# must actually say that the character has put down/used the carried object.
+RELEASE = re.compile(
+    r"\b(depose\w*|pose\w*|laisse\w*|abandonne\w*|jette\w*|mange\w*|"
+    r"eat\w*|eaten|put\w*|drop\w*|discard\w*|leave\w*|left|release\w*)\b")
+
+
+def _normalized(text: str) -> str:
+    plain = unicodedata.normalize("NFKD", text.casefold())
+    return "".join(c for c in plain if not unicodedata.combining(c))
+
+
+def carried_props_for_scenes(scenes: list[dict]) -> list[str | None]:
+    """Object carried *during* each scene, determined solely by prior writing.
+
+    A pickup becomes visibly carried in the *next* scene. A release that
+    explicitly names the held object removes it immediately. Inspecting an
+    unrelated object temporarily foregrounds that object, but does not
+    discard the existing inventory. Only one object is tracked.
+    """
+    if not isinstance(scenes, list):
+        raise ValueError("Expected ordered scene list")
+    held: str | None = None
+    states = []
+    for scene in scenes:
+        if not isinstance(scene, dict) or not isinstance(scene.get("narration"), str):
+            raise ValueError("Every scene must have authored narration")
+        plain = _normalized(scene["narration"])
+        action = select_interaction(scene["narration"])
+        if held and RELEASE.search(plain):
+            pattern = dict(NOUNS)[held]
+            if re.search(pattern, plain):
+                held = None
+        # The new pickup animates its own stage prop. A different subject
+        # being inspected gets the visual focus, without losing inventory.
+        visible = held if (action is None or (
+            action["prop"] == held and action["action"] == "inspect")) else None
+        states.append(visible)
+        if action and action["action"] == "pickup":
+            held = action["prop"]
+    return states
+
+
+def cue_for_scene(narration: str, *, held_prop: str | None = None
+                  ) -> dict[str, str] | None:
+    if held_prop is not None and held_prop not in {"apple", "flower", "book"}:
+        raise ValueError("Unsupported carried scene object")
+    cue = select_interaction(narration)
+    # A carried object can be contemplated without teleporting back to the
+    # ground. Current pickups and newly inspected props have precedence.
+    if held_prop is not None and (cue is None or
+            (cue["prop"] == held_prop and cue["action"] == "inspect")):
+        return {"prop": held_prop, "action": "carry",
+                "version": PROP_VERSION}
+    return cue
 
 
 def draw_prop(path: Path, *, kind: str) -> None:
@@ -120,8 +177,8 @@ def draw_reach(path: Path, *, actor: str) -> None:
 
 
 def create_layers(folder: Path, *, narration: str,
-                  actor: str) -> dict | None:
-    interaction = select_interaction(narration)
+                  actor: str, held_prop: str | None = None) -> dict | None:
+    interaction = cue_for_scene(narration, held_prop=held_prop)
     if interaction is None:
         return None
     draw_prop(folder / "prop.png", kind=interaction["prop"])
@@ -132,13 +189,14 @@ def create_layers(folder: Path, *, narration: str,
 
 def append_overlays(*, graph: str, label: str, names: list[str],
                     narration: str, duration: float,
-                    body_x: str, body_y: str) -> tuple[str, str, list[str]]:
+                    body_x: str, body_y: str,
+                    held_prop: str | None = None) -> tuple[str, str, list[str]]:
     """Append trusted overlays *before* weather and camera transforms.
 
     Exactly one extra image for observing/jumping and two for pickup.
     No audio, scene durations or author-edited narration are altered.
     """
-    cue = select_interaction(narration)
+    cue = cue_for_scene(narration, held_prop=held_prop)
     if cue is None:
         return graph, label, names
     if not 0 < duration <= 3600:
@@ -167,6 +225,9 @@ def append_overlays(*, graph: str, label: str, names: list[str],
                   f"y='{reach_y}':eval=frame:format=auto[{next_label}]")
         label = next_label
         names.append("reach")
+    elif cue["action"] == "carry":
+        prop_x = f"({body_x})+301"
+        prop_y = f"({body_y})+253"
     else:
         prop_x = "652+4*sin(t*1.3)" if cue["action"] == "inspect" else "652"
         prop_y = "474+3*sin(t*2.0)" if cue["action"] == "inspect" else "500"
