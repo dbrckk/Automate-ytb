@@ -35,6 +35,8 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
         raise ValueError("Unsupported graphic style")
     data = production.load_plan(plan_path)
     scenes = data["scenes"][:limit]
+    from .scene_props import carried_props_for_scenes
+    carried_by_scene = carried_props_for_scenes(data["scenes"])
     if not scenes or (limit is not None and limit < 1):
         raise ValueError("Scene limit must be positive")
     already = {s["sceneId"]: s["status"] for s in production.audit(plan_path)["details"]}
@@ -50,7 +52,8 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
         brief_args = dict(
             topic=data["topic"], narration=scene["narration"],
             character=data["originalCharacterBible"], style=style,
-            scene_id=scene["id"], direction=scene.get("direction"))
+            scene_id=scene["id"], direction=scene.get("direction"),
+            held_prop=carried_by_scene[i-1])
         brief_sha = (forest_art_brief_sha256(kind=forest_kind, **brief_args)
                      if rig.startswith("original-forest-")
                      else art_brief_sha256(**brief_args))
@@ -71,14 +74,16 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                     topic=data["topic"], narration=scene["narration"],
                     scene_index=i, scene_count=len(data["scenes"]),
                     style=style, destination=image,
-                    direction=scene.get("direction"))
+                    direction=scene.get("direction"),
+                    held_prop=carried_by_scene[i-1])
             elif style == "cartoon" and forest_kind:
                 render_forest_poster(
                     kind=forest_kind,
                     topic=data["topic"], narration=scene["narration"],
                     scene_index=i, scene_count=len(data["scenes"]),
                     style=style, destination=image,
-                    direction=scene.get("direction"))
+                    direction=scene.get("direction"),
+                    held_prop=carried_by_scene[i-1])
             else:
                 render_art(data["topic"], scene["narration"], i, len(data["scenes"]),
                            style, image)
