@@ -587,3 +587,18 @@ ce qui peut rallonger fortement la première exécution ; `espeak` ou
 ne change pas sa personnalité et ne crée pas une voix masculine.
 Ces optimisations ne garantissent pas la qualité esthétique ni la
 prononciation. Voir [crédits et licences](docs/VOICE_CREDITS.md).
+
+### V2 — fluidité cinématique des plans animés
+
+Les plans originaux de la chouette, du renard, du lapin et du chat disposent
+désormais d'un mouvement caméra à accélération et décélération douces
+(**smoothstep**), avec une vitesse nulle au début et à la fin de chaque plan.
+Le mouvement alterne de sens entre les scènes successives pour limiter
+l'effet mécanique. Il reste borné par les cadrages autorisés et ne change ni
+la durée, ni les voix, ni les sous-titres ; le plan large conserve sa vue fixe.
+Tous les calculs sont intégrés au vrai rendu FFmpeg, et les anciens clips
+animés ne sont pas réutilisés.
+
+Cela améliore la **fluidité de cadrage**, mais ne remplace pas une caméra
+3D ou un système de parallaxe complet. Les personnages et décors restent
+des illustrations 2D originales.
