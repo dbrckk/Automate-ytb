@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v9-scripted-prop-continuity"
+VERSION = "render-v10-intrascene-action-phases"
 
 
 def _sha(path: Path) -> str:
@@ -352,6 +352,18 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             finally:
                 tmp.unlink(missing_ok=True)
         clips.append(clip)
+    # Action phases are visual-only cues: no audio/subtitle timeline changes.
+    from .action_timeline import timeline_report
+    action_timelines = [
+        dict(sceneId=s["id"], **timeline_report(
+            s["narration"], (s["endMs"] - s["startMs"])/1000,
+            s.get("direction", {}).get("action", "idle")))
+        for s in scenes
+        if s.get("motionRig") in {
+            "original-owl-v1", "original-forest-fox-v1",
+            "original-forest-rabbit-v1", "original-forest-cat-v1"
+        } and s.get("renderStyle") == "cartoon"
+    ]
     # Visual transitions do not trim, overlap or shift the storyboard timeline.
     # Narration, original music and SRT timecodes retain their planned starts.
     from .transitions import transition_clips
@@ -447,6 +459,12 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
         "transitions": transitions_report,
+        "actionTimeline": {
+            "version": "script-action-phases-v1",
+            "multiActionScenes": sum(t["phaseCount"] > 1 for t in action_timelines),
+            "scenes": action_timelines,
+            "audioTimelineShiftMs": 0,
+        },
         "propContinuity": {
             "version": "scene-props-v2-continuity",
             "carriedScenes": sum(1 for p in carried_by_scene[:len(scenes)]
