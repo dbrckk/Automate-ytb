@@ -123,13 +123,14 @@ class AnimatedOwlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "another style"):
             create_local_art(self.scene_plan, style="documentary", limit=1)
 
-    def test_non_owl_does_not_use_incorrect_owl_animation(self):
+    def test_non_owl_uses_dedicated_forest_rig_not_owl(self):
         data = load_plan(self.scene_plan)
         data["originalCharacterBible"] = "Un renard roux original et souriant"
         self.scene_plan.write_text(json.dumps(data), encoding="utf-8")
         result = create_local_art(self.scene_plan, style="cartoon", limit=1)
-        self.assertEqual(result["characterRig"], "none")
-        self.assertNotIn("motionRig", load_plan(self.scene_plan)["scenes"][0])
+        self.assertEqual(result["characterRig"], "original-forest-fox-v1")
+        self.assertEqual(load_plan(self.scene_plan)["scenes"][0]["motionRig"],
+                         "original-forest-fox-v1")
 
 
 if __name__ == "__main__":
