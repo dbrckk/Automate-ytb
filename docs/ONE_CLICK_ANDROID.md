@@ -408,3 +408,20 @@ inspection manuelle directement sur ton téléphone.
 
 Ce contrôle est limité à un échantillonnage et ne dispense jamais
 d'écouter ni de visionner l'épisode avant publication.
+
+### Vérification des répétitions du scénario
+
+Après la génération, l'artefact GitHub contient
+`story-preflight.json` : il signale les scènes identiques, les
+passages voisins très similaires et les plans dont le débit narratif
+risque d'être inconfortable.
+
+`qa-summary.json` fait remonter ces avertissements sous
+`narrationExactRepeatCount`, `narrationNearRepeatNeighborCount`,
+`narrationPaceWarnings` et `editorialRevisionRecommended`.
+Un scénario répétitif peut quand même produire une vidéo **brouillon**,
+mais n'obtient jamais d'autorisation automatique de publication.
+
+L'outil fonctionne intégralement hors ligne, conserve strictement le
+texte fourni et ne valide pas la justesse des faits ou la cohérence
+réelle d'une histoire.
