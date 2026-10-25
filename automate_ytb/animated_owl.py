@@ -18,9 +18,10 @@ from PIL import Image, ImageDraw, ImageFont
 from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
 from .choreography import body_position, secondary_position, mouth_expression
+from .scene_props import create_layers as create_prop_layers, select_interaction, append_overlays
 
 
-RIG_VERSION = "owl-rig-v5-expressive-actions"
+RIG_VERSION = "owl-rig-v6-scripted-props"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -312,6 +313,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     _body(outputs["blink"],blink=True,
           emotion=direction["emotion"] if direction else "neutral")
     _mouth(outputs["mouth"])
+    create_prop_layers(folder, narration=narration, actor="owl")
     return outputs
 
 
@@ -353,15 +355,22 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"enable='{mouth}':eval=frame:format=auto[e]"
         )
         final_label = "e"
+        keys = ["background", "left", "right", "body", "blink", "mouth"]
+        f, final_label, keys = append_overlays(
+            graph=f, label=final_label, names=keys,
+            narration=narration, duration=duration,
+            body_x=body_x, body_y=body_y)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(layers["effects"], seed=f"{topic}|{narration}|{scene_index}",
                              weather=direction["weather"])
             speed = {"rain": 240, "storm": 310, "wind": 55,
                      "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
-            f += f";[e][6:v]overlay=x=0:y='-720+mod(t*{speed},720)':eval=frame:format=auto[f]"
-            final_label = "f"
-        # The final [e] overlay output is already labeled when no weather
-        # texture is needed. Do not add the same output label twice.
+            source_index = len(keys)
+            next_label = chr(ord(final_label) + 1)
+            f += (f";[{final_label}][{source_index}:v]overlay=x=0:"
+                  f"y='-720+mod(t*{speed},720)':eval=frame:format=auto[{next_label}]")
+            final_label = next_label
+            keys.append("effects")
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
@@ -369,9 +378,6 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             scene_index=scene_index)
         f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
-        keys = ["background","left","right","body","blink","mouth"]
-        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
-            keys.append("effects")
         for key in keys:
             args+=["-loop","1","-framerate",str(fps),"-i",str(layers[key])]
         args+=["-filter_complex",f,"-map","[out]","-frames:v",
@@ -401,6 +407,9 @@ def render_character_poster(*, topic: str, narration: str,
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
+        if select_interaction(narration):
+            with Image.open(layers["background"].parent / "prop.png") as prop:
+                composite.alpha_composite(prop.convert("RGBA"), (652, 474))
         destination.parent.mkdir(parents=True, exist_ok=True)
         composite.convert("RGB").save(destination, format="PNG", optimize=True)
 
