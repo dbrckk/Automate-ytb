@@ -219,3 +219,25 @@ réellement monté. `episode-report.json` indique la durée totale retirée.
 Un fragment totalement silencieux est rejeté. Le mode `estimated` conserve
 le comportement historique sans ce traitement. Cela améliore les raccords
 techniques, pas nécessairement la prosodie ; écouter avant toute diffusion.
+
+### Décors narratifs et mouvements de caméra (cartoon chouette)
+
+Les scènes de la chouette originale en mode **cartoon** ne sont plus
+principalement des fiches avec un grand encadré de narration. La vidéo place
+le personnage dans un **paysage 2D dessiné localement** : profondeur par plans
+de collines, arbres, feuillage, touches de lumière, météo et ombre au sol.
+Le scénario conserve ses sous-titres SRT/WebVTT : le texte complet n'est plus
+gravé sur la moitié des images.
+
+Six cadrages sont désormais différenciés : large (stable), moyen, rapproché,
+macro, contre-plongée et épaule. Les cinq derniers intègrent un léger mouvement
+de caméra de type panoramique, calculé image par image par FFmpeg à partir de
+paramètres validés. Les rendus restent déterministes et compatibles 720p/1080p.
+La version du moteur est incluse dans l'empreinte des visuels : un ancien
+visuel approuvé ne peut pas être réutilisé silencieusement après ce changement.
+
+**Limites :** ce sont des illustrations procédurales stylisées en 2D, pas des
+scènes photoréalistes, des modèles 3D ou des vidéos générées par IA.
+L'animation universelle des autres personnages reste à réaliser. Les
+nouveaux cadrages et compositions demandent une relecture visuelle avant
+toute publication.
