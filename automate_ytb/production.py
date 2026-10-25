@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v11-object-aware-eye-pose"
+VERSION = "render-v12-actual-phrase-gesture-timing"
 
 
 def _sha(path: Path) -> str:
@@ -306,6 +306,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "character": data.get("originalCharacterBible") if uses_motion_rig else "",
             "direction": scene.get("direction") if uses_motion_rig else None,
             "carriedProp": carried_by_scene[scene_index] if uses_motion_rig else None,
+            "synthesizedGestureCues": (
+                scene.get("captionSegments")
+                if uses_motion_rig and caption_timing == "audio" else None),
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
@@ -329,6 +332,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         width=w, height=h, fps=fps, destination=tmp,
                         direction=scene.get("direction"),
                         held_prop=carried_by_scene[scene_index],
+                        caption_segments=(scene.get("captionSegments")
+                                          if caption_timing == "audio" else None),
+                        scene_start_ms=scene["startMs"],
                     )
                 elif uses_forest_rig:
                     from .animated_forest import render_motion_clip as render_forest_clip
@@ -341,6 +347,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         width=w, height=h, fps=fps, destination=tmp,
                         direction=scene.get("direction"),
                         held_prop=carried_by_scene[scene_index],
+                        caption_segments=(scene.get("captionSegments")
+                                          if caption_timing == "audio" else None),
+                        scene_start_ms=scene["startMs"],
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -357,7 +366,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     action_timelines = [
         dict(sceneId=s["id"], **timeline_report(
             s["narration"], (s["endMs"] - s["startMs"])/1000,
-            s.get("direction", {}).get("action", "idle")))
+            s.get("direction", {}).get("action", "idle"),
+            caption_segments=(s.get("captionSegments")
+                              if caption_timing == "audio" else None),
+            scene_start_ms=s["startMs"]))
         for s in scenes
         if s.get("motionRig") in {
             "original-owl-v1", "original-forest-fox-v1",
@@ -476,6 +488,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "actionTimeline": {
             "version": "script-action-phases-v1",
             "multiActionScenes": sum(t["phaseCount"] > 1 for t in action_timelines),
+            "audioAnchoredScenes": sum(t["audioAnchored"] for t in action_timelines),
             "scenes": action_timelines,
             "audioTimelineShiftMs": 0,
         },
