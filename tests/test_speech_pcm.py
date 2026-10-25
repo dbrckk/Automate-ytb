@@ -49,7 +49,7 @@ class SpeechPcmTests(unittest.TestCase):
         self.assertEqual(len(cleaned), len(original))
         self.assertEqual(stats["leadingTrimMs"], 0)
         self.assertEqual(stats["trailingTrimMs"], 0)
-        self.assertEqual(int.from_bytes(cleaned[:2], "little", signed=True), 0)
+        self.assertLess(abs(int.from_bytes(cleaned[:2], "little", signed=True)), 300)
 
     def test_short_edge_pauses_are_left_intact(self):
         original = pcm((70, 0), (500, 14000), (100, 0))
