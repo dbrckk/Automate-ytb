@@ -52,7 +52,7 @@ class SceneContinuityTests(unittest.TestCase):
         self.assertEqual(cue_for_scene(texts[1], held_prop="apple")["action"], "carry")
         self.assertEqual(cue_for_scene(texts[3], held_prop="apple")["action"], "carry")
         self.assertEqual(cue_for_scene(texts[2], held_prop="apple")["prop"], "flower")
-        self.assertIn("v2", PROP_VERSION)
+        self.assertIn("v3", PROP_VERSION)
 
     def test_inventory_replaced_and_consumed_without_hallucination(self):
         scenes = [{"narration": n} for n in [
