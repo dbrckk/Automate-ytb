@@ -448,3 +448,29 @@ qui ne respectent plus la direction des yeux.
 par scène**, et non d'un mouvement oculaire continu, d'un suivi 3D de
 l'objet ou d'une compréhension visuelle réelle du décor. Le visage reste
 une illustration 2D stylisée.
+
+### Synchronisation des gestes sur les débuts des phrases synthétisées
+
+En mode `caption_timing=audio`, le moteur ne se contente plus d'estimer
+tous les changements de geste d'après la longueur du texte. Lorsqu'une
+**phrase audio synthétisée distincte** correspond clairement à un geste
+(« marche », puis « saute », puis « parle »), le mouvement démarre
+désormais à l'horodatage mesuré dans le PCM de cette phrase.
+
+Le système reste conservateur : si plusieurs actions se trouvent dans
+une seule phrase audio, si les repères ne sont pas valides ou si les
+durées des phases sont trop courtes, il conserve l'ancien placement des
+gestes basé sur le texte. Aucun mot n'est supposé avoir été aligné par
+ASR ou par reconnaissance phonétique.
+
+Le rapport `render-report.json` indique, dans `actionTimeline.scenes`,
+les intervalles des actions et `audioAnchored` pour distinguer les
+débuts **mesurés** des débuts **estimés**. Le cache vidéo inclut les repères
+de sous-titres audio pour éviter de réutiliser des gestes synchronisés
+sur un ancien enregistrement.
+
+Les scènes `cartoon` de la chouette, du renard, du lapin et du chat
+sont concernées. Les voix, SRT/VTT, ambiances, transitions, durées et
+restrictions de publication restent inchangés. Pour activer ce mode
+sur Android, sélectionner `Caption timing: audio` et une voix de
+synthèse disponible.

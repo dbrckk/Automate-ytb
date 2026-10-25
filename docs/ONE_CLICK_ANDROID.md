@@ -361,3 +361,16 @@ précédente produit une pose d'yeux légèrement orientée vers le bas.
 Aucun réglage supplémentaire n'est nécessaire sur Android.
 Vérifier les poses dans `preview.mp4` et dans `objectGaze` du rapport :
 ce sont des orientations 2D fixes, et non un suivi permanent de l'objet.
+
+### Gestes mieux synchronisés avec la voix
+
+Sélectionner une voix `espeak` ou `kokoro`, puis
+`Caption timing = audio`. Lorsqu'une phrase de sous-titres réellement
+synthétisée décrit un geste distinct, le dessin déclenche désormais
+ce geste à **son début audio mesuré**. Le champ `audioAnchored` du
+`render-report.json` indique les scènes ayant bénéficié de ce réglage.
+
+Cela n'invente pas de synchronisation mot à mot : plusieurs gestes
+prononcés dans la même phrase restent placés proportionnellement
+au texte. Les anciens modes, la qualité audio et les sous-titres
+ne changent pas. Le MP4 doit toujours être visionné avant publication.
