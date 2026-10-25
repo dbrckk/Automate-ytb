@@ -115,6 +115,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
                     limit: int | None, *, engine: str = "espeak",
                     voice_name: str | None = None,
                     caption_timing: str = "estimated",
+                    narration_style: str = "natural",
                   transition: str = "dissolve") -> dict:
     """Compose uncut speech with optional boundaries from synthesized phrases.
 
@@ -125,6 +126,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     """
     from .captions import caption_phrases
     from .speech_pcm import compact_speech_pcm
+    from .voice_pacing import speaking_speed, natural_pause_ms, VERSION as PACING_VERSION
 
     if caption_timing not in ("estimated", "audio"):
         raise ValueError("Caption timing must be estimated or audio")
@@ -132,7 +134,11 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     scenes = data["scenes"][:limit]
     if not scenes:
         raise ValueError("No scenes selected for narration")
+    requested_speed = speaking_speed(style=narration_style)
     synth = SpeechEngine(engine=engine, language=language, voice=voice_name)
+    # Keeps legacy voice-provider adapters and tests compatible. eSpeak is a
+    # fixed-rate draft fallback; a profile applies only to Kokoro's speed API.
+    synth.speed = requested_speed if engine == "kokoro" else 1.0
     durations_ms = [scene["endMs"] - scene["startMs"] for scene in data["scenes"]]
     complete_audio = []
     phrase_timings = []
@@ -140,6 +146,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     phrase_count = 0
     total_trimmed_ms = 0.0
     trimmed_phrases = 0
+    inserted_pause_ms = 0
     for index, scene in enumerate(scenes):
         phrases = (caption_phrases(scene["narration"])
                    if caption_timing == "audio" else [scene["narration"]])
@@ -162,7 +169,11 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
                 if saved_ms:
                     trimmed_phrases += 1
             if phrase_index:
-                chunks.extend(b"\x00" * (2 * round(rate * 0.08)))
+                pause_ms = natural_pause_ms(
+                    phrases[phrase_index-1], neural=engine == "kokoro")
+                pause_samples = round(rate * pause_ms / 1000)
+                chunks.extend(b"\x00" * (2 * pause_samples))
+                inserted_pause_ms += pause_ms
                 start_ms = round(len(chunks) * 1000 / (2 * rate))
                 if start_ms <= starts[-1]:
                     raise RuntimeError("Speech phrases are too short to timestamp")
@@ -226,6 +237,15 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
             "removedSilenceMs": round(total_trimmed_ms, 2),
             "innerPausesPreserved": True,
         },
+        "delivery": {
+            "version": PACING_VERSION,
+            "style": narration_style,
+            "nativeSpeakingRate": synth.speed,
+            "punctuationAwarePauses": engine == "kokoro" and
+                                      caption_timing == "audio",
+            "insertedBetweenPhraseSilenceMs": inserted_pause_ms,
+            "noWordLevelAlignment": True,
+        },
         "wordAlignment": False,
         "audioSeconds": round(sum(len(audio) for audio in complete_audio)
                               / (2 * sample_rate), 3),
@@ -238,7 +258,10 @@ def build_preview(*, plan_path: Path, output: Path,
                   resolution: str = "720p", voice_name: str | None = None,
                   soundtrack: str = "none",
                   caption_timing: str = "estimated",
-                  transition: str = "dissolve") -> dict:
+                  transition: str = "dissolve",
+                  voice_style: str = "natural") -> dict:
+    from .voice_pacing import speaking_speed
+    speaking_speed(style=voice_style)
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
     if soundtrack not in {"none", "ambient"}:
@@ -257,7 +280,18 @@ def build_preview(*, plan_path: Path, output: Path,
         voice_file = output / "narration.wav"
         details = _narrate_scenes(plan_path, voice_file, language, limit,
                                   engine=voice, voice_name=voice_name,
-                                  caption_timing=caption_timing)
+                                  caption_timing=caption_timing,
+                                  narration_style=voice_style)
+    # Short stand-alone listening sample for a quick Android audition,
+    # without clipping or changing the full soundtrack or narration.
+    voice_sample = None
+    if voice_file is not None:
+        voice_sample = output / "voice-sample.mp3"
+        production._run([
+            "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+            "-i", str(voice_file), "-t", "12",
+            "-vn", "-c:a", "libmp3lame", "-b:a", "192k", str(voice_sample),
+        ])
     soundtrack_report = {"engine": "none", "externalApiCalls": 0}
     soundtrack_file = None
     if soundtrack == "ambient":
@@ -285,7 +319,9 @@ def build_preview(*, plan_path: Path, output: Path,
     summary = {
         "status": "draft", "publicationApproved": False, "factChecked": False,
         "reviewBeforePublication": True, "topic": data["topic"],
-        "art": art, "voice": details, "soundtrack": soundtrack_report,
+        "art": art, "voice": details,
+        "voicePreview": str(voice_sample) if voice_sample is not None else None,
+        "soundtrack": soundtrack_report,
         "render": result,
         "storyPreflight": {
             "status": story_report["status"],
@@ -313,6 +349,8 @@ def main(argv=None) -> int:
                    default="cartoon")
     p.add_argument("--language", choices=["fr", "en"], default="fr")
     p.add_argument("--voice", choices=["espeak", "kokoro", "none"], default="espeak")
+    p.add_argument("--voice-style", choices=["natural", "gentle", "lively"],
+                   default="natural", help="Kokoro delivery; eSpeak remains unchanged")
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
                    help="Original local ambient backing track with narration ducking")
@@ -328,7 +366,8 @@ def main(argv=None) -> int:
     try:
         result = build_preview(plan_path=args.plan, output=args.output,
                                style=args.style, language=args.language,
-                               voice=args.voice, voice_name=args.voice_name, resolution=args.resolution,
+                               voice=args.voice, voice_name=args.voice_name,
+                               voice_style=args.voice_style, resolution=args.resolution,
                                soundtrack=args.soundtrack, limit=args.limit,
                                caption_timing=args.caption_timing,
                                transition=args.transition)
