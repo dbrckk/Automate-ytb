@@ -95,6 +95,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     Legacy estimated mode keeps its full-scene speech synthesis behavior.
     """
     from .captions import caption_phrases
+    from .speech_pcm import compact_speech_pcm
 
     if caption_timing not in ("estimated", "audio"):
         raise ValueError("Caption timing must be estimated or audio")
@@ -108,6 +109,8 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     phrase_timings = []
     sample_rate = None
     phrase_count = 0
+    total_trimmed_ms = 0.0
+    trimmed_phrases = 0
     for index, scene in enumerate(scenes):
         phrases = (caption_phrases(scene["narration"])
                    if caption_timing == "audio" else [scene["narration"]])
@@ -123,6 +126,12 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
                 sample_rate = rate
             if rate != sample_rate:
                 raise RuntimeError("Invalid or mismatched PCM scene audio")
+            if caption_timing == "audio":
+                frames, cleanup = compact_speech_pcm(frames, rate)
+                saved_ms = cleanup["leadingTrimMs"] + cleanup["trailingTrimMs"]
+                total_trimmed_ms += saved_ms
+                if saved_ms:
+                    trimmed_phrases += 1
             if phrase_index:
                 chunks.extend(b"\x00" * (2 * round(rate * 0.08)))
                 start_ms = round(len(chunks) * 1000 / (2 * rate))
@@ -181,6 +190,13 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
         "captionTiming": ("audio-derived-synthesized-phrases"
                           if caption_timing == "audio" else "estimated"),
         "captionPhraseCount": phrase_count,
+        "phraseSilenceCleanup": {
+            "enabled": caption_timing == "audio",
+            "method": "edge-silence-window-v1" if caption_timing == "audio" else "none",
+            "trimmedPhrases": trimmed_phrases,
+            "removedSilenceMs": round(total_trimmed_ms, 2),
+            "innerPausesPreserved": True,
+        },
         "wordAlignment": False,
         "audioSeconds": round(sum(len(audio) for audio in complete_audio)
                               / (2 * sample_rate), 3),

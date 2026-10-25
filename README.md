@@ -208,3 +208,14 @@ voix de synthèse, au prix de plusieurs appels locaux au moteur TTS.
 Ce n'est ni de la reconnaissance vocale ni un alignement au mot. Le son,
 la ponctuation et les pauses nécessitent toujours une réécoute humaine.
 Voir [narration naturelle](docs/NATURAL_NARRATION.md).
+
+### Finitions de narration audio
+
+En mode `Caption timing = audio`, l'outil retire maintenant une partie des
+longs silences placés **avant ou après** les fragments vocaux synthétisés
+(eSpeak/Kokoro), en conservant les pauses internes et en limitant les clics
+aux raccords. Les sous-titres restent synchronisés avec la durée du PCM
+réellement monté. `episode-report.json` indique la durée totale retirée.
+Un fragment totalement silencieux est rejeté. Le mode `estimated` conserve
+le comportement historique sans ce traitement. Cela améliore les raccords
+techniques, pas nécessairement la prosodie ; écouter avant toute diffusion.

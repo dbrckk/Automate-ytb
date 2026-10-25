@@ -80,3 +80,24 @@ Les phrases synthétisées séparément peuvent paraître moins fluides.
 Le dernier sous-titre de chaque scène reste affiché jusqu'à la fin du plan,
 y compris pendant un éventuel silence final. La qualité du rendu doit être
 écoutée et examinée avant diffusion ; le programme n'autorise pas la publication.
+
+## Réduction des silences et des clics en mode audio
+
+La synthèse fragmentée ajoute parfois une marge importante de silence au
+début et à la fin de chaque fichier TTS. En mode `--caption-timing audio`,
+le moteur analyse désormais les **échantillons PCM 16 bits de chaque
+fragment** (fenêtres de 10 ms), ne réduit que les longs silences **en
+bordure**, préserve les respirations et les pauses au milieu de la phrase,
+puis effectue une rampe audio très courte aux raccords.
+
+Les calculs de timecodes sont faits **après** cette réduction, sur les
+échantillons qui seront effectivement écrits dans `narration.wav`.
+Le rapport `episode-report.json` expose
+`voice.phraseSilenceCleanup` (nombre de fragments nettoyés, durée totale
+retirée et méthode). Une phrase entièrement silencieuse entraîne un échec
+explicite, plutôt qu'une vidéo présentée comme narrée.
+
+Le mode `estimated` conserve l'ancien signal et sa prosodie sans changement.
+La réduction ne garantit pas la compréhension des mots, l'absence de toute
+pause maladroite ou la qualité artistique : écouter le fichier WAV puis le
+MP4 avant publication.
