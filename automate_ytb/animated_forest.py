@@ -22,9 +22,9 @@ from .cinematic_camera import framing_filter
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
-from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
+from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v7-action-phases"
+FOREST_RIG_VERSION = "forest-animals-v8-prop-aware-eye-pose"
 
 
 def character_kind(character: str) -> str | None:
@@ -59,7 +59,8 @@ SCARF = (243, 187, 74, 255)
 HIGHLIGHT = (255, 255, 255, 255)
 
 
-def _sprite_body(path: Path, *, kind: str, blink: bool, emotion: str):
+def _sprite_body(path: Path, *, kind: str, blink: bool,
+                 emotion: str, gaze: str = "forward"):
     palette = COLORS[kind]
     fur, dark, belly, ear = (
         palette[name] for name in ("fur", "dark", "belly", "ear"))
@@ -98,8 +99,16 @@ def _sprite_body(path: Path, *, kind: str, blink: bool, emotion: str):
             d.arc((eye_x - 31, 206, eye_x + 31, 235),
                   start=0, end=180, fill=INK, width=7)
         else:
-            d.ellipse((eye_x - 24, 184, eye_x + 24, 240), fill=INK)
-            d.ellipse((eye_x - 15, 191, eye_x - 4, 205), fill=HIGHLIGHT)
+            if gaze not in ("forward", "right", "down-right"):
+                raise ValueError("Unsupported original forest eye pose")
+            shift_x, shift_y = {
+                "forward": (0, 0), "right": (12, 1),
+                "down-right": (8, 8)}[gaze]
+            focus_x = eye_x + shift_x
+            d.ellipse((focus_x - 24, 184 + shift_y,
+                       focus_x + 24, 240 + shift_y), fill=INK)
+            d.ellipse((focus_x - 15, 191 + shift_y,
+                       focus_x - 4, 205 + shift_y), fill=HIGHLIGHT)
         if emotion == "worried":
             d.line((eye_x - 28, 182, eye_x + 27, 175), fill=dark, width=5)
     d.ellipse((165, 245, 192, 265), fill=dark)
@@ -198,8 +207,11 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         style=style, direction=direction)
     _sprite_tail(outputs["tail"], kind=kind)
     emotion = direction["emotion"] if direction else "neutral"
-    _sprite_body(outputs["body"], kind=kind, blink=False, emotion=emotion)
-    _sprite_body(outputs["blink"], kind=kind, blink=True, emotion=emotion)
+    gaze = gaze_target(narration, held_prop=held_prop)
+    _sprite_body(outputs["body"], kind=kind, blink=False,
+                 emotion=emotion, gaze=gaze)
+    _sprite_body(outputs["blink"], kind=kind, blink=True,
+                 emotion=emotion, gaze=gaze)
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")

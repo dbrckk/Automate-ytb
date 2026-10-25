@@ -352,3 +352,12 @@ de pose sont légèrement lissés. L'audio et les sous-titres ne sont pas
 redécoupés : le moment exact des gestes est estimé à partir du texte et
 doit être revu dans `preview.mp4`. Le champ `actionTimeline` du
 `render-report.json` permet de contrôler les phases prévues.
+
+### Regards des personnages
+
+Les personnages originaux `cartoon` regardent désormais vers les objets
+qu'ils inspectent, ramassent ou franchissent. Un objet porté d'une scène
+précédente produit une pose d'yeux légèrement orientée vers le bas.
+Aucun réglage supplémentaire n'est nécessaire sur Android.
+Vérifier les poses dans `preview.mp4` et dans `objectGaze` du rapport :
+ce sont des orientations 2D fixes, et non un suivi permanent de l'objet.

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-PROP_VERSION = "scene-props-v2-continuity"
+PROP_VERSION = "scene-props-v3-gaze-pose"
 
 NOUNS = (
     ("apple", r"\b(pomme\w*|apple\w*)\b"),
@@ -109,6 +109,18 @@ def cue_for_scene(narration: str, *, held_prop: str | None = None
         return {"prop": held_prop, "action": "carry",
                 "version": PROP_VERSION}
     return cue
+
+
+def gaze_target(narration: str, *, held_prop: str | None = None) -> str:
+    """Return a bounded glance, never pretend to track 3D object coordinates.
+
+    Objects to the right get a rightward look; a previously carried item
+    receives a gentle downward-right eye pose.
+    """
+    cue = cue_for_scene(narration, held_prop=held_prop)
+    if cue is None:
+        return "forward"
+    return "down-right" if cue["action"] == "carry" else "right"
 
 
 def draw_prop(path: Path, *, kind: str) -> None:
