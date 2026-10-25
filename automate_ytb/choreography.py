@@ -41,7 +41,8 @@ def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
         xp = f"{x}+{horizontal}*exp(-1.3*t)*sin(t*8)"
         yp = f"{y}-{vertical}*exp(-1.1*t)*abs(sin(t*{vf}))"
     else:
-        # Secondary low-frequency sway prevents perfectly repeated robotic arcs.\n        xp = f"{x}+{horizontal}*sin(t*{hf})+1.2*sin(t*0.37)"
+        # Secondary low-frequency sway prevents perfectly repeated robotic arcs.
+        xp = f"{x}+{horizontal}*sin(t*{hf})+1.2*sin(t*0.37)"
         if kind in {"steps", "leap"}:
             sign = "+" if kind == "steps" else "-"
             yp = f"{y}{sign}{vertical}*abs(sin(t*{vf}))"
@@ -67,7 +68,11 @@ def secondary_position(action: str, *, base: int, side: str) -> str:
         "fly": 8.0, "talk": 2.0, "surprise": 6.6, "rest": 0.9,
     }[action]
     sign = "-" if side == "right" else "+"
-    # Two frequencies create gentle organic follow-through, without noise,\n    # unbounded motion or non-deterministic video output.\n    follow = max(1, round(amplitude * 0.13, 2))\n    return (f"{base}{sign}{amplitude}*sin(t*{frequency})"\n            f"{sign}{follow}*sin(t*{frequency * 0.47:.3f}+0.35)")
+    # Two frequencies create gentle organic follow-through, without noise,
+    # unbounded motion or non-deterministic video output.
+    follow = max(1, round(amplitude * 0.13, 2))
+    return (f"{base}{sign}{amplitude}*sin(t*{frequency})"
+            f"{sign}{follow}*sin(t*{frequency * 0.47:.3f}+0.35)")
 
 
 def mouth_expression(action: str) -> str:
