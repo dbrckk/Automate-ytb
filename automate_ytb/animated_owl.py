@@ -21,10 +21,11 @@ from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
+from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v12-eased-cinematic-motion"
+RIG_VERSION = "owl-rig-v13-layered-foreground-depth"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -321,10 +322,13 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
+    draw_foreground(outputs["foreground"], landscape=landscape or "forest",
+                    seed=f"{topic}|{narration}|{scene_index}",
+                    night=bool(direction and direction["weather"] == "night"))
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -426,6 +430,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                   f"y='-720+mod(t*{speed},720)':eval=frame:format=auto[{next_label}]")
             final_label = next_label
             keys.append("effects")
+        f, final_label, keys = overlay_foreground(
+            graph=f, label=final_label, names=keys,
+            scene_index=scene_index, duration=duration)
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
@@ -469,6 +476,8 @@ def render_character_poster(*, topic: str, narration: str,
             position = (505, 439) if cue["action"] == "carry" else (652, 474)
             with Image.open(layers["prop"]) as prop:
                 composite.alpha_composite(prop.convert("RGBA"), position)
+        with Image.open(layers["foreground"]) as front:
+            composite.alpha_composite(front.convert("RGBA"), (0, 0))
         destination.parent.mkdir(parents=True, exist_ok=True)
         composite.convert("RGB").save(destination, format="PNG", optimize=True)
 
