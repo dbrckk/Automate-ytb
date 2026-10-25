@@ -16,6 +16,7 @@ import tempfile
 from PIL import Image, ImageDraw, ImageFont
 
 from .studio import PALETTES, WIDTH, HEIGHT, font
+from .scenic_world import detect_landscape, draw_landscape_details, LANDSCAPES, WORLD_VERSION
 from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
@@ -23,7 +24,7 @@ from .choreography import body_position, secondary_position, mouth_expression
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v10-progressive-gaze-speech-envelope"
+RIG_VERSION = "owl-rig-v11-storybook-landscape-biomes"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -53,7 +54,8 @@ def _wrap(draw: ImageDraw.ImageDraw, txt: str, max_width: int, max_lines: int):
 
 
 def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
-        scene_count: int, style: str, direction: dict | None = None):
+        scene_count: int, style: str, direction: dict | None = None,
+        landscape: str | None = None):
     base, second, accent = PALETTES[style]
     seed = int.from_bytes(hashlib.sha256(
         f"{scene_index}|{topic}|{narration}".encode()).digest()[:8], "big")
@@ -140,6 +142,10 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
             a = x + rand.randrange(-radius, radius + 1)
             b = top + rand.randrange(0, radius + 28)
             draw.ellipse((a, b, a + 4, b + 6), fill=(145, 192, 142))
+    # Foreground landmarks make explicit rivers, villages, meadows visually
+    # distinct from the usual woodland, without affecting the actor zone.
+    setting = landscape or detect_landscape(narration) or "forest"
+    draw_landscape_details(draw, kind=setting, night=night, seed=seed)
     # Patches of grasses and firefly-like highlights frame the character.
     for _ in range(85):
         x = rand.randrange(20, 1280)
@@ -307,7 +313,8 @@ def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
 def render_layers(folder: Path, *, topic: str, narration: str,
                   scene_index: int, scene_count: int, style: str,
                   direction: dict | None = None,
-                  held_prop: str | None = None) -> dict[str, Path]:
+                  held_prop: str | None = None,
+                  landscape: str | None = None) -> dict[str, Path]:
     if style not in PALETTES:
         raise ValueError("Unsupported visual style")
     if direction is not None:
@@ -317,7 +324,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
              ("background","left","right","neutral","body","blink","mouth","effects")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
-        direction=direction)
+        direction=direction,landscape=landscape)
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -348,7 +355,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        held_prop: str | None = None,
                        caption_segments: list[dict] | None = None,
                        scene_start_ms: int = 0,
-                       mouth_intervals: list[tuple[float, float]] | None = None) -> None:
+                       mouth_intervals: list[tuple[float, float]] | None = None,
+                       landscape: str | None = None) -> None:
     if not 0 < duration <= 3600 or fps not in (24,30):
         raise ValueError("Unsupported animation parameters")
     if (width,height) not in ((1280,720),(1920,1080)):
@@ -360,7 +368,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         layers=render_layers(Path(folder),topic=topic,narration=narration,
                              scene_index=scene_index,scene_count=scene_count,
                              style=style,direction=direction,
-                             held_prop=held_prop)
+                             held_prop=held_prop,landscape=landscape)
         # Independently animated wings and expression layers; action cues are
         # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
@@ -438,7 +446,8 @@ def render_character_poster(*, topic: str, narration: str,
                             scene_index: int, scene_count: int,
                             style: str, destination: Path,
                             direction: dict | None = None,
-                            held_prop: str | None = None) -> None:
+                            held_prop: str | None = None,
+                            landscape: str | None = None) -> None:
     """The approved still is a true rest-pose composite of the moving rig.
 
     This makes the asset checksum representative of the animation's authored
@@ -448,7 +457,7 @@ def render_character_poster(*, topic: str, narration: str,
         layers = render_layers(
             Path(folder), topic=topic, narration=narration,
             scene_index=scene_index, scene_count=scene_count, style=style,
-            direction=direction, held_prop=held_prop)
+            direction=direction, held_prop=held_prop,landscape=landscape)
         with Image.open(layers["background"]) as b:
             composite = b.convert("RGBA")
         for name, position in (("left", (144,348)), ("right", (420,350)),
@@ -467,11 +476,12 @@ def render_character_poster(*, topic: str, narration: str,
 def art_brief_sha256(*, topic: str, narration: str,
                      character: str, style: str, scene_id: str,
                      direction: dict | None = None,
-                     held_prop: str | None = None) -> str:
+                     held_prop: str | None = None,
+                     landscape: str | None = None) -> str:
     """Bind original visuals to the immutable creative inputs of a scene."""
     payload = json.dumps(
         [RIG_VERSION, topic, narration, character, style, scene_id] +
         ([validate_direction(direction)] if direction is not None else []) +
-        [held_prop],
+        [held_prop, landscape, WORLD_VERSION],
         ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
