@@ -17,9 +17,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
+from .choreography import body_position, secondary_position, mouth_expression
 
 
-RIG_VERSION = "owl-rig-v4-ambient-particles"
+RIG_VERSION = "owl-rig-v5-expressive-actions"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -172,6 +173,19 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
     im.save(path,"PNG",optimize=True)
 
 
+def _mouth(path: Path):
+    """Transparent vowel pose; brief speech gestures leave blinks intact."""
+    image = Image.new("RGBA", (322, 430), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    # Belly is lavender on the approved original owl; the patch covers only
+    # the original resting smile, never its distinctive beak or eyes.
+    draw.ellipse((127, 259, 199, 300), fill=LAVENDER)
+    draw.ellipse((151, 268, 178, 296), fill=INK)
+    draw.arc((154, 281, 175, 302), 0, 180,
+             fill=(240, 141, 167, 255), width=5)
+    image.save(path, "PNG")
+
+
 def _wing(path: Path, *, right: bool):
     im=Image.new("RGBA",(164,212))
     d=ImageDraw.Draw(im)
@@ -287,7 +301,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","body","blink","effects")}
+             ("background","left","right","body","blink","mouth","effects")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction)
@@ -297,6 +311,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
           emotion=direction["emotion"] if direction else "neutral")
     _body(outputs["blink"],blink=True,
           emotion=direction["emotion"] if direction else "neutral")
+    _mouth(outputs["mouth"])
     return outputs
 
 
@@ -316,34 +331,37 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         layers=render_layers(Path(folder),topic=topic,narration=narration,
                              scene_index=scene_index,scene_count=scene_count,
                              style=style,direction=direction)
-        # Wings move independently while body bobs; a separate blink sprite
-        # briefly overlays the open-eyed face every few seconds.
+        # Independently animated wings and expression layers; action cues are
+        # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
-        wing_amplitude = {"fly": 64, "walk": 23, "talk": 12,
-                          "surprise": 45, "rest": 3, "idle": 29}[action]
-        wing_speed = 6.0 if action == "fly" else (1.3 if action == "rest" else 4.2)
-        bob_amplitude = 25 if action == "fly" else (5 if action == "rest" else 8)
+        body_x, body_y = body_position(action, x=204, y=186)
+        left_y = secondary_position(action, base=348, side="left")
+        right_y = secondary_position(action, base=350, side="right")
+        mouth = mouth_expression(action)
         f=(
           "[0:v][1:v]overlay=x='144+7*sin(t*1.7)':"
-          f"y='348+{wing_amplitude}*sin(t*{wing_speed})':eval=frame:format=auto[a];"
+          f"y='{left_y}':eval=frame:format=auto[a];"
           "[a][2:v]overlay=x='420-7*sin(t*1.7)':"
-          f"y='350-{wing_amplitude}*sin(t*{wing_speed})':eval=frame:format=auto[b];"
-          "[b][3:v]overlay=x='204+7*sin(t*1.3)':"
-          f"y='186+{bob_amplitude}*sin(t*2.6)':eval=frame:format=auto[c];"
-          "[c][4:v]overlay=x='204+7*sin(t*1.3)':"
-          f"y='186+{bob_amplitude}*sin(t*2.6)':"
-          "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto"
+          f"y='{right_y}':eval=frame:format=auto[b];"
+          f"[b][3:v]overlay=x='{body_x}':"
+          f"y='{body_y}':eval=frame:format=auto[c];"
+          f"[c][4:v]overlay=x='{body_x}':"
+          f"y='{body_y}':"
+          "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto[d];"
+          f"[d][5:v]overlay=x='{body_x}':"
+          f"y='{body_y}':"
+          f"enable='{mouth}':eval=frame:format=auto[e]"
         )
-        final_label = "d"
+        final_label = "e"
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(layers["effects"], seed=f"{topic}|{narration}|{scene_index}",
                              weather=direction["weather"])
             speed = {"rain": 240, "storm": 310, "wind": 55,
                      "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
-            f += f"[d];[d][5:v]overlay=x=0:y='-720+mod(t*{speed},720)':eval=frame:format=auto[e]"
-            final_label = "e"
-        else:
-            f += "[d]"
+            f += f";[e][6:v]overlay=x=0:y='-720+mod(t*{speed},720)':eval=frame:format=auto[f]"
+            final_label = "f"
+        # The final [e] overlay output is already labeled when no weather
+        # texture is needed. Do not add the same output label twice.
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
@@ -351,7 +369,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             scene_index=scene_index)
         f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
-        keys = ["background","left","right","body","blink"]
+        keys = ["background","left","right","body","blink","mouth"]
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             keys.append("effects")
         for key in keys:

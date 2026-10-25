@@ -10,7 +10,7 @@ import re
 import unicodedata
 
 WEATHERS = frozenset({"day", "night", "cloudy", "rain", "wind", "storm"})
-ACTIONS = frozenset({"idle", "fly", "walk", "talk", "surprise", "rest"})
+ACTIONS = frozenset({"idle", "fly", "walk", "run", "jump", "talk", "surprise", "rest"})
 EMOTIONS = frozenset({"neutral", "curious", "happy", "worried", "surprised"})
 SHOTS = frozenset({"wide", "medium", "closeup", "macro", "low", "shoulder"})
 
@@ -23,9 +23,11 @@ WEATHER_PATTERNS = (
     ("cloudy", r"\b(nuage|couvert|brume|brouillard|cloud|fog|mist)\w*\b"),
 )
 ACTION_PATTERNS = (
+    ("jump", r"\b(saute|sauter|bondit|bondir|saut|jump|jumps|jumping|hop|hops|leap)\w*\b"),
+    ("run", r"\b(court|courir|cours|sprinte|course|run|running|runs|sprint|dash)\w*\b"),
     ("fly", r"\b(vole|voler|envole|plane|survole|fly|flying|flies|soar)\w*\b"),
     ("surprise", r"\b(soudain|surpris|etonne|incroyable|suddenly|surprise|astonish)\w*\b"),
-    ("walk", r"\b(marche|court|traverse|explore|avance|promene|walk|run|explore|cross)\w*\b"),
+    ("walk", r"\b(marche|traverse|explore|avance|promene|walk|walking|explore|cross)\w*\b"),
     ("talk", r"\b(parle|raconte|explique|dit|chuchote|talk|tell|explain|whisper)\w*\b"),
     ("rest", r"\b(repose|dort|dormir|calme|assis|rest|sleep|quiet|sit)\w*\b"),
 )

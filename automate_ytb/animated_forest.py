@@ -19,9 +19,10 @@ from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
+from .choreography import body_position, secondary_position, mouth_expression
 from .director import validate_direction
 
-FOREST_RIG_VERSION = "forest-animals-v2-ambient-particles"
+FOREST_RIG_VERSION = "forest-animals-v3-expressive-actions"
 
 
 def character_kind(character: str) -> str | None:
@@ -123,6 +124,20 @@ def _sprite_body(path: Path, *, kind: str, blink: bool, emotion: str):
     image.save(path, "PNG")
 
 
+def _sprite_mouth(path: Path, *, kind: str):
+    """A small mouth-only pose that can switch without resetting the blink."""
+    if kind not in COLORS:
+        raise ValueError("Unknown animal mouth")
+    image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
+    d = ImageDraw.Draw(image)
+    # Restore the fur beneath the still-pose mouth before drawing the
+    # open, tongue-highlighted vowel shape.
+    d.ellipse((149, 258, 210, 302), fill=COLORS[kind]["belly"])
+    d.ellipse((165, 268, 194, 300), fill=INK)
+    d.arc((170, 282, 191, 301), 0, 180, fill=(238, 139, 161, 255), width=6)
+    image.save(path, "PNG")
+
+
 def _sprite_tail(path: Path, *, kind: str):
     image = Image.new("RGBA", (230, 240), (0, 0, 0, 0))
     d = ImageDraw.Draw(image)
@@ -158,7 +173,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "body", "blink", "effects")}
+               for name in ("background", "tail", "body", "blink", "mouth", "effects")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction)
@@ -166,6 +181,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     emotion = direction["emotion"] if direction else "neutral"
     _sprite_body(outputs["body"], kind=kind, blink=False, emotion=emotion)
     _sprite_body(outputs["blink"], kind=kind, blink=True, emotion=emotion)
+    _sprite_mouth(outputs["mouth"], kind=kind)
     return outputs
 
 
@@ -205,21 +221,23 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                                scene_count=scene_count, style=style,
                                direction=direction)
         action = direction["action"] if direction else "idle"
-        bounce = {"fly": 23, "walk": 15, "talk": 5, "surprise": 19,
-                  "rest": 2, "idle": 7}[action]
-        speed = {"fly": 6.5, "walk": 5.7, "talk": 2.8,
-                 "surprise": 3.4, "rest": 1.2, "idle": 2.3}[action]
+        body_x, body_y = body_position(action, x=180, y=184)
+        tail_y = secondary_position(action, base=357, side="tail")
+        mouth = mouth_expression(action)
         fps_graph = (
             "[0:v][1:v]overlay=x='113+8*sin(t*2.4)':"
-            "y='357+23*sin(t*3.1)':eval=frame:format=auto[a];"
-            "[a][2:v]overlay=x='180+7*sin(t*1.1)':"
-            f"y='184+{bounce}*sin(t*{speed})':eval=frame:format=auto[b];"
-            "[b][3:v]overlay=x='180+7*sin(t*1.1)':"
-            f"y='184+{bounce}*sin(t*{speed})':"
-            "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[c]"
+            f"y='{tail_y}':eval=frame:format=auto[a];"
+            f"[a][2:v]overlay=x='{body_x}':"
+            f"y='{body_y}':eval=frame:format=auto[b];"
+            f"[b][3:v]overlay=x='{body_x}':"
+            f"y='{body_y}':"
+            "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[c];"
+            f"[c][4:v]overlay=x='{body_x}':"
+            f"y='{body_y}':"
+            f"enable='{mouth}':eval=frame:format=auto[d]"
         )
-        final = "c"
-        names = ["background", "tail", "body", "blink"]
+        final = "d"
+        names = ["background", "tail", "body", "blink", "mouth"]
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
@@ -228,9 +246,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             speed_fx = {"rain": 240, "storm": 310, "wind": 55,
                         "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             fps_graph += (
-                f";[c][4:v]overlay=x=0:"
-                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[d]")
-            final = "d"
+                f";[d][5:v]overlay=x=0:"
+                f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[e]")
+            final = "e"
             names.append("effects")
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
