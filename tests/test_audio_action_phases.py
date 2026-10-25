@@ -149,7 +149,7 @@ class AudioAnchoredGestureTests(unittest.TestCase):
 
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe")
-                         and shutil.which("espeak"),
+                         and (shutil.which("espeak-ng") or shutil.which("espeak")),
                          "Real offline TTS and FFmpeg required")
     def test_full_offline_synthesized_audio_anchors_real_preview(self):
         with tempfile.TemporaryDirectory() as folder:
