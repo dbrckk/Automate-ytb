@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from array import array
 import io
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,6 +13,8 @@ import wave
 
 from PIL import Image, ImageChops, ImageStat
 
+from automate_ytb.scene_plan import plan
+from automate_ytb.episode import build_preview
 from automate_ytb.voice_activity import (
     activity_intervals, mouth_gate_expression, MOUTH_VERSION)
 from automate_ytb.animated_forest import (
@@ -172,6 +175,36 @@ class SpeechMouthTests(unittest.TestCase):
                            (337, 444, 424, 516))
             self.assertGreater(early, 1.5)
             self.assertLess(during, early / 2 + 0.5)
+
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe")
+                         and (shutil.which("espeak-ng") or shutil.which("espeak")),
+                         "Real offline voice + FFmpeg required")
+    def test_one_click_voice_preview_reports_actual_mouth_activity(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            p = root / "plan.json"
+            scenes = plan(
+                topic="Le renard original raconte une histoire",
+                script=("Le renard raconte une histoire à ses amis. "
+                        "Il parle calmement sous les étoiles. "
+                        "Il explique pourquoi la forêt est belle. "
+                        "Les animaux écoutent son récit passionnant. "
+                        "Puis le renard rentre chez lui."),
+                character="Un petit renard roux original",
+                duration=30, shot_seconds=6)
+            p.write_text(json.dumps(scenes, ensure_ascii=False), encoding="utf-8")
+            result = build_preview(
+                plan_path=p, output=root / "preview",
+                style="cartoon", voice="espeak", language="fr",
+                caption_timing="audio", soundtrack="none",
+                transition="cut", limit=1)
+            report = result["render"]["speechMouth"]
+            self.assertEqual(report["analyzedScenes"], 1)
+            self.assertGreater(report["activeIntervals"], 0)
+            self.assertEqual(report["fallbackScenes"], 0)
+            self.assertEqual(report["audioTimelineShiftMs"], 0)
+            self.assertTrue((root / "preview" / "preview.mp4").is_file())
 
 if __name__ == "__main__":
     unittest.main()
