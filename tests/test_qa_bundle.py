@@ -137,6 +137,48 @@ class QualityBundleTests(unittest.TestCase):
         visual["frozenAnimatedSceneCount"] = 0
         self.assertTrue(reviewed()["technicalPreviewReady"])
 
+    def test_story_preflight_warnings_propagate_without_false_auto_approval(self):
+        from automate_ytb.production import _sha
+        story = self.root / "story-preflight.json"
+        plan = self.root / "scene-plan.json"
+        plan.write_text('{"original":"authored narration"}', encoding="utf8")
+        evidence = {
+            "schemaVersion": 1, "version": "story-preflight-v1",
+            "sourcePlanSha256": _sha(plan),
+            "status": "needs-editorial-revision",
+            "exactRepeatCount": 3,
+            "nearRepeatNeighborCount": 1,
+            "speakingPaceWarningCount": 2,
+            "publicationApproved": False,
+            "factChecked": False,
+            "warnings": ["Systematic repetition; human review necessary"],
+        }
+
+        def verify():
+            story.write_text(json.dumps(evidence), encoding="utf8")
+            return consolidate(
+                structural_report=self.structural, media_report=self.media,
+                video=self.video, srt=self.srt, vtt=self.vtt,
+                output=self.output, story_report=story, plan=plan)
+
+        valid = verify()
+        self.assertTrue(valid["technicalPreviewReady"])
+        self.assertTrue(valid["editorialRevisionRecommended"])
+        self.assertFalse(valid["publicationApproved"])
+        self.assertEqual(valid["checks"]["narrationExactRepeatCount"], 3)
+        self.assertIn("Systematic repetition", " ".join(valid["warnings"]))
+
+        plan.write_text('{"changed":"authored narration"}', encoding="utf8")
+        self.assertFalse(verify()["technicalPreviewReady"])
+        plan.write_text('{"original":"authored narration"}', encoding="utf8")
+        evidence["publicationApproved"] = True
+        self.assertFalse(verify()["technicalPreviewReady"])
+        evidence["publicationApproved"] = False
+        evidence["factChecked"] = True
+        self.assertFalse(verify()["technicalPreviewReady"])
+        evidence["factChecked"] = False
+        self.assertTrue(verify()["technicalPreviewReady"])
+
     def test_missing_vtt_or_bad_signature_rejected(self):
         self.vtt.unlink()
         with self.assertRaisesRegex(ValueError, "required"):
