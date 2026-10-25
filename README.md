@@ -289,3 +289,21 @@ scène, et non un morphing ou un fondu entre deux scènes animées en temps
 réel. Une scène initiale unique n'a pas de transition. L'effet est léger,
 réversible et peut ajouter du temps de calcul FFmpeg au premier rendu ;
 le résultat doit être revu avant publication.
+
+### Atmosphères 2D vivantes de jour et de nuit
+
+Les décors **cartoon** des chouettes, renards, lapins et chats disposent
+maintenant de deux ambiances supplémentaires : des lucioles lumineuses au
+premier plan des scènes de **nuit** et de fines particules de pollen
+flottantes dans les scènes de **jour**. Les effets sont produits localement
+avec Pillow puis déplacés image par image dans FFmpeg. Le ciel, la lune
+et les étoiles restent fixes pour éviter les mouvements incohérents.
+
+Le choix d'ambiance continue de respecter la météo déterminée à partir
+des mots du scénario, sans inventer de nouveaux événements. Les effets
+existants de pluie, de vent, d'orage et de nuages sont conservés.
+Les versions des deux moteurs visuels et du cache MP4 ont été modifiées
+pour empêcher la réutilisation trompeuse des anciens rendus.
+
+Ces effets restent **des illustrations 2D procédurales**. Ils n'impliquent
+ni vidéo générée par IA ni effets de particules photoréalistes.
