@@ -245,3 +245,22 @@ le temps de traitement. Les scènes sombres ou visuellement répétitives
 peuvent être intentionnelles : les alertes doivent être examinées avant
 d'en tirer une conclusion. Une planche de quelques images ne remplace pas la
 lecture complète du MP4. Aucune image de la vidéo d'un concurrent n'est utilisée.
+
+### Décors plein écran et plans de caméra
+
+Pour les scènes du personnage **chouette originale** en style `cartoon`,
+l'export affiche maintenant un paysage procédural 2D sans grand panneau
+opaque de narration sur la droite. Les textes complets restent disponibles
+en fichiers de sous-titres `SRT` et `WebVTT`. Le rendu module les six plans
+validés par le storyboard : large, moyen, rapproché, macro, bas et épaule.
+Les plans hors large comportent un mouvement de caméra léger et déterministe.
+
+L'amélioration se voit dans `preview.mp4` et dans la planche JPEG de relecture
+extraite du MP4. Les anciens PNG de la chouette doivent être régénérés et
+réapprouvés, car le moteur refuse la réutilisation d'un asset dont la version
+artistique ne correspond plus à l'empreinte de validation.
+
+Ce mode est original, gratuit et sans IA vidéo distante, mais demeure
+une animation stylisée 2D. Les décors et placements doivent être revus avant
+la mise en ligne ; l'exécution réussie d'Actions ne constitue pas un accord
+éditorial ou juridique.
