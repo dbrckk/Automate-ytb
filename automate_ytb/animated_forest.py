@@ -21,9 +21,9 @@ from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
-from .scene_props import create_layers as create_prop_layers, select_interaction, append_overlays
+from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v5-scripted-props"
+FOREST_RIG_VERSION = "forest-animals-v6-carried-scene-props"
 
 
 def character_kind(character: str) -> str | None:
@@ -183,7 +183,8 @@ def _sprite_tail(path: Path, *, kind: str):
 def render_layers(folder: Path, *, kind: str, topic: str,
                   narration: str, scene_index: int, scene_count: int,
                   style: str = "cartoon",
-                  direction: dict | None = None) -> dict[str, Path]:
+                  direction: dict | None = None,
+                  held_prop: str | None = None) -> dict[str, Path]:
     if kind not in COLORS or style != "cartoon":
         raise ValueError("Only original cartoon fox/rabbit/cat are animated")
     if direction is not None:
@@ -201,7 +202,8 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
-    cue = create_prop_layers(folder, narration=narration, actor=kind)
+    cue = create_prop_layers(folder, narration=narration, actor=kind,
+                              held_prop=held_prop)
     if cue:
         outputs["prop"] = folder / "prop.png"
         if cue["action"] == "pickup":
@@ -212,13 +214,14 @@ def render_layers(folder: Path, *, kind: str, topic: str,
 def render_character_poster(*, kind: str, topic: str, narration: str,
                             scene_index: int, scene_count: int,
                             style: str, destination: Path,
-                            direction: dict | None = None):
+                            direction: dict | None = None,
+                            held_prop: str | None = None):
     """Return a real static pose using exactly the approved motion layers."""
     with tempfile.TemporaryDirectory(prefix="automate-ytb-forest-poster-") as folder:
         layers = render_layers(Path(folder), kind=kind, topic=topic,
                                narration=narration, scene_index=scene_index,
                                scene_count=scene_count, style=style,
-                               direction=direction)
+                               direction=direction, held_prop=held_prop)
         with Image.open(layers["background"]) as background:
             combined = background.convert("RGBA")
         for name, pos in (("tail", (115, 360)), ("body", (180, 184)),
@@ -226,9 +229,11 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
-        if select_interaction(narration):
-            with Image.open(layers["background"].parent / "prop.png") as prop:
-                combined.alpha_composite(prop.convert("RGBA"), (652, 474))
+        cue = cue_for_scene(narration, held_prop=held_prop)
+        if cue:
+            location = (481, 437) if cue["action"] == "carry" else (652, 474)
+            with Image.open(layers["prop"]) as prop:
+                combined.alpha_composite(prop.convert("RGBA"), location)
         destination.parent.mkdir(parents=True, exist_ok=True)
         combined.convert("RGB").save(destination, "PNG", optimize=True)
 
@@ -236,7 +241,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
 def render_motion_clip(*, kind: str, topic: str, narration: str,
                        scene_index: int, scene_count: int, style: str,
                        duration: float, width: int, height: int, fps: int,
-                       destination: Path, direction: dict | None = None):
+                       destination: Path, direction: dict | None = None,
+                       held_prop: str | None = None):
     if not 0 < duration <= 3600 or fps not in (24, 30):
         raise ValueError("Invalid forest animation duration or FPS")
     if (width, height) not in ((1280, 720), (1920, 1080)):
@@ -248,7 +254,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         layers = render_layers(Path(folder), kind=kind, topic=topic,
                                narration=narration, scene_index=scene_index,
                                scene_count=scene_count, style=style,
-                               direction=direction)
+                               direction=direction, held_prop=held_prop)
         action = direction["action"] if direction else "idle"
         body_x, body_y = body_position(action, x=180, y=184)
         left_x, left_y = leg_position(action, side="left")
@@ -277,7 +283,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
-            body_x=body_x, body_y=body_y)
+            body_x=body_x, body_y=body_y, held_prop=held_prop)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
@@ -312,12 +318,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
 
 def art_brief_sha256(*, kind: str, topic: str, narration: str,
                      character: str, style: str, scene_id: str,
-                     direction: dict | None = None) -> str:
+                     direction: dict | None = None,
+                     held_prop: str | None = None) -> str:
     if kind not in COLORS:
         raise ValueError("Unknown original forest character")
     normalized = validate_direction(direction) if direction is not None else None
     source = json.dumps(
         [FOREST_RIG_VERSION, kind, topic, narration, character, style,
-         scene_id, normalized], ensure_ascii=False,
+         scene_id, normalized, held_prop], ensure_ascii=False,
         separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(source).hexdigest()

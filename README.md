@@ -377,3 +377,29 @@ cache MP4 changent avec cette révision.
 persistants entre plusieurs scènes ; la détection de mots-clés peut
 manquer certains synonymes ou gestes. Toute publication requiert
 une vérification visuelle et éditoriale.
+
+### Continuité des objets d'une scène à l'autre
+
+Les personnages originaux `cartoon` conservent désormais visuellement
+une **pomme, une fleur ou un livre** ramassé dans une scène antérieure.
+Le moteur parcourt les scènes **dans l'ordre du scénario original**, en
+mémorisant au plus un objet tenu. Cet objet apparaît près de la patte/aile
+pendant les scènes suivantes, y compris lorsque la narration ne répète pas
+son nom. Une **nouvelle prise remplace l'ancien objet** ; une phrase disant
+explicitement que l'objet est posé, abandonné ou consommé l'efface à partir
+de la scène correspondante. Si le personnage examine un autre objet, celui-ci
+occupe momentanément le premier plan sans supprimer l'inventaire.
+
+La continuité est calculée **uniquement à partir du texte**, sans API,
+sans modification de la narration et sans enregistrer d'état caché entre
+les exécutions. Les empreintes d'approbation des images tiennent compte de
+l'objet porté : un changement de ramassage dans une scène précédente rend
+les visuels suivants obsolètes et impose une nouvelle approbation.
+Le rapport `render-report.json` expose `propContinuity`, notamment
+`carriedScenes`, `carriedByScene` et `timelineShiftMs=0`.
+
+**Limites :** un seul objet suivi, uniquement les mots-clés et verbes
+pris en charge, sans permanence des personnages, physique réaliste, suivi
+des regards ou planification multi-objets. La détection d'un dépôt exige
+un verbe pertinent et le nom explicite de l'objet. L'effet est une
+animation 2D stylisée, soumise à relecture avant publication.

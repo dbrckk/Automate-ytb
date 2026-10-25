@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v8-scripted-scene-props"
+VERSION = "render-v9-scripted-prop-continuity"
 
 
 def _sha(path: Path) -> str:
@@ -260,8 +260,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     output.mkdir(parents=True, exist_ok=True)
     cache = output / ".clip-cache"
     cache.mkdir(exist_ok=True)
+    from .scene_props import carried_props_for_scenes
+    carried_by_scene = carried_props_for_scenes(data["scenes"])
     clips = []
-    for scene in scenes:
+    for scene_index, scene in enumerate(scenes):
         # Posters remain bound to the narration and character-specific rig.
         rig_tag = scene.get("motionRig")
         local_art = (scene.get("assetProvider") == "automate-local-graphics"
@@ -280,7 +282,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                 character=data["originalCharacterBible"],
                 style=scene.get("renderStyle", "cartoon"),
                 scene_id=scene["id"],
-                direction=scene.get("direction"))
+                direction=scene.get("direction"),
+                held_prop=carried_by_scene[scene_index])
             if rig_tag == expected_forest_rig and local_art:
                 from .animated_forest import art_brief_sha256 as forest_hash
                 actual = forest_hash(kind=forest_kind, **brief_args)
@@ -302,6 +305,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "topic": data["topic"] if uses_motion_rig else "",
             "character": data.get("originalCharacterBible") if uses_motion_rig else "",
             "direction": scene.get("direction") if uses_motion_rig else None,
+            "carriedProp": carried_by_scene[scene_index] if uses_motion_rig else None,
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
@@ -324,6 +328,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         style="cartoon", duration=seconds,
                         width=w, height=h, fps=fps, destination=tmp,
                         direction=scene.get("direction"),
+                        held_prop=carried_by_scene[scene_index],
                     )
                 elif uses_forest_rig:
                     from .animated_forest import render_motion_clip as render_forest_clip
@@ -335,6 +340,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         style="cartoon", duration=seconds,
                         width=w, height=h, fps=fps, destination=tmp,
                         direction=scene.get("direction"),
+                        held_prop=carried_by_scene[scene_index],
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -441,6 +447,18 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
         "transitions": transitions_report,
+        "propContinuity": {
+            "version": "scene-props-v2-continuity",
+            "carriedScenes": sum(1 for p in carried_by_scene[:len(scenes)]
+                                if p is not None),
+            "carriedByScene": [
+                {"sceneId": scene["id"], "prop": carried_by_scene[i]}
+                for i, scene in enumerate(scenes)
+                if carried_by_scene[i] is not None
+            ],
+            "source": "script-only-context-from-earlier-pickups",
+            "timelineShiftMs": 0,
+        },
         "captions": str(srt),
         "animatedOwlScenes": sum(
             1 for s in scenes
