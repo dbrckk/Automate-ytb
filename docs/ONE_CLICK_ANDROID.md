@@ -1,5 +1,7 @@
 # Une vidéo YouTube depuis Android — sans PC ni appel API payant
 
+La prévisualisation peut conserver un décor de **forêt, rivière, village ou prairie** en fonction du scénario. Voir [Décors originaux guidés par le scénario](STORY_LANDSCAPES.md).
+
 ## Lancer un aperçu complet
 
 1. Ouvrir [Actions](https://github.com/dbrckk/Automate-ytb/actions) dans le dépôt.
