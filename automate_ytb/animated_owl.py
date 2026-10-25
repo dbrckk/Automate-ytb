@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
+from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
@@ -346,7 +347,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        direction: dict | None = None,
                        held_prop: str | None = None,
                        caption_segments: list[dict] | None = None,
-                       scene_start_ms: int = 0) -> None:
+                       scene_start_ms: int = 0,
+                       mouth_intervals: list[tuple[float, float]] | None = None) -> None:
     if not 0 < duration <= 3600 or fps not in (24,30):
         raise ValueError("Unsupported animation parameters")
     if (width,height) not in ((1280,720),(1920,1080)):
@@ -377,6 +379,11 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
+        gate = mouth_gate_expression(mouth_intervals)
+        if gate is not None:
+            # Never display speech-mouth animation during digital silence.
+            # The separate authored action cue still must be "talk".
+            mouth = f"({mouth})*({gate})"
         f=(
           "[0:v][1:v]overlay=x='144+7*sin(t*1.7)':"
           f"y='{left_y}':eval=frame:format=auto[a];"
