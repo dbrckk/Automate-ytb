@@ -18,10 +18,10 @@ from PIL import Image, ImageDraw, ImageFont
 from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
 from .choreography import body_position, secondary_position, mouth_expression
-from .scene_props import create_layers as create_prop_layers, select_interaction, append_overlays
+from .scene_props import create_layers as create_prop_layers, cue_for_scene, append_overlays
 
 
-RIG_VERSION = "owl-rig-v6-scripted-props"
+RIG_VERSION = "owl-rig-v7-carried-scene-props"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -295,7 +295,8 @@ def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
 
 def render_layers(folder: Path, *, topic: str, narration: str,
                   scene_index: int, scene_count: int, style: str,
-                  direction: dict | None = None) -> dict[str, Path]:
+                  direction: dict | None = None,
+                  held_prop: str | None = None) -> dict[str, Path]:
     if style not in PALETTES:
         raise ValueError("Unsupported visual style")
     if direction is not None:
@@ -313,7 +314,8 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     _body(outputs["blink"],blink=True,
           emotion=direction["emotion"] if direction else "neutral")
     _mouth(outputs["mouth"])
-    cue = create_prop_layers(folder, narration=narration, actor="owl")
+    cue = create_prop_layers(folder, narration=narration, actor="owl",
+                               held_prop=held_prop)
     if cue:
         outputs["prop"] = folder / "prop.png"
         if cue["action"] == "pickup":
@@ -325,7 +327,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        scene_count: int, style: str,
                        duration: float, width: int, height: int,
                        fps: int, destination: Path,
-                       direction: dict | None = None) -> None:
+                       direction: dict | None = None,
+                       held_prop: str | None = None) -> None:
     if not 0 < duration <= 3600 or fps not in (24,30):
         raise ValueError("Unsupported animation parameters")
     if (width,height) not in ((1280,720),(1920,1080)):
@@ -336,7 +339,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
     with tempfile.TemporaryDirectory(prefix="automate-ytb-rig-") as folder:
         layers=render_layers(Path(folder),topic=topic,narration=narration,
                              scene_index=scene_index,scene_count=scene_count,
-                             style=style,direction=direction)
+                             style=style,direction=direction,
+                             held_prop=held_prop)
         # Independently animated wings and expression layers; action cues are
         # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
@@ -363,7 +367,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
-            body_x=body_x, body_y=body_y)
+            body_x=body_x, body_y=body_y, held_prop=held_prop)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(layers["effects"], seed=f"{topic}|{narration}|{scene_index}",
                              weather=direction["weather"])
@@ -394,7 +398,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
 def render_character_poster(*, topic: str, narration: str,
                             scene_index: int, scene_count: int,
                             style: str, destination: Path,
-                            direction: dict | None = None) -> None:
+                            direction: dict | None = None,
+                            held_prop: str | None = None) -> None:
     """The approved still is a true rest-pose composite of the moving rig.
 
     This makes the asset checksum representative of the animation's authored
@@ -404,26 +409,30 @@ def render_character_poster(*, topic: str, narration: str,
         layers = render_layers(
             Path(folder), topic=topic, narration=narration,
             scene_index=scene_index, scene_count=scene_count, style=style,
-            direction=direction)
+            direction=direction, held_prop=held_prop)
         with Image.open(layers["background"]) as b:
             composite = b.convert("RGBA")
         for name, position in (("left", (144,348)), ("right", (420,350)),
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
-        if select_interaction(narration):
-            with Image.open(layers["background"].parent / "prop.png") as prop:
-                composite.alpha_composite(prop.convert("RGBA"), (652, 474))
+        cue = cue_for_scene(narration, held_prop=held_prop)
+        if cue:
+            position = (505, 439) if cue["action"] == "carry" else (652, 474)
+            with Image.open(layers["prop"]) as prop:
+                composite.alpha_composite(prop.convert("RGBA"), position)
         destination.parent.mkdir(parents=True, exist_ok=True)
         composite.convert("RGB").save(destination, format="PNG", optimize=True)
 
 
 def art_brief_sha256(*, topic: str, narration: str,
                      character: str, style: str, scene_id: str,
-                     direction: dict | None = None) -> str:
+                     direction: dict | None = None,
+                     held_prop: str | None = None) -> str:
     """Bind original visuals to the immutable creative inputs of a scene."""
     payload = json.dumps(
         [RIG_VERSION, topic, narration, character, style, scene_id] +
-        ([validate_direction(direction)] if direction is not None else []),
+        ([validate_direction(direction)] if direction is not None else []) +
+        [held_prop],
         ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
