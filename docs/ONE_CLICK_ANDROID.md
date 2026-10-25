@@ -374,3 +374,19 @@ Cela n'invente pas de synchronisation mot à mot : plusieurs gestes
 prononcés dans la même phrase restent placés proportionnellement
 au texte. Les anciens modes, la qualité audio et les sous-titres
 ne changent pas. Le MP4 doit toujours être visionné avant publication.
+
+### Regard et bouche animés plus naturellement
+
+Les yeux des personnages `cartoon` rejoignent désormais leur cible
+en environ 420 ms au lieu d'être figés dans une orientation dès la
+première image. Les clignements restent présents.
+
+Avec `Voice = espeak` ou `kokoro`, la voix WAV créée pour la
+prévisualisation peut aussi fermer la bouche pendant les silences,
+**uniquement si le personnage parle dans le scénario**. Le moteur
+utilise une mesure de volume toutes les 80 ms ; ce n'est pas encore
+une synchronisation précise des lèvres sur les phonèmes.
+
+Le rapport `render-report.json` contient `speechMouth` :
+nombre de scènes analysées et d'intervalles de voix. Aucun service
+payant, réglage manuel ou publication automatique n'est nécessaire.
