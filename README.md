@@ -307,3 +307,30 @@ pour empêcher la réutilisation trompeuse des anciens rendus.
 
 Ces effets restent **des illustrations 2D procédurales**. Ils n'impliquent
 ni vidéo générée par IA ni effets de particules photoréalistes.
+
+### Expressions et actions animées (cartoon)
+
+Les quatre personnages originaux en mode `cartoon` (chouette, renard, lapin,
+chat) ont désormais une **chorégraphie distincte** lorsque le scénario
+mentionne la marche, la course, le saut, le vol, la parole, la surprise ou
+le repos. Le réalisateur extrait ces indications du texte français ou
+anglais sans le modifier. Les déplacements utilisent des oscillations
+déterministes différentes pour la silhouette et les ailes/queues, avec une
+petite réaction amortie lors des surprises.
+
+Les scènes de dialogue intègrent une **bouche animée indépendante** des
+clignements d'yeux : son ouverture est rythmique, non alignée sur chaque
+phonème et non fondée sur une analyse du son. Cela évite de présenter à
+tort un véritable `lip-sync`. Les animations continuent d'utiliser les
+dessins originaux Pillow, les cadrages FFmpeg, les ambiances et les
+transitions sans services tiers ni frais d'API.
+
+Les empreintes d'approbation des illustrations et la version du moteur
+sont modifiées : les clips et poses anciens ne peuvent pas être repris
+silencieusement après ces changements. Les tests inspectent des images
+réellement encodées pour le saut du lapin, la queue du renard en course
+et la bouche de la chouette en dialogue.
+
+Le rendu reste une **animation 2D stylisée**, pas de l'animation osseuse
+3D ou une synchronisation labiale vérifiée. Écouter et revoir les
+résultats avant toute publication.
