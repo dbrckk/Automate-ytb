@@ -305,3 +305,13 @@ ambiances de jour/nuit, la météo, les plans de caméra et les transitions
 Ces gestes proviennent exclusivement des indices présents dans le
 scénario ; ce ne sont pas des animations 3D ni du lip-sync au mot.
 Le rendu reste un brouillon à examiner sur ton téléphone.
+
+### Marche, course et saut : pattes séparées
+
+Le personnage choisi automatiquement (`renard`, `lapin` ou `chat`)
+possède deux pattes dessinées sur des calques indépendants, qui
+alternent pendant la marche et la course, et se replient ensemble
+pendant les sauts. Les mouvements sont sélectionnés depuis le
+scénario. Aucune option payante ou manipulation Android n'est requise.
+Ils demeurent des mouvements procéduraux stylisés 2D et ne remplacent
+pas la relecture de `preview.mp4`.
