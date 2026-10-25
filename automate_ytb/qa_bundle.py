@@ -27,7 +27,9 @@ def _load(path: Path) -> dict:
 
 def consolidate(*, structural_report: Path, media_report: Path,
                 video: Path, srt: Path, vtt: Path,
-                output: Path, visual_report: Path | None = None) -> dict:
+                output: Path, visual_report: Path | None = None,
+                story_report: Path | None = None,
+                plan: Path | None = None) -> dict:
     structural = _load(structural_report)
     media = _load(media_report)
     if not video.is_file() or not 2048 <= video.stat().st_size <= MAX_VIDEO_BYTES:
@@ -50,6 +52,22 @@ def consolidate(*, structural_report: Path, media_report: Path,
     if stream.get("fileBytes") != video.stat().st_size:
         problems.append("Media report does not describe the present MP4 size")
     video_hash = _sha(video)
+    if (story_report is None) != (plan is None):
+        raise ValueError("Story preflight needs both a report and the source plan")
+    story = _load(story_report) if story_report is not None else None
+    if story is not None:
+        if not plan.is_file() or story.get("sourcePlanSha256") != _sha(plan):
+            problems.append("Story preflight does not describe current storyboard")
+        if story.get("publicationApproved") is not False:
+            problems.append("Story preflight unexpectedly approved publication")
+        if story.get("factChecked") is not False:
+            problems.append("Story preflight incorrectly claims fact checking")
+        if story.get("status") not in (
+                "sampled-clean", "review-recommended", "needs-editorial-revision"):
+            problems.append("Story preflight has invalid status")
+        if not isinstance(story.get("exactRepeatCount"), int) or (
+                isinstance(story.get("exactRepeatCount"), bool)):
+            problems.append("Story repetition evidence is incomplete")
     visual = _load(visual_report) if visual_report is not None else None
     if visual is not None:
         if visual.get("status") == "failed" or visual.get("technicalVisualCheckPassed") is not True:
@@ -92,6 +110,9 @@ def consolidate(*, structural_report: Path, media_report: Path,
         "schemaVersion": 1,
         "status": "failed" if problems else "passed",
         "technicalPreviewReady": not problems,
+        "editorialRevisionRecommended": (
+            story.get("status") == "needs-editorial-revision"
+            if story is not None else None),
         "publicationApproved": False,
         "humanEditorialReviewRequired": True,
         "checks": {
@@ -106,6 +127,12 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "nearBlackVisualSamples": visual.get("nearBlackSceneCount") if visual is not None else None,
             "visualMotionPairs": visual.get("motionPairsCompared") if visual is not None else None,
             "frozenAnimatedScenes": visual.get("frozenAnimatedSceneCount") if visual is not None else None,
+            "narrationExactRepeatCount": (
+                story.get("exactRepeatCount") if story is not None else None),
+            "narrationNearRepeatNeighborCount": (
+                story.get("nearRepeatNeighborCount") if story is not None else None),
+            "narrationPaceWarnings": (
+                story.get("speakingPaceWarningCount") if story is not None else None),
             "integratedLufs": media.get("integratedLufs"),
             "truePeakDbtp": media.get("truePeakDbtp"),
             "masteringTargetLufs": media.get("targetLufs"),
@@ -116,12 +143,14 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "structural": structural_report.name,
             "media": media_report.name,
             "visual": visual_report.name if visual_report is not None else None,
+            "story": story_report.name if story_report is not None else None,
         },
         "errors": problems,
         "warnings": list(dict.fromkeys(
             list(structural.get("warnings") or []) +
             list(media.get("warnings") or []) +
-            list(visual.get("warnings") or [] if visual is not None else []))),
+            list(visual.get("warnings") or [] if visual is not None else []) +
+            list(story.get("warnings") or [] if story is not None else []))),
         "limitations": [
             "Both checks assess technical validity, not narrative quality.",
             "No human fact-checking, originality or publication permission is implied.",
@@ -129,6 +158,7 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "EBU R128 loudness measurements do not replace listening-based review.",
             "Visual inspection samples at most 24 scenes twice; it is not a full video quality guarantee.",
             "Near-static motion may be sampled at coincident poses; manual review remains required.",
+            "Narration repetition/pace heuristics are not fact checking or story coherence review.",
         ],
     }
     _write_json(output.resolve(), report)
@@ -145,12 +175,17 @@ def main(argv=None) -> int:
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--visual", type=Path,
                    help="Optional sampled real-frame review required to pass when supplied")
+    p.add_argument("--story", type=Path,
+                   help="Optional original-script editorial repetition review")
+    p.add_argument("--plan", type=Path,
+                   help="Source storyboard used to verify the editorial report")
     a = p.parse_args(argv)
     try:
         report = consolidate(structural_report=a.structural,
                              media_report=a.media, video=a.video,
                              srt=a.srt, vtt=a.vtt, output=a.output,
-                             visual_report=a.visual)
+                             visual_report=a.visual,
+                             story_report=a.story, plan=a.plan)
         print(json.dumps({"status": report["status"],
                           "technicalPreviewReady": report["technicalPreviewReady"],
                           "errors": report["errors"]}, ensure_ascii=False))

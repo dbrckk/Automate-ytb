@@ -260,6 +260,11 @@ def build_preview(*, plan_path: Path, output: Path,
         soundtrack_file = output / "background-original.wav"
         soundtrack_report = create_bed(plan_path=plan_path,
                                        output=soundtrack_file, limit=limit)
+    # Preserve authored narration; evaluate repetition and planned speaking
+    # pace after TTS has adjusted scene durations but before costly FFmpeg.
+    from .story_preflight import inspect as inspect_story
+    story_report = inspect_story(
+        plan=plan_path, destination=output / "story-preflight.json")
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
                                resolution=resolution, fps=24,
@@ -277,6 +282,13 @@ def build_preview(*, plan_path: Path, output: Path,
         "reviewBeforePublication": True, "topic": data["topic"],
         "art": art, "voice": details, "soundtrack": soundtrack_report,
         "render": result,
+        "storyPreflight": {
+            "status": story_report["status"],
+            "exactRepeatCount": story_report["exactRepeatCount"],
+            "nearRepeatNeighborCount": story_report["nearRepeatNeighborCount"],
+            "speakingPaceWarningCount": story_report["speakingPaceWarningCount"],
+            "publicationApproved": False,
+        },
         "thumbnails": [str(x) for x in pictures],
         "warnings": ["Original owl, fox, rabbit and cat use original scenic 2D animation in cartoon style; other characters and styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",

@@ -536,3 +536,28 @@ artistique, un détecteur d'erreur d'animation 3D ou une autorisation
 de publier. Des poses très proches peuvent être prises pour un gel ;
 une vidéo mobile peut comporter d'autres défauts entre les instants
 vérifiés. Une relecture humaine reste obligatoire.
+
+### Précontrôle éditorial automatique du scénario
+
+`One-click YouTube preview` exécute désormais une **analyse locale du
+texte original**, sans service payant ni modification silencieuse du
+scénario. Elle signale les narrations exactement répétées (même si
+elles ne sont pas consécutives), les scènes voisines dont les mots de
+contenu sont presque identiques, et les plans dont la densité de mots
+semble trop lente ou trop rapide au regard de leur durée.
+
+Le fichier **`story-preflight.json`**, inclus dans l'artefact Android,
+contient les numéros de scènes concernées, les indicateurs et une
+empreinte du plan réellement analysé. Le rapport
+`qa-summary.json` reprend les principaux décomptes et distingue
+`technicalPreviewReady` de `editorialRevisionRecommended`.
+
+Les répétitions systématiques déclenchent un signal
+`needs-editorial-revision`, **pas un refus de produire une
+prévisualisation** : une répétition peut être volontaire et seul
+l'auteur peut juger la pertinence narrative. Le système ne prétend
+pas détecter toutes les incohérences d'intrigue, vérifier les faits,
+mesurer le plaisir du spectateur ni autoriser la publication.
+
+Exécution locale facultative :
+`python -m automate_ytb.story_preflight --plan build/scene-plan.json --report story-preflight.json`.
