@@ -390,3 +390,21 @@ une synchronisation précise des lèvres sur les phonèmes.
 Le rapport `render-report.json` contient `speechMouth` :
 nombre de scènes analysées et d'intervalles de voix. Aucun service
 payant, réglage manuel ou publication automatique n'est nécessaire.
+
+### Contrôle des animations et des images figées
+
+Le workflow GitHub `One-click YouTube preview` examine maintenant
+**deux images réelles par scène échantillonnée** dans le MP4 encodé.
+Il bloque la validation technique lorsqu'un personnage attendu comme
+animé semble totalement figé, sans pénaliser les documents ou photos
+volontairement statiques.
+
+Dans l'artefact du workflow, ouvrir
+`review/visual-review.json` pour consulter les champs
+`motionPairsCompared`, `frozenAnimatedSceneCount` et les
+mesures `frames[].motion`. Les planches
+`review/storyboard-*.jpg` restent disponibles pour une
+inspection manuelle directement sur ton téléphone.
+
+Ce contrôle est limité à un échantillonnage et ne dispense jamais
+d'écouter ni de visionner l'épisode avant publication.
