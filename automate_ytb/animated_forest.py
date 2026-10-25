@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
+from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
@@ -259,7 +260,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                        destination: Path, direction: dict | None = None,
                        held_prop: str | None = None,
                        caption_segments: list[dict] | None = None,
-                       scene_start_ms: int = 0):
+                       scene_start_ms: int = 0,
+                       mouth_intervals: list[tuple[float, float]] | None = None):
     if not 0 < duration <= 3600 or fps not in (24, 30):
         raise ValueError("Invalid forest animation duration or FPS")
     if (width, height) not in ((1280, 720), (1920, 1080)):
@@ -291,6 +293,11 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
+        gate = mouth_gate_expression(mouth_intervals)
+        if gate is not None:
+            # Never display speech-mouth animation during digital silence.
+            # The separate authored action cue still must be "talk".
+            mouth = f"({mouth})*({gate})"
         # A transparent fade affects only the pupil pose: the underlying
         # original sprite is identical in every other detail. Closed-eye
         # poses are composited last and remain intact throughout the gaze.
