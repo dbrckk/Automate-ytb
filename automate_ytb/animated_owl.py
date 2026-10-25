@@ -22,7 +22,7 @@ from .choreography import body_position, secondary_position, mouth_expression
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v9-prop-aware-eye-pose"
+RIG_VERSION = "owl-rig-v10-progressive-gaze-speech-envelope"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -313,13 +313,16 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","body","blink","mouth","effects")}
+             ("background","left","right","neutral","body","blink","mouth","effects")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction)
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
+    _body(outputs["neutral"],blink=False,
+          emotion=direction["emotion"] if direction else "neutral",
+          gaze="forward")
     _body(outputs["body"],blink=False,
           emotion=direction["emotion"] if direction else "neutral",
           gaze=gaze)
@@ -381,15 +384,18 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{right_y}':eval=frame:format=auto[b];"
           f"[b][3:v]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[c];"
-          f"[c][4:v]overlay=x='{body_x}':"
-          f"y='{body_y}':"
-          "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto[d];"
+          "[4:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
+          f"[c][look]overlay=x='{body_x}':"
+          f"y='{body_y}':eval=frame:format=auto[d];"
           f"[d][5:v]overlay=x='{body_x}':"
           f"y='{body_y}':"
-          f"enable='{mouth}':eval=frame:format=auto[e]"
+          "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto[e];"
+          f"[e][6:v]overlay=x='{body_x}':"
+          f"y='{body_y}':"
+          f"enable='{mouth}':eval=frame:format=auto[f]"
         )
-        final_label = "e"
-        keys = ["background", "left", "right", "body", "blink", "mouth"]
+        final_label = "f"
+        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth"]
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
