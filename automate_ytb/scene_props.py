@@ -21,7 +21,7 @@ NOUNS = (
     ("stone", r"\b(pierre\w*|caillou\w*|rocher\w*|stone\w*|rock\w*)\b"),
 )
 PICKUP = re.compile(
-    r"\b(ramass\w*|sais\w*|attrap\w*|prend|prendre|"
+    r"\b(ramass\w*|saisi\w*|attrap\w*|prend|prendre|"
     r"cueille\w*|cueillir|pick\w*|grabs?|grabbed|takes?|took|"
     r"collect\w*|gather\w*)\b")
 OBSERVE = re.compile(
