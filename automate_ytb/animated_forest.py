@@ -26,7 +26,7 @@ from .choreography import body_position, secondary_position, mouth_expression, l
 from .director import validate_direction
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v10-storybook-landscape-biomes"
+FOREST_RIG_VERSION = "forest-animals-v11-eased-cinematic-motion"
 
 
 def character_kind(character: str) -> str | None:
@@ -350,7 +350,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
-            scene_index=scene_index)
+            scene_index=scene_index, duration=duration)
         fps_graph += f";[{final}]{camera}[out]"
         args = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel",
                 "error", "-y"]

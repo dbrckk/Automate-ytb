@@ -7,7 +7,7 @@ to avoid artificial movement in still backgrounds.
 """
 from __future__ import annotations
 
-CAMERA_VERSION = "cinematic-camera-v1"
+CAMERA_VERSION = "cinematic-camera-v2-eased-travel"
 
 # Source canvas 1280x720. Crops retain approximately 16:9 framing.
 # (crop width, crop height, base x, base y, horizontal drift, vertical drift)
@@ -22,7 +22,8 @@ PROFILES = {
 
 
 def framing_filter(shot: str, *, width: int, height: int, fps: int,
-                   scene_index: int = 1) -> str:
+                   scene_index: int = 1,
+                   duration: float | None = None) -> str:
     """Create a single trusted filter (crop, pan, scale, pixel-format).
 
     Scene index changes the direction of the gentle drift but never the crop
@@ -42,6 +43,23 @@ def framing_filter(shot: str, *, width: int, height: int, fps: int,
         raise ValueError("Unsafe cinematic crop profile")
     if shot == "wide":
         return f"scale={width}:{height}:flags=lanczos,format=yuv420p"
+    if duration is not None:
+        # Smoothstep traversal: zero camera velocity at both ends prevents
+        # visible jerks at edit boundaries. Camera drift is capped by each
+        # validated crop profile, and only trusted numeric values are used.
+        if not isinstance(duration, (float, int)) or isinstance(duration, bool) \
+                or not 0 < duration <= 3600:
+            raise ValueError("Invalid cinematic camera duration")
+        frames = max(2, round(duration * fps))
+        p = f"min(1,max(0,n/{frames-1}))"
+        ease = f"(3*({p})*({p})-2*({p})*({p})*({p}))"
+        # Alternate traveling direction by scene to avoid a mechanical
+        # repeated left-to-right camera pattern.
+        travel = f"(2*({ease})-1)" if scene_index % 2 else f"(1-2*({ease}))"
+        cx = f"{x}+{dx}*({travel})"
+        cy = f"{y}+{dy}*({travel})"
+        return (f"crop={cw}:{ch}:x='{cx}':y='{cy}',"
+                f"scale={width}:{height}:flags=lanczos,format=yuv420p")
     # Pan slowly within the safe frame. Values are not script-supplied.
     phase = "0.0" if scene_index % 2 else "1.2"
     cx = f"{x}+{dx}*sin(n/{fps}*0.77+{phase})"
@@ -57,4 +75,6 @@ def framing_metadata(shot: str) -> dict:
     w, h, _, _, dx, dy = PROFILES[shot]
     return {"shot": shot, "sourceCanvas": [1280, 720],
             "crop": [w, h], "animatedCamera": bool(dx or dy),
-            "version": CAMERA_VERSION}
+            "version": CAMERA_VERSION,
+            "easing": "smoothstep" if dx or dy else "static",
+            "zeroVelocityAtSceneEdges": bool(dx or dy)}
