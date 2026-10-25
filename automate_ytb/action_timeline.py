@@ -45,6 +45,7 @@ def _audio_anchored_phases(narration: str, *, duration: float,
     previous = scene_start_ms
     stop = scene_start_ms + round(duration * 1000)
     gestures: list[dict] = []
+    ambiguous = False
     for entry, original in zip(segments, expected):
         if not isinstance(entry, dict):
             raise ValueError("Invalid synthesized gesture cue")
@@ -64,7 +65,8 @@ def _audio_anchored_phases(narration: str, *, duration: float,
         ]
         distinct = {a for a in sub_actions if a != "idle"}
         if len(distinct) > 1:
-            return None
+            ambiguous = True
+            continue
         action = next(iter(distinct), "idle")
         if action == "idle":
             continue
@@ -74,7 +76,7 @@ def _audio_anchored_phases(narration: str, *, duration: float,
                          "start": round((start - scene_start_ms)/1000, 4)})
     if previous != stop:
         raise ValueError("Synthesized gesture cues do not reach the scene end")
-    if not 2 <= len(gestures) <= MAX_PHASES or gestures[0]["start"] != 0:
+    if ambiguous or not 2 <= len(gestures) <= MAX_PHASES or gestures[0]["start"] != 0:
         return None
     boundaries = [p["start"] for p in gestures] + [float(duration)]
     if any(b-a < MIN_PHASE_SECONDS for a, b in zip(boundaries, boundaries[1:])):
