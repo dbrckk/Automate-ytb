@@ -278,3 +278,16 @@ Le fichier `render-report.json` et le contrôle qualité structurel
 documentent les transitions et vérifient que le décalage du montage vidéo
 est nul. Ces fondus sont visuels uniquement ; une vraie transition de
 scènes animées ou un montage artistique reste à perfectionner.
+
+### Nouvelles ambiances automatiques
+
+Les scènes `cartoon` de la chouette, du renard, du lapin et du chat
+intègrent désormais des particules de pollen en journée et des lucioles
+la nuit. Les particules sont animées localement dans FFmpeg, uniquement
+au premier plan : le ciel et les étoiles restent stables. Le contenu du
+scénario, la voix, les sous-titres et le calendrier des scènes sont
+inchangés. Pour vérifier l'effet, ouvrir `preview.mp4` et les planches
+de relecture présentes dans l'artefact GitHub Actions.
+
+Aucune banque de vidéos ni API payante n'est utilisée ; les effets sont
+stylistiques et nécessitent une relecture avant publication.

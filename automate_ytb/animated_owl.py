@@ -19,7 +19,7 @@ from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
 
 
-RIG_VERSION = "owl-rig-v3-cinematic-scenes"
+RIG_VERSION = "owl-rig-v4-ambient-particles"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -242,6 +242,34 @@ def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
             y = rand.randrange(1440)
             draw.arc((x,y,x+70,y+22),start=175,end=355,
                      fill=(210,235,205,120),width=3)
+    elif weather == "night":
+        # Foreground fireflies sit below the skyline even while the
+        # two-height texture scrolls. The sky and moon stay stable.
+        for band in (0, 720):
+            for _ in range(46):
+                x = rand.randrange(42, 1237)
+                y = band + rand.randrange(420, 665)
+                radius = rand.choice((3, 4, 5, 7))
+                draw.ellipse((x-radius*2, y-radius*2,
+                              x+radius*2, y+radius*2),
+                             fill=(242, 220, 119, 38))
+                draw.ellipse((x-radius, y-radius, x+radius, y+radius),
+                             fill=(255, 232, 136, 150))
+                draw.ellipse((x-1, y-1, x+1, y+1),
+                             fill=(255, 255, 223, 224))
+    elif weather == "day":
+        # Warm pollen and loose blossoms float past in the foreground.
+        # Original local sprites, not downloaded footage or photographs.
+        for band in (0, 720):
+            for _ in range(58):
+                x = rand.randrange(35, 1240)
+                y = band + rand.randrange(420, 665)
+                radius = rand.choice((2, 3, 4))
+                color = rand.choice(((247, 224, 166, 128),
+                                     (234, 249, 216, 115),
+                                     (255, 202, 205, 109)))
+                draw.ellipse((x-radius, y-radius,
+                              x+radius, y+radius), fill=color)
     else:
         for i in range(12):
             x = rand.randrange(1280)
@@ -307,10 +335,11 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto"
         )
         final_label = "d"
-        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy"}:
+        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(layers["effects"], seed=f"{topic}|{narration}|{scene_index}",
                              weather=direction["weather"])
-            speed = 240 if direction["weather"] in {"rain", "storm"} else 35
+            speed = {"rain": 240, "storm": 310, "wind": 55,
+                     "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             f += f"[d];[d][5:v]overlay=x=0:y='-720+mod(t*{speed},720)':eval=frame:format=auto[e]"
             final_label = "e"
         else:
@@ -323,7 +352,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
         keys = ["background","left","right","body","blink"]
-        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy"}:
+        if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             keys.append("effects")
         for key in keys:
             args+=["-loop","1","-framerate",str(fps),"-i",str(layers[key])]
