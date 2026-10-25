@@ -10,6 +10,7 @@ import json
 import math
 from pathlib import Path
 import re
+from random import Random
 import tempfile
 
 from PIL import Image, ImageDraw, ImageFont
@@ -18,7 +19,7 @@ from .studio import PALETTES, WIDTH, HEIGHT, font
 from .director import validate_direction
 
 
-RIG_VERSION = "owl-rig-v2-director"
+RIG_VERSION = "owl-rig-v3-cinematic-scenes"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -98,23 +99,76 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
                 y=210+(k*31)%350
                 draw.arc((x,y,x+85,y+27),180,345,
                          fill=(196,224,222),width=3)
-    draw.ellipse((106,578,548,644),fill=(27,34,62))
-    draw.rounded_rectangle((666,245,1220,607),radius=30,
-                           fill=(18,29,55),outline=accent,width=3)
-    draw.rounded_rectangle((43,36,624,106),radius=18,fill=(18,29,55))
-    title=topic.strip()
-    while draw.textbbox((0,0),title,font=font(29))[2] > 540 and len(title)>8:
-        title=title[:-2]
-    if len(title)<len(topic.strip()):
-        title=title.rstrip()+"…"
-    draw.text((65,54),title,fill=(254,251,238),font=font(29))
-    draw.text((704,285),f"SCÈNE {scene_index:02d} / {scene_count:02d}",
-              fill=accent,font=font(26))
-    draw.line((702,328,1175,328),fill=accent,width=3)
-    for i,line in enumerate(_wrap(draw,narration,462,6)):
-        draw.text((702,351+i*39),line,fill=(247,250,255),font=font(30))
-    draw.text((46,662),"APERÇU • PERSONNAGE ORIGINAL",
-              fill=(242,242,250),font=font(19))
+    # Full-screen storybook landscape. Narration belongs in the exported
+    # SRT/VTT, not a large opaque paragraph covering half the scene.
+    # Everything remains original, deterministic and royalty-free.
+    rand = Random(seed)
+    weather = direction["weather"] if direction else "day"
+    night = weather in {"night", "storm"}
+    trunk = (29, 44, 66) if night else (39, 65, 74)
+    foliage = [(29, 87, 101), (35, 116, 119), (49, 133, 125)] if night else [
+        (32, 98, 106), (40, 122, 106), (64, 145, 103)
+    ]
+    # Subtle mountains, atmospheric haze and landmarks add depth to the
+    # empty right-hand space, which previously displayed a large text card.
+    ridge = [(570, 575), (700, 460), (778, 518), (870, 413),
+             (996, 525), (1144, 444), (1280, 527), (1280, 720)]
+    draw.polygon(ridge, fill=(49, 79, 104) if night else (79, 128, 132))
+    draw.line(ridge[:7], fill=(128, 177, 185), width=3)
+    for x, bottom, radius in ((715, 630, 62), (863, 646, 75),
+                              (1067, 668, 94), (1235, 640, 78)):
+        top = bottom - (180 + rand.randint(10, 65))
+        draw.line((x, bottom, x, top + 30), fill=trunk, width=18)
+        draw.line((x, top + 96, x - radius * .5, top + 55),
+                  fill=trunk, width=8)
+        draw.line((x, top + 140, x + radius * .5, top + 78),
+                  fill=trunk, width=7)
+        for ox, oy, size, tone in (
+            (-radius * .50, 55, radius * .72, foliage[0]),
+            (radius * .39, 66, radius * .74, foliage[1]),
+            (0, 25, radius, foliage[2]),
+            (0, -10, radius * .68, foliage[1]),
+        ):
+            draw.ellipse((x + ox - size, top + oy - size,
+                          x + ox + size, top + oy + size),
+                         fill=tone)
+        for _ in range(5):
+            a = x + rand.randrange(-radius, radius + 1)
+            b = top + rand.randrange(0, radius + 28)
+            draw.ellipse((a, b, a + 4, b + 6), fill=(145, 192, 142))
+    # Patches of grasses and firefly-like highlights frame the character.
+    for _ in range(85):
+        x = rand.randrange(20, 1280)
+        y = rand.randrange(625, 718)
+        blade = rand.randrange(8, 25)
+        draw.line((x, y, x - 4, y - blade),
+                  fill=(67, 159, 134), width=2)
+        draw.line((x, y, x + 5, y - blade * .7),
+                  fill=(107, 178, 134), width=2)
+    for _ in range(32):
+        x = rand.randrange(50, 1260)
+        y = rand.randrange(350, 620)
+        radius = rand.choice((2, 3, 4))
+        color = (232, 229, 162) if night else (212, 238, 192)
+        draw.ellipse((x-radius, y-radius, x+radius, y+radius), fill=color)
+    # Position the actor with a believable ground-contact shadow.
+    draw.ellipse((106, 584, 548, 647), fill=(25, 34, 58))
+    draw.ellipse((132, 597, 514, 635), fill=(45, 63, 78))
+
+    title = topic.strip()
+    while draw.textbbox((0, 0), title, font=font(27))[2] > 550 and len(title) > 8:
+        title = title[:-2]
+    if len(title) < len(topic.strip()):
+        title = title.rstrip() + "…"
+    title_width = draw.textbbox((0, 0), title, font=font(27))[2]
+    draw.rounded_rectangle((34, 28, min(640, 74 + title_width), 90),
+                           radius=21, fill=(20, 32, 54),
+                           outline=(103, 146, 157), width=2)
+    draw.text((55, 43), title, fill=(249, 247, 237), font=font(27))
+    label = f"{scene_index:02d} / {scene_count:02d}"
+    draw.rounded_rectangle((1104, 651, 1256, 696), radius=15,
+                           fill=(20, 34, 53), outline=accent, width=2)
+    draw.text((1130, 658), label, fill=(247, 246, 237), font=font(21))
     im.save(path,"PNG",optimize=True)
 
 
@@ -261,13 +315,12 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             final_label = "e"
         else:
             f += "[d]"
-        crop = {"wide": (1280,720), "medium": (1248,702),
-                "closeup": (1216,684), "macro": (1184,666),
-                "low": (1248,702), "shoulder": (1224,689)}
+        from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
-        cw,ch = crop[shot]
-        f += f";[{final_label}]crop={cw}:{ch}:{(1280-cw)//2}:{(720-ch)//2},"
-        f += f"scale={width}:{height}:flags=lanczos,format=yuv420p[out]"
+        camera = framing_filter(
+            shot, width=width, height=height, fps=fps,
+            scene_index=scene_index)
+        f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
         keys = ["background","left","right","body","blink"]
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy"}:
@@ -310,7 +363,7 @@ def art_brief_sha256(*, topic: str, narration: str,
                      direction: dict | None = None) -> str:
     """Bind original visuals to the immutable creative inputs of a scene."""
     payload = json.dumps(
-        [topic, narration, character, style, scene_id] +
+        [RIG_VERSION, topic, narration, character, style, scene_id] +
         ([validate_direction(direction)] if direction is not None else []),
         ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
