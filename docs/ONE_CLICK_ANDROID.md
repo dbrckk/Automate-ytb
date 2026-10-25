@@ -342,3 +342,13 @@ La mémoire des objets est limitée à un objet à la fois, et se reconstruit
 depuis les scènes du script, sans service payant. Regarder les scènes
 successives dans `preview.mp4` et vérifier le rapport
 `render-report.json` (champ `propContinuity`) avant publication.
+
+### Gestes successifs dans un même plan
+
+Pour une scène `cartoon` avec un personnage original, écrire plusieurs
+actions successives dans la narration (« Le renard marche, puis saute,
+puis parle. ») déclenche jusqu'à trois phases de mouvement. Les raccords
+de pose sont légèrement lissés. L'audio et les sous-titres ne sont pas
+redécoupés : le moment exact des gestes est estimé à partir du texte et
+doit être revu dans `preview.mp4`. Le champ `actionTimeline` du
+`render-report.json` permet de contrôler les phases prévues.
