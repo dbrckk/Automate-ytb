@@ -33,7 +33,7 @@ def character_kind(character: str) -> str | None:
     if not isinstance(character, str):
         raise ValueError("Character description must be text")
     folded = unicodedata.normalize("NFKD", character.casefold())
-    words = " ".join(ch for ch in folded if not unicodedata.combining(ch))
+    words = "".join(ch for ch in folded if not unicodedata.combining(ch))
     if re.search(r"\b(renard\w*|fox|foxes)\b", words):
         return "fox"
     if re.search(r"\b(lapin\w*|lievre\w*|rabbit\w*|bunn\w*|hare|hares)\b", words):
