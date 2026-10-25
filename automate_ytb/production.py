@@ -238,11 +238,14 @@ def _srt_time(ms: int) -> str:
 
 def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            limit: int | None = None, resolution: str = "720p", fps: int = 24,
-           music: Path | None = None, caption_timing: str = "estimated") -> dict:
+           music: Path | None = None, caption_timing: str = "estimated",
+           transition: str = "dissolve") -> dict:
     if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
         raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
+    if transition not in {"cut", "dissolve"}:
+        raise ValueError("Transition must be cut or dissolve")
     if caption_timing == "audio" and audio is None:
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
@@ -343,9 +346,16 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             finally:
                 tmp.unlink(missing_ok=True)
         clips.append(clip)
+    # Visual transitions do not trim, overlap or shift the storyboard timeline.
+    # Narration, original music and SRT timecodes retain their planned starts.
+    from .transitions import transition_clips
+    edited_clips, transitions_report = transition_clips(
+        clips, cache=cache, fps=fps,
+        durations=[(s["endMs"] - s["startMs"]) / 1000 for s in scenes],
+        mode=transition)
     concat = output / "clips.ffconcat"
     concat.write_text("ffconcat version 1.0\n" +
-                      "".join(f"file {_quoted(c)}\n" for c in clips), encoding="utf-8")
+                      "".join(f"file {_quoted(c)}\n" for c in edited_clips), encoding="utf-8")
     raw = output / "silent-video.mp4"
     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
           "-f", "concat", "-safe", "0", "-i", str(concat),
@@ -430,6 +440,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "audioMixMode": ("ducked-narration-plus-original-bed" if music is not None and audio is not None
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
+        "transitions": transitions_report,
         "captions": str(srt),
         "animatedOwlScenes": sum(
             1 for s in scenes
@@ -484,6 +495,7 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
+    p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
@@ -498,7 +510,8 @@ def main(argv=None) -> int:
         else:
             result = render(plan_path=args.plan, output=args.output,
                             audio=args.audio, limit=args.limit,
-                            resolution=args.resolution, fps=args.fps)
+                            resolution=args.resolution, fps=args.fps,
+                            transition=args.transition)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as error:
