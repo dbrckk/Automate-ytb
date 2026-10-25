@@ -227,7 +227,8 @@ def build_preview(*, plan_path: Path, output: Path,
                   voice: str = "espeak", limit: int | None = None,
                   resolution: str = "720p", voice_name: str | None = None,
                   soundtrack: str = "none",
-                  caption_timing: str = "estimated") -> dict:
+                  caption_timing: str = "estimated",
+                  transition: str = "dissolve") -> dict:
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
     if soundtrack not in {"none", "ambient"}:
