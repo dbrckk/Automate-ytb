@@ -54,8 +54,8 @@ class NaturalNarrationTests(unittest.TestCase):
                         ]), character="Une petite chouette violette",
                         duration=30, shot_seconds=6)
             data["scenes"][0]["narration"] = (
-                "La chouette découvre un petit sentier. "
-                "Elle y rencontre un gentil lapin.")
+                "La petite chouette violette découvre un chemin absolument merveilleux. "
+                "Elle y rencontre un gentil lapin près du ruisseau tranquille.")
             file = root/"plan.json"
             file.write_text(json.dumps(data), encoding="utf8")
             seen = []
