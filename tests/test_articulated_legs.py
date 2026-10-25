@@ -47,8 +47,6 @@ class IndependentAnimalLegTests(unittest.TestCase):
                             leg_position("run", side="left"))
         self.assertNotIn("3.141593", "".join(leg_position("jump", side="right")))
         self.assertIn("+335-", leg_position("jump", side="right")[1])
-        self.assertIn("*0.0", leg_position("rest", side="left")[0]
-                      if False else "reference") if False else None
         for invalid in ("walk;movie=/etc/passwd", "rotate", "walk\n"):
             with self.assertRaises(ValueError):
                 leg_position(invalid, side="left")
