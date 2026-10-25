@@ -1,0 +1,76 @@
+"""Small, deterministic, validated action choreography for original 2D rigs.
+
+The original narration's classified action selects a *trusted* expression.
+No user-supplied FFmpeg filters, audio-driven lip-sync or fictitious motions.
+These are rhythmic poses, not skeletal inverse kinematics.
+"""
+from __future__ import annotations
+
+from .director import ACTIONS
+
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v1"
+
+# Horizontal travel (px), horizontal Hz, vertical displacement (px),
+# vertical oscillator Hz and animation kind.
+PROFILES = {
+    "idle": (4, 0.45, 5, 1.5, "breathe"),
+    "walk": (16, 0.70, 13, 5.1, "steps"),
+    "run": (27, 1.40, 24, 10.2, "steps"),
+    "jump": (15, 1.10, 76, 2.2, "leap"),
+    "fly": (19, 1.05, 32, 5.3, "flight"),
+    "talk": (5, 0.55, 5, 2.0, "breathe"),
+    "surprise": (11, 1.30, 42, 7.5, "reaction"),
+    "rest": (1, 0.20, 2, 1.1, "breathe"),
+}
+
+# Foreground parts never depend on unknown text or unvalidated values.
+MOUTH_ENABLE = {
+    "talk": "lt(mod(t,0.50),0.28)",
+    "surprise": "lt(t,0.60)",
+}
+
+
+def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
+    """Return FFmpeg overlay x/y expressions for the same body and blink pose."""
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown original animation action")
+    if not (0 <= x <= 900 and 0 <= y <= 400):
+        raise ValueError("Unsafe rig origin")
+    horizontal, hf, vertical, vf, kind = PROFILES[action]
+    if kind == "reaction":
+        xp = f"{x}+{horizontal}*exp(-1.3*t)*sin(t*8)"
+        yp = f"{y}-{vertical}*exp(-1.1*t)*abs(sin(t*{vf}))"
+    else:
+        xp = f"{x}+{horizontal}*sin(t*{hf})"
+        if kind in {"steps", "leap"}:
+            sign = "+" if kind == "steps" else "-"
+            yp = f"{y}{sign}{vertical}*abs(sin(t*{vf}))"
+        elif kind == "flight":
+            yp = f"{y}-23+{vertical}*sin(t*{vf})"
+        else:
+            yp = f"{y}+{vertical}*sin(t*{vf})"
+    return xp, yp
+
+
+def secondary_position(action: str, *, base: int, side: str) -> str:
+    """Independent wing/tail swish, slower on rest and faster on locomotion."""
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown secondary animation")
+    if side not in ("left", "right", "tail"):
+        raise ValueError("Unsafe articulated sprite")
+    amplitude = {
+        "idle": 8, "walk": 22, "run": 39, "jump": 52,
+        "fly": 71, "talk": 6, "surprise": 62, "rest": 2,
+    }[action]
+    frequency = {
+        "idle": 2.6, "walk": 5.2, "run": 10.5, "jump": 6.5,
+        "fly": 8.0, "talk": 2.0, "surprise": 6.6, "rest": 0.9,
+    }[action]
+    sign = "-" if side == "right" else "+"
+    return f"{base}{sign}{amplitude}*sin(t*{frequency})"
+
+
+def mouth_expression(action: str) -> str:
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown mouth action")
+    return MOUTH_ENABLE.get(action, "0")
