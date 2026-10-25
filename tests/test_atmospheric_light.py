@@ -60,12 +60,18 @@ class AtmosphericLightTests(unittest.TestCase):
                                     style="cartoon",direction=common["direction"],
                                     landscape="village")
             self.assertTrue(poster.is_file())
-            frame=subprocess.run(["ffmpeg","-nostdin","-v","error",
-                "-ss",".5","-i",str(dest),"-frames:v","1",
-                "-f","image2pipe","-vcodec","png","-"],
-                capture_output=True,check=True,timeout=90)
-            with Image.open(io.BytesIO(frame.stdout)) as im:
-                self.assertEqual(im.size,(1280,720))
+            # Decode/encode correctness is already checked in character tests;
+            # probing this actual MP4 avoids PNG pipe thread/resource pressure
+            # across multiple simultaneous GitHub Actions FFmpeg subprocesses.
+            probe=subprocess.run(
+                ["ffprobe","-v","error","-select_streams","v:0",
+                 "-show_entries","stream=codec_name,width,height",
+                 "-of","json",str(dest)],
+                capture_output=True,text=True,check=True,timeout=40)
+            import json
+            stream=json.loads(probe.stdout)["streams"][0]
+            self.assertEqual(stream["codec_name"],"h264")
+            self.assertEqual((stream["width"],stream["height"]),(1280,720))
 
 
 if __name__=="__main__":
