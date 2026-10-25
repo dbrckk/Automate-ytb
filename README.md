@@ -617,3 +617,15 @@ Les silhouettes restent sur les bords pour préserver la lisibilité des
 personnages. Les images approuvées incluent les mêmes assets, et les
 empreintes de rendus changent pour empêcher le réemploi des anciennes
 vidéos. Il ne s'agit pas de géométrie 3D réelle.
+
+### V2 — éclairage d'ambiance par calque
+
+Les personnages originaux disposent maintenant d'une **lumière atmosphérique
+indépendante**, adaptée aux scènes de jour, de nuit et aux temps couverts.
+Les villages nocturnes reçoivent de subtils halos chaleureux, tandis que
+les scènes de jour utilisent un éclairage solaire diffus. Les couches
+transparentes sont composées dans le poster approuvé et dans le véritable
+MP4, avant le cadrage caméra.
+
+Ces halos sont des illustrations 2D floutées, non des lumières 3D physiques,
+et leur faible opacité vise à préserver la lisibilité des personnages.

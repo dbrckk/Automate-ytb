@@ -461,3 +461,9 @@ au premier plan, animé lentement indépendamment des personnages. Les
 biomes forêt, prairie, rivière et village ont des détails adaptés.
 Aucune option ni application supplémentaire n'est nécessaire. Cet
 effet reste une composition 2D avec profondeur simulée.
+
+### Éclairage V2 automatique
+
+Les décors originaux possèdent désormais un léger éclairage d'ambiance
+selon la météo et le moment de la journée, sans réglage supplémentaire.
+Les halos restent volontairement subtils : ce n'est pas du ray tracing.

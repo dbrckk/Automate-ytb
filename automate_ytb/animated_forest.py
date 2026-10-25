@@ -24,10 +24,11 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
+from .atmospheric_light import draw_lighting, overlay_lighting
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v12-layered-foreground-depth"
+FOREST_RIG_VERSION = "forest-animals-v13-atmospheric-lighting"
 
 
 def character_kind(character: str) -> str | None:
@@ -205,13 +206,17 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
+    draw_lighting(outputs["lighting"],
+                  weather=direction["weather"] if direction else "day",
+                  landscape=landscape or "forest",
+                  seed=f"{topic}|{narration}|{scene_index}")
     _sprite_tail(outputs["tail"], kind=kind)
     emotion = direction["emotion"] if direction else "neutral"
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -260,6 +265,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                 combined.alpha_composite(prop.convert("RGBA"), location)
         with Image.open(layers["foreground"]) as front:
             combined.alpha_composite(front.convert("RGBA"), (0, 0))
+        with Image.open(layers["lighting"]) as light:
+            combined.alpha_composite(light.convert("RGBA"), (0, 0))
         destination.parent.mkdir(parents=True, exist_ok=True)
         combined.convert("RGB").save(destination, "PNG", optimize=True)
 
@@ -356,6 +363,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         fps_graph, final, names = overlay_foreground(
             graph=fps_graph, label=final, names=names,
             scene_index=scene_index, duration=duration)
+        fps_graph, final, names = overlay_lighting(
+            graph=fps_graph, label=final, names=names)
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
