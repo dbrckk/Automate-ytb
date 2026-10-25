@@ -56,6 +56,16 @@ def consolidate(*, structural_report: Path, media_report: Path,
             problems.append("Visual frame sampling reported invalid or black scenes")
         if visual.get("errors"):
             problems.append("Visual review includes blocking errors")
+        if visual.get("schemaVersion", 1) >= 2:
+            compared = visual.get("motionPairsCompared")
+            frozen = visual.get("frozenAnimatedSceneCount")
+            if (not isinstance(compared, int) or isinstance(compared, bool)
+                    or compared != visual.get("sampledSceneCount")):
+                problems.append("Visual motion analysis is incomplete")
+            if not isinstance(frozen, int) or isinstance(frozen, bool) or frozen < 0:
+                problems.append("Visual motion freezing count is invalid")
+            elif frozen:
+                problems.append("Frozen original animation detected in encoded MP4")
         if visual.get("publicationApproved") is not False:
             problems.append("Unexpected visual publication approval flag")
         if visual.get("videoSha256") != video_hash:
@@ -94,6 +104,8 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "subtitleCues": media.get("subtitleCues"),
             "visualScenesSampled": visual.get("sampledSceneCount") if visual is not None else None,
             "nearBlackVisualSamples": visual.get("nearBlackSceneCount") if visual is not None else None,
+            "visualMotionPairs": visual.get("motionPairsCompared") if visual is not None else None,
+            "frozenAnimatedScenes": visual.get("frozenAnimatedSceneCount") if visual is not None else None,
             "integratedLufs": media.get("integratedLufs"),
             "truePeakDbtp": media.get("truePeakDbtp"),
             "masteringTargetLufs": media.get("targetLufs"),
@@ -115,7 +127,8 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "No human fact-checking, originality or publication permission is implied.",
             "Narration timing is not word-level forced alignment.",
             "EBU R128 loudness measurements do not replace listening-based review.",
-            "Visual inspection samples at most 24 scene midpoints; it is not a full video quality guarantee.",
+            "Visual inspection samples at most 24 scenes twice; it is not a full video quality guarantee.",
+            "Near-static motion may be sampled at coincident poses; manual review remains required.",
         ],
     }
     _write_json(output.resolve(), report)
