@@ -426,3 +426,25 @@ de publication restent inchangés.
 Tous les gestes sont produits localement à partir de poses 2D originales
 et d'expressions FFmpeg à vocabulaire contrôlé. Cela reste une mise en
 scène procédurale, **sans IK, physique ni lip-sync réaliste**.
+
+### Regard dirigé vers les objets du récit
+
+Dans les scènes `cartoon` du renard, du lapin, du chat et de la chouette,
+les pupilles sont maintenant positionnées en fonction d'un objet
+**explicitement observé, ramassé, transporté ou franchi** dans le scénario.
+Les personnages dirigent le regard vers la droite lorsqu'un objet apparaît
+dans le décor, ou légèrement vers le bas et la droite lorsqu'ils en portent
+un depuis une scène précédente. Sans interaction explicite, la pose
+initiale des yeux est conservée ; les clignements et expressions restent
+compatibles.
+
+Les poses sont dessinées localement avec Pillow et sont intégrées aux
+illustrations approuvées et aux MP4. Le rapport `render-report.json`
+contient un `objectGaze` par scène pour relecture. Le moteur et les
+empreintes d'art évoluent pour empêcher la réutilisation d'anciens visuels
+qui ne respectent plus la direction des yeux.
+
+**Limite importante :** il s'agit d'une **orientation statique du regard
+par scène**, et non d'un mouvement oculaire continu, d'un suivi 3D de
+l'objet ou d'une compréhension visuelle réelle du décor. Le visage reste
+une illustration 2D stylisée.
