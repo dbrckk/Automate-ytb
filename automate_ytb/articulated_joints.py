@@ -9,7 +9,15 @@ from __future__ import annotations
 import re
 
 JOINT_VERSION = "pivoted-appendages-v1"
-PADDING = 16
+# (square canvas size, sprite x offset, sprite y offset). The chosen
+# shoulder/hip lands at the canvas centre, so rotation uses an anatomical
+# joint instead of turning the entire sprite about its own bounding box.
+PIVOTS = {
+    ("wing", "left"): (384, 56, 126),
+    ("wing", "right"): (384, 164, 126),
+    ("leg", "left"): (272, 86, 126),
+    ("leg", "right"): (272, 86, 126),
+}
 
 # Radians, angular speed in radians/second, limited to small motions.
 WINGS = {
@@ -40,11 +48,20 @@ def joint_angle(action: str, *, joint: str, side: str) -> str:
     return f"{sign}{amplitude:.3f}*sin(t*{frequency:.3f})"
 
 
-def rotated_source(*, input_index: int, output_label: str, angle: str) -> str:
-    """FFmpeg graph source with alpha-safe rotation and known pixel padding.
+def pivot_offset(joint: str, side: str) -> tuple[int, int]:
+    """Screen correction for the padded canvas, retaining sprite placement."""
+    if (joint, side) not in PIVOTS:
+        raise ValueError("Unsupported original character joint")
+    _, x, y = PIVOTS[(joint, side)]
+    return x, y
 
-    The overlay x and y coordinates for this sprite must each be reduced by
-    PADDING; the rotation is around its centre with transparent corners.
+
+def rotated_source(*, input_index: int, output_label: str, angle: str,
+                   joint: str, side: str) -> str:
+    """Rotate a joint in an alpha-padded plate about its shoulder or hip.
+
+    Consumers must subtract pivot_offset(joint, side) from original overlay
+    coordinates so the unrotated first frame matches the approved poster.
     """
     if (not isinstance(input_index, int) or isinstance(input_index, bool)
             or not 1 <= input_index <= 24):
@@ -53,8 +70,12 @@ def rotated_source(*, input_index: int, output_label: str, angle: str) -> str:
             r"[a-z][a-z0-9_]{1,24}", output_label):
         raise ValueError("Invalid FFmpeg rotated joint label")
     if (not isinstance(angle, str) or not 1 <= len(angle) <= 25000
-            or not re.fullmatch(r"[a-zA-Z0-9_+*/()., \-]+", angle)):
+            or not re.fullmatch(r"[a-zA-Z0-9_+*/()., \\-]+", angle)):
         raise ValueError("Untrusted FFmpeg angle expression")
-    return (f"[{input_index}:v]format=rgba,rotate=a='{angle}':"
-            f"ow=iw+{2*PADDING}:oh=ih+{2*PADDING}:c=none"
+    if (joint, side) not in PIVOTS:
+        raise ValueError("Unsupported original character joint")
+    canvas, dx, dy = PIVOTS[(joint, side)]
+    return (f"[{input_index}:v]format=rgba,"
+            f"pad={canvas}:{canvas}:{dx}:{dy}:color=black@0,"
+            f"rotate=a='{angle}':ow=iw:oh=ih:c=none"
             f"[{output_label}];")
