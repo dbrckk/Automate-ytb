@@ -26,10 +26,11 @@ from .choreography import body_position, secondary_position, mouth_expression, l
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .impact_particles import draw_impact_plate, overlay_impact
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v17-planted-foot-gait"
+FOREST_RIG_VERSION = "forest-animals-v18-impact-particles"
 
 
 def character_kind(character: str) -> str | None:
@@ -207,7 +208,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "impact")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -218,6 +219,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
                   weather=direction["weather"] if direction else "day",
                   landscape=landscape or "forest",
                   seed=f"{topic}|{narration}|{scene_index}")
+    draw_impact_plate(outputs["impact"], weather=direction["weather"] if direction else "day")
     draw_contact_shadow(outputs["shadow"], actor=kind,
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
@@ -375,6 +377,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             scene_index=scene_index, duration=duration)
         fps_graph, final, names = overlay_lighting(
             graph=fps_graph, label=final, names=names)
+        fps_graph, final, names = overlay_impact(
+            graph=fps_graph, label=final, names=names,
+            action=action, body_x=body_x)
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
