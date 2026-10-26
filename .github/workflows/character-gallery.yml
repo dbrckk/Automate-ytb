@@ -1,0 +1,54 @@
+name: Preview original character artwork
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/animated_forest.py"
+      - "automate_ytb/animated_owl.py"
+      - "automate_ytb/visual_gallery.py"
+      - "automate_ytb/species_anatomy.py"
+      - "automate_ytb/sprite_supersampling.py"
+  pull_request:
+    paths:
+      - "automate_ytb/animated_forest.py"
+      - "automate_ytb/animated_owl.py"
+      - "automate_ytb/visual_gallery.py"
+      - "automate_ytb/species_anatomy.py"
+      - "automate_ytb/sprite_supersampling.py"
+
+permissions:
+  contents: read
+
+jobs:
+  draw-character-gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free local illustration dependencies
+        run: python -m pip install -e .
+      - name: Render actual original character gallery
+        run: python -m automate_ytb.visual_gallery --output artifacts/character-art-review.png
+      - name: Verify gallery dimensions and color diversity
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          p=Path("artifacts/character-art-review.png")
+          with Image.open(p) as im:
+              assert im.size == (1920, 1080)
+              assert im.mode == "RGB"
+          assert p.stat().st_size > 12000
+          PY
+      - name: Archive mobile-readable original artwork
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-character-gallery
+          path: artifacts/character-art-review.png
+          retention-days: 14
+          if-no-files-found: error
