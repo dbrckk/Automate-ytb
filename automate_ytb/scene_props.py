@@ -215,7 +215,10 @@ def append_overlays(*, graph: str, label: str, names: list[str],
         raise ValueError("Invalid scene duration")
     if label not in "efghij":
         raise ValueError("Unexpected filter graph label")
-    if not 1 <= len(names) <= 10:
+    # Forest rigs now contain 11 trusted base plates (independent ears).
+    # Keep the limit bounded while allowing those plates plus the optional
+    # pickup reach/prop overlays appended after this integrity check.
+    if not 1 <= len(names) <= 12:
         raise ValueError("Unexpected filter input count")
     # Use safe coordinate expressions bound to stage 1280x720.
     if cue["action"] == "pickup":
