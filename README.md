@@ -720,3 +720,18 @@ Dans l'onglet *Actions* de GitHub, ouvrir le dernier run
 *Premium visual gallery*, puis l'artefact `original-premium-gallery`.
 Une critique humaine du résultat reste indispensable : ces tests valident
 la génération, pas un niveau visuel AAA.
+
+### V2 — rendu haute qualité des personnages
+
+Les formes originales des quatre animaux (chouette, renard, lapin, chat)
+sont maintenant **peintes à 2× leur résolution native**, puis
+reconstruites par filtre Lanczos. Cette opération antialiase réellement
+les courbes, diagonales, ailes, oreilles, yeux, pattes et détails fins :
+ce n'est pas un agrandissement du PNG déjà pixelisé, ni un simple filtre
+de flou. La finition de volume/lumière et les accents de visage
+s'appliquent ensuite au sprite final, comme auparavant.
+
+Le procédé reste **entièrement local, déterministe, sans GPU payant**.
+Les vidéos et illustrations gardent les mêmes coordonnées, durées,
+droits et sous-titres. Cette amélioration de rasterisation ne transforme
+pas le moteur 2D en animation 3D ou en cinéma photoréaliste.

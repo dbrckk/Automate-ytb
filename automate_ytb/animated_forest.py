@@ -23,6 +23,7 @@ from .scenic_world import WORLD_VERSION
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
+from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -32,7 +33,7 @@ from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v21-dimensional-materials"
+FOREST_RIG_VERSION = "forest-animals-v22-supersampled-character-art"
 
 
 def character_kind(character: str) -> str | None:
@@ -91,10 +92,11 @@ def _draw_ear(d: ImageDraw.ImageDraw, *, kind: str, side: str) -> None:
 
 def _sprite_ear(path: Path, *, kind: str, side: str) -> None:
     """Small, transparent independently rotating ear (150x240)."""
-    image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
-    _draw_ear(ImageDraw.Draw(image), kind=kind, side=side)
+    image, d = sprite_canvas((350, 440))
+    _draw_ear(d, kind=kind, side=side)
     origin = 0 if side == "left" else 200
-    cropped = image.crop((origin, 0, origin + 150, 240))
+    cropped = image.crop((origin*2, 0, (origin + 150)*2, 240*2))
+    cropped = resolve_sprite(cropped, (150, 240))
     shade_sprite(cropped, kind=kind, part="ear")
     cropped.save(path, "PNG")
 
@@ -105,8 +107,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     palette = COLORS[kind]
     fur, dark, belly, ear = (
         palette[name] for name in ("fur", "dark", "belly", "ear"))
-    image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
-    d = ImageDraw.Draw(image)
+    image, d = sprite_canvas((350, 440))
     # The legs are now independent articulated sprites. Keeping them out of
     # the torso image allows each foot to lift and stride on its own.
     d.ellipse((61, 160, 289, 385), fill=fur, outline=INK, width=6)
@@ -157,6 +158,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
+    image = resolve_sprite(image, (350, 440))
     shade_sprite(image, kind=kind, part="body")
     finish_forest_face(image, kind=kind)
     image.save(path, "PNG")
@@ -166,8 +168,7 @@ def _sprite_leg(path: Path, *, kind: str, side: str):
     """A distinct lower limb that can stride without moving the whole torso."""
     if kind not in COLORS or side not in ("left", "right"):
         raise ValueError("Unsupported animal leg")
-    image = Image.new("RGBA", (100, 125), (0, 0, 0, 0))
-    d = ImageDraw.Draw(image)
+    image, d = sprite_canvas((100, 125))
     fur = COLORS[kind]["fur"]
     dark = COLORS[kind]["dark"]
     d.rounded_rectangle((20, 6, 79, 98), radius=25,
@@ -180,6 +181,7 @@ def _sprite_leg(path: Path, *, kind: str, side: str):
         toe = offset + (3 if side == "right" else -3)
         d.line((toe, 107, toe - 3, 116), fill=dark, width=3)
     d.arc((15, 83, 89, 117), 186, 351, fill=(249, 220, 181, 255), width=2)
+    image = resolve_sprite(image, (100, 125))
     shade_sprite(image, kind=kind, part="leg")
     image.save(path, "PNG")
 
@@ -188,19 +190,17 @@ def _sprite_mouth(path: Path, *, kind: str):
     """A small mouth-only pose that can switch without resetting the blink."""
     if kind not in COLORS:
         raise ValueError("Unknown animal mouth")
-    image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
-    d = ImageDraw.Draw(image)
+    image, d = sprite_canvas((350, 440))
     # Restore the fur beneath the still-pose mouth before drawing the
     # open, tongue-highlighted vowel shape.
     d.ellipse((149, 258, 210, 302), fill=COLORS[kind]["belly"])
     d.ellipse((165, 268, 194, 300), fill=INK)
     d.arc((170, 282, 191, 301), 0, 180, fill=(238, 139, 161, 255), width=6)
-    image.save(path, "PNG")
+    resolve_sprite(image, (350, 440)).save(path, "PNG")
 
 
 def _sprite_tail(path: Path, *, kind: str):
-    image = Image.new("RGBA", (230, 240), (0, 0, 0, 0))
-    d = ImageDraw.Draw(image)
+    image, d = sprite_canvas((230, 240))
     fur, dark, belly = (COLORS[kind][name]
                         for name in ("fur", "dark", "belly"))
     if kind == "fox":
@@ -220,6 +220,7 @@ def _sprite_tail(path: Path, *, kind: str):
         d.arc((28, 8, 214, 236), start=35, end=258,
               fill=fur, width=33)
         d.ellipse((185, 188, 229, 230), fill=dark)
+    image = resolve_sprite(image, (230, 240))
     shade_sprite(image, kind=kind, part="tail")
     image.save(path, "PNG")
 
