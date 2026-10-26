@@ -25,7 +25,7 @@ def image_at(video: Path, t: float) -> Image.Image:
 
 class SmoothCinematicTests(unittest.TestCase):
     def test_eased_camera_has_safe_boundaries_and_opposite_directions(self):
-        self.assertIn("v2", CAMERA_VERSION)
+        self.assertIn("v3", CAMERA_VERSION)
         for shot, (_, _, _, _, dx, dy) in PROFILES.items():
             for idx in (1, 2):
                 expr = framing_filter(shot, width=1280, height=720,

@@ -757,3 +757,17 @@ vidéos, et les anciennes images/vidéos en cache sont invalidées.
 Ces détails sont de **l'ambiance originale et non une affirmation sur
 les faits racontés**. Aucun asset externe, service payant ou GPU n'est requis.
 Le procédé crée du mouvement 2,5D, pas des scènes 3D physiques.
+
+### V2 — caméra réactive aux mouvements réels
+
+Outre les travellings déjà interpolés, les scènes originales profitent
+désormais d'un **suivi très léger de l'action** : les plans moyens et serrés
+accompagnent le balancement horizontal d'une course et la montée / descente
+d'un saut. Ce suivi utilise les mêmes cycles temporels fiables que les
+animations de personnages, reste à l'intérieur des marges de cadrage, et
+s'efface progressivement à chaque frontière de scène pour éviter les à-coups.
+
+Les plans larges ne changent pas, afin de conserver une vue lisible des
+paysages. Le rendu demeure une caméra virtuelle 2D/2,5D et non un suivi de
+mouvement par vision artificielle. Aucun modèle externe, abonnement ou GPU
+n'est nécessaire.
