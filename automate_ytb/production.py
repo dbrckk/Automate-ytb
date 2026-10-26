@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v23-character-facial-finishing"
+VERSION = "render-v24-character-joint-articulation"
 
 
 def _sha(path: Path) -> str:
