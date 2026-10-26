@@ -482,7 +482,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
-            scene_index=scene_index, duration=duration)
+            scene_index=scene_index, duration=duration, action=action)
         f += f";[{final_label}]{camera}[out]"
         args=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y"]
         for key in keys:
