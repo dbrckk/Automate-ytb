@@ -481,3 +481,13 @@ Les personnages originaux utilisent maintenant automatiquement une
 rasterisation en 2× suivie d'une réduction Lanczos pour obtenir des
 yeux, courbes, oreilles et détails plus nets, sans manipulation sur
 smartphone, téléchargement de modèle ou coût d'inférence supplémentaire.
+
+### Inspecter les visuels sur téléphone
+
+Dans GitHub, ouvre **Actions → Preview original character artwork**,
+puis lance **Run workflow** si aucune génération récente n'apparaît.
+Ouvre le dernier workflow réussi et télécharge l'artefact
+`automate-ytb-character-gallery`. L'image PNG 1920×1080 permet de
+comparer les quatre personnages, les silhouettes, les couleurs et les
+expressions avant toute publication vidéo. Le rendu est automatique,
+gratuit et réalisé par les fonctions actuelles de l'application.
