@@ -25,11 +25,12 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .scarf_motion import draw_scarf_tail, scarf_position, append_scarf
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v16-ground-contact"
+FOREST_RIG_VERSION = "forest-animals-v17-fabric-articulation"
 
 
 def character_kind(character: str) -> str | None:
@@ -130,8 +131,6 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
         d.arc((150, 261, 207, 298), start=0, end=180, fill=dark, width=5)
     # Signature golden scarf across the torso ensures character consistency.
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
-    d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
-              fill=SCARF)
     image.save(path, "PNG")
 
 
@@ -207,7 +206,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "scarf_tail")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -233,6 +232,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
+    draw_scarf_tail(outputs["scarf_tail"], actor=kind)
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
@@ -264,6 +264,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
+        with Image.open(layers["scarf_tail"]) as fabric:
+            combined.alpha_composite(fabric.convert("RGBA"), (385, 485))
         cue = cue_for_scene(narration, held_prop=held_prop)
         if cue:
             location = (481, 437) if cue["action"] == "carry" else (652, 474)
@@ -308,6 +310,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                         scene_start_ms=scene_start_ms)
         body_x, body_y = choreograph(
             **settings, pose=lambda a: body_position(a, x=180, y=184))
+        scarf_x, scarf_y = choreograph(
+            **settings, pose=lambda a: scarf_position(a, actor=kind))
         left_x, left_y = choreograph(
             **settings, pose=lambda a: leg_position(a, side="left"))
         right_x, right_y = choreograph(
@@ -356,6 +360,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
             body_x=body_x, body_y=body_y, held_prop=held_prop)
+        fps_graph, final, names = append_scarf(
+            graph=fps_graph, label=final, names=names,
+            x=scarf_x, y=scarf_y)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(
                 layers["effects"],
@@ -364,7 +371,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             speed_fx = {"rain": 240, "storm": 310, "wind": 55,
                         "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             source_index = len(names)
-            next_label = chr(ord(final) + 1)
+            next_label = "weatherstage"
             fps_graph += (
                 f";[{final}][{source_index}:v]overlay=x=0:"
                 f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[{next_label}]")
