@@ -27,10 +27,11 @@ from .choreography import body_position, secondary_position, mouth_expression, b
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v18-facial-finish"
+FOREST_RIG_VERSION = "forest-animals-v19-facial-finish-articulated"
 
 
 def character_kind(character: str) -> str | None:
@@ -315,9 +316,17 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             **settings, pose=lambda a: leg_position(a, side="left"))
         right_x, right_y = choreograph(
             **settings, pose=lambda a: leg_position(a, side="right"))
-        (tail_y,) = choreograph(
+        (tail_offset_y,) = choreograph(
             **settings, pose=lambda a: (
-                secondary_position(a, base=357, side="tail"),))
+                secondary_position(a, base=173, side="tail"),))
+        tail_x = f"({body_x})-67+8*sin(t*2.4)-52"
+        tail_y = f"({body_y})+({tail_offset_y})-47"
+        (tail_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="tail", side="tail"),))
+        (left_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="leg", side="left"),))
+        (right_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="leg", side="right"),))
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
@@ -332,8 +341,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
             offset_x=45, image_index=8)
+        rotation_graph = (
+            f"[1:v]format=rgba,rotate=a='{tail_angle}':ow=334:oh=334:c=none[tailspin];"
+            f"[6:v]format=rgba,rotate=a='{left_angle}':ow=162:oh=162:c=none[legleft];"
+            f"[7:v]format=rgba,rotate=a='{right_angle}':ow=162:oh=162:c=none[legright];"
+        )
         fps_graph = (
-            "[shadowstage][1:v]overlay=x='113+8*sin(t*2.4)':"
+            f"[shadowstage][tailspin]overlay=x='{tail_x}':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
             f"[a][2:v]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[b];"
@@ -346,12 +360,12 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[d][5:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
             f"enable='{mouth}':eval=frame:format=auto[e];"
-            f"[e][6:v]overlay=x='{left_x}':"
-            f"y='{left_y}':eval=frame:format=auto[f];"
-            f"[f][7:v]overlay=x='{right_x}':"
-            f"y='{right_y}':eval=frame:format=auto[g]"
+            f"[e][legleft]overlay=x='({left_x})-31':"
+            f"y='({left_y})-19':eval=frame:format=auto[f];"
+            f"[f][legright]overlay=x='({right_x})-31':"
+            f"y='({right_y})-19':eval=frame:format=auto[g]"
         )
-        fps_graph = shadow_graph + fps_graph
+        fps_graph = shadow_graph + rotation_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow"]
