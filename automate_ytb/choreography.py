@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v3-anticipation-landing"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v4-planted-foot-gait"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -132,6 +132,12 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
         fall = f"min(1,max(0,(({phase_jump})-0.75)/0.64))"
         tuck = f"(({rise})*({rise})*(3-2*({rise}))-({fall})*({fall})*(3-2*({fall})))"
         y = f"({parent_y})+335-{lift}*({tuck})"
+    elif action in {"walk", "run"}:
+        # A planted stance occupies half of each gait cycle. The leg only
+        # lifts during the other half, with zero vertical speed at toe-off
+        # and touchdown. Opposite phases alternate the planted foot.
+        swing = f"max(0,sin(t*{frequency}+{phase}))"
+        y = f"({parent_y})+335-{lift}*({swing})*({swing})"
     elif action == "fly":
         y = f"({parent_y})+335+{lift}*sin(t*{frequency}+{phase})"
     else:
