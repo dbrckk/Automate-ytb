@@ -47,7 +47,7 @@ class ResponsiveEarTests(unittest.TestCase):
                     # to the original unarticulated animal.
                     before = original.crop((0, 0, 350, 110))
                     after = combined.crop((0, 0, 350, 110))
-                    self.assertIsNone(ImageChops.difference(before, after).getbbox())
+                    self.assertEqual(before.tobytes(), after.tobytes())
 
     def test_ears_are_really_separate_motion_layers(self):
         with tempfile.TemporaryDirectory() as folder:
