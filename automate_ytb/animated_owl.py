@@ -23,7 +23,7 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
-from .articulated_joints import joint_angle, rotated_source, PADDING
+from .articulated_joints import joint_angle, rotated_source, pivot_offset
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
@@ -415,16 +415,18 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
             offset_x=33, image_index=7)
+        left_dx, left_dy = pivot_offset("wing", "left")
+        right_dx, right_dy = pivot_offset("wing", "right")
         wing_graph = (
             rotated_source(input_index=1, output_label="left_pivot",
-                           angle=left_angle) +
+                           angle=left_angle, joint="wing", side="left") +
             rotated_source(input_index=2, output_label="right_pivot",
-                           angle=right_angle))
+                           angle=right_angle, joint="wing", side="right"))
         f=(
-          f"[shadowstage][left_pivot]overlay=x='144+7*sin(t*1.7)-{PADDING}':"
-          f"y='({left_y})-{PADDING}':eval=frame:format=auto[a];"
-          f"[a][right_pivot]overlay=x='420-7*sin(t*1.7)-{PADDING}':"
-          f"y='({right_y})-{PADDING}':eval=frame:format=auto[b];"
+          f"[shadowstage][left_pivot]overlay=x='144+7*sin(t*1.7)-{left_dx}':"
+          f"y='({left_y})-{left_dy}':eval=frame:format=auto[a];"
+          f"[a][right_pivot]overlay=x='420-7*sin(t*1.7)-{right_dx}':"
+          f"y='({right_y})-{right_dy}':eval=frame:format=auto[b];"
           f"[b][3:v]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[c];"
           "[4:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
