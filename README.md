@@ -735,3 +735,25 @@ Le procédé reste **entièrement local, déterministe, sans GPU payant**.
 Les vidéos et illustrations gardent les mêmes coordonnées, durées,
 droits et sous-titres. Cette amélioration de rasterisation ne transforme
 pas le moteur 2D en animation 3D ou en cinéma photoréaliste.
+
+### V2 — biomes vivants et mouvement à plusieurs profondeurs
+
+Les quatre décors originaux (forêt, rivière, prairie, village) ne sont
+plus entièrement figés autour des personnages. Deux calques transparents
+dessinés localement à **2× puis reconstruits avec Lanczos** introduisent
+un mouvement lent et différencié :
+
+- **Lointain** : nuages délicats, silhouettes d'oiseaux quand la météo
+  le permet, quelques petites étoiles les nuits sombres.
+- **Proximité** : feuillages flottants en forêt, papillons en prairie,
+  reflets et libellules près des rivières, poussière ou lucioles au village.
+
+Chaque plan se déplace à une vitesse propre dans le montage FFmpeg, avec
+un mouvement plus marqué en cas de vent. Les éléments restent à droite
+de la composition, à distance du visage des personnages et de la zone des
+sous-titres. Les images de validation incluent les mêmes dessins que les
+vidéos, et les anciennes images/vidéos en cache sont invalidées.
+
+Ces détails sont de **l'ambiance originale et non une affirmation sur
+les faits racontés**. Aucun asset externe, service payant ou GPU n'est requis.
+Le procédé crée du mouvement 2,5D, pas des scènes 3D physiques.
