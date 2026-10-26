@@ -635,3 +635,7 @@ et leur faible opacité vise à préserver la lisibilité des personnages.
 Les déplacements des personnages originalement dessinés utilisent maintenant de légères harmoniques secondaires : respiration non parfaitement cyclique et suivi des ailes et queues avec deux fréquences déterministes. Les poses restent des illustrations 2D, pas de l'IK, du mocap ou des squelettes 3D ; la voix et la durée des scènes ne changent pas.
 
 **Audit ciblé de star-list :** Sakugabooru (références de timing uniquement, aucun extrait réutilisé), SHOT.CAFE (éclairage et cadrage, inspiration uniquement), PoseMy.Art (études de pose avec droits d'export à examiner) sont pertinents immédiatement. PINOC/Viggle, Blender, Three.js et Scenario Labs 3D peuvent ouvrir une future filière de modèles/mouvements, **mais aucune source n'est installée ou importée automatiquement** sans vérification de licence, format, budget GPU et compatibilité FFmpeg. Cette évolution privilégie les améliorations testables et gratuites sur le moteur existant.
+
+### V2 : sauts avec anticipation et réception
+
+Les sauts d'animaux dessinés disposent désormais d'une courte phase d'accroupissement, d'une ascension interpolée, d'une descente et d'un amortissement au sol. Les deux pieds suivent le même temps de vol. Ces changements restent entièrement procéduraux, gratuits et déterministes, et ne modifient pas la narration ni les fichiers audio. La création d'un véritable rig articulé et de rotations de membres indépendantes constitue encore une étape distincte.
