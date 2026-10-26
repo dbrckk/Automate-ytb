@@ -15,6 +15,7 @@ from automate_ytb.cinematic_paint import (
 from automate_ytb.animated_forest import (
     _sprite_body, render_motion_clip as forest_clip)
 from automate_ytb.animated_owl import _body as owl_body
+from scripts.render_visual_gallery import render_gallery
 
 
 class CinematicMaterialTests(unittest.TestCase):
@@ -82,6 +83,19 @@ class CinematicMaterialTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             paint_sky_bloom(Image.new("RGB",(600,400)),
                             weather="day")
+
+    def test_mobile_gallery_contains_all_original_worlds(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output=Path(folder)/"four-worlds.png"
+            render_gallery(output)
+            self.assertGreater(output.stat().st_size,150000)
+            with Image.open(output) as im:
+                self.assertEqual(im.size,(2560,1440))
+                areas = [im.crop((i%2*1280,i//2*720,
+                                  (i%2+1)*1280,(i//2+1)*720))
+                         for i in range(4)]
+                self.assertNotEqual(areas[0].tobytes(),areas[1].tobytes())
+                self.assertNotEqual(areas[1].tobytes(),areas[2].tobytes())
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "Real encoded MP4 verification requires FFmpeg")
