@@ -467,3 +467,10 @@ effet reste une composition 2D avec profondeur simulée.
 Les décors originaux possèdent désormais un léger éclairage d'ambiance
 selon la météo et le moment de la journée, sans réglage supplémentaire.
 Les halos restent volontairement subtils : ce n'est pas du ray tracing.
+
+### Expressions cartoon plus détaillées
+
+Les personnages originaux reçoivent automatiquement de petits détails
+de pelage et de plumage. Les clignements sont légèrement espacés
+différemment selon la scène et l'action, avec une double réaction de
+surprise. Ces améliorations restent gratuites, locales et sans réglage.

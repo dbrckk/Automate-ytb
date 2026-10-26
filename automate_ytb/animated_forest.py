@@ -22,14 +22,15 @@ from .cinematic_camera import framing_filter
 from .scenic_world import WORLD_VERSION
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
-from .choreography import body_position, secondary_position, mouth_expression, leg_position
+from .character_finishing import finish_forest_face
+from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v17-planted-foot-gait"
+FOREST_RIG_VERSION = "forest-animals-v18-facial-finish"
 
 
 def character_kind(character: str) -> str | None:
@@ -132,6 +133,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
+    finish_forest_face(image, kind=kind)
     image.save(path, "PNG")
 
 
@@ -300,6 +302,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                                direction=direction, held_prop=held_prop,
                                landscape=landscape)
         action = direction["action"] if direction else "idle"
+        blink = blink_enable(action, scene_index=scene_index)
         # Within-scene actions follow the authored order (walk, then jump,
         # then talk). Short scenes or single-action lines remain unchanged.
         settings = dict(narration=narration, duration=duration,
@@ -339,7 +342,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"y='{body_y}':eval=frame:format=auto[c];"
             f"[c][4:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
-            "enable='lt(mod(t+0.15,4.1),0.14)':eval=frame:format=auto[d];"
+            f"enable='{blink}':eval=frame:format=auto[d];"
             f"[d][5:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
             f"enable='{mouth}':eval=frame:format=auto[e];"

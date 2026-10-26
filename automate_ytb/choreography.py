@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v4-planted-foot-gait"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -143,3 +143,29 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     else:
         y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}+{phase}))"
     return x, y
+
+
+
+def blink_enable(action: str, *, scene_index: int) -> str:
+    """Trusted variable blink interval, including immediate reaction double-blink.
+
+    A different original scene offset avoids blinking simultaneously on each
+    scene cut. Values depend on reviewed action enums, never raw narration.
+    FFmpeg overlay 'enable' still receives just a bounded expression.
+    """
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown blink action")
+    if not isinstance(scene_index, int) or isinstance(scene_index, bool) \
+            or not 1 <= scene_index <= 1200:
+        raise ValueError("Invalid blink scene index")
+    period = (4.45 if action in {"rest", "fly"} else
+              3.75 if action in {"walk", "run"} else 3.30)
+    period += (scene_index * 7 % 9) * 0.14
+    offset = 0.18 + (scene_index * 3 % 7) * 0.09
+    duration = 0.18 if action == "rest" else 0.13
+    base = f"lt(mod(t+{offset:.2f},{period:.2f}),{duration:.2f})"
+    if action == "surprise":
+        # Surprise briefly squeezes both eyelids twice, before resuming
+        # the normal scene-specific interval.
+        return f"max({base},max(between(t,0.10,0.20),between(t,0.33,0.42)))"
+    return base

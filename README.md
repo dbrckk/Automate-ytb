@@ -649,3 +649,17 @@ La composition préserve la narration, les sous-titres, le montage et les images
 ### V2 — marche et course avec appui au sol
 
 La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
+
+### V2 — expressions naturelles et détails des personnages
+
+Les animaux originaux `cartoon` (renard, lapin, chat, chouette) reçoivent
+désormais des touches de finition translucides déterministes : accents de
+pelage, joues, reflets du visage et petites plumes. Les effets sont appliqués
+aux poses ouvertes/fermées, sans remplacer les yeux, la bouche, le
+sous-titrage, les images approuvées ou les assets de scène.
+
+Les clignements ne se répètent plus toutes les quatre secondes à
+l'identique : leur intervalle et leur décalage dépendent de l'action et de
+l'index de scène. La surprise comporte deux clignements rapprochés, tandis
+que le repos est plus lent. Ces gestes restent de l'animation 2D :
+aucun tracking oculaire réel, simulation capillaire ni mocap n'est revendiqué.
