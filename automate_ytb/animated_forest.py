@@ -25,10 +25,11 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v15-jump-anticipation"
+FOREST_RIG_VERSION = "forest-animals-v16-ground-contact"
 
 
 def character_kind(character: str) -> str | None:
@@ -206,7 +207,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -217,6 +218,9 @@ def render_layers(folder: Path, *, kind: str, topic: str,
                   weather=direction["weather"] if direction else "day",
                   landscape=landscape or "forest",
                   seed=f"{topic}|{narration}|{scene_index}")
+    draw_contact_shadow(outputs["shadow"], actor=kind,
+                        weather=direction["weather"] if direction else "day",
+                        action=direction["action"] if direction else "idle")
     _sprite_tail(outputs["tail"], kind=kind)
     emotion = direction["emotion"] if direction else "neutral"
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -253,6 +257,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                                landscape=landscape)
         with Image.open(layers["background"]) as background:
             combined = background.convert("RGBA")
+        with Image.open(layers["shadow"]) as shade:
+            combined.alpha_composite(shade.convert("RGBA"), (225, 608))
         for name, pos in (("tail", (115, 360)), ("body", (180, 184)),
                           ("left_leg", (248, 519)),
                           ("right_leg", (366, 519))):
@@ -320,8 +326,11 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         # A transparent fade affects only the pupil pose: the underlying
         # original sprite is identical in every other detail. Closed-eye
         # poses are composited last and remain intact throughout the gaze.
+        shadow_graph = shadow_stage(
+            body_x=body_x, ground_y=608,
+            offset_x=45, image_index=8)
         fps_graph = (
-            "[0:v][1:v]overlay=x='113+8*sin(t*2.4)':"
+            "[shadowstage][1:v]overlay=x='113+8*sin(t*2.4)':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
             f"[a][2:v]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[b];"
@@ -339,9 +348,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[f][7:v]overlay=x='{right_x}':"
             f"y='{right_y}':eval=frame:format=auto[g]"
         )
+        fps_graph = shadow_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
-                 "left_leg", "right_leg"]
+                 "left_leg", "right_leg", "shadow"]
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
