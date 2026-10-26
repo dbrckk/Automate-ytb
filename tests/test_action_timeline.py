@@ -45,7 +45,7 @@ class StoryPhaseTests(unittest.TestCase):
         self.assertTrue(all(p["end"] - p["start"] >= .55 for p in phases))
         self.assertEqual(timeline_report(narration, 5, "walk")[
             "audioTimelineShiftMs"], 0)
-        self.assertIn("v2", TIMELINE_VERSION)
+        self.assertIn("v3", TIMELINE_VERSION)
 
     def test_no_invented_transitions_in_single_action_and_unsupported_clauses(self):
         one = action_phases("Le chat marche doucement.",
