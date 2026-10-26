@@ -22,6 +22,7 @@ from .cinematic_camera import framing_filter
 from .scenic_world import WORLD_VERSION
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
+from .material_shading import shade_sprite
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -31,7 +32,7 @@ from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v20-independent-responsive-ears"
+FOREST_RIG_VERSION = "forest-animals-v21-dimensional-materials"
 
 
 def character_kind(character: str) -> str | None:
@@ -93,7 +94,9 @@ def _sprite_ear(path: Path, *, kind: str, side: str) -> None:
     image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
     _draw_ear(ImageDraw.Draw(image), kind=kind, side=side)
     origin = 0 if side == "left" else 200
-    image.crop((origin, 0, origin + 150, 240)).save(path, "PNG")
+    cropped = image.crop((origin, 0, origin + 150, 240))
+    shade_sprite(cropped, kind=kind, part="ear")
+    cropped.save(path, "PNG")
 
 
 def _sprite_body(path: Path, *, kind: str, blink: bool,
@@ -154,6 +157,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
+    shade_sprite(image, kind=kind, part="body")
     finish_forest_face(image, kind=kind)
     image.save(path, "PNG")
 
@@ -176,6 +180,7 @@ def _sprite_leg(path: Path, *, kind: str, side: str):
         toe = offset + (3 if side == "right" else -3)
         d.line((toe, 107, toe - 3, 116), fill=dark, width=3)
     d.arc((15, 83, 89, 117), 186, 351, fill=(249, 220, 181, 255), width=2)
+    shade_sprite(image, kind=kind, part="leg")
     image.save(path, "PNG")
 
 
@@ -215,6 +220,7 @@ def _sprite_tail(path: Path, *, kind: str):
         d.arc((28, 8, 214, 236), start=35, end=258,
               fill=fur, width=33)
         d.ellipse((185, 188, 229, 230), fill=dark)
+    shade_sprite(image, kind=kind, part="tail")
     image.save(path, "PNG")
 
 

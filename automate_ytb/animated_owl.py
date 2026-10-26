@@ -20,6 +20,8 @@ from .scenic_world import detect_landscape, draw_landscape_details, LANDSCAPES, 
 from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
+from .material_shading import shade_sprite
+from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .atmospheric_light import draw_lighting, overlay_lighting
@@ -29,7 +31,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v20-facial-finish-articulated"
+RIG_VERSION = "owl-rig-v21-dimensional-materials"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -70,6 +72,7 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
         t = y / HEIGHT
         color = tuple(round(a * (1-t*.8) + b * (t*.8)) for a,b in zip(base,second))
         draw.line((0,y,WIDTH,y),fill=color)
+    paint_sky_bloom(im, weather=direction["weather"] if direction else "day")
     draw.ellipse((895,90,1035,230),fill=accent)
     for layer in range(3):
         horizon = 388+layer*85
@@ -126,6 +129,7 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
              (996, 525), (1144, 444), (1280, 527), (1280, 720)]
     draw.polygon(ridge, fill=(49, 79, 104) if night else (79, 128, 132))
     draw.line(ridge[:7], fill=(128, 177, 185), width=3)
+    paint_horizon_mist(im, weather=weather)
     for x, bottom, radius in ((715, 630, 62), (863, 646, 75),
                               (1067, 668, 94), (1235, 640, 78)):
         top = bottom - (180 + rand.randint(10, 65))
@@ -213,6 +217,7 @@ def _wing(path: Path, *, right: bool):
         d.ellipse((35,61,115,167),fill=PURPLE)
         for offset in range(3):
             d.arc((19+offset*20,100,80+offset*17,190),-75,125,fill=LAVENDER,width=4)
+    shade_sprite(im, kind="owl", part="wing")
     im.save(path,"PNG")
 
 
@@ -259,6 +264,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
+    shade_sprite(im, kind="owl", part="body")
     finish_owl_feathers(im)
     im.save(path,"PNG")
 

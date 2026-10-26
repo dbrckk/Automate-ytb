@@ -693,3 +693,30 @@ pas de simulation 3D ni d'animation osseuse.
 La prévisualisation approuvée recombine les mêmes calques, et les empreintes
 des rendus sont renouvelées pour éviter la réutilisation des anciennes scènes.
 Les essais gratuits vérifient également le fichier MP4 H.264 complet.
+
+### V2 — rendu illustré plus volumétrique et contrôle visuel
+
+Le moteur original produit maintenant des **matériaux 2D ombrés** pour les
+corps, ailes, oreilles, pattes et queues : dégradés directionnels, zones
+d'ombre douce, léger reflet de contour et diffuseur de lumière elliptique.
+Les modifications sont écrêtées à la silhouette transparente exacte du sprite,
+afin de ne pas créer de bord opaque ou de scintillement entre les expressions.
+Les accents de visage (yeux, plumage et petites mèches de fourrure) restent
+dessinés au-dessus du traitement de matière.
+
+Les décors reçoivent un **halo solaire ou lunaire peint**, quelques rayons
+diffus à la lumière du jour et une brume de profondeur entre montagnes et
+arbres. Tout est déterministe, local, gratuit et original ; il ne s'agit
+pas de ray tracing, de textures PBR ou de modèles 3D. Le rendu amélioré
+s'applique autant aux posters validés qu'aux clips FFmpeg, et un nouveau
+numéro de version force le rafraîchissement des anciens médias en cache.
+
+**Contrôle graphique réel, sans PC :** le workflow
+[Premium visual gallery](.github/workflows/visual-gallery.yml) produit
+automatiquement après une modification visuelle fusionnée, ou sur exécution
+manuelle, une planche PNG 2560 × 1440 de quatre véritables posters
+(renard/forêt, lapin/prairie, chat/village de nuit, chouette/rivière).
+Dans l'onglet *Actions* de GitHub, ouvrir le dernier run
+*Premium visual gallery*, puis l'artefact `original-premium-gallery`.
+Une critique humaine du résultat reste indispensable : ces tests valident
+la génération, pas un niveau visuel AAA.
