@@ -735,3 +735,20 @@ Le procédé reste **entièrement local, déterministe, sans GPU payant**.
 Les vidéos et illustrations gardent les mêmes coordonnées, durées,
 droits et sous-titres. Cette amélioration de rasterisation ne transforme
 pas le moteur 2D en animation 3D ou en cinéma photoréaliste.
+
+### V2 — micro-animations du paysage selon le récit
+
+Les prévisualisations des personnages originaux ont désormais un calque de
+**mouvement environnemental indépendant des sprites**. La rivière reflète
+de petites ondulations lumineuses, la prairie voit passer des pétales,
+les villages émettent des volutes de fumée et la forêt contient des feuilles
+ou des lucioles, suivant le temps et le lieu indiqués dans le script.
+Le calque transparent se déplace doucement avec le vent et reste dans le
+côté droit de l'image pour ne pas masquer le personnage.
+
+Le même dessin est inclus dans les posters et dans le filtre FFmpeg de la
+vidéo (avec translation légère lors du mouvement). Les images sont générées
+localement avec Pillow : aucun téléchargement de médias, modèle payant,
+moteur 3D ou nouveau droit d'exploitation n'est nécessaire.
+Les anciennes empreintes d'art et de rendu sont invalidées pour éviter
+de réutiliser un export antérieur. Ces animations restent stylisées 2,5D.
