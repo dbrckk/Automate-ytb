@@ -649,3 +649,18 @@ La composition préserve la narration, les sous-titres, le montage et les images
 ### V2 — marche et course avec appui au sol
 
 La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
+
+### V2 : articulations solidaires du personnage
+
+Les appendices sont désormais rattachés aux mouvements du torse : les ailes
+de la chouette et les queues des animaux ne restent plus à des coordonnées
+fixes de l'image lorsque le personnage saute, marche ou change d'action.
+Les ailes, la queue et les pattes disposent aussi de rotations indépendantes,
+avec amplitudes limitées par une table de poses contrôlée. Les calques tournent
+dans des cadres transparents agrandis pour éviter de rogner leurs contours.
+
+Le rendu demeure une **animation 2D articulée**, sans capture de mouvement,
+cinématique inverse, déformation 3D ou assets externes. Le même moteur FFmpeg
+gratuit fonctionne depuis GitHub Actions pour la production sur smartphone.
+Les contrôles comprennent l'encodage et le décodage intégral de scènes MP4
+avec une chouette en vol et un renard à la course.
