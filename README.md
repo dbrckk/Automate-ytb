@@ -663,3 +663,19 @@ l'identique : leur intervalle et leur décalage dépendent de l'action et de
 l'index de scène. La surprise comporte deux clignements rapprochés, tandis
 que le repos est plus lent. Ces gestes restent de l'animation 2D :
 aucun tracking oculaire réel, simulation capillaire ni mocap n'est revendiqué.
+
+### V2 : articulations solidaires et détails faciaux préservés
+
+Les ailes de la chouette et les queues du renard, du lapin et du chat
+suivent désormais les coordonnées mobiles du torse, même pendant les
+sauts, la course et les transitions d'action. Des rotations indépendantes
+et limitées sont appliquées aux ailes, à la queue et aux pattes dans des
+cadres transparents élargis afin de ne pas rogner les silhouettes. Les
+détails de pelage, de plumage et les clignements expressifs de la version
+précédente sont conservés.
+
+Il s'agit de **sprites articulés en 2D**, et non de capture de mouvement,
+de cinématique inverse ou de modèles 3D. L'ensemble fonctionne hors ligne
+avec Pillow et FFmpeg, y compris via les workflows GitHub sur Android.
+Les tests comprennent l'encodage et le décodage complet de véritables MP4
+illustrant un renard en course et une chouette en vol.
