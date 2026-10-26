@@ -649,3 +649,19 @@ La composition préserve la narration, les sous-titres, le montage et les images
 ### V2 — marche et course avec appui au sol
 
 La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
+
+
+### V2 — modelé des personnages originaux (sans assets externes)
+
+Les corps et les expressions du renard, du lapin, du chat et de la chouette
+reçoivent désormais un modelé pictural déterministe : lumière douce venant
+du haut-gauche, dégradé de volume, léger reflet chaud et liseré discret
+sur le bord éclairé. Le traitement conserve **pixel pour pixel le canal
+alpha** et ne modifie pas les poses, la parole, les sous-titres ou les
+silhouettes. Les illustrations approuvées et les MP4 utilisent les mêmes
+sprites terminés, et les empreintes d'assets/rendus changent pour éviter
+d'anciennes images en cache.
+
+Cette technique emploie exclusivement Pillow en local : elle améliore la
+finiton 2D sans prétendre fournir des shaders PBR, des matériaux 3D ou
+un rig articulé complet.
