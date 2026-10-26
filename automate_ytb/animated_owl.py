@@ -20,14 +20,15 @@ from .scenic_world import detect_landscape, draw_landscape_details, LANDSCAPES, 
 from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
-from .choreography import body_position, secondary_position, mouth_expression
+from .character_finishing import finish_owl_feathers
+from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v18-planted-foot-gait"
+RIG_VERSION = "owl-rig-v19-facial-finish"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -257,6 +258,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
+        finish_owl_feathers(im)
     im.save(path,"PNG")
 
 
@@ -385,6 +387,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         # Independently animated wings and expression layers; action cues are
         # controlled script-derived enum values, not raw FFmpeg input.
         action = direction["action"] if direction else "idle"
+        blink = blink_enable(action, scene_index=scene_index)
         settings = dict(narration=narration, duration=duration,
                         fallback_action=action,
                         caption_segments=caption_segments,
@@ -420,7 +423,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{body_y}':eval=frame:format=auto[d];"
           f"[d][5:v]overlay=x='{body_x}':"
           f"y='{body_y}':"
-          "enable='lt(mod(t,4.0),0.13)':eval=frame:format=auto[e];"
+          f"enable='{blink}':eval=frame:format=auto[e];"
           f"[e][6:v]overlay=x='{body_x}':"
           f"y='{body_y}':"
           f"enable='{mouth}':eval=frame:format=auto[f]"
