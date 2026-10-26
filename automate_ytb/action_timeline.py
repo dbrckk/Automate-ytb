@@ -149,7 +149,9 @@ def _local(expression: str, start: float) -> str:
 
 def _weight(boundary: float) -> str:
     start = max(0.0, boundary - BLEND_SECONDS / 2)
-    phase = f"min(1,max(0,(t-{start:.4f})/{BLEND_SECONDS:.4f}))"\n    # Smoothstep blends velocity continuously across scene gesture cuts.\n    return f"(({phase})*({phase})*(3-2*({phase})))"
+    phase = f"min(1,max(0,(t-{start:.4f})/{BLEND_SECONDS:.4f}))"
+    # Smoothstep blends velocity continuously across scene gesture cuts.
+    return f"(({phase})*({phase})*(3-2*({phase})))"
 
 
 def choreograph(narration: str, *, duration: float,
