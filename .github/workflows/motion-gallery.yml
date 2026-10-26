@@ -1,0 +1,48 @@
+name: Original character motion review
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'automate_ytb/animated_forest.py'
+      - 'automate_ytb/animated_owl.py'
+      - 'automate_ytb/choreography.py'
+      - 'automate_ytb/action_timeline.py'
+      - 'automate_ytb/living_world.py'
+      - 'automate_ytb/ground_contact.py'
+      - 'automate_ytb/joint_motion.py'
+      - 'scripts/render_motion_gallery.py'
+      - '.github/workflows/motion-gallery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout original project
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install offline motion dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install -e .
+      - name: Render four authentic original-character animations
+        run: python scripts/render_motion_gallery.py --output out/motion-gallery.png
+      - name: Upload contact sheet, source clips and motion diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-motion-review
+          path: |
+            out/motion-gallery.png
+            out/motion-gallery.json
+            out/motion-clips/*.mp4
+          if-no-files-found: error
+          retention-days: 14
