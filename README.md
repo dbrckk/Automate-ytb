@@ -645,3 +645,7 @@ Les sauts d'animaux dessinés disposent désormais d'une courte phase d'accroupi
 Les quatre animaux originaux utilisent désormais une **ombre douce au sol** sous leurs calques corporels. Elle suit la position horizontale de l'animal sans monter avec lui lors des sauts : la séparation entre ombre et personnage rend la hauteur de saut ou de vol plus lisible. L'ombre est générée localement avec Pillow, floutée et atténuée suivant la météo ; elle figure aussi sur l'image fixe d'approbation.
 
 La composition préserve la narration, les sous-titres, le montage et les images originales. Il s'agit d'un repère spatial 2D stylisé, pas de simulation physique, de ray tracing ou d'un rig squelettique.
+
+### V2 — oreilles et aigrettes articulées
+
+Les renards, lapins et chats disposent désormais d'un **sprite d'oreilles indépendant** du visage, tandis que les aigrettes de la chouette sont séparées de son corps. Les calques conservent la géométrie originale mais suivent une oscillation secondaire spécifique au repos, à la marche, à la course et au saut. Les oreilles sont dessinées derrière la tête, pour conserver l'assemblage de la silhouette. Les affiches d'approbation et les MP4 utilisent les mêmes nouveaux sprites. La synchronisation sonore, les sous-titres et le script restent inchangés. Il s'agit d'articulation 2D par translation, et non de rotation d'os ou d'inverse kinematics.
