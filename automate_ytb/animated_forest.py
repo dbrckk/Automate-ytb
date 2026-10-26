@@ -26,7 +26,7 @@ from .choreography import body_position, secondary_position, mouth_expression, l
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
-from .articulated_joints import joint_angle, rotated_source, PADDING
+from .articulated_joints import joint_angle, rotated_source, pivot_offset
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
@@ -336,11 +336,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
             offset_x=45, image_index=8)
+        left_dx, left_dy = pivot_offset("leg", "left")
+        right_dx, right_dy = pivot_offset("leg", "right")
         pivot_graph = (
             rotated_source(input_index=6, output_label="left_pivot",
-                           angle=left_angle) +
+                           angle=left_angle, joint="leg", side="left") +
             rotated_source(input_index=7, output_label="right_pivot",
-                           angle=right_angle))
+                           angle=right_angle, joint="leg", side="right"))
         fps_graph = (
             "[shadowstage][1:v]overlay=x='113+8*sin(t*2.4)':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
@@ -355,10 +357,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[d][5:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
             f"enable='{mouth}':eval=frame:format=auto[e];"
-            f"[e][left_pivot]overlay=x='({left_x})-{PADDING}':"
-            f"y='({left_y})-{PADDING}':eval=frame:format=auto[f];"
-            f"[f][right_pivot]overlay=x='({right_x})-{PADDING}':"
-            f"y='({right_y})-{PADDING}':eval=frame:format=auto[g]"
+            f"[e][left_pivot]overlay=x='({left_x})-{left_dx}':"
+            f"y='({left_y})-{left_dy}':eval=frame:format=auto[f];"
+            f"[f][right_pivot]overlay=x='({right_x})-{right_dx}':"
+            f"y='({right_y})-{right_dy}':eval=frame:format=auto[g]"
         )
         fps_graph = shadow_graph + pivot_graph + fps_graph
         final = "g"
