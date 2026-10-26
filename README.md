@@ -735,3 +735,17 @@ Le procédé reste **entièrement local, déterministe, sans GPU payant**.
 Les vidéos et illustrations gardent les mêmes coordonnées, durées,
 droits et sous-titres. Cette amélioration de rasterisation ne transforme
 pas le moteur 2D en animation 3D ou en cinéma photoréaliste.
+
+### V2 — identité visuelle des espèces
+
+Le renard, le lapin et le chat possèdent désormais des **museaux et
+des détails anatomiques distincts**, plutôt que des personnages presque
+identiques recolorés : joues effilées et museau en V pour le renard,
+joues arrondies et nez rose pour le lapin, temples angulaires et
+marques du front pour le chat. Les détails sont tracés dans chaque
+pose originale avant les yeux, la bouche, les matières et
+l'anticrénelage en 2× ; ils sont donc présents dans l'illustration
+approuvée **et** dans le MP4 animé.
+
+Ce style reste de l'animation 2D « storybook », non de la 3D ni
+du dessin animé issu d'un studio professionnel.
