@@ -645,3 +645,17 @@ Les sauts d'animaux dessinés disposent désormais d'une courte phase d'accroupi
 Les quatre animaux originaux utilisent désormais une **ombre douce au sol** sous leurs calques corporels. Elle suit la position horizontale de l'animal sans monter avec lui lors des sauts : la séparation entre ombre et personnage rend la hauteur de saut ou de vol plus lisible. L'ombre est générée localement avec Pillow, floutée et atténuée suivant la météo ; elle figure aussi sur l'image fixe d'approbation.
 
 La composition préserve la narration, les sous-titres, le montage et les images originales. Il s'agit d'un repère spatial 2D stylisé, pas de simulation physique, de ray tracing ou d'un rig squelettique.
+
+### V2 — premier accessoire réellement articulé
+
+Le pan libre de l'écharpe des personnages originaux (chouette, renard, lapin,
+chat) a été séparé du dessin statique du corps : c'est désormais un sprite
+RGBA autonome, attaché à la trajectoire du torse. Sa petite oscillation en
+retard dépend de l'action (repos, marche, course, saut, vol, surprise), et
+ses poses respectent les transitions déjà synchronisées avec le script.
+L'image de validation et la vidéo utilisent **le même asset original**,
+produit localement avec Pillow et composité avec FFmpeg.
+
+Cette articulation simple ne constitue pas une simulation physique de tissu
+ni un rig squelettique complet. Aucun asset externe, service payant ou modèle
+GPU n'est ajouté. Les anciens rendus sont invalidés lors de cette mise à jour.

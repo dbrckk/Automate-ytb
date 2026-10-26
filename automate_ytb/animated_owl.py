@@ -22,12 +22,13 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .scarf_motion import draw_scarf_tail, scarf_position, append_scarf
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v17-ground-contact"
+RIG_VERSION = "owl-rig-v18-fabric-articulation"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -256,7 +257,6 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
     else:
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
-    d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
     im.save(path,"PNG")
 
 
@@ -324,7 +324,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","scarf_tail")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -340,6 +340,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
                         action=direction["action"] if direction else "idle")
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
+    draw_scarf_tail(outputs["scarf_tail"], actor="owl")
     gaze = gaze_target(narration, held_prop=held_prop)
     _body(outputs["neutral"],blink=False,
           emotion=direction["emotion"] if direction else "neutral",
@@ -391,6 +392,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                         scene_start_ms=scene_start_ms)
         body_x, body_y = choreograph(
             **settings, pose=lambda a: body_position(a, x=204, y=186))
+        scarf_x, scarf_y = choreograph(
+            **settings, pose=lambda a: scarf_position(a, actor="owl"))
         (left_y,) = choreograph(
             **settings, pose=lambda a: (
                 secondary_position(a, base=348, side="left"),))
@@ -432,13 +435,16 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
             body_x=body_x, body_y=body_y, held_prop=held_prop)
+        f, final_label, keys = append_scarf(
+            graph=f, label=final_label, names=keys,
+            x=scarf_x, y=scarf_y)
         if direction and direction["weather"] in {"rain", "storm", "wind", "cloudy", "night", "day"}:
             _weather_overlay(layers["effects"], seed=f"{topic}|{narration}|{scene_index}",
                              weather=direction["weather"])
             speed = {"rain": 240, "storm": 310, "wind": 55,
                      "cloudy": 25, "night": 22, "day": 18}[direction["weather"]]
             source_index = len(keys)
-            next_label = chr(ord(final_label) + 1)
+            next_label = "weatherstage"
             f += (f";[{final_label}][{source_index}:v]overlay=x=0:"
                   f"y='-720+mod(t*{speed},720)':eval=frame:format=auto[{next_label}]")
             final_label = next_label
@@ -488,6 +494,8 @@ def render_character_poster(*, topic: str, narration: str,
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
+        with Image.open(layers["scarf_tail"]) as fabric:
+            composite.alpha_composite(fabric.convert("RGBA"), (407, 484))
         cue = cue_for_scene(narration, held_prop=held_prop)
         if cue:
             position = (505, 439) if cue["action"] == "carry" else (652, 474)
