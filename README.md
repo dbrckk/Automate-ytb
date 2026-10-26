@@ -645,3 +645,7 @@ Les sauts d'animaux dessinés disposent désormais d'une courte phase d'accroupi
 Les quatre animaux originaux utilisent désormais une **ombre douce au sol** sous leurs calques corporels. Elle suit la position horizontale de l'animal sans monter avec lui lors des sauts : la séparation entre ombre et personnage rend la hauteur de saut ou de vol plus lisible. L'ombre est générée localement avec Pillow, floutée et atténuée suivant la météo ; elle figure aussi sur l'image fixe d'approbation.
 
 La composition préserve la narration, les sous-titres, le montage et les images originales. Il s'agit d'un repère spatial 2D stylisé, pas de simulation physique, de ray tracing ou d'un rig squelettique.
+
+### V2 — marche et course avec appui au sol
+
+La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
