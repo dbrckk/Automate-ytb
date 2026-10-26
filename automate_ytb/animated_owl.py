@@ -24,12 +24,13 @@ from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .ground_response import draw_ground_response, reaction_enable, response_stage
 from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v20-facial-finish-articulated"
+RIG_VERSION = "owl-rig-v21-ground-response"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -327,7 +328,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","impact")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -341,6 +342,10 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     draw_contact_shadow(outputs["shadow"], actor="owl",
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
+    draw_ground_response(outputs["impact"],
+                         biome=landscape or "forest",
+                         weather=direction["weather"] if direction else "day",
+                         seed=f"{topic}|{narration}|{scene_index}")
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -417,15 +422,20 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             # Never display speech-mouth animation during digital silence.
             # The separate authored action cue still must be "talk".
             mouth = f"({mouth})*({gate})"
+        (contact_gate,) = choreograph(
+            **settings, pose=lambda a: (reaction_enable(a),), blend=False)
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
             offset_x=33, image_index=7)
+        contact_graph = response_stage(
+            body_x=body_x, y=505, image_index=8,
+            enable=contact_gate, x_offset=95)
         rotation_graph=(
           f"[1:v]format=rgba,rotate=a='{left_angle}':ow=270:oh=270:c=none[wingleft];"
           f"[2:v]format=rgba,rotate=a='{right_angle}':ow=270:oh=270:c=none[wingright];"
         )
         f=(
-          f"[shadowstage][wingleft]overlay=x='{left_x}':"
+          f"[contactstage][wingleft]overlay=x='{left_x}':"
           f"y='{left_y}':eval=frame:format=auto[a];"
           f"[a][wingright]overlay=x='{right_x}':"
           f"y='{right_y}':eval=frame:format=auto[b];"
@@ -441,9 +451,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{body_y}':"
           f"enable='{mouth}':eval=frame:format=auto[f]"
         )
-        f = shadow_graph + rotation_graph + f
+        f = shadow_graph + contact_graph + rotation_graph + f
         final_label = "f"
-        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
+        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow", "impact"]
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
