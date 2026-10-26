@@ -26,10 +26,11 @@ from .choreography import body_position, secondary_position, mouth_expression, l
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .articulated_joints import joint_angle, rotated_source, PADDING
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v17-planted-foot-gait"
+FOREST_RIG_VERSION = "forest-animals-v18-pivoted-appendages"
 
 
 def character_kind(character: str) -> str | None:
@@ -312,6 +313,12 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             **settings, pose=lambda a: leg_position(a, side="left"))
         right_x, right_y = choreograph(
             **settings, pose=lambda a: leg_position(a, side="right"))
+        (left_angle,) = choreograph(
+            **settings, pose=lambda a: (
+                joint_angle(a, joint="leg", side="left"),))
+        (right_angle,) = choreograph(
+            **settings, pose=lambda a: (
+                joint_angle(a, joint="leg", side="right"),))
         (tail_y,) = choreograph(
             **settings, pose=lambda a: (
                 secondary_position(a, base=357, side="tail"),))
@@ -329,6 +336,11 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
             offset_x=45, image_index=8)
+        pivot_graph = (
+            rotated_source(input_index=6, output_label="left_pivot",
+                           angle=left_angle) +
+            rotated_source(input_index=7, output_label="right_pivot",
+                           angle=right_angle))
         fps_graph = (
             "[shadowstage][1:v]overlay=x='113+8*sin(t*2.4)':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
@@ -343,12 +355,12 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[d][5:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
             f"enable='{mouth}':eval=frame:format=auto[e];"
-            f"[e][6:v]overlay=x='{left_x}':"
-            f"y='{left_y}':eval=frame:format=auto[f];"
-            f"[f][7:v]overlay=x='{right_x}':"
-            f"y='{right_y}':eval=frame:format=auto[g]"
+            f"[e][left_pivot]overlay=x='({left_x})-{PADDING}':"
+            f"y='({left_y})-{PADDING}':eval=frame:format=auto[f];"
+            f"[f][right_pivot]overlay=x='({right_x})-{PADDING}':"
+            f"y='({right_y})-{PADDING}':eval=frame:format=auto[g]"
         )
-        fps_graph = shadow_graph + fps_graph
+        fps_graph = shadow_graph + pivot_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow"]
