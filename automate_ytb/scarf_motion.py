@@ -33,7 +33,7 @@ def draw_scarf_tail(path: Path, *, actor: str) -> None:
         raise ValueError("Unsupported original scarf character")
     im = Image.new("RGBA", SCARF_SIZE, (0, 0, 0, 0))
     brush = ImageDraw.Draw(im)
-    gold = (248, 195, 79, 255) if actor == "owl" else (248, 190, 75, 255)
+    gold = (248, 195, 79, 255) if actor == "owl" else (243, 187, 74, 255)
     shade = (202, 136, 49, 255)
     highlight = (255, 226, 135, 205)
     if actor == "owl":
