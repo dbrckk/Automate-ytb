@@ -749,3 +749,15 @@ approuvée **et** dans le MP4 animé.
 
 Ce style reste de l'animation 2D « storybook », non de la 3D ni
 du dessin animé issu d'un studio professionnel.
+
+### Contrôle visuel des personnages depuis Android
+
+Un **atlas PNG 1920×1080** de quatre illustrations originales réelles
+(renard, lapin, chat, chouette, dans différentes ambiances) est généré par
+`python -m automate_ytb.visual_gallery --output artifacts/character-art-review.png`.
+Le workflow GitHub Actions `Preview original character artwork` crée
+automatiquement un artefact `automate-ytb-character-gallery` lors des
+modifications graphiques et peut aussi être lancé manuellement. Il ne
+dépend ni d'une machine personnelle ni d'une API d'images payante.
+Ce n'est pas une fausse maquette : les quatre images sont issues des
+fonctions de posters du moteur vidéo.
