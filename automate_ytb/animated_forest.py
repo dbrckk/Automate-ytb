@@ -27,11 +27,12 @@ from .choreography import body_position, secondary_position, mouth_expression, b
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .ground_response import draw_ground_response, reaction_enable, response_stage
 from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v19-facial-finish-articulated"
+FOREST_RIG_VERSION = "forest-animals-v20-ground-response"
 
 
 def character_kind(character: str) -> str | None:
@@ -210,7 +211,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "impact")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -224,6 +225,10 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     draw_contact_shadow(outputs["shadow"], actor=kind,
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
+    draw_ground_response(outputs["impact"],
+                         biome=landscape or "forest",
+                         weather=direction["weather"] if direction else "day",
+                         seed=f"{topic}|{narration}|{scene_index}")
     _sprite_tail(outputs["tail"], kind=kind)
     emotion = direction["emotion"] if direction else "neutral"
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -338,16 +343,21 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         # A transparent fade affects only the pupil pose: the underlying
         # original sprite is identical in every other detail. Closed-eye
         # poses are composited last and remain intact throughout the gaze.
+        (contact_gate,) = choreograph(
+            **settings, pose=lambda a: (reaction_enable(a),), blend=False)
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
             offset_x=45, image_index=8)
+        contact_graph = response_stage(
+            body_x=body_x, y=550, image_index=9,
+            enable=contact_gate, x_offset=93)
         rotation_graph = (
             f"[1:v]format=rgba,rotate=a='{tail_angle}':ow=334:oh=334:c=none[tailspin];"
             f"[6:v]format=rgba,rotate=a='{left_angle}':ow=162:oh=162:c=none[legleft];"
             f"[7:v]format=rgba,rotate=a='{right_angle}':ow=162:oh=162:c=none[legright];"
         )
         fps_graph = (
-            f"[shadowstage][tailspin]overlay=x='{tail_x}':"
+            f"[contactstage][tailspin]overlay=x='{tail_x}':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
             f"[a][2:v]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[b];"
@@ -365,10 +375,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[f][legright]overlay=x='({right_x})-31':"
             f"y='({right_y})-19':eval=frame:format=auto[g]"
         )
-        fps_graph = shadow_graph + rotation_graph + fps_graph
+        fps_graph = shadow_graph + contact_graph + rotation_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
-                 "left_leg", "right_leg", "shadow"]
+                 "left_leg", "right_leg", "shadow", "impact"]
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,

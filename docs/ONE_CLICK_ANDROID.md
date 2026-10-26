@@ -474,3 +474,7 @@ Les personnages originaux reçoivent automatiquement de petits détails
 de pelage et de plumage. Les clignements sont légèrement espacés
 différemment selon la scène et l'action, avec une double réaction de
 surprise. Ces améliorations restent gratuites, locales et sans réglage.
+
+### Réactions du terrain pendant les animations
+
+Pendant les pas, la course et les sauts, un léger effet de terrain apparaît automatiquement sous les animaux. La couleur suit le type de décor et la météo. Cet effet ne nécessite aucune intervention depuis Android et ne modifie pas le son ou les sous-titres.
