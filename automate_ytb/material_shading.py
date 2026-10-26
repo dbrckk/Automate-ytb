@@ -86,7 +86,7 @@ def shade_sprite(sprite: Image.Image, *, kind: str, part: str) -> None:
     # high-contrast stripe. Shoulder/forehead retain their original marks.
     xlight = _gradient((w, h), vertical=False, low=57, high=3)
     ylight = _gradient((w, h), vertical=True, low=44, high=6)
-    illumination = ImageChops.multiply(xlight, ylight)
+    illumination = ImageChops.lighter(xlight, ylight)
     illumination = illumination.point(lambda a: min(55, round(a * .92)))
     _tint(sprite, warm, ImageChops.multiply(illumination, alpha))
 
@@ -115,3 +115,7 @@ def shade_sprite(sprite: Image.Image, *, kind: str, part: str) -> None:
         spot = spot.filter(ImageFilter.GaussianBlur(max(5,round(min(w,h)*.085))))
         spot = spot.point(lambda a: round(a*.41))
         _tint(sprite, warm, ImageChops.multiply(spot, alpha))
+    # Alpha compositing colored light against antialiased boundaries can
+    # increase partially covered pixel opacity. Restore exact source alpha
+    # so blinks, pupils, feathers and limb edges never change silhouette.
+    sprite.putalpha(alpha)
