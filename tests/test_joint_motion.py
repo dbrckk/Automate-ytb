@@ -16,10 +16,11 @@ from automate_ytb.animated_owl import render_motion_clip as owl_clip
 
 class JointMotionTests(unittest.TestCase):
     def test_bounded_angles_for_every_original_action(self):
-        self.assertIn("v1", JOINT_VERSION)
+        self.assertIn("v2", JOINT_VERSION)
         self.assertEqual(set(ACTIONS), set(AMPLITUDES["wing"]))
         for part, sides in (("wing", ("left", "right")),
                             ("leg", ("left", "right")),
+                            ("ear", ("left", "right")),
                             ("tail", ("tail",))):
             self.assertEqual(set(AMPLITUDES[part]), set(ACTIONS))
             for action in ACTIONS:
