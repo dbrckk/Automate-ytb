@@ -23,11 +23,12 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .articulated_joints import joint_angle, rotated_source, PADDING
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v18-planted-foot-gait"
+RIG_VERSION = "owl-rig-v19-pivoted-wings"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -397,6 +398,12 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         (right_y,) = choreograph(
             **settings, pose=lambda a: (
                 secondary_position(a, base=350, side="right"),))
+        (left_angle,) = choreograph(
+            **settings, pose=lambda a: (
+                joint_angle(a, joint="wing", side="left"),))
+        (right_angle,) = choreograph(
+            **settings, pose=lambda a: (
+                joint_angle(a, joint="wing", side="right"),))
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
@@ -408,11 +415,16 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
             offset_x=33, image_index=7)
+        wing_graph = (
+            rotated_source(input_index=1, output_label="left_pivot",
+                           angle=left_angle) +
+            rotated_source(input_index=2, output_label="right_pivot",
+                           angle=right_angle))
         f=(
-          "[shadowstage][1:v]overlay=x='144+7*sin(t*1.7)':"
-          f"y='{left_y}':eval=frame:format=auto[a];"
-          "[a][2:v]overlay=x='420-7*sin(t*1.7)':"
-          f"y='{right_y}':eval=frame:format=auto[b];"
+          f"[shadowstage][left_pivot]overlay=x='144+7*sin(t*1.7)-{PADDING}':"
+          f"y='({left_y})-{PADDING}':eval=frame:format=auto[a];"
+          f"[a][right_pivot]overlay=x='420-7*sin(t*1.7)-{PADDING}':"
+          f"y='({right_y})-{PADDING}':eval=frame:format=auto[b];"
           f"[b][3:v]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[c];"
           "[4:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
@@ -425,7 +437,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{body_y}':"
           f"enable='{mouth}':eval=frame:format=auto[f]"
         )
-        f = shadow_graph + f
+        f = shadow_graph + wing_graph + f
         final_label = "f"
         keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
         f, final_label, keys = append_overlays(
