@@ -34,7 +34,7 @@ def framing_filter(shot: str, *, width: int, height: int, fps: int,
     """
     if shot not in PROFILES:
         raise ValueError("Unknown cinematic shot")
-    if action is not None and action not in ACTIONS:
+    if action is not None and (not isinstance(action, str) or action not in ACTIONS):
         raise ValueError("Unknown cinematic action")
     if (width, height) not in ((1280, 720), (1920, 1080)):
         raise ValueError("Unsupported scene output resolution")
@@ -105,4 +105,5 @@ def framing_metadata(shot: str) -> dict:
             "crop": [w, h], "animatedCamera": bool(dx or dy),
             "version": CAMERA_VERSION,
             "easing": "smoothstep" if dx or dy else "static",
-            "zeroVelocityAtSceneEdges": bool(dx or dy)}
+            "zeroVelocityAtSceneEdges": bool(dx or dy),
+            "actionFollowing": bool(dx or dy)}
