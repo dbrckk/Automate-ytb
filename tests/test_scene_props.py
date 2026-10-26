@@ -126,6 +126,25 @@ class ScriptedScenePropTests(unittest.TestCase):
                             names=["base"], narration="Fox picks up an apple.",
                             duration=3, body_x="180", body_y="184")
 
+    def test_extended_animal_layers_are_compatible_with_pickup_props(self):
+        # Ear articulation adds two trusted plates; prop composition must
+        # still use the actual next input index, not a hard-coded old count.
+        base = [f"original-layer-{i}" for i in range(11)]
+        graph, label, names = append_overlays(
+            graph="[g]null[g]", label="g", names=base[:],
+            narration="The fox picks up an apple.", duration=2.5,
+            body_x="180", body_y="184")
+        self.assertEqual(label, "i")
+        self.assertEqual(names[-2:], ["reach", "prop"])
+        self.assertIn("[11:v]overlay", graph)
+        self.assertIn("[12:v]overlay", graph)
+        with self.assertRaisesRegex(ValueError, "input count"):
+            append_overlays(
+                graph="base", label="g",
+                names=[f"layer-{i}" for i in range(13)],
+                narration="The fox picks up an apple.", duration=2,
+                body_x="180", body_y="184")
+
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "Real FFmpeg required for rendered interaction checks")
     def test_fox_pickup_apple_transports_actual_prop_between_frames(self):
