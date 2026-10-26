@@ -474,3 +474,10 @@ Les personnages originaux reçoivent automatiquement de petits détails
 de pelage et de plumage. Les clignements sont légèrement espacés
 différemment selon la scène et l'action, avec une double réaction de
 surprise. Ces améliorations restent gratuites, locales et sans réglage.
+
+### Finition des personnages : contours haute qualité
+
+Les personnages originaux utilisent maintenant automatiquement une
+rasterisation en 2× suivie d'une réduction Lanczos pour obtenir des
+yeux, courbes, oreilles et détails plus nets, sans manipulation sur
+smartphone, téléchargement de modèle ou coût d'inférence supplémentaire.
