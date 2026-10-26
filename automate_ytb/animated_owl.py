@@ -22,11 +22,12 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v16-jump-anticipation"
+RIG_VERSION = "owl-rig-v17-ground-contact"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -323,7 +324,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -334,6 +335,9 @@ def render_layers(folder: Path, *, topic: str, narration: str,
                   weather=direction["weather"] if direction else "day",
                   landscape=landscape or "forest",
                   seed=f"{topic}|{narration}|{scene_index}")
+    draw_contact_shadow(outputs["shadow"], actor="owl",
+                        weather=direction["weather"] if direction else "day",
+                        action=direction["action"] if direction else "idle")
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -401,8 +405,11 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             # Never display speech-mouth animation during digital silence.
             # The separate authored action cue still must be "talk".
             mouth = f"({mouth})*({gate})"
+        shadow_graph = shadow_stage(
+            body_x=body_x, ground_y=565,
+            offset_x=33, image_index=7)
         f=(
-          "[0:v][1:v]overlay=x='144+7*sin(t*1.7)':"
+          "[shadowstage][1:v]overlay=x='144+7*sin(t*1.7)':"
           f"y='{left_y}':eval=frame:format=auto[a];"
           "[a][2:v]overlay=x='420-7*sin(t*1.7)':"
           f"y='{right_y}':eval=frame:format=auto[b];"
@@ -418,8 +425,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{body_y}':"
           f"enable='{mouth}':eval=frame:format=auto[f]"
         )
+        f = shadow_graph + f
         final_label = "f"
-        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth"]
+        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
@@ -474,6 +482,8 @@ def render_character_poster(*, topic: str, narration: str,
             direction=direction, held_prop=held_prop,landscape=landscape)
         with Image.open(layers["background"]) as b:
             composite = b.convert("RGBA")
+        with Image.open(layers["shadow"]) as shade:
+            composite.alpha_composite(shade.convert("RGBA"), (237, 565))
         for name, position in (("left", (144,348)), ("right", (420,350)),
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
