@@ -258,7 +258,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
-        finish_owl_feathers(im)
+    finish_owl_feathers(im)
     im.save(path,"PNG")
 
 
