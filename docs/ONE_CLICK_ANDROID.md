@@ -481,3 +481,11 @@ Les personnages originaux utilisent maintenant automatiquement une
 rasterisation en 2× suivie d'une réduction Lanczos pour obtenir des
 yeux, courbes, oreilles et détails plus nets, sans manipulation sur
 smartphone, téléchargement de modèle ou coût d'inférence supplémentaire.
+
+### Biomes animés sans réglage supplémentaire
+
+Les histoires avec animaux originaux animent désormais de petits éléments
+d'ambiance (papillons, feuilles, nuages, reflets, lucioles) sur deux plans
+indépendants, conformément au lieu et à la météo. Les posters, les aperçus
+et le MP4 reprennent le même dessin original ; aucun nouveau compte ou PC
+n'est nécessaire.

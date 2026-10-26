@@ -11,6 +11,7 @@ on:
       - 'automate_ytb/cinematic_paint.py'
       - 'automate_ytb/character_finishing.py'
       - 'automate_ytb/scenic_world.py'
+      - 'automate_ytb/living_world.py'
       - 'scripts/render_visual_gallery.py'
       - '.github/workflows/visual-gallery.yml'
 

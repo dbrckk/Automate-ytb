@@ -28,11 +28,12 @@ from .choreography import body_position, secondary_position, mouth_expression, b
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .joint_motion import joint_angle
+from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v22-supersampled-character-art"
+RIG_VERSION = "owl-rig-v23-living-biomes"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -333,10 +334,14 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","ambient_far","ambient_near")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
+    draw_ambient_layers(outputs["ambient_far"], outputs["ambient_near"],
+                        landscape=landscape or "forest",
+                        weather=direction["weather"] if direction else "day",
+                        seed=f"{topic}|{narration}|{scene_index}")
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
@@ -465,6 +470,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                   f"y='-720+mod(t*{speed},720)':eval=frame:format=auto[{next_label}]")
             final_label = next_label
             keys.append("effects")
+        f, final_label, keys = append_ambient_overlays(
+            graph=f, label=final_label, names=keys,
+            weather=direction["weather"] if direction else "day")
         f, final_label, keys = overlay_foreground(
             graph=f, label=final_label, names=keys,
             scene_index=scene_index, duration=duration)
@@ -504,6 +512,8 @@ def render_character_poster(*, topic: str, narration: str,
             direction=direction, held_prop=held_prop,landscape=landscape)
         with Image.open(layers["background"]) as b:
             composite = b.convert("RGBA")
+        with Image.open(layers["ambient_far"]) as atmosphere:
+            composite.alpha_composite(atmosphere.convert("RGBA"), (0, 0))
         with Image.open(layers["shadow"]) as shade:
             composite.alpha_composite(shade.convert("RGBA"), (237, 565))
         for name, position in (("left", (144,348)), ("right", (420,350)),
@@ -515,6 +525,8 @@ def render_character_poster(*, topic: str, narration: str,
             position = (505, 439) if cue["action"] == "carry" else (652, 474)
             with Image.open(layers["prop"]) as prop:
                 composite.alpha_composite(prop.convert("RGBA"), position)
+        with Image.open(layers["ambient_near"]) as details:
+            composite.alpha_composite(details.convert("RGBA"), (0, 0))
         with Image.open(layers["foreground"]) as front:
             composite.alpha_composite(front.convert("RGBA"), (0, 0))
         with Image.open(layers["lighting"]) as light:
