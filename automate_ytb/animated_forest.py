@@ -133,7 +133,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
-        finish_forest_face(image, kind=kind)
+    finish_forest_face(image, kind=kind)
     image.save(path, "PNG")
 
 
