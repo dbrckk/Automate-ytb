@@ -481,3 +481,10 @@ Les personnages originaux utilisent maintenant automatiquement une
 rasterisation en 2× suivie d'une réduction Lanczos pour obtenir des
 yeux, courbes, oreilles et détails plus nets, sans manipulation sur
 smartphone, téléchargement de modèle ou coût d'inférence supplémentaire.
+
+### Décors animés selon le lieu
+
+Les scènes de forêt, rivière, prairie ou village bénéficient maintenant
+de petites animations environnementales automatiques. Les déplacements
+sont subtils, adaptés à la météo et ne nécessitent pas de réglage sur
+Android. Les images restent locales et originales.
