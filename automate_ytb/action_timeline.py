@@ -12,7 +12,7 @@ from typing import TypeVar
 
 from .director import ACTIONS, direction_for
 
-TIMELINE_VERSION = "speech-anchored-action-phases-v2"
+TIMELINE_VERSION = "speech-anchored-action-phases-v3-smoothstep"
 # A conservative, short easing around the boundary avoids teleporting the rig.
 BLEND_SECONDS = 0.24
 MIN_PHASE_SECONDS = 0.55
@@ -149,7 +149,9 @@ def _local(expression: str, start: float) -> str:
 
 def _weight(boundary: float) -> str:
     start = max(0.0, boundary - BLEND_SECONDS / 2)
-    return f"min(1,max(0,(t-{start:.4f})/{BLEND_SECONDS:.4f}))"
+    phase = f"min(1,max(0,(t-{start:.4f})/{BLEND_SECONDS:.4f}))"
+    # Smoothstep blends velocity continuously across scene gesture cuts.
+    return f"(({phase})*({phase})*(3-2*({phase})))"
 
 
 def choreograph(narration: str, *, duration: float,
