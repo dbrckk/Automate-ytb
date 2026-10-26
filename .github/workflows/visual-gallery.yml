@@ -1,0 +1,40 @@
+name: Premium visual gallery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'automate_ytb/animated_owl.py'
+      - 'automate_ytb/animated_forest.py'
+      - 'automate_ytb/material_shading.py'
+      - 'automate_ytb/cinematic_paint.py'
+      - 'automate_ytb/character_finishing.py'
+      - 'automate_ytb/scenic_world.py'
+      - 'scripts/render_visual_gallery.py'
+      - '.github/workflows/visual-gallery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout original project
+        uses: actions/checkout@v4
+      - name: Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production art dependencies
+        run: python -m pip install -e .
+      - name: Generate four production-authentic illustrations
+        run: python scripts/render_visual_gallery.py --output out/visual-gallery.png
+      - name: Upload Android-accessible review sheet
+        uses: actions/upload-artifact@v4
+        with:
+          name: original-premium-gallery
+          path: out/visual-gallery.png
+          retention-days: 14
