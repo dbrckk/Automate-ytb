@@ -22,12 +22,13 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .ear_motion import ear_position
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v17-ground-contact"
+RIG_VERSION = "owl-rig-v18-articulated-crests"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -214,6 +215,15 @@ def _wing(path: Path, *, right: bool):
     im.save(path,"PNG")
 
 
+def _crest(path: Path) -> None:
+    """Separate the original owl ear-tuft silhouette from its body."""
+    im = Image.new("RGBA", (322, 430))
+    d = ImageDraw.Draw(im)
+    d.polygon([(51,143),(26,15),(132,84)],fill=DARK_PURPLE)
+    d.polygon([(186,83),(289,14),(274,140)],fill=DARK_PURPLE)
+    im.save(path, "PNG")
+
+
 def _body(path: Path, *, blink: bool, emotion: str = "neutral",
           gaze: str = "forward"):
     im=Image.new("RGBA",(322,430))
@@ -222,8 +232,6 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
     for x in (95,220):
         d.line((x,342,x,401),fill=GOLD,width=13)
         d.line((x-27,399,x+28,399),fill=GOLD,width=12)
-    d.polygon([(51,143),(26,15),(132,84)],fill=DARK_PURPLE)
-    d.polygon([(186,83),(289,14),(274,140)],fill=DARK_PURPLE)
     d.ellipse((44,84,278,371),fill=PURPLE,outline=OUTLINE,width=6)
     d.ellipse((86,243,232,362),fill=LAVENDER)
     for dx in (106,219):
@@ -324,7 +332,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","crest")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -338,6 +346,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     draw_contact_shadow(outputs["shadow"], actor="owl",
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
+    _crest(outputs["crest"])
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -408,12 +417,17 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
             offset_x=33, image_index=7)
+        crest_x, crest_y = choreograph(
+            **settings, pose=lambda a: ear_position(
+                a, body_x=204, body_y=186))
         f=(
           "[shadowstage][1:v]overlay=x='144+7*sin(t*1.7)':"
           f"y='{left_y}':eval=frame:format=auto[a];"
           "[a][2:v]overlay=x='420-7*sin(t*1.7)':"
           f"y='{right_y}':eval=frame:format=auto[b];"
-          f"[b][3:v]overlay=x='{body_x}':"
+          f"[b][8:v]overlay=x='{crest_x}':y='{crest_y}':"
+          "eval=frame:format=auto[crestbase];"
+          f"[crestbase][3:v]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[c];"
           "[4:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
           f"[c][look]overlay=x='{body_x}':"
@@ -427,7 +441,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         )
         f = shadow_graph + f
         final_label = "f"
-        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
+        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow", "crest"]
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
@@ -485,7 +499,7 @@ def render_character_poster(*, topic: str, narration: str,
         with Image.open(layers["shadow"]) as shade:
             composite.alpha_composite(shade.convert("RGBA"), (237, 565))
         for name, position in (("left", (144,348)), ("right", (420,350)),
-                               ("body", (204,186))):
+                               ("crest", (204,186)), ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
         cue = cue_for_scene(narration, held_prop=held_prop)
