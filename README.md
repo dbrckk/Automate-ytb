@@ -649,3 +649,7 @@ La composition préserve la narration, les sous-titres, le montage et les images
 ### V2 — marche et course avec appui au sol
 
 La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
+
+### V2 — impacts au sol lors des déplacements
+
+Les renards, lapins et chats dessinés ajoutent maintenant de discrets nuages de poussière au contact du sol lors de la course, de la marche et des réceptions de saut. Ils sont créés localement avec Pillow, sont transparents et se superposent au véritable MP4 via des expressions FFmpeg déterministes. L'effet ne prétend pas simuler des particules physiques 3D et reste absent des actions sans contact.
