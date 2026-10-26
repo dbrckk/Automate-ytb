@@ -23,11 +23,12 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v18-planted-foot-gait"
+RIG_VERSION = "owl-rig-v19-attached-rotating-wings"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -391,12 +392,22 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                         scene_start_ms=scene_start_ms)
         body_x, body_y = choreograph(
             **settings, pose=lambda a: body_position(a, x=204, y=186))
-        (left_y,) = choreograph(
+        (left_offset,) = choreograph(
             **settings, pose=lambda a: (
-                secondary_position(a, base=348, side="left"),))
-        (right_y,) = choreograph(
+                secondary_position(a, base=162, side="left"),))
+        (right_offset,) = choreograph(
             **settings, pose=lambda a: (
-                secondary_position(a, base=350, side="right"),))
+                secondary_position(a, base=164, side="right"),))
+        # Wings must follow the torso rather than float in screen space.
+        # Larger transparent rotate canvases avoid clipping feather tips.
+        left_x = f"({body_x})-60+7*sin(t*1.7)-53"
+        right_x = f"({body_x})+216-7*sin(t*1.7)-53"
+        left_y = f"({body_y})+({left_offset})-29"
+        right_y = f"({body_y})+({right_offset})-29"
+        (left_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="wing", side="left"),))
+        (right_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="wing", side="right"),))
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
@@ -408,10 +419,14 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
             offset_x=33, image_index=7)
+        rotation_graph=(
+          f"[1:v]format=rgba,rotate=a='{left_angle}':ow=270:oh=270:c=none[wingleft];"
+          f"[2:v]format=rgba,rotate=a='{right_angle}':ow=270:oh=270:c=none[wingright];"
+        )
         f=(
-          "[shadowstage][1:v]overlay=x='144+7*sin(t*1.7)':"
+          f"[shadowstage][wingleft]overlay=x='{left_x}':"
           f"y='{left_y}':eval=frame:format=auto[a];"
-          "[a][2:v]overlay=x='420-7*sin(t*1.7)':"
+          f"[a][wingright]overlay=x='{right_x}':"
           f"y='{right_y}':eval=frame:format=auto[b];"
           f"[b][3:v]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[c];"
@@ -425,7 +440,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"y='{body_y}':"
           f"enable='{mouth}':eval=frame:format=auto[f]"
         )
-        f = shadow_graph + f
+        f = shadow_graph + rotation_graph + f
         final_label = "f"
         keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
         f, final_label, keys = append_overlays(
