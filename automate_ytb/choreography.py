@@ -143,3 +143,25 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     else:
         y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}+{phase}))"
     return x, y
+
+
+def attention_offset(action: str, *, scene_index: int) -> tuple[str, str]:
+    """Small authored head/eye-attention drift, independent of body locomotion.
+
+    Returned expressions can position a future separate head sprite. Until
+    such a sprite exists, this is a validated motion primitive, not a claim
+    of actual independent head articulation in exported videos.
+    """
+    if action not in ACTIONS:
+        raise ValueError("Unknown original animation action")
+    if not isinstance(scene_index, int) or isinstance(scene_index, bool) or not 1 <= scene_index <= 1200:
+        raise ValueError("Invalid scene index")
+    direction = 1 if scene_index % 2 else -1
+    strength = {"idle": 4, "walk": 3, "run": 2, "jump": 2,
+                "fly": 3, "talk": 5, "surprise": 7, "rest": 1}[action]
+    # Ease in and out of attention shifts, avoiding instantaneous snapping.
+    phase = "min(1,max(0,mod(t,3.4)/0.7))"
+    ease = f"(({phase})*({phase})*(3-2*({phase})))"
+    x = f"{direction}*{strength}*sin(t*0.53)*({ease})"
+    y = f"{max(1,strength//2)}*sin(t*0.39)"
+    return x, y
