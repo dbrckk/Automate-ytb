@@ -21,6 +21,7 @@ from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
+from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
@@ -31,7 +32,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v21-dimensional-materials"
+RIG_VERSION = "owl-rig-v22-supersampled-character-art"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -193,20 +194,18 @@ def _bg(path: Path, *, topic: str, narration: str, scene_index: int,
 
 def _mouth(path: Path):
     """Transparent vowel pose; brief speech gestures leave blinks intact."""
-    image = Image.new("RGBA", (322, 430), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+    image, draw = sprite_canvas((322, 430))
     # Belly is lavender on the approved original owl; the patch covers only
     # the original resting smile, never its distinctive beak or eyes.
     draw.ellipse((127, 259, 199, 300), fill=LAVENDER)
     draw.ellipse((151, 268, 178, 296), fill=INK)
     draw.arc((154, 281, 175, 302), 0, 180,
              fill=(240, 141, 167, 255), width=5)
-    image.save(path, "PNG")
+    resolve_sprite(image, (322, 430)).save(path, "PNG")
 
 
 def _wing(path: Path, *, right: bool):
-    im=Image.new("RGBA",(164,212))
-    d=ImageDraw.Draw(im)
+    im, d = sprite_canvas((164, 212))
     if right:
         d.ellipse((26,35,154,190),fill=DARK_PURPLE,outline=OUTLINE,width=5)
         d.ellipse((49,61,130,167),fill=PURPLE)
@@ -217,14 +216,14 @@ def _wing(path: Path, *, right: bool):
         d.ellipse((35,61,115,167),fill=PURPLE)
         for offset in range(3):
             d.arc((19+offset*20,100,80+offset*17,190),-75,125,fill=LAVENDER,width=4)
+    im = resolve_sprite(im, (164, 212))
     shade_sprite(im, kind="owl", part="wing")
     im.save(path,"PNG")
 
 
 def _body(path: Path, *, blink: bool, emotion: str = "neutral",
           gaze: str = "forward"):
-    im=Image.new("RGBA",(322,430))
-    d=ImageDraw.Draw(im)
+    im, d = sprite_canvas((322, 430))
     # Feet, horns, torso and a friendly, unmistakably original owl face.
     for x in (95,220):
         d.line((x,342,x,401),fill=GOLD,width=13)
@@ -264,6 +263,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
+    im = resolve_sprite(im, (322, 430))
     shade_sprite(im, kind="owl", part="body")
     finish_owl_feathers(im)
     im.save(path,"PNG")
