@@ -679,3 +679,17 @@ de cinématique inverse ou de modèles 3D. L'ensemble fonctionne hors ligne
 avec Pillow et FFmpeg, y compris via les workflows GitHub sur Android.
 Les tests comprennent l'encodage et le décodage complet de véritables MP4
 illustrant un renard en course et une chouette en vol.
+
+### V2 — oreilles articulées, émotions réactives
+
+Les oreilles des renards, lapins et chats sont extraites de l'illustration du
+torse en **deux sprites originaux autonomes**. Leur géométrie et leurs couleurs
+restent celles du personnage de référence. Les oreilles gauche et droite
+pivotent de manière symétrique selon l'action : repos calme, marche, course,
+saut ou brève réaction de surprise dont l'amplitude s'estompe. La tête et les
+traits du visage restent préservés ; il s'agit d'articulations de sprites 2D,
+pas de simulation 3D ni d'animation osseuse.
+
+La prévisualisation approuvée recombine les mêmes calques, et les empreintes
+des rendus sont renouvelées pour éviter la réutilisation des anciennes scènes.
+Les essais gratuits vérifient également le fichier MP4 H.264 complet.
