@@ -679,3 +679,9 @@ de cinématique inverse ou de modèles 3D. L'ensemble fonctionne hors ligne
 avec Pillow et FFmpeg, y compris via les workflows GitHub sur Android.
 Les tests comprennent l'encodage et le décodage complet de véritables MP4
 illustrant un renard en course et une chouette en vol.
+
+### V2 — réactions du sol synchronisées aux actions
+
+Les personnages animés disposent maintenant de petites réactions visuelles à leurs contacts avec le décor : poussière douce en forêt et en village, fragments verts en prairie, brume/éclaboussures en bord de rivière et sous la pluie. Ces effets originaux et translucides sont **déclenchés par l'animation effectivement décrite** (pas en marche, foulées de course, impulsion et réception de saut) ; le vol, le repos et la parole n'ajoutent pas artificiellement de poussière. Ils se superposent **derrière** les personnages et après leur ombre de contact pour conserver la lisibilité des silhouettes.
+
+Il s'agit d'illustrations 2D procédurales de faible opacité, pas de simulation physique de particules. Aucun asset externe, crédit payant ou service GPU n'est nécessaire. Les images de prévisualisation restent des poses calmes sans poussière de mouvement ; les caches de rendus sont invalidés pour générer une nouvelle vidéo.
