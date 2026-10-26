@@ -177,7 +177,7 @@ def ear_position(action: str, *, kind: str, side: str,
     dx = (f"({parent_x})+{sign*amplitude}*sin(t*{rate})"
           f"+{sign*round(amplitude*.27,2)}*sin(t*{rate*.48:.3f})")
     droop = 7 if action == "rest" else 0
-    dy = (f"({parent_y})+{droop}"
+    dy = (f"({parent_y})+{droop}*(1-exp(-2.2*t))"
           f"+{round(amplitude*.45,2)}*(1-cos(t*{rate}))")
     if action == "surprise":
         dy += "-9*exp(-2*t)*abs(sin(t*8))"
