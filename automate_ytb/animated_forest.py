@@ -31,7 +31,7 @@ from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v19-facial-finish-articulated"
+FOREST_RIG_VERSION = "forest-animals-v20-independent-responsive-ears"
 
 
 def character_kind(character: str) -> str | None:
@@ -66,8 +66,39 @@ SCARF = (243, 187, 74, 255)
 HIGHLIGHT = (255, 255, 255, 255)
 
 
+def _draw_ear(d: ImageDraw.ImageDraw, *, kind: str, side: str) -> None:
+    """The original ear geometry, preserved across still and moving poses."""
+    if kind not in COLORS or side not in ("left", "right"):
+        raise ValueError("Unsupported original animal ear")
+    palette = COLORS[kind]
+    fur, dark, ear = (palette[name] for name in ("fur", "dark", "ear"))
+    if kind == "rabbit":
+        x, bend = (105, -24) if side == "left" else (225, 26)
+        d.ellipse((x - 31 + bend, 6, x + 24 + bend, 225),
+                  fill=fur, outline=INK, width=6)
+        d.ellipse((x - 16 + bend, 24, x + 11 + bend, 188), fill=ear)
+    else:
+        x = 77 if side == "left" else 273
+        if kind == "fox":
+            points = [(x - 62, 177), (x - 8, 8), (x + 61, 149)]
+        else:
+            points = [(x - 51, 174), (x - 5, 44), (x + 53, 159)]
+        d.polygon(points, fill=dark)
+        d.polygon([(x - 37, 151), (x - 8, 58), (x + 35, 144)],
+                  fill=ear)
+
+
+def _sprite_ear(path: Path, *, kind: str, side: str) -> None:
+    """Small, transparent independently rotating ear (150x240)."""
+    image = Image.new("RGBA", (350, 440), (0, 0, 0, 0))
+    _draw_ear(ImageDraw.Draw(image), kind=kind, side=side)
+    origin = 0 if side == "left" else 200
+    image.crop((origin, 0, origin + 150, 240)).save(path, "PNG")
+
+
 def _sprite_body(path: Path, *, kind: str, blink: bool,
-                 emotion: str, gaze: str = "forward"):
+                 emotion: str, gaze: str = "forward",
+                 include_ears: bool = True):
     palette = COLORS[kind]
     fur, dark, belly, ear = (
         palette[name] for name in ("fur", "dark", "belly", "ear"))
@@ -81,20 +112,9 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
         d.ellipse((x - 25, 258, x + 27, 344),
                   fill=fur, outline=INK, width=5)
         d.ellipse((x - 12, 314, x + 14, 342), fill=dark)
-    if kind == "rabbit":
-        for x, bend in ((105, -24), (225, 26)):
-            d.ellipse((x - 31 + bend, 6, x + 24 + bend, 225),
-                      fill=fur, outline=INK, width=6)
-            d.ellipse((x - 16 + bend, 24, x + 11 + bend, 188), fill=ear)
-    else:
-        for x in (77, 273):
-            if kind == "fox":
-                points = [(x - 62, 177), (x - 8, 8), (x + 61, 149)]
-            else:
-                points = [(x - 51, 174), (x - 5, 44), (x + 53, 159)]
-            d.polygon(points, fill=dark)
-            d.polygon([(x - 37, 151), (x - 8, 58), (x + 35, 144)],
-                      fill=ear)
+    if include_ears:
+        for side in ("left", "right"):
+            _draw_ear(d, kind=kind, side=side)
     d.ellipse((45, 112, 306, 330), fill=fur, outline=INK, width=6)
     if kind == "fox":
         d.polygon([(66, 231), (173, 337), (286, 231),
@@ -210,7 +230,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -225,14 +245,16 @@ def render_layers(folder: Path, *, kind: str, topic: str,
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
     _sprite_tail(outputs["tail"], kind=kind)
+    _sprite_ear(outputs["left_ear"], kind=kind, side="left")
+    _sprite_ear(outputs["right_ear"], kind=kind, side="right")
     emotion = direction["emotion"] if direction else "neutral"
     gaze = gaze_target(narration, held_prop=held_prop)
     _sprite_body(outputs["neutral"], kind=kind, blink=False,
-                 emotion=emotion, gaze="forward")
+                 emotion=emotion, gaze="forward", include_ears=False)
     _sprite_body(outputs["body"], kind=kind, blink=False,
-                 emotion=emotion, gaze=gaze)
+                 emotion=emotion, gaze=gaze, include_ears=False)
     _sprite_body(outputs["blink"], kind=kind, blink=True,
-                 emotion=emotion, gaze=gaze)
+                 emotion=emotion, gaze=gaze, include_ears=False)
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
@@ -262,7 +284,9 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
             combined = background.convert("RGBA")
         with Image.open(layers["shadow"]) as shade:
             combined.alpha_composite(shade.convert("RGBA"), (225, 608))
-        for name, pos in (("tail", (115, 360)), ("body", (180, 184)),
+        for name, pos in (("left_ear", (180, 184)),
+                          ("right_ear", (380, 184)),
+                          ("tail", (115, 360)), ("body", (180, 184)),
                           ("left_leg", (248, 519)),
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
@@ -327,6 +351,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             **settings, pose=lambda a: (joint_angle(a, part="leg", side="left"),))
         (right_angle,) = choreograph(
             **settings, pose=lambda a: (joint_angle(a, part="leg", side="right"),))
+        (left_ear_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="ear", side="left"),))
+        (right_ear_angle,) = choreograph(
+            **settings, pose=lambda a: (joint_angle(a, part="ear", side="right"),))
         (mouth,) = choreograph(
             **settings, pose=lambda a: (mouth_expression(a),),
             blend=False)
@@ -345,9 +373,15 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[1:v]format=rgba,rotate=a='{tail_angle}':ow=334:oh=334:c=none[tailspin];"
             f"[6:v]format=rgba,rotate=a='{left_angle}':ow=162:oh=162:c=none[legleft];"
             f"[7:v]format=rgba,rotate=a='{right_angle}':ow=162:oh=162:c=none[legright];"
+            f"[9:v]format=rgba,rotate=a='{left_ear_angle}':ow=180:oh=280:c=none[earleft];"
+            f"[10:v]format=rgba,rotate=a='{right_ear_angle}':ow=180:oh=280:c=none[earright];"
         )
         fps_graph = (
-            f"[shadowstage][tailspin]overlay=x='{tail_x}':"
+            f"[shadowstage][earleft]overlay=x='({body_x})-15':"
+            f"y='({body_y})-20':eval=frame:format=auto[earsA];"
+            f"[earsA][earright]overlay=x='({body_x})+185':"
+            f"y='({body_y})-20':eval=frame:format=auto[earsB];"
+            f"[earsB][tailspin]overlay=x='{tail_x}':"
             f"y='{tail_y}':eval=frame:format=auto[a];"
             f"[a][2:v]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[b];"
@@ -368,7 +402,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         fps_graph = shadow_graph + rotation_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
-                 "left_leg", "right_leg", "shadow"]
+                 "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
