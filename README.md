@@ -639,3 +639,9 @@ Les déplacements des personnages originalement dessinés utilisent maintenant d
 ### V2 : sauts avec anticipation et réception
 
 Les sauts d'animaux dessinés disposent désormais d'une courte phase d'accroupissement, d'une ascension interpolée, d'une descente et d'un amortissement au sol. Les deux pieds suivent le même temps de vol. Ces changements restent entièrement procéduraux, gratuits et déterministes, et ne modifient pas la narration ni les fichiers audio. La création d'un véritable rig articulé et de rotations de membres indépendantes constitue encore une étape distincte.
+
+### V2 — contact au sol et profondeur des mouvements
+
+Les quatre animaux originaux utilisent désormais une **ombre douce au sol** sous leurs calques corporels. Elle suit la position horizontale de l'animal sans monter avec lui lors des sauts : la séparation entre ombre et personnage rend la hauteur de saut ou de vol plus lisible. L'ombre est générée localement avec Pillow, floutée et atténuée suivant la météo ; elle figure aussi sur l'image fixe d'approbation.
+
+La composition préserve la narration, les sous-titres, le montage et les images originales. Il s'agit d'un repère spatial 2D stylisé, pas de simulation physique, de ray tracing ou d'un rig squelettique.
