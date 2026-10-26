@@ -23,6 +23,7 @@ from .scenic_world import WORLD_VERSION
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
+from .animal_microtexture import paint_microtexture
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -32,7 +33,7 @@ from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v21-dimensional-materials"
+FOREST_RIG_VERSION = "forest-animals-v22-microtexture"
 
 
 def character_kind(character: str) -> str | None:
@@ -96,6 +97,7 @@ def _sprite_ear(path: Path, *, kind: str, side: str) -> None:
     origin = 0 if side == "left" else 200
     cropped = image.crop((origin, 0, origin + 150, 240))
     shade_sprite(cropped, kind=kind, part="ear")
+    paint_microtexture(cropped, kind=kind, part="ear")
     cropped.save(path, "PNG")
 
 
@@ -158,6 +160,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
     shade_sprite(image, kind=kind, part="body")
+    paint_microtexture(image, kind=kind, part="body")
     finish_forest_face(image, kind=kind)
     image.save(path, "PNG")
 
@@ -221,6 +224,7 @@ def _sprite_tail(path: Path, *, kind: str):
               fill=fur, width=33)
         d.ellipse((185, 188, 229, 230), fill=dark)
     shade_sprite(image, kind=kind, part="tail")
+    paint_microtexture(image, kind=kind, part="tail")
     image.save(path, "PNG")
 
 

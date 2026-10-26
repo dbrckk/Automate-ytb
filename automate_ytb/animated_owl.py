@@ -21,6 +21,7 @@ from .director import validate_direction
 from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
+from .animal_microtexture import paint_microtexture
 from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
@@ -31,7 +32,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v21-dimensional-materials"
+RIG_VERSION = "owl-rig-v22-microtexture"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -218,6 +219,7 @@ def _wing(path: Path, *, right: bool):
         for offset in range(3):
             d.arc((19+offset*20,100,80+offset*17,190),-75,125,fill=LAVENDER,width=4)
     shade_sprite(im, kind="owl", part="wing")
+    paint_microtexture(im, kind="owl", part="wing")
     im.save(path,"PNG")
 
 
@@ -265,6 +267,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
     shade_sprite(im, kind="owl", part="body")
+    paint_microtexture(im, kind="owl", part="body")
     finish_owl_feathers(im)
     im.save(path,"PNG")
 
