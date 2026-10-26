@@ -31,9 +31,10 @@ from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
+from .scenic_motion import draw_scenic_motion, overlay_scenic_motion
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v22-supersampled-character-art"
+FOREST_RIG_VERSION = "forest-animals-v23-animated-scenery"
 
 
 def character_kind(character: str) -> str | None:
@@ -237,10 +238,14 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear", "scenic_motion")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
+    draw_scenic_motion(outputs["scenic_motion"],
+                       landscape=landscape or "forest",
+                       weather=direction["weather"] if direction else "day",
+                       seed=f"{topic}|{narration}|{scene_index}")
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
@@ -303,6 +308,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
             location = (481, 437) if cue["action"] == "carry" else (652, 474)
             with Image.open(layers["prop"]) as prop:
                 combined.alpha_composite(prop.convert("RGBA"), location)
+        with Image.open(layers["scenic_motion"]) as surroundings:
+            combined.alpha_composite(surroundings.convert("RGBA"), (0, 0))
         with Image.open(layers["foreground"]) as front:
             combined.alpha_composite(front.convert("RGBA"), (0, 0))
         with Image.open(layers["lighting"]) as light:
@@ -428,6 +435,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                 f"y='-720+mod(t*{speed_fx},720)':eval=frame:format=auto[{next_label}]")
             final = next_label
             names.append("effects")
+        fps_graph, final, names = overlay_scenic_motion(
+            graph=fps_graph, label=final, names=names,
+            scene_index=scene_index,
+            weather=direction["weather"] if direction else "day")
         fps_graph, final, names = overlay_foreground(
             graph=fps_graph, label=final, names=names,
             scene_index=scene_index, duration=duration)
