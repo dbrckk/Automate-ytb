@@ -25,11 +25,12 @@ from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression, leg_position
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .sprite_finish import finish_sprite
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v17-planted-foot-gait"
+FOREST_RIG_VERSION = "forest-animals-v18-painterly-materials"
 
 
 def character_kind(character: str) -> str | None:
@@ -132,7 +133,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
     d.arc((65, 293, 291, 353), start=3, end=178, fill=SCARF, width=14)
     d.polygon([(245, 323), (283, 379), (260, 393), (211, 330)],
               fill=SCARF)
-    image.save(path, "PNG")
+    finish_sprite(image).save(path, "PNG")
 
 
 def _sprite_leg(path: Path, *, kind: str, side: str):
