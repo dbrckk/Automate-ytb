@@ -489,3 +489,11 @@ d'ambiance (papillons, feuilles, nuages, reflets, lucioles) sur deux plans
 indépendants, conformément au lieu et à la météo. Les posters, les aperçus
 et le MP4 reprennent le même dessin original ; aucun nouveau compte ou PC
 n'est nécessaire.
+
+### Caméra attentive aux personnages
+
+Dans les vues moyennes et rapprochées, les courses et les sauts bénéficient
+automatiquement d'un suivi discret, sans quitter le cadre ni rendre l'image
+instable. Les plans larges et les scènes calmes conservent leur mouvement
+précédent. Le système est inclus dans le rendu gratuit et ne demande aucune
+configuration sur Android.
