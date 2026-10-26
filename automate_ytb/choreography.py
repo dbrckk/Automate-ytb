@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v2-organic-motion"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v3-anticipation-landing"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -43,7 +43,19 @@ def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
     else:
         # Secondary low-frequency sway prevents perfectly repeated robotic arcs.
         xp = f"{x}+{horizontal}*sin(t*{hf})+1.2*sin(t*0.37)"
-        if kind in {"steps", "leap"}:
+        if kind == "leap":
+            # Repeated four-stage leap: brief crouch, eased ascent, descent,
+            # soft landing. Continuous at each boundary; no external assets.
+            cycle = "mod(t,1.75)"
+            crouch = f"min(1,({cycle})/0.18)"
+            launch = f"min(1,max(0,(({cycle})-0.18)/0.57))"
+            descend = f"min(1,max(0,(({cycle})-0.75)/0.64))"
+            land = f"min(1,max(0,(({cycle})-1.39)/0.36))"
+            smooth = lambda u: f"(({u})*({u})*(3-2*({u})))"
+            height = f"({smooth(launch)}-{smooth(descend)})"
+            yp = (f"{y}+12*({smooth(crouch)})-"
+                  f"({vertical}+12)*({height})-12*({smooth(land)})")
+        elif kind == "steps":
             sign = "+" if kind == "steps" else "-"
             yp = f"{y}{sign}{vertical}*abs(sin(t*{vf}))"
         elif kind == "flight":
@@ -114,7 +126,12 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     phase = "3.141593" if side == "right" and action in {"walk", "run"} else "0"
     x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
     if action == "jump":
-        y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}))"
+        # Feet tuck during the airborne arc, then extend before landing.
+        phase_jump = "mod(t,1.75)"
+        rise = f"min(1,max(0,(({phase_jump})-0.18)/0.57))"
+        fall = f"min(1,max(0,(({phase_jump})-0.75)/0.64))"
+        tuck = f"(({rise})*({rise})*(3-2*({rise}))-({fall})*({fall})*(3-2*({fall})))"
+        y = f"({parent_y})+335-{lift}*({tuck})"
     elif action == "fly":
         y = f"({parent_y})+335+{lift}*sin(t*{frequency}+{phase})"
     else:
