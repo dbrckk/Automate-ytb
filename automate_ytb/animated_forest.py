@@ -24,6 +24,7 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
 from .sprite_supersampling import sprite_canvas, resolve_sprite
+from .species_anatomy import paint_anatomy_base, paint_anatomy_accents
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -33,7 +34,7 @@ from .joint_motion import joint_angle
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v22-supersampled-character-art"
+FOREST_RIG_VERSION = "forest-animals-v23-sculpted-species-anatomy"
 
 
 def character_kind(character: str) -> str | None:
@@ -125,6 +126,8 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
                    (267, 295), (187, 336), (83, 289)], fill=belly)
     else:
         d.ellipse((95, 239, 259, 324), fill=belly)
+    paint_anatomy_base(d, kind=kind, fur=fur, dark=dark,
+                       belly=belly, ear=ear)
     for eye_x in (117, 235):
         if blink:
             d.arc((eye_x - 31, 206, eye_x + 31, 235),
@@ -143,6 +146,7 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
         if emotion == "worried":
             d.line((eye_x - 28, 182, eye_x + 27, 175), fill=dark, width=5)
     d.ellipse((165, 245, 192, 265), fill=dark)
+    paint_anatomy_accents(d, kind=kind, dark=dark, ear=ear)
     if kind == "cat":
         for y in (253, 271):
             d.line((75, y, 152, y + 8), fill=INK, width=3)
