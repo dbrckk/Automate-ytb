@@ -649,3 +649,17 @@ La composition préserve la narration, les sous-titres, le montage et les images
 ### V2 — marche et course avec appui au sol
 
 La marche et la course emploient maintenant deux phases distinctes pour chaque patte : une phase d'appui au sol sans soulèvement artificiel, puis une phase de retour avec une levée adoucie (vitesse verticale nulle au début et à la fin). Les pattes gauche et droite sont déphasées d'un demi-cycle. Ce mécanisme s'applique aux personnages 2D originaux sans service externe. Les sauts conservent leur animation d'anticipation et de réception.
+
+### V2 — oreilles réellement articulées (renard, lapin et chat)
+
+Les oreilles des trois animaux originaux sont désormais **deux calques RGBA
+indépendants** placés derrière la tête, plutôt que des formes fixées au
+corps entier. Elles suivent les mouvements du personnage avec un léger
+retard, réagissent à la surprise et se détendent au repos. Les formes et les
+couleurs restent celles des dessins originaux : aucun modèle extérieur,
+aucune licence supplémentaire et aucun appel réseau. La prévisualisation
+approuvée utilise les mêmes oreilles séparées que le moteur MP4.
+
+Cette amélioration est une **articulation de sprites 2D** et non une rotation
+3D ou un système squelettique complet. Le test d'intégration encode une
+vraie vidéo H.264 et vérifie ses dimensions.

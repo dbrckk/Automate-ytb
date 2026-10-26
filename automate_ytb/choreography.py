@@ -143,3 +143,42 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     else:
         y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}+{phase}))"
     return x, y
+
+# Small, locally phase-driven ear follow-through; the ears are independent
+# original RGBA layers rather than an illusion duplicated over the forehead.
+EAR_MOTION_VERSION = "two-ear-follow-through-v1"
+
+
+def ear_position(action: str, *, kind: str, side: str,
+                 body_x: int = 180, body_y: int = 184) -> tuple[str, str]:
+    """A trusted, subtle motion for each ear, following the moving head.
+
+    All expressions are generated from strict enumerated actions, animals,
+    and sides. Zero offset at t=0 keeps posters aligned with the video pose.
+    """
+    if kind not in {"fox", "rabbit", "cat"}:
+        raise ValueError("Unknown original forest ear rig")
+    if side not in {"left", "right"}:
+        raise ValueError("Unknown original ear side")
+    parent_x, parent_y = body_position(action, x=body_x, y=body_y)
+    base = {"fox": 4, "rabbit": 10, "cat": 5}[kind]
+    action_scale = {
+        "idle": 0.6, "walk": 1.0, "run": 1.3, "jump": 0.9,
+        "fly": 0.9, "talk": 0.35, "surprise": 1.5, "rest": 0.25,
+    }[action]
+    rate = {
+        "idle": 1.3, "walk": 3.5, "run": 6.7, "jump": 3.0,
+        "fly": 5.3, "talk": 1.6, "surprise": 8.0, "rest": 0.7,
+    }[action]
+    sign = 1 if side == "left" else -1
+    amplitude = round(base * action_scale, 2)
+    # Harmonics give the tips a delayed follow-through without clipping;
+    # opposite signs ensure distinct left/right expressive movement.
+    dx = (f"({parent_x})+{sign*amplitude}*sin(t*{rate})"
+          f"+{sign*round(amplitude*.27,2)}*sin(t*{rate*.48:.3f})")
+    droop = 7 if action == "rest" else 0
+    dy = (f"({parent_y})+{droop}*(1-exp(-2.2*t))"
+          f"+{round(amplitude*.45,2)}*(1-cos(t*{rate}))")
+    if action == "surprise":
+        dy += "-9*exp(-2*t)*abs(sin(t*8))"
+    return dx, dy
