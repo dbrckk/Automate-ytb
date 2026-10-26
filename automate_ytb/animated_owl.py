@@ -22,12 +22,13 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .choreography import body_position, secondary_position, mouth_expression
 from .atmospheric_light import draw_lighting, overlay_lighting
+from .sprite_finish import finish_sprite
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v18-planted-foot-gait"
+RIG_VERSION = "owl-rig-v19-painterly-materials"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -257,7 +258,7 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         d.arc((130,256,195,290),0,180,fill=OUTLINE,width=5)
     d.arc((78,292,250,343),0,180,fill=GOLD,width=17)
     d.polygon([(234,306),(275,357),(254,376),(207,320)],fill=GOLD)
-    im.save(path,"PNG")
+    finish_sprite(im).save(path,"PNG")
 
 
 def _weather_overlay(path: Path, *, seed: str, weather: str) -> None:
