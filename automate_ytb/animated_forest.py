@@ -472,12 +472,18 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         has_companion = "companion" in layers
         # One extra PNG input after the 11 primary rig inputs; the rest of
         # the trusted graph remains indexed identically for single actors.
+        # The guest follows an independent rhythm. Closed-eye and open-eye
+        # plates share an identical coordinate expression, avoiding snapping.
+        guest_x = "813+6*sin(t*0.58)+1.5*sin(t*1.21)"
+        guest_y = "265+2*sin(t*1.06)+sin(t*2.12)"
         guest_stage = (
-            "[shadowstage][11:v]overlay="
-            "x='813+5*sin(t*0.66)':y='265+3*sin(t*1.11)':"
-            "eval=frame:format=auto[companions]" if has_companion else ""
+            f"[shadowstage][11:v]overlay=x='{guest_x}':y='{guest_y}':"
+            "eval=frame:format=auto[companions];"
+            f"[companions][12:v]overlay=x='{guest_x}':y='{guest_y}':"
+            "enable='lt(mod(t+0.65,3.4),0.12)':"
+            "eval=frame:format=auto[guestblink]" if has_companion else ""
         )
-        base_stage = "companions" if has_companion else "shadowstage"
+        base_stage = "guestblink" if has_companion else "shadowstage"
         fps_graph = (
             f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
             f"y='({body_y})-20':eval=frame:format=auto[earsA];"
@@ -506,7 +512,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
-            names.append("companion")
+            names.extend(("companion", "companion_blink"))
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
