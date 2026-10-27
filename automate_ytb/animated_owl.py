@@ -27,6 +27,7 @@ from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
 from .living_world import draw_ambient_layers, append_ambient_overlays
@@ -34,7 +35,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v25-impact-followthrough"
+RIG_VERSION = "owl-rig-v26-kinetic-accents"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -360,6 +361,13 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     draw_contact_shadow(outputs["shadow"], actor="owl",
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
+    if direction and direction["action"] in KINETIC_ACTIONS:
+        outputs["motion"] = folder / "motion.png"
+        draw_motion_accent(outputs["motion"],
+                           action=direction["action"],
+                           weather=direction["weather"],
+                           landscape=landscape or "forest",
+                           seed=f"{topic}|{narration}|{scene_index}")
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
@@ -486,6 +494,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             scene_index=scene_index, duration=duration)
         f, final_label, keys = overlay_lighting(
             graph=f, label=final_label, names=keys)
+        f, final_label, keys = append_motion_accent(
+            graph=f, label=final_label, names=keys,
+            action=action, body_x=body_x, ground_y=545)
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(

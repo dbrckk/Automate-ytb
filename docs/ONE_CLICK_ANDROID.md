@@ -505,3 +505,10 @@ Les plans rapprochés générés sur Android séparent le personnage du décor p
 ### Scènes à deux animaux plus expressives
 
 Si la narration mentionne clairement deux animaux ensemble, le second cligne désormais des yeux de manière indépendante. Les regards sont orientés vers l'autre personnage lorsque le scénario ne demande pas de regarder un objet. Aucun paramètre, téléchargement de modèle ni abonnement supplémentaire n'est nécessaire.
+
+### Nouveaux détails lors des actions
+
+Les sauts et courses des animaux originaux créent une légère poussière,
+ou un effet de gouttelettes si le décor est humide. Ils sont ajoutés
+automatiquement au MP4 et n'utilisent aucun service payant. Les scènes
+sans saut ni course ne comportent pas ces effets.

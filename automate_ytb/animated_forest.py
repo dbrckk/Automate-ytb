@@ -29,13 +29,14 @@ from .choreography import body_position, secondary_position, mouth_expression, b
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
+from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
 from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v28-grounded-companion"
+FOREST_RIG_VERSION = "forest-animals-v29-kinetic-accents"
 
 
 def character_kind(character: str) -> str | None:
@@ -322,6 +323,13 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     draw_contact_shadow(outputs["shadow"], actor=kind,
                         weather=direction["weather"] if direction else "day",
                         action=direction["action"] if direction else "idle")
+    if direction and direction["action"] in KINETIC_ACTIONS:
+        outputs["motion"] = folder / "motion.png"
+        draw_motion_accent(outputs["motion"],
+                           action=direction["action"],
+                           weather=direction["weather"],
+                           landscape=landscape or "forest",
+                           seed=f"{topic}|{narration}|{scene_index}")
     _sprite_tail(outputs["tail"], kind=kind)
     _sprite_ear(outputs["left_ear"], kind=kind, side="left")
     _sprite_ear(outputs["right_ear"], kind=kind, side="right")
@@ -553,6 +561,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             scene_index=scene_index, duration=duration)
         fps_graph, final, names = overlay_lighting(
             graph=fps_graph, label=final, names=names)
+        fps_graph, final, names = append_motion_accent(
+            graph=fps_graph, label=final, names=names,
+            action=action, body_x=body_x, ground_y=586)
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,
