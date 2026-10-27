@@ -1,0 +1,326 @@
+"""Original astronomy motion-infographic scenes, rendered offline at true frame rate.
+
+Stylized planetary illustrations, not geospatial data or verified physics.
+The user's authored narration controls labels and shot selection. Every
+asset is generated locally. No third-party image, model or music is copied.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+from pathlib import Path
+import random
+import re
+import shutil
+import subprocess
+import unicodedata
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+SCIENCE_VERSION = "science-motion-v1-original-infographics"
+SIZE = (1280, 720)
+GOLD = (251, 200, 119)
+CYAN = (113, 219, 244)
+
+
+def _font(size: int, bold: bool = False):
+    paths = ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+             "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
+    if bold:
+        paths.reverse()
+    for path in paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def scene_mode(narration: str) -> str:
+    if not isinstance(narration, str):
+        raise ValueError("Narration must be original authored text")
+    folded = unicodedata.normalize("NFKD", narration.casefold())
+    s = "".join(ch for ch in folded if not unicodedata.combining(ch))
+    if any(w in s for w in ("ocean", "vague", "maree", "wave", "sea ", "mer ")):
+        return "ocean"
+    if any(w in s for w in ("vent", "wind", "air ", "atmospher", "tempete")):
+        return "atmosphere"
+    if any(w in s for w in ("jour", "nuit", "night", "daylight", "darkness")):
+        return "daylight"
+    return "orbital"
+
+
+def art_brief_sha256(*, topic: str, narration: str, scene_id: str,
+                     character: str, style: str,
+                     direction: dict | None = None,
+                     held_prop: str | None = None,
+                     landscape: str | None = None) -> str:
+    if style != "science":
+        raise ValueError("Not an original science infographic")
+    data = [SCIENCE_VERSION, topic, narration, scene_id, character,
+            direction, held_prop, landscape]
+    return hashlib.sha256(json.dumps(
+        data, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+
+def _background(seed: int) -> Image.Image:
+    rng = random.Random(seed)
+    im = Image.new("RGBA", SIZE, (7, 22, 43, 255))
+    draw = ImageDraw.Draw(im)
+    for y in range(720):
+        p = y / 720
+        draw.line((0, y, 1279, y),
+                  fill=(7 + int(5*p), 22 + int(9*p), 43 + int(12*p), 255))
+    for i in range(225):
+        x, y = rng.randrange(1280), rng.randrange(30, 655)
+        n = rng.choice((1, 1, 1, 2))
+        b = rng.randrange(90, 190)
+        draw.ellipse((x,y,x+n,y+n), fill=(b//2,b,min(255,b+40),255))
+    halo = Image.new("RGBA", SIZE)
+    ImageDraw.Draw(halo).ellipse((200,15,1000,650), fill=(28,133,195,42))
+    return Image.alpha_composite(im, halo.filter(ImageFilter.GaussianBlur(105)))
+
+
+def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
+    """Approximate original land outlines, sphere projection and illumination."""
+    texture = Image.new("RGB", (768,384), (23,123,186))
+    draw = ImageDraw.Draw(texture)
+    continents = [
+        [(-168,70),(-143,72),(-132,61),(-124,50),(-117,44),(-107,36),
+         (-97,25),(-85,25),(-81,12),(-91,10),(-107,19),(-124,32),
+         (-132,49),(-157,59)],
+        [(-81,12),(-69,10),(-59,5),(-51,-3),(-48,-11),(-41,-19),
+         (-48,-28),(-55,-35),(-68,-54),(-76,-46),(-75,-30),(-78,-16)],
+        [(-12,36),(0,44),(7,54),(20,59),(33,57),(45,50),(70,56),
+         (89,55),(106,49),(120,53),(148,38),(137,27),(122,23),
+         (116,10),(101,0),(96,12),(76,8),(57,30),(45,30),
+         (36,39),(19,42),(9,38)],
+        [(-16,34),(0,37),(16,31),(32,20),(39,6),(34,-11),
+         (26,-17),(20,-33),(14,-35),(8,-29),(0,-7),(-14,9)],
+        [(112,-11),(127,-14),(140,-16),(153,-27),(150,-39),
+         (136,-42),(116,-33)],
+        [(-53,83),(-40,81),(-38,67),(-49,59),(-61,63),(-61,76)]]
+    for i, shape in enumerate(continents):
+        points = [(round((lon+180)/360*767),round((90-lat)/180*383))
+                  for lon,lat in shape]
+        draw.polygon(points, fill=(67+i%3*7,153+i%4*5,99+i%3*10))
+    lookup = texture.load()
+    globe = Image.new("RGBA",(size+56,size+56),(0,0,0,0))
+    halo = Image.new("RGBA",globe.size)
+    ImageDraw.Draw(halo).ellipse((12,12,size+44,size+44),
+                                 fill=(46,194,239,139))
+    globe.alpha_composite(halo.filter(ImageFilter.GaussianBlur(21)))
+    surface=Image.new("RGBA",(size,size))
+    pixels=surface.load()
+    radius=size/2
+    for y in range(size):
+        ny=(radius-y)/radius
+        for x in range(size):
+            nx=(x-radius)/radius
+            dist=nx*nx+ny*ny
+            if dist>=.994:
+                continue
+            z=math.sqrt(1-dist)
+            lon=math.atan2(nx,z)+yaw
+            lat=math.asin(max(-1,min(1,ny)))
+            u=int(((lon/math.tau+.5)%1)*767)
+            v=max(0,min(383,int((.5-lat/math.pi)*383)))
+            red,green,blue=lookup[u,v]
+            light=max(.10,min(1.13,.14+.83*z-.55*nx+.18*ny))
+            edge=(1-z)**5
+            cloud=.12 if (math.sin(13*lon+math.sin(lat*6)*1.7)
+                         +math.sin(9*lat+lon*3))>1.6 else 0
+            ice=.30 if abs(lat)>1.3 else 0
+            pixels[x,y]=(min(255,int(red*light+(cloud+ice)*110+edge*22)),
+                         min(255,int(green*light+(cloud+ice)*115+edge*48)),
+                         min(255,int(blue*light+(cloud+ice)*120+edge*80)),
+                         255)
+    globe.alpha_composite(surface,(28,28))
+    return globe
+
+
+def _badge(draw: ImageDraw.ImageDraw, text: str) -> None:
+    draw.rounded_rectangle((63,58,416,104),radius=19,
+                           fill=(4,14,30,235))
+    draw.text((83,70),text,font=_font(21,True),fill=GOLD)
+
+
+def _caption(draw: ImageDraw.ImageDraw, text: str) -> None:
+    """On-image editorial excerpt; full original captions remain SRT/VTT."""
+    words=text.split()
+    if not words:
+        return
+    f=_font(23)
+    lines, line = [], ""
+    for word in words:
+        trial=(line+" "+word).strip()
+        if line and draw.textbbox((0,0),trial,font=f)[2]>900:
+            lines.append(line)
+            line=word
+        else:
+            line=trial
+    if line:
+        lines.append(line)
+    if len(lines)>2:
+        lines=lines[:2]
+        while draw.textbbox((0,0),lines[-1]+"…",font=f)[2]>880:
+            lines[-1]=lines[-1][:-1]
+        lines[-1]+="…"
+    width=max(draw.textbbox((0,0),s,font=f)[2] for s in lines)+64
+    height=34*len(lines)+24
+    x=(1280-width)//2
+    y=677-height
+    draw.rounded_rectangle((x,y,x+width,y+height),
+                           radius=14,fill=(3,12,27,236))
+    for i,line in enumerate(lines):
+        tw=draw.textbbox((0,0),line,font=f)[2]
+        draw.text((640-tw//2,y+9+i*34),line,font=f,
+                  fill=(237,247,255))
+
+
+class ScienceScene:
+    """Original motion graphics for an authored science storyboard beat."""
+    def __init__(self, *, topic: str, narration: str, scene_index: int):
+        if not isinstance(topic,str) or not topic.strip() or len(topic)>180:
+            raise ValueError("Science scene needs an authored topic")
+        if not isinstance(narration,str) or not narration.strip() or len(narration)>9000:
+            raise ValueError("Science scene needs authored narration")
+        if type(scene_index) is not int or not 1<=scene_index<=1200:
+            raise ValueError("Invalid original scene number")
+        self.topic, self.narration = topic, narration
+        self.mode=scene_mode(narration)
+        self.scene_index=scene_index
+        seed=int.from_bytes(hashlib.sha256(
+            f"{topic}|{scene_index}".encode()).digest()[:8],"big")
+        self.base=_background(seed)
+        # Art cached per shot; the globe uses actual sphere-projected
+        # continents, illumination and a subtle evolution in longitude.
+        self.globes=tuple(_planet(yaw=.027*i) for i in range(12))
+        self.city=random.Random(seed+29)
+
+    def frame(self, t: float, duration: float) -> Image.Image:
+        if not 0<=t<=duration<=3600:
+            raise ValueError("Unsafe science animation clock")
+        img=self.base.copy()
+        d=ImageDraw.Draw(img,"RGBA")
+        fraction=t/max(.01,duration)
+        travel=fraction*fraction*(3-2*fraction)
+        cx=585+int(12*math.sin(t*.42))+int(30*(travel-.5))
+        cy=350+int(6*math.sin(t*.62))
+        globe=self.globes[min(11,int(t*2.5))]
+        if self.mode=="orbital":
+            img.alpha_composite(globe,(cx-230,cy-230))
+            d=ImageDraw.Draw(img,"RGBA")
+            for rad in (229,249):
+                angle=int(t*18)
+                d.arc((cx-rad,cy-rad,cx+rad,cy+rad),
+                      60+angle,208+angle,fill=GOLD+(163,),width=2)
+            for i in range(6):
+                a=t*.40+i*math.tau/6
+                px=cx+int(251*math.cos(a))
+                py=cy+int(251*math.sin(a))
+                d.ellipse((px-3,py-3,px+3,py+3),fill=GOLD+(215,))
+            _badge(d,"MOUVEMENT PLANÉTAIRE")
+        elif self.mode=="daylight":
+            img.alpha_composite(globe,(187,127))
+            dark=Image.alpha_composite(
+                globe,Image.new("RGBA",globe.size,(3,7,30,112)))
+            img.alpha_composite(dark,(750,127))
+            d=ImageDraw.Draw(img,"RGBA")
+            for x,label,col in ((206,"ZONE ÉCLAIRÉE",GOLD),
+                                (770,"ZONE SOMBRE",CYAN)):
+                d.rounded_rectangle((x,76,x+252,112),12,fill=(4,16,33,235))
+                d.text((x+19,84),label,font=_font(18,True),fill=col)
+            _badge(d,"CYCLE LUMINEUX")
+        else:
+            d.rectangle((0,417,1280,605),fill=(10,32,55,242))
+            rng=random.Random(self.scene_index*131)
+            for i in range(66):
+                x=i*22-16
+                h=rng.randrange(36,169)
+                d.rectangle((x,418-h,x+17,420),fill=(15,47,72,244))
+                for j in range(3):
+                    yy=418-h+17+j*27
+                    if yy<411:
+                        d.line((x+5,yy,x+9,yy),fill=(100,172,194,141),width=2)
+            if self.mode=="atmosphere":
+                _badge(d,"CIRCULATION DE L’AIR")
+                for i in range(36):
+                    px=(i*43+t*(55+i%5*14))%1370-65
+                    py=178+(i*41)%334
+                    d.line((px,py,px+42+i%32,py-5),
+                           fill=(128,220,242,135),width=2)
+                    d.ellipse((px+40,py-5,px+44,py-1),
+                              fill=(191,238,249,146))
+            else:
+                _badge(d,"DYNAMIQUE DES OCÉANS")
+                wave_specs=[
+                    ((25,125,168,195),29,.62,475),
+                    ((45,170,204,210),36,.77,522),
+                    ((14,107,157,242),22,.90,565)]
+                for i,(color,amp,speed,base) in enumerate(wave_specs):
+                    points=[(0,720)]
+                    for x in range(0,1281,8):
+                        y=base+amp*math.sin(x/169+speed*t+i*.7)
+                        points.append((x,round(y)))
+                    points.append((1280,720))
+                    d.polygon(points,fill=color)
+                    d.line(points[1:-1],fill=(156,242,246,129),width=2)
+        d=ImageDraw.Draw(img,"RGBA")
+        for i in range(11):
+            x=int((i*109+t*(i%3+1)*4)%1260)+8
+            y=int((i*57+t*(i%4+1)*2)%600)+15
+            d.ellipse((x,y,x+2,y+2),fill=(140,214,238,78))
+        _caption(d,self.narration)
+        return img.convert("RGB")
+
+
+def render_character_poster(*, topic: str, narration: str,
+                            scene_index: int, scene_count: int,
+                            style: str, destination: Path,
+                            direction: dict | None = None,
+                            held_prop: str | None = None,
+                            landscape: str | None = None) -> None:
+    if style!="science":
+        raise ValueError("Unsupported science visual style")
+    shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index)
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    shot.frame(.2,1.0).save(destination,format="PNG",optimize=True)
+
+
+def render_motion_clip(*, topic: str, narration: str, scene_index: int,
+                       scene_count: int, style: str, duration: float,
+                       width: int, height: int, fps: int, destination: Path,
+                       direction: dict | None = None, **_unused) -> None:
+    if style!="science" or (width,height) not in ((1280,720),(1920,1080)):
+        raise ValueError("Unsupported science style or resolution")
+    if fps not in (24,30) or not .1<=duration<=180:
+        raise ValueError("Unsupported science duration or FPS")
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("FFmpeg required to render science animation")
+    shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index)
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    frames=max(1,round(duration*fps))
+    cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
+         "-f","rawvideo","-pixel_format","rgb24",
+         "-video_size","1280x720","-framerate",str(fps),"-i","pipe:0",
+         "-vf",f"scale={width}:{height}:flags=lanczos,format=yuv420p",
+         "-frames:v",str(frames),"-c:v","libx264","-preset","veryfast",
+         "-crf","19","-an",str(destination)]
+    proc=subprocess.Popen(cmd,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
+    try:
+        assert proc.stdin is not None
+        for n in range(frames):
+            proc.stdin.write(shot.frame(n/fps,duration).tobytes())
+        proc.stdin.close()
+        diagnostics=proc.stderr.read() if proc.stderr else b""
+        status=proc.wait(timeout=180)
+        if status:
+            raise RuntimeError("Science FFmpeg render failed: "+
+                               diagnostics[-1400:].decode(errors="replace"))
+    except BaseException:
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait()
+        destination.unlink(missing_ok=True)
+        raise
