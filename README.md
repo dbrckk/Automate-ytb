@@ -786,3 +786,19 @@ ni ressource téléchargée, et fonctionne dans les véritables rendus FFmpeg
 des animaux originaux. La narration, la durée des scènes et le son restent
 inchangés. Il s'agit de *follow-through* dessiné en 2D, non d'une simulation
 biomécanique ou d'une animation 3D.
+
+### V2 — scènes originales avec deux animaux
+
+Lorsque la narration fait explicitement intervenir ensemble **deux espèces**
+parmi le renard, le lapin et le chat, le moteur peut afficher un deuxième
+personnage original, plus petit, dans la partie droite de l'image. Son
+silhouette complète combine la tête, les oreilles, les pattes et la queue
+existantes, avec un très léger mouvement de respiration. Le personnage
+principal conserve toute sa chorégraphie, sa bouche et ses accessoires.
+
+La sélection reste prudente : une simple mention isolée d'un autre animal
+ne suffit pas à inventer une rencontre ; un maximum d'un compagnon est
+ajouté. Cette première version ne fait pas encore parler ni marcher le
+second personnage, et n'étend pas le système aux scènes où la chouette est
+l'animatrice principale. Les images approuvées et les vrais MP4 utilisent
+le même nouveau personnage, sans service payant ni asset externe.
