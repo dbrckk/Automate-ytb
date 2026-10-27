@@ -29,9 +29,9 @@ PLANES = {"background": 1.0, "ambient_far": 0.75}
 
 def focus_radius(shot: str, *, plane: str = "background") -> float:
     """Return a bounded pixel radius from curated shot/layer combinations."""
-    if shot not in FOCUS_RADII:
+    if not isinstance(shot, str) or shot not in FOCUS_RADII:
         raise ValueError("Unsupported focus shot")
-    if plane not in PLANES:
+    if not isinstance(plane, str) or plane not in PLANES:
         raise ValueError("Unsupported focus plane")
     return round(FOCUS_RADII[shot] * PLANES[plane], 2)
 
@@ -56,15 +56,13 @@ def soften_environment_plate(path: Path, *, shot: str,
 
 def focus_metadata(shot: str) -> dict:
     """Serializable audit record for optical separation of still art."""
+    radius = focus_radius(shot)
     return {
         "version": FOCUS_VERSION,
-        "shot": shot if shot in FOCUS_RADII else _invalid_shot(),
-        "backgroundBlurPx": focus_radius(shot),
+        "shot": shot,
+        "backgroundBlurPx": radius,
         "farAmbientBlurPx": focus_radius(shot, plane="ambient_far"),
         "preservesCharacterSharpness": True,
         "precomputedOncePerScene": True,
     }
 
-
-def _invalid_shot() -> str:
-    raise ValueError("Unsupported focus shot")
