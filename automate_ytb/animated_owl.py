@@ -26,7 +26,7 @@ from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .atmospheric_light import draw_lighting, overlay_lighting
-from .ground_contact import draw_contact_shadow, shadow_stage
+from .ground_contact import draw_contact_shadow, shadow_stage, shadow_lift
 from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
@@ -35,7 +35,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v26-kinetic-accents"
+RIG_VERSION = "owl-rig-v27-height-aware-shadows"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -444,9 +444,11 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             # Never display speech-mouth animation during digital silence.
             # The separate authored action cue still must be "talk".
             mouth = f"({mouth})*({gate})"
+        (lift,) = choreograph(
+            **settings, pose=lambda a: (shadow_lift(a),))
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
-            offset_x=33, image_index=7)
+            offset_x=33, image_index=7, lift=lift)
         rotation_graph=(
           f"[1:v]format=rgba,rotate=a='{left_angle}':ow=270:oh=270:c=none[wingleft];"
           f"[2:v]format=rgba,rotate=a='{right_angle}':ow=270:oh=270:c=none[wingright];"

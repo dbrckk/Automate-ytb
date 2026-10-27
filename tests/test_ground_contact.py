@@ -20,7 +20,7 @@ from automate_ytb.animated_owl import render_character_poster as owl_poster
 
 class GroundShadowTests(unittest.TestCase):
     def test_shadow_is_soft_translucent_deterministic(self):
-        self.assertIn("v1", GROUND_VERSION)
+        self.assertIn("v2", GROUND_VERSION)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             paths = [root / name for name in ("first.png","second.png","night.png")]

@@ -849,3 +849,20 @@ repos n'ajoute aucun effet, et la voix ou la durée ne changent pas.
 Ces traces sont un détail **2D discret**, pas un simulateur de particules ni
 une nouvelle capacité de mouvement 3D. Les scènes avec plusieurs actions
 successives utilisent pour l'instant l'action principale pour cet effet.
+
+### V2 — ombres qui réagissent à la hauteur des mouvements
+
+Les animaux conservent une ombre au sol même pendant leurs sauts et
+leurs phases de vol. Son empreinte se rétrécit progressivement à mesure
+que le personnage s'élève, puis retrouve sa taille initiale à la
+réception. Le calcul utilise **la même chronologie de saut** que les
+poses corporelles (0,18 s de préparation, montée, descente, réception)
+et les changements d'action déjà interpolés. L'ombre suit la position
+horizontale du personnage mais pas sa hauteur.
+
+Les actions statiques gardent l'ancien chemin FFmpeg sans redimensionnement
+continu, pour limiter le coût du rendu. Tous les visuels restent locaux et
+originaux ; ce rendu est du **2,5D**, pas un simulateur de lumière physique.
+Les empreintes de rendu sont incrémentées afin de recalculer les clips
+précédemment approuvés. Un test exporte un vrai MP4 et mesure la réduction
+visible de l'ombre au sommet du saut.

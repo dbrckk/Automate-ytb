@@ -28,7 +28,7 @@ from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
-from .ground_contact import draw_contact_shadow, shadow_stage
+from .ground_contact import draw_contact_shadow, shadow_stage, shadow_lift
 from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
@@ -36,7 +36,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v29-kinetic-accents"
+FOREST_RIG_VERSION = "forest-animals-v30-height-aware-shadows"
 
 
 def character_kind(character: str) -> str | None:
@@ -479,9 +479,11 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         # A transparent fade affects only the pupil pose: the underlying
         # original sprite is identical in every other detail. Closed-eye
         # poses are composited last and remain intact throughout the gaze.
+        (lift,) = choreograph(
+            **settings, pose=lambda a: (shadow_lift(a),))
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
-            offset_x=45, image_index=8)
+            offset_x=45, image_index=8, lift=lift)
         rotation_graph = (
             f"[1:v]format=rgba,rotate=a='{tail_angle}':ow=334:oh=334:c=none[tailspin];"
             f"[6:v]format=rgba,rotate=a='{left_angle}':ow=162:oh=162:c=none[legleft];"
