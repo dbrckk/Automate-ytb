@@ -20,8 +20,8 @@ on:
         default: "Original purple owl with round turquoise glasses and a golden scarf"
       style:
         type: choice
-        description: "Procedural draft graphic style"
-        options: [cartoon, cinematic, documentary]
+        description: "cartoon animals, original animated Earth-science infographic, or still-card drafts"
+        options: [cartoon, science, cinematic, documentary]
         default: cartoon
       language:
         type: choice
@@ -63,7 +63,7 @@ on:
       resolution:
         type: choice
         options: [720p, 1080p]
-        default: 720p
+        default: 1080p
 
 permissions:
   contents: read
@@ -132,9 +132,14 @@ jobs:
           YT_TRANSITION: ${{ inputs.transition }}
           YT_RESOLUTION: ${{ inputs.resolution }}
         run: |
+          VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
+          if [ "$YT_STYLE" = "science" ]; then
+            VISUAL_BRIEF="Original 2D/2.5D science infographic with illustrated planet, animated charts, legible typography and original diagrams; no third-party pictures"
+          fi
           python -m automate_ytb.scene_plan \
             --topic "$YT_TOPIC" --script build/script.txt \
             --character "$YT_CHARACTER" --duration "$YT_SECONDS" \
+            --style "$VISUAL_BRIEF" \
             --shot-seconds "$YT_SHOT" --output build/scene-plan.json
           python -m automate_ytb.production prepare \
             --plan build/scene-plan.json --output build/image-prompts.jsonl
