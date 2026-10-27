@@ -60,12 +60,12 @@ def character_kind(character: str) -> str | None:
 # Only explicit co-presence is eligible: do not invent a companion when a
 # character is merely remembered, dreamed about or named in isolation.
 COMPANION_CUES = re.compile(
-    r"\\b(?:meet\\w*|join\\w*|with|together|beside|alongside|"
-    r"rencontr\\w*|rejoi\\w*|ensemble|avec|accompagn\\w*|et|and)\\b")
+    r"\b(?:meet\w*|join\w*|with|together|beside|alongside|"
+    r"rencontr\w*|rejoi\w*|ensemble|avec|accompagn\w*|et|and)\b")
 COMPANION_PATTERNS = {
-    "fox": re.compile(r"\\b(?:fox(?:es)?|renard\\w*)\\b"),
-    "rabbit": re.compile(r"\\b(?:rabbit\\w*|bunn\\w*|hares?|lapin\\w*|lievre\\w*)\\b"),
-    "cat": re.compile(r"\\b(?:cats?|kitten\\w*|chaton\\w*|chatte\\w*|le chat|un chat)\\b"),
+    "fox": re.compile(r"\b(?:fox(?:es)?|renard\w*)\b"),
+    "rabbit": re.compile(r"\b(?:rabbit\w*|bunn\w*|hares?|lapin\w*|lievre\w*)\b"),
+    "cat": re.compile(r"\b(?:cats?|kitten\w*|chaton\w*|chatte\w*|le chat|un chat)\b"),
 }
 
 
