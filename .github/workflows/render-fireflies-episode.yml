@@ -1,0 +1,106 @@
+name: Original episode - Le secret des lucioles
+
+on:
+  push:
+    branches:
+      - episode/lucioles-2026-10-27
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render French narrated firefly story
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg and original animation pipeline
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install -e .
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install local French natural Kokoro voice
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install -e '.[speech]'
+      - name: Plan original five-scene French firefly episode
+        run: |
+          mkdir -p build
+          cp examples/episodes/le-secret-des-lucioles-2026-10-27.txt build/script.txt
+          python -m automate_ytb.scene_plan \
+            --topic "Le secret des lucioles" \
+            --script build/script.txt \
+            --character "Original purple owl with round turquoise glasses and a golden scarf" \
+            --duration 30 --shot-seconds 6 \
+            --output build/scene-plan.json
+          python -m automate_ytb.production prepare \
+            --plan build/scene-plan.json --output build/image-prompts.jsonl
+      - name: Create actual 720p animated MP4 with French Kokoro narration
+        run: |
+          python -m automate_ytb.episode \
+            --plan build/scene-plan.json --output build/video \
+            --style cartoon --language fr --voice kokoro \
+            --voice-style natural --resolution 720p \
+            --soundtrack ambient --caption-timing audio \
+            --transition dissolve
+          cp docs/VOICE_CREDITS.md build/video/VOICE_CREDITS.md
+      - name: Validate actual MP4, soundtrack, narration and captions
+        run: |
+          python -m automate_ytb.quality \
+            --plan build/scene-plan.json --output build/video \
+            --expect-voice kokoro --expect-soundtrack ambient \
+            --report build/video/quality-report.json
+          python -m automate_ytb.media_qa \
+            --video build/video/preview.mp4 \
+            --srt build/video/draft-captions.srt \
+            --vtt build/video/draft-captions.vtt \
+            --report build/video/media-report.json \
+            --require-audio --target-lufs -16
+          python -m automate_ytb.review_board \
+            --plan build/scene-plan.json --video build/video/preview.mp4 \
+            --output build/video/review --max-samples 12
+          python -m automate_ytb.qa_bundle \
+            --structural build/video/quality-report.json \
+            --media build/video/media-report.json \
+            --visual build/video/review/visual-review.json \
+            --story build/video/story-preflight.json \
+            --plan build/scene-plan.json \
+            --video build/video/preview.mp4 \
+            --srt build/video/draft-captions.srt \
+            --vtt build/video/draft-captions.vtt \
+            --output build/video/qa-summary.json
+      - name: Package phone-friendly video, storyboard and technical reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: le-secret-des-lucioles-video-fr
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            build/script.txt
+            build/scene-plan.json
+            build/image-prompts.jsonl
+            build/video/preview.mp4
+            build/video/narration.wav
+            build/video/voice-sample.mp3
+            build/video/VOICE_CREDITS.md
+            build/video/background-original.wav
+            build/video/draft-captions.srt
+            build/video/draft-captions.vtt
+            build/video/quality-report.json
+            build/video/media-report.json
+            build/video/qa-summary.json
+            build/video/story-preflight.json
+            build/video/episode-report.json
+            build/video/render-report.json
+            build/video/thumbnails/
+            build/video/review/
+            build/assets/
