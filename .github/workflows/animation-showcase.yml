@@ -1,0 +1,61 @@
+name: First animated V2 showcase (free)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/render_animation_showcase.py'
+      - '.github/workflows/animation-showcase.yml'
+      - 'tests/test_animation_showcase.py'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/render_animation_showcase.py'
+      - '.github/workflows/animation-showcase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  showcase:
+    name: Render four original animal animations (MP4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free FFmpeg and Python art renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install -e .
+      - name: Generate authentic animal scenes and mastered MP4
+        run: python scripts/render_animation_showcase.py --output out/v2-animated-showcase/showcase.mp4
+      - name: Verify MP4 H264, AAC, duration and one decoded frame
+        run: |
+          test -s out/v2-animated-showcase/showcase.mp4
+          test -s out/v2-animated-showcase/cover.png
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("out/v2-animated-showcase/showcase-report.json").read_text())
+          assert report["sceneCount"] == 4
+          assert report["codec"] == "h264"
+          assert report["audio"].startswith("original")
+          assert report["publicationApproved"] is False
+          assert 16.5 <= report["durationSeconds"] <= 18.0
+          PY
+      - name: Upload direct mobile-ready MP4, subtitles and visual cover
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-v2-animated-first-video
+          path: |
+            out/v2-animated-showcase/showcase.mp4
+            out/v2-animated-showcase/cover.png
+            out/v2-animated-showcase/subtitles.srt
+            out/v2-animated-showcase/showcase-report.json
+          if-no-files-found: error
+          retention-days: 14
