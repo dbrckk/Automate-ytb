@@ -27,6 +27,7 @@ from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
+from .story_glow import draw_story_glow, append_story_glow
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
@@ -36,7 +37,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v30-dynamic-contact-shadow"
+FOREST_RIG_VERSION = "forest-animals-v31-narrated-firefly-glow"
 
 
 def character_kind(character: str) -> str | None:
@@ -368,6 +369,12 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         outputs["prop"] = folder / "prop.png"
         if cue["action"] == "pickup":
             outputs["reach"] = folder / "reach.png"
+    glow = folder / "story_glow.png"
+    if draw_story_glow(
+            glow, narration=narration,
+            seed=f"{topic}|{narration}|{scene_index}",
+            landscape=landscape or "forest"):
+        outputs["story_glow"] = glow
     return outputs
 
 
@@ -407,6 +414,9 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
             location = (481, 437) if cue["action"] == "carry" else (652, 474)
             with Image.open(layers["prop"]) as prop:
                 combined.alpha_composite(prop.convert("RGBA"), location)
+        if "story_glow" in layers:
+            with Image.open(layers["story_glow"]) as sparkle:
+                combined.alpha_composite(sparkle.convert("RGBA"), (0, 0))
         with Image.open(layers["ambient_near"]) as details:
             combined.alpha_composite(details.convert("RGBA"), (0, 0))
         with Image.open(layers["foreground"]) as front:
@@ -556,6 +566,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         fps_graph, final, names = append_ambient_overlays(
             graph=fps_graph, label=final, names=names,
             weather=direction["weather"] if direction else "day")
+        fps_graph, final, names = append_story_glow(
+            graph=fps_graph, label=final, names=names,
+            enabled="story_glow" in layers)
         fps_graph, final, names = overlay_foreground(
             graph=fps_graph, label=final, names=names,
             scene_index=scene_index, duration=duration)
