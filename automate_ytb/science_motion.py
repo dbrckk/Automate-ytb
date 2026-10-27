@@ -190,6 +190,14 @@ class ScienceScene:
         self.topic, self.narration = topic, narration
         self.mode=scene_mode(narration)
         self.scene_index=scene_index
+        self.english=bool(re.search(
+            r"\b(the|would|what|earth|stopped|could|still|moving|because)\b",
+            narration,flags=re.IGNORECASE))
+        # Never insert external/unsourced numbers: only display quantities
+        # explicitly authored in the narration itself.
+        self.measurement=re.search(
+            r"\b(\d{1,3}(?:[ ,]\d{3})*|\d{1,4})\s*(km/h|mph|m/s)\b",
+            narration,flags=re.IGNORECASE)
         seed=int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}".encode()).digest()[:8],"big")
         self.base=_background(seed)
@@ -220,7 +228,16 @@ class ScienceScene:
                 px=cx+int(251*math.cos(a))
                 py=cy+int(251*math.sin(a))
                 d.ellipse((px-3,py-3,px+3,py+3),fill=GOLD+(215,))
-            _badge(d,"MOUVEMENT PLANÉTAIRE")
+            _badge(d,"PLANETARY MOTION" if self.english
+                   else "MOUVEMENT PLANÉTAIRE")
+            if self.measurement is not None:
+                amount, units=self.measurement.groups()
+                d.rounded_rectangle((914,263,1203,384),19,
+                                    fill=(3,15,32,230))
+                d.text((944,279),amount,font=_font(48,True),
+                       fill=GOLD)
+                d.text((946,346),units,font=_font(20),
+                       fill=(176,221,231))
         elif self.mode=="daylight":
             img.alpha_composite(globe,(187,127))
             dark=Image.alpha_composite(
@@ -231,6 +248,8 @@ class ScienceScene:
             for x,label,col in ((206,"ZONE ÉCLAIRÉE",GOLD),
                                 (770,"ZONE SOMBRE",CYAN)):
                 d.rounded_rectangle((x,76,x+252,112),12,fill=(4,16,33,235))
+                if self.english:
+                    label="DAYLIGHT" if x==206 else "DARKNESS"
                 d.text((x+19,84),label,font=_font(18,True),fill=col)
             # Phase labels provide the shot title; a second top-left
             # badge here would overlap the illuminated-side label.
@@ -246,7 +265,8 @@ class ScienceScene:
                     if yy<411:
                         d.line((x+5,yy,x+9,yy),fill=(100,172,194,141),width=2)
             if self.mode=="atmosphere":
-                _badge(d,"CIRCULATION DE L’AIR")
+                _badge(d,"AIR IN MOTION" if self.english
+                       else "CIRCULATION DE L’AIR")
                 for i in range(36):
                     px=(i*43+t*(55+i%5*14))%1370-65
                     py=178+(i*41)%334
@@ -255,7 +275,8 @@ class ScienceScene:
                     d.ellipse((px+40,py-5,px+44,py-1),
                               fill=(191,238,249,146))
             else:
-                _badge(d,"DYNAMIQUE DES OCÉANS")
+                _badge(d,"OCEAN DYNAMICS" if self.english
+                       else "DYNAMIQUE DES OCÉANS")
                 wave_specs=[
                     ((25,125,168,195),29,.62,475),
                     ((45,170,204,210),36,.77,522),
