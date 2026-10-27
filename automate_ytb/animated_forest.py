@@ -35,7 +35,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v26-two-actor-scenes"
+FOREST_RIG_VERSION = "forest-animals-v27-expressive-companions"
 
 
 def character_kind(character: str) -> str | None:
@@ -257,7 +257,7 @@ def _sprite_tail(path: Path, *, kind: str):
     image.save(path, "PNG")
 
 
-def _sprite_companion(path: Path, *, kind: str) -> None:
+def _sprite_companion(path: Path, *, kind: str, blink: bool = False) -> None:
     """Compose a smaller, complete original second animal behind the lead.
 
     Secondary animals do not speak or perform unmentioned actions. Their
@@ -270,7 +270,7 @@ def _sprite_companion(path: Path, *, kind: str) -> None:
         parts = {name: root / (name + ".png")
                  for name in ("tail", "body", "left_leg", "right_leg")}
         _sprite_tail(parts["tail"], kind=kind)
-        _sprite_body(parts["body"], kind=kind, blink=False,
+        _sprite_body(parts["body"], kind=kind, blink=blink,
                      emotion="neutral", gaze="forward", include_ears=True)
         _sprite_leg(parts["left_leg"], kind=kind, side="left")
         _sprite_leg(parts["right_leg"], kind=kind, side="right")
@@ -338,8 +338,16 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
     companion = companion_kind(narration, primary=kind)
     if companion:
+        # A genuine second facial pose and a grounded shadow, not an invented
+        # speaking/walking action. Both use the original reusable sprite rig.
         outputs["companion"] = folder / "companion.png"
+        outputs["companion_shadow"] = folder / "companion_shadow.png"
+        outputs["companion_blink"] = folder / "companion_blink.png"
         _sprite_companion(outputs["companion"], kind=companion)
+        _sprite_companion(outputs["companion_blink"], kind=companion, blink=True)
+        draw_contact_shadow(outputs["companion_shadow"], actor=companion,
+                            weather=direction["weather"] if direction else "day",
+                            action="idle")
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
@@ -369,6 +377,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
         with Image.open(layers["shadow"]) as shade:
             combined.alpha_composite(shade.convert("RGBA"), (225, 608))
         if "companion" in layers:
+            with Image.open(layers["companion_shadow"]) as guest_shadow:
+                combined.alpha_composite(guest_shadow.convert("RGBA"), (796, 566))
             with Image.open(layers["companion"]) as other:
                 combined.alpha_composite(other.convert("RGBA"), (813, 265))
         for name, pos in (("left_ear", (180, 184)),
@@ -468,12 +478,22 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         has_companion = "companion" in layers
         # One extra PNG input after the 11 primary rig inputs; the rest of
         # the trusted graph remains indexed identically for single actors.
+        # Rest-pose facial variation is deliberately separate from the lead's
+        # blink timer, preventing synchronized robotic-looking companions.
+        companion_blink = blink_enable(
+            "rest", scene_index=1 + (scene_index + 11) % 1200)
+        guest_x = "813+5*sin(t*0.66)+2*sin(t*0.29)"
+        guest_y = "265+3*sin(t*1.11)+2*sin(t*0.43)"
         guest_stage = (
-            "[shadowstage][11:v]overlay="
-            "x='813+5*sin(t*0.66)':y='265+3*sin(t*1.11)':"
-            "eval=frame:format=auto[companions]" if has_companion else ""
+            "[shadowstage][12:v]overlay=x=796:y=566:"
+            "eval=frame:format=auto[guestground];"
+            f"[guestground][11:v]overlay=x='{guest_x}':y='{guest_y}':"
+            "eval=frame:format=auto[guestactor];"
+            f"[guestactor][13:v]overlay=x='{guest_x}':y='{guest_y}':"
+            f"enable='{companion_blink}':eval=frame:format=auto[guesteyes]"
+            if has_companion else ""
         )
-        base_stage = "companions" if has_companion else "shadowstage"
+        base_stage = "guesteyes" if has_companion else "shadowstage"
         fps_graph = (
             f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
             f"y='({body_y})-20':eval=frame:format=auto[earsA];"
@@ -502,7 +522,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
-            names.append("companion")
+            names.extend(["companion", "companion_shadow", "companion_blink"])
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
