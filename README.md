@@ -771,3 +771,7 @@ Les plans larges ne changent pas, afin de conserver une vue lisible des
 paysages. Le rendu demeure une caméra virtuelle 2D/2,5D et non un suivi de
 mouvement par vision artificielle. Aucun modèle externe, abonnement ou GPU
 n'est nécessaire.
+
+### Profondeur de champ cinématique de la V2
+
+Les nouveaux plans moyens, rapprochés, macro et épaules appliquent une **mise au point sélective** : le décor et les détails atmosphériques lointains deviennent doucement flous tandis que les animaux, accessoires et éléments proches restent nets. Le plan large conserve exactement ses images antérieures. Le flou est calculé **une seule fois par image de décor** en local, et non à chaque image vidéo ; aucune API ou ressource externe n'est utilisée. L'image approuvée correspond à la vidéo. Voir [la table des focales et les limites](docs/DEPTH_OF_FIELD.md).
