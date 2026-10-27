@@ -25,6 +25,7 @@ from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
+from .story_glow import draw_story_glow, append_story_glow
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_ACTIONS
@@ -35,7 +36,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v27-dynamic-contact-shadow"
+RIG_VERSION = "owl-rig-v28-narrated-firefly-glow"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -387,6 +388,12 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         outputs["prop"] = folder / "prop.png"
         if cue["action"] == "pickup":
             outputs["reach"] = folder / "reach.png"
+    glow = folder / "story_glow.png"
+    if draw_story_glow(
+            glow, narration=narration,
+            seed=f"{topic}|{narration}|{scene_index}",
+            landscape=landscape or "forest"):
+        outputs["story_glow"] = glow
     return outputs
 
 
@@ -489,6 +496,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         f, final_label, keys = append_ambient_overlays(
             graph=f, label=final_label, names=keys,
             weather=direction["weather"] if direction else "day")
+        f, final_label, keys = append_story_glow(
+            graph=f, label=final_label, names=keys,
+            enabled="story_glow" in layers)
         f, final_label, keys = overlay_foreground(
             graph=f, label=final_label, names=keys,
             scene_index=scene_index, duration=duration)
@@ -546,6 +556,9 @@ def render_character_poster(*, topic: str, narration: str,
                 composite.alpha_composite(prop.convert("RGBA"), position)
         with Image.open(layers["ambient_near"]) as details:
             composite.alpha_composite(details.convert("RGBA"), (0, 0))
+        if "story_glow" in layers:
+            with Image.open(layers["story_glow"]) as sparkle:
+                composite.alpha_composite(sparkle.convert("RGBA"), (0, 0))
         with Image.open(layers["foreground"]) as front:
             composite.alpha_composite(front.convert("RGBA"), (0, 0))
         with Image.open(layers["lighting"]) as light:
