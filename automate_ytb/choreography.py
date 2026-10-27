@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-grounded-gait"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -124,7 +124,17 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     parent_x, parent_y = body_position(action, x=body_x, y=body_y)
     reach, lift, frequency = LEG_MOTION[action]
     phase = "3.141593" if side == "right" and action in {"walk", "run"} else "0"
-    x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
+    if action in {"walk", "run"}:
+        # Stance foot moves backward relative to the traveling torso, while
+        # swing foot returns forward. Smooth swing limits abrupt reversals.
+        theta = f"mod(t*{frequency}+{phase},6.283186)"
+        stance = f"min(1,({theta})/3.141593)"
+        swing = f"min(1,max(0,(({theta})-3.141593)/3.141593))"
+        eased = f"(({swing})*({swing})*(3-2*({swing})))"
+        travel = f"(-1+2*({stance})-2*({eased}))"
+        x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*({travel})"
+    else:
+        x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
     if action == "jump":
         # Feet tuck during the airborne arc, then extend before landing.
         phase_jump = "mod(t,1.75)"
