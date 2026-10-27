@@ -88,7 +88,7 @@ def make_showcase(destination: Path) -> dict:
     for index, (actor, biome, weather, action, narration) in enumerate(SCENES):
         video = clips / f"{index+1:02d}-{actor}-{action}.mp4"
         common = dict(
-            topic="Le monde des petits animaux — démonstration V2",
+            topic="Aventures animales",
             narration=narration, scene_index=index+1,
             scene_count=len(SCENES), style="cartoon",
             duration=SCENE_SECONDS,width=1280,height=720,fps=FPS,
@@ -113,7 +113,7 @@ def make_showcase(destination: Path) -> dict:
     # Burn readable subtitles for mobile so a separate player is unnecessary.
     subtitle_filter = (
         f"subtitles={srt.resolve()}:"
-        "force_style='FontName=DejaVu Sans,FontSize=24,PrimaryColour=&H00FFFFFF,"
+        "force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00202020,BackColour=&H99000000,"
         "BorderStyle=3,Outline=1,Shadow=0,MarginV=40,Alignment=2'"
     )
