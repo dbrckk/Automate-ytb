@@ -46,7 +46,7 @@ class ExpressiveCompanionTests(unittest.TestCase):
                 self.assertEqual(open_image.size, (247, 332))
                 self.assertEqual(shut_image.size, open_image.size)
                 self.assertEqual(open_image.mode, "RGBA")
-                difference=ImageChops.difference(open_image, shut_image)
+                difference=ImageChops.difference(open_image.convert('RGB'), shut_image.convert('RGB'))
                 self.assertIsNotNone(difference.crop((45, 122, 197, 178)).getbbox())
                 self.assertIsNone(difference.crop((0, 225, 247, 332)).getbbox())
             # Identical script, seed and selected actor make reproducible art.
@@ -61,7 +61,7 @@ class ExpressiveCompanionTests(unittest.TestCase):
             solo=create_layers(root/"solo","Le renard marche dans la forêt.")
             duet=create_layers(root/"duet")
             with Image.open(solo["body"]) as a, Image.open(duet["body"]) as b:
-                self.assertIsNotNone(ImageChops.difference(a,b).getbbox())
+                self.assertIsNotNone(ImageChops.difference(a.convert('RGB'),b.convert('RGB')).getbbox())
 
     def test_animation_graph_uses_identical_positions_and_independent_blink(self):
         captured=[]
