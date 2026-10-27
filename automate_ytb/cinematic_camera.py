@@ -100,10 +100,12 @@ def framing_metadata(shot: str) -> dict:
     """Export a concise, stable provenance record for render reports."""
     if shot not in PROFILES:
         raise ValueError("Unknown cinematic shot")
+    from .focus_depth import focus_metadata
     w, h, _, _, dx, dy = PROFILES[shot]
     return {"shot": shot, "sourceCanvas": [1280, 720],
             "crop": [w, h], "animatedCamera": bool(dx or dy),
             "version": CAMERA_VERSION,
             "easing": "smoothstep" if dx or dy else "static",
             "zeroVelocityAtSceneEdges": bool(dx or dy),
-            "actionFollowing": bool(dx or dy)}
+            "actionFollowing": bool(dx or dy),
+        "depthOfField": focus_metadata(shot)}
