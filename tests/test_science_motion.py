@@ -37,6 +37,9 @@ class ScienceMotionTests(unittest.TestCase):
             scene_mode(None)
         with self.assertRaises(ValueError):
             ScienceScene(topic="A",narration="",scene_index=1)
+        with self.assertRaisesRegex(ValueError,"Earth/ocean"):
+            ScienceScene(topic="A story about a purple owl",
+                         narration="The owl goes to sleep.",scene_index=1)
 
     def test_art_fingerprint_is_bound_to_the_authored_scene(self):
         common=dict(topic="Why Earth rotates",narration="The Earth spins.",
