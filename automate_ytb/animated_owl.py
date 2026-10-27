@@ -35,7 +35,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v26-kinetic-accents"
+RIG_VERSION = "owl-rig-v27-dynamic-contact-shadow"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -446,7 +446,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             mouth = f"({mouth})*({gate})"
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=565,
-            offset_x=33, image_index=7)
+            offset_x=33, image_index=7, action=action)
         rotation_graph=(
           f"[1:v]format=rgba,rotate=a='{left_angle}':ow=270:oh=270:c=none[wingleft];"
           f"[2:v]format=rgba,rotate=a='{right_angle}':ow=270:oh=270:c=none[wingright];"
