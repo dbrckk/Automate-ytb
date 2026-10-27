@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-scene-phase-variation"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -169,3 +169,36 @@ def blink_enable(action: str, *, scene_index: int) -> str:
         # the normal scene-specific interval.
         return f"max({base},max(between(t,0.10,0.20),between(t,0.33,0.42)))"
     return base
+
+
+def scene_motion_offset(action: str, *, scene_index: int) -> str:
+    """Trusted bounded phase in seconds, varied by scene but reproducible.
+
+    The authored action stays unchanged. Offset applies only to the periodic
+    locomotion/secondary-motion clocks, not narration or audio timings.
+    """
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown animation action")
+    if not isinstance(scene_index, int) or isinstance(scene_index, bool) \
+            or not 1 <= scene_index <= 1200:
+        raise ValueError("Invalid scene index")
+    # No phase offset for time-anchored reactions or jump landing beats.
+    if action in {"surprise", "jump"}:
+        return "0"
+    return f"{((scene_index * 37 + len(action) * 11) % 73) / 100:.2f}"
+
+
+def phase_shifted_position(expression: str, *, action: str,
+                           scene_index: int) -> str:
+    """Shift only authored periodic sinusoids in a trusted rig expression."""
+    offset = scene_motion_offset(action, scene_index=scene_index)
+    if offset == "0":
+        return expression
+    if not isinstance(expression, str) or len(expression) > 10000:
+        raise ValueError("Invalid animation expression")
+    # Only compiled expressions from the local choreography should be passed
+    # here; reject external filters and disallowed characters.
+    import re
+    if not re.fullmatch(r"[0-9a-zA-Z_.,+*/()= <>-]+", expression) or ";" in expression:
+        raise ValueError("Unsafe animation expression")
+    return expression.replace("sin(t*", f"sin((t+{offset})*")
