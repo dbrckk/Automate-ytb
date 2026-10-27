@@ -501,3 +501,18 @@ configuration sur Android.
 ### Focus cinématique automatique (V2)
 
 Les plans rapprochés générés sur Android séparent le personnage du décor par un flou de fond doux, sans perdre la netteté des yeux ou des sous-titres. Le plan large reste net. Ce calcul local est gratuit et appliqué une seule fois aux calques statiques : aucune manipulation manuelle ni installation de modèle IA. Voir [le guide de profondeur de champ](DEPTH_OF_FIELD.md).
+
+## Nouveau style « science » : vidéos scientifiques en mouvement
+
+Dans **One-click YouTube preview**, choisir **style : science** et **1080p**.
+Le rendu peut créer des planètes éclairées, des mouvements de particules,
+des panneaux vent/atmosphère, des vagues et une comparaison jour/nuit lorsque
+la narration les décrit explicitement. Les autres styles et anciens
+personnages demeurent disponibles. Le nouveau moteur anime réellement les
+plans à 30 images/seconde et utilise le pipeline vocal/audio/QA existant.
+
+Ce premier style correspond aux sujets terrestres et spatiaux : il ne crée
+ni cartes planétaires fidèles ni simulations physiques exactes, et n'affirme
+pas avoir atteint l'esthétique finale de la vidéo de référence. La musique
+et la voix doivent être évaluées à l'écoute. Le benchmark est détaillé
+dans [SCIENCE_REFERENCE_TARGET.md](SCIENCE_REFERENCE_TARGET.md).
