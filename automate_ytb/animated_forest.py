@@ -18,6 +18,7 @@ import unicodedata
 from PIL import Image, ImageDraw
 
 from .animated_owl import _bg, _weather_overlay
+from .companion_motion import guest_action, guest_animation_graph
 from .cinematic_camera import framing_filter
 from .scenic_world import WORLD_VERSION
 from .voice_activity import mouth_gate_expression
@@ -35,7 +36,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v26-two-actor-scenes"
+FOREST_RIG_VERSION = "forest-animals-v27-independent-companion-limbs"
 
 
 def character_kind(character: str) -> str | None:
@@ -257,7 +258,8 @@ def _sprite_tail(path: Path, *, kind: str):
     image.save(path, "PNG")
 
 
-def _sprite_companion(path: Path, *, kind: str) -> None:
+def _sprite_companion(path: Path, *, kind: str,
+                      articulated_folder: Path | None = None) -> None:
     """Compose a smaller, complete original second animal behind the lead.
 
     Secondary animals do not speak or perform unmentioned actions. Their
@@ -283,6 +285,18 @@ def _sprite_companion(path: Path, *, kind: str) -> None:
         combined = combined.resize((247, 332), Image.Resampling.LANCZOS)
         path.parent.mkdir(parents=True, exist_ok=True)
         combined.save(path, format="PNG", optimize=True)
+        if articulated_folder is not None:
+            # Export each original 2D part at the very same 0.706x scale
+            # as the still composite. Each may now move independently.
+            for name in parts:
+                with Image.open(parts[name]) as source:
+                    image = source.convert("RGBA")
+                    scaled = image.resize(
+                        (round(image.width * 247 / 350),
+                         round(image.height * 332 / 470)),
+                        Image.Resampling.LANCZOS)
+                    scaled.save(articulated_folder / f"companion_{name}.png",
+                                format="PNG", optimize=True)
 
 
 def render_layers(folder: Path, *, kind: str, topic: str,
@@ -339,7 +353,10 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     companion = companion_kind(narration, primary=kind)
     if companion:
         outputs["companion"] = folder / "companion.png"
-        _sprite_companion(outputs["companion"], kind=companion)
+        for part in ("tail", "body", "left_leg", "right_leg"):
+            outputs[f"companion_{part}"] = folder / f"companion_{part}.png"
+        _sprite_companion(outputs["companion"], kind=companion,
+                          articulated_folder=folder)
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
@@ -369,8 +386,16 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
         with Image.open(layers["shadow"]) as shade:
             combined.alpha_composite(shade.convert("RGBA"), (225, 608))
         if "companion" in layers:
-            with Image.open(layers["companion"]) as other:
-                combined.alpha_composite(other.convert("RGBA"), (813, 265))
+            # The static approved pose uses the identical individual
+            # guest rig parts as video at its initial resting frame.
+            for name, pos in (
+                ("companion_tail", (813, 386)),
+                ("companion_body", (813, 265)),
+                ("companion_left_leg", (861, 502)),
+                ("companion_right_leg", (944, 502)),
+            ):
+                with Image.open(layers[name]) as guest_part:
+                    combined.alpha_composite(guest_part.convert("RGBA"), pos)
         for name, pos in (("left_ear", (180, 184)),
                           ("right_ear", (380, 184)),
                           ("tail", (115, 360)), ("body", (180, 184)),
@@ -466,13 +491,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[10:v]format=rgba,rotate=a='{right_ear_angle}':ow=180:oh=280:c=none[earright];"
         )
         has_companion = "companion" in layers
-        # One extra PNG input after the 11 primary rig inputs; the rest of
-        # the trusted graph remains indexed identically for single actors.
-        guest_stage = (
-            "[shadowstage][11:v]overlay="
-            "x='813+5*sin(t*0.66)':y='265+3*sin(t*1.11)':"
-            "eval=frame:format=auto[companions]" if has_companion else ""
-        )
+        # Guest is a real four-part miniature rig behind the main actor,
+        # not a single flat PNG bobbing in place. Only narration explicitly
+        # describing shared travel activates independent stepping.
+        guest_stage = guest_animation_graph(
+            prior="shadowstage", first_input=11,
+            action=guest_action(narration, has_companion=True)
+        ) if has_companion else ""
         base_stage = "companions" if has_companion else "shadowstage"
         fps_graph = (
             f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
@@ -502,7 +527,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
-            names.append("companion")
+            names.extend(("companion_tail", "companion_body",
+                          "companion_left_leg", "companion_right_leg"))
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
