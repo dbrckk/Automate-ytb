@@ -818,3 +818,25 @@ Sur Android : Actions → *First animated V2 showcase (free)* →
 `showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
 ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
 sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
+
+### V2 — second animal avec quatre sprites indépendants
+
+Les scènes où le récit mentionne explicitement **deux animaux ensemble**
+conservent leur personnage secondaire original, mais celui-ci n'est plus une
+simple silhouette aplatie. Son corps, sa queue et chacune des pattes sont
+générés en **quatre images RGBA autonomes** avec les mêmes dessins, matériaux
+et proportions que le poster. Le moteur FFmpeg anime les deux pattes en
+alternance, la queue séparément et la respiration du torse.
+
+**Aucune action n'est inventée** : seul un verbe explicite de course ou de
+marche associé à un marqueur de déplacement partagé (« ensemble », « avec »,
+« together », « with ») peut déclencher la marche/course du compagnon.
+Dans les autres cas, son corps respire doucement et sa queue bouge sans qu'il
+ne parle, coure ou saute arbitrairement. Un seul compagnon au maximum est
+autorisé ; la fonction ne s'applique pas encore à la chouette principale.
+
+La version du moteur de scène et celle du rig ont changé pour empêcher le
+réemploi des anciennes vidéos. Les tests contrôlent les entrées de la
+chorégraphie, la transparence des sprites, les scènes sans compagnon ainsi
+que l'encodage et le décodage de véritables MP4 H.264. Cette animation reste
+de la 2D procédurale, sans capture de mouvement, GPU payant ni rendu 3D.
