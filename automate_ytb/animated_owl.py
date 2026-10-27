@@ -554,11 +554,11 @@ def render_character_poster(*, topic: str, narration: str,
             position = (505, 439) if cue["action"] == "carry" else (652, 474)
             with Image.open(layers["prop"]) as prop:
                 composite.alpha_composite(prop.convert("RGBA"), position)
+        with Image.open(layers["ambient_near"]) as details:
+            composite.alpha_composite(details.convert("RGBA"), (0, 0))
         if "story_glow" in layers:
             with Image.open(layers["story_glow"]) as sparkle:
                 composite.alpha_composite(sparkle.convert("RGBA"), (0, 0))
-        with Image.open(layers["ambient_near"]) as details:
-            composite.alpha_composite(details.convert("RGBA"), (0, 0))
         with Image.open(layers["foreground"]) as front:
             composite.alpha_composite(front.convert("RGBA"), (0, 0))
         with Image.open(layers["lighting"]) as light:
