@@ -225,6 +225,7 @@ class ScienceScene:
             img.alpha_composite(globe,(187,127))
             dark=Image.alpha_composite(
                 globe,Image.new("RGBA",globe.size,(3,7,30,112)))
+            dark.putalpha(globe.getchannel("A"))
             img.alpha_composite(dark,(750,127))
             d=ImageDraw.Draw(img,"RGBA")
             for x,label,col in ((206,"ZONE ÉCLAIRÉE",GOLD),
