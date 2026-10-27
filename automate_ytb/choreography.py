@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-seamless-jump"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -53,8 +53,10 @@ def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
             land = f"min(1,max(0,(({cycle})-1.39)/0.36))"
             smooth = lambda u: f"(({u})*({u})*(3-2*({u})))"
             height = f"({smooth(launch)}-{smooth(descend)})"
-            yp = (f"{y}+12*({smooth(crouch)})-"
-                  f"({vertical}+12)*({height})-12*({smooth(land)})")
+            # Crouch and landing are complementary: the cycle returns to
+            # the identical origin at the seam without a visible snap.
+            yp = (f"{y}+12*({smooth(crouch)}-{smooth(land)})-"
+                  f"({vertical}+12)*({height})")
         elif kind == "steps":
             sign = "+" if kind == "steps" else "-"
             yp = f"{y}{sign}{vertical}*abs(sin(t*{vf}))"
