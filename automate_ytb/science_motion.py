@@ -232,7 +232,8 @@ class ScienceScene:
                                 (770,"ZONE SOMBRE",CYAN)):
                 d.rounded_rectangle((x,76,x+252,112),12,fill=(4,16,33,235))
                 d.text((x+19,84),label,font=_font(18,True),fill=col)
-            _badge(d,"CYCLE LUMINEUX")
+            # Phase labels provide the shot title; a second top-left
+            # badge here would overlap the illuminated-side label.
         else:
             d.rectangle((0,417,1280,605),fill=(10,32,55,242))
             rng=random.Random(self.scene_index*131)
