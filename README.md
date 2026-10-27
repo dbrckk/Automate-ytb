@@ -802,3 +802,19 @@ ajouté. Cette première version ne fait pas encore parler ni marcher le
 second personnage, et n'étend pas le système aux scènes où la chouette est
 l'animatrice principale. Les images approuvées et les vrais MP4 utilisent
 le même nouveau personnage, sans service payant ni asset externe.
+
+
+### Démonstration animée V2 — premier véritable MP4 des quatre animaux
+
+Le nouveau workflow **[First animated V2 showcase (free)](.github/workflows/animation-showcase.yml)**
+crée automatiquement une courte vidéo 720p H.264 avec le moteur de personnages
+du projet, et non un diaporama de posters. Il présente un renard qui saute,
+un lapin qui court, un chat qui parle et une chouette qui vole dans les biomes
+correspondants. Musique instrumentale locale originale, sous-titres français
+intégrés et contrôle technique de décodage sont inclus.
+
+Sur Android : Actions → *First animated V2 showcase (free)* →
+*Run workflow* → artefact `automate-ytb-v2-animated-first-video` →
+`showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
+ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
+sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
