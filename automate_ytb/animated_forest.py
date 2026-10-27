@@ -35,7 +35,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v27-expressive-companion"
+FOREST_RIG_VERSION = "forest-animals-v28-grounded-companion"
 
 
 def character_kind(character: str) -> str | None:
@@ -342,8 +342,18 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     if companion:
         outputs["companion"] = folder / "companion.png"
         outputs["companion_blink"] = folder / "companion_blink.png"
+        outputs["companion_shadow"] = folder / "companion_shadow.png"
         _sprite_companion(outputs["companion"], kind=companion)
         _sprite_companion(outputs["companion_blink"], kind=companion, blink=True)
+        # Scale the original blurred ground shadow to the second actor's
+        # 247px sprite. A separate input avoids reusing an FFmpeg stream.
+        draw_contact_shadow(
+            outputs["companion_shadow"], actor=companion,
+            weather=direction["weather"] if direction else "day",
+            action="idle")
+        with Image.open(outputs["companion_shadow"]) as shadow:
+            small_shadow = shadow.resize((212, 70), Image.Resampling.LANCZOS)
+        small_shadow.save(outputs["companion_shadow"], format="PNG", optimize=True)
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
@@ -373,6 +383,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
         with Image.open(layers["shadow"]) as shade:
             combined.alpha_composite(shade.convert("RGBA"), (225, 608))
         if "companion" in layers:
+            with Image.open(layers["companion_shadow"]) as other_shadow:
+                combined.alpha_composite(other_shadow.convert("RGBA"), (831, 571))
             with Image.open(layers["companion"]) as other:
                 combined.alpha_composite(other.convert("RGBA"), (813, 265))
         for name, pos in (("left_ear", (180, 184)),
@@ -477,7 +489,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         guest_x = "813+6*sin(t*0.58)+1.5*sin(t*1.21)"
         guest_y = "265+2*sin(t*1.06)+sin(t*2.12)"
         guest_stage = (
-            f"[shadowstage][11:v]overlay=x='{guest_x}':y='{guest_y}':"
+            f"[shadowstage][13:v]overlay=x='({guest_x})+18':y=571:"
+            "eval=frame:format=auto[guestground];"
+            f"[guestground][11:v]overlay=x='{guest_x}':y='{guest_y}':"
             "eval=frame:format=auto[companions];"
             f"[companions][12:v]overlay=x='{guest_x}':y='{guest_y}':"
             "enable='lt(mod(t+0.65,3.4),0.12)':"
@@ -512,7 +526,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
-            names.extend(("companion", "companion_blink"))
+            names.extend(("companion", "companion_blink", "companion_shadow"))
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
