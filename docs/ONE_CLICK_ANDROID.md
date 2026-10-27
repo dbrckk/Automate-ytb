@@ -497,3 +497,7 @@ automatiquement d'un suivi discret, sans quitter le cadre ni rendre l'image
 instable. Les plans larges et les scènes calmes conservent leur mouvement
 précédent. Le système est inclus dans le rendu gratuit et ne demande aucune
 configuration sur Android.
+
+### Focus cinématique automatique (V2)
+
+Les plans rapprochés générés sur Android séparent le personnage du décor par un flou de fond doux, sans perdre la netteté des yeux ou des sous-titres. Le plan large reste net. Ce calcul local est gratuit et appliqué une seule fois aux calques statiques : aucune manipulation manuelle ni installation de modèle IA. Voir [le guide de profondeur de champ](DEPTH_OF_FIELD.md).

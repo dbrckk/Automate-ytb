@@ -30,11 +30,12 @@ from .director import validate_direction
 from .atmospheric_light import draw_lighting, overlay_lighting
 from .ground_contact import draw_contact_shadow, shadow_stage
 from .joint_motion import joint_angle
+from .focus_depth import soften_environment_plate
 from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v23-living-biomes"
+FOREST_RIG_VERSION = "forest-animals-v24-cinematic-focus"
 
 
 def character_kind(character: str) -> str | None:
@@ -242,10 +243,17 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
+    # Depth of field affects the distant environment only; the original
+    # character, near vegetation and authored props stay crisp in closeups.
+    soften_environment_plate(outputs["background"],
+                             shot=direction["shot"] if direction else "wide")
     draw_ambient_layers(outputs["ambient_far"], outputs["ambient_near"],
                         landscape=landscape or "forest",
                         weather=direction["weather"] if direction else "day",
                         seed=f"{topic}|{narration}|{scene_index}")
+    soften_environment_plate(outputs["ambient_far"],
+                             shot=direction["shot"] if direction else "wide",
+                             plane="ambient_far")
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
