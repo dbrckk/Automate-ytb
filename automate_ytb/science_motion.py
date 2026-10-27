@@ -185,6 +185,12 @@ class ScienceScene:
             raise ValueError("Science scene needs an authored topic")
         if not isinstance(narration,str) or not narration.strip() or len(narration)>9000:
             raise ValueError("Science scene needs authored narration")
+        folded = unicodedata.normalize("NFKD",topic.casefold())
+        folded = "".join(ch for ch in folded if not unicodedata.combining(ch))
+        if not re.search(r"\b(earth|terre|oceans?|oceanique)\b", folded):
+            raise ValueError(
+                "Science V1 supports Earth/ocean topics only; choose another "
+                "visual style for unrelated subjects instead of showing a false planet")
         if type(scene_index) is not int or not 1<=scene_index<=1200:
             raise ValueError("Invalid original scene number")
         self.topic, self.narration = topic, narration
