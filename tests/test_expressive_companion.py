@@ -38,7 +38,7 @@ class ExpressiveCompanionTests(unittest.TestCase):
                 self.assertEqual(shade.size, (280, 92))
                 self.assertIsNotNone(shade.getchannel("A").getbbox())
                 delta = ImageChops.difference(
-                    open_eyes.convert("RGBA"), closed_eyes.convert("RGBA"))
+                    open_eyes.convert("RGB"), closed_eyes.convert("RGB"))
                 self.assertIsNotNone(delta.getbbox())
             still = base / "pair.png"
             render_character_poster(
