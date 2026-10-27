@@ -187,18 +187,3 @@ def scene_motion_offset(action: str, *, scene_index: int) -> str:
         return "0"
     return f"{((scene_index * 37 + len(action) * 11) % 73) / 100:.2f}"
 
-
-def phase_shifted_position(expression: str, *, action: str,
-                           scene_index: int) -> str:
-    """Shift only authored periodic sinusoids in a trusted rig expression."""
-    offset = scene_motion_offset(action, scene_index=scene_index)
-    if offset == "0":
-        return expression
-    if not isinstance(expression, str) or len(expression) > 10000:
-        raise ValueError("Invalid animation expression")
-    # Only compiled expressions from the local choreography should be passed
-    # here; reject external filters and disallowed characters.
-    import re
-    if not re.fullmatch(r"[0-9a-zA-Z_.,+*/()= <>-]+", expression) or ";" in expression:
-        raise ValueError("Unsafe animation expression")
-    return expression.replace("sin(t*", f"sin((t+{offset})*")
