@@ -71,7 +71,8 @@ def shadow_stage(*, body_x: str, ground_y: int, offset_x: int,
     for expression in (body_x, lift):
         if not isinstance(expression, str) or not 1 <= len(expression) <= 25000:
             raise ValueError("Invalid reviewed character pose")
-        if any(ch in expression for ch in ";[]'\\\"\\\\:\\r\\n"):
+        if any(ord(ch) < 32 or ch in (";", "[", "]", "'", '"', chr(92), ":")
+               for ch in expression):
             raise ValueError("Unsafe character pose expression")
     if not isinstance(ground_y, int) or isinstance(ground_y, bool) or not 0 <= ground_y <= 670:
         raise ValueError("Invalid shadow stage location")
