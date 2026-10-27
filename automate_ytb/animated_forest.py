@@ -35,7 +35,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v25-impact-followthrough"
+FOREST_RIG_VERSION = "forest-animals-v26-two-actor-scenes"
 
 
 def character_kind(character: str) -> str | None:
@@ -55,6 +55,36 @@ def character_kind(character: str) -> str | None:
     if re.search(r"\b(chat|chats|chatte\w*|chaton\w*|cat|cats|kitten\w*)\b", words):
         return "cat"
     return None
+
+
+# Only explicit co-presence is eligible: do not invent a companion when a
+# character is merely remembered, dreamed about or named in isolation.
+COMPANION_CUES = re.compile(
+    r"\\b(?:meet\\w*|join\\w*|with|together|beside|alongside|"
+    r"rencontr\\w*|rejoi\\w*|ensemble|avec|accompagn\\w*|et|and)\\b")
+COMPANION_PATTERNS = {
+    "fox": re.compile(r"\\b(?:fox(?:es)?|renard\\w*)\\b"),
+    "rabbit": re.compile(r"\\b(?:rabbit\\w*|bunn\\w*|hares?|lapin\\w*|lievre\\w*)\\b"),
+    "cat": re.compile(r"\\b(?:cats?|kitten\\w*|chaton\\w*|chatte\\w*|le chat|un chat)\\b"),
+}
+
+
+def companion_kind(narration: str, *, primary: str) -> str | None:
+    """Select one *explicitly co-present* other original forest animal."""
+    if primary not in {"fox", "rabbit", "cat"}:
+        raise ValueError("Unknown original primary character")
+    if not isinstance(narration, str) or len(narration) > 150_000:
+        raise ValueError("Invalid original companion narration")
+    folded = unicodedata.normalize("NFKD", narration.casefold())
+    words = "".join(ch for ch in folded if not unicodedata.combining(ch))
+    if not COMPANION_CUES.search(words):
+        return None
+    if not COMPANION_PATTERNS[primary].search(words):
+        return None
+    others = [(match.start(), kind)
+              for kind, pattern in COMPANION_PATTERNS.items()
+              if kind != primary and (match := pattern.search(words))]
+    return min(others)[1] if others else None
 
 
 COLORS = {
@@ -227,6 +257,34 @@ def _sprite_tail(path: Path, *, kind: str):
     image.save(path, "PNG")
 
 
+def _sprite_companion(path: Path, *, kind: str) -> None:
+    """Compose a smaller, complete original second animal behind the lead.
+
+    Secondary animals do not speak or perform unmentioned actions. Their
+    body/legs/tail use the same authored palette, outlines and shading.
+    """
+    if kind not in COLORS:
+        raise ValueError("Unsupported original companion")
+    with tempfile.TemporaryDirectory(prefix="automate-ytb-companion-") as temp:
+        root = Path(temp)
+        parts = {name: root / (name + ".png")
+                 for name in ("tail", "body", "left_leg", "right_leg")}
+        _sprite_tail(parts["tail"], kind=kind)
+        _sprite_body(parts["body"], kind=kind, blink=False,
+                     emotion="neutral", gaze="forward", include_ears=True)
+        _sprite_leg(parts["left_leg"], kind=kind, side="left")
+        _sprite_leg(parts["right_leg"], kind=kind, side="right")
+        combined = Image.new("RGBA", (350, 470))
+        for name, pos in (("tail", (0, 172)), ("body", (0, 0)),
+                          ("left_leg", (68, 335)),
+                          ("right_leg", (186, 335))):
+            with Image.open(parts[name]) as sprite:
+                combined.alpha_composite(sprite.convert("RGBA"), pos)
+        combined = combined.resize((247, 332), Image.Resampling.LANCZOS)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        combined.save(path, format="PNG", optimize=True)
+
+
 def render_layers(folder: Path, *, kind: str, topic: str,
                   narration: str, scene_index: int, scene_count: int,
                   style: str = "cartoon",
@@ -278,6 +336,10 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
+    companion = companion_kind(narration, primary=kind)
+    if companion:
+        outputs["companion"] = folder / "companion.png"
+        _sprite_companion(outputs["companion"], kind=companion)
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
@@ -306,6 +368,9 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
             combined.alpha_composite(atmosphere.convert("RGBA"), (0, 0))
         with Image.open(layers["shadow"]) as shade:
             combined.alpha_composite(shade.convert("RGBA"), (225, 608))
+        if "companion" in layers:
+            with Image.open(layers["companion"]) as other:
+                combined.alpha_composite(other.convert("RGBA"), (813, 265))
         for name, pos in (("left_ear", (180, 184)),
                           ("right_ear", (380, 184)),
                           ("tail", (115, 360)), ("body", (180, 184)),
@@ -400,8 +465,17 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[9:v]format=rgba,rotate=a='{left_ear_angle}':ow=180:oh=280:c=none[earleft];"
             f"[10:v]format=rgba,rotate=a='{right_ear_angle}':ow=180:oh=280:c=none[earright];"
         )
+        has_companion = "companion" in layers
+        # One extra PNG input after the 11 primary rig inputs; the rest of
+        # the trusted graph remains indexed identically for single actors.
+        guest_stage = (
+            "[shadowstage][11:v]overlay="
+            "x='813+5*sin(t*0.66)':y='265+3*sin(t*1.11)':"
+            "eval=frame:format=auto[companions]" if has_companion else ""
+        )
+        base_stage = "companions" if has_companion else "shadowstage"
         fps_graph = (
-            f"[shadowstage][earleft]overlay=x='({body_x})-15':"
+            f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
             f"y='({body_y})-20':eval=frame:format=auto[earsA];"
             f"[earsA][earright]overlay=x='({body_x})+185':"
             f"y='({body_y})-20':eval=frame:format=auto[earsB];"
@@ -423,10 +497,12 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[f][legright]overlay=x='({right_x})-31':"
             f"y='({right_y})-19':eval=frame:format=auto[g]"
         )
-        fps_graph = shadow_graph + rotation_graph + fps_graph
+        fps_graph = shadow_graph + (guest_stage + ";" if has_companion else "") + rotation_graph + fps_graph
         final = "g"
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
+        if has_companion:
+            names.append("companion")
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,
