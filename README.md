@@ -818,3 +818,14 @@ Sur Android : Actions → *First animated V2 showcase (free)* →
 `showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
 ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
 sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
+
+## Nouveau moteur : infographies scientifiques animées (V2)
+
+Le mode **science** cible les vidéos éducatives avec style spatial/planétaire,
+schémas animés, lumière sur la sphère et panneaux explicatifs. Depuis Android :
+**Actions → One-click YouTube preview → style = science**, résolution **1080p**
+et voix **Kokoro**. Le montage se déroule à **30 images/seconde** en science,
+avec les contrôles de droits, d'audio et de sous-titres existants. Les images
+sont **originales et schématiques**, sans ressources copiées depuis la vidéo
+de référence. La fidélité géographique et l'exactitude scientifique ne sont
+pas garanties. Voir [benchmark et écarts](docs/SCIENCE_REFERENCE_TARGET.md).
