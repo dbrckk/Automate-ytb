@@ -501,3 +501,7 @@ configuration sur Android.
 ### Focus cinématique automatique (V2)
 
 Les plans rapprochés générés sur Android séparent le personnage du décor par un flou de fond doux, sans perdre la netteté des yeux ou des sous-titres. Le plan large reste net. Ce calcul local est gratuit et appliqué une seule fois aux calques statiques : aucune manipulation manuelle ni installation de modèle IA. Voir [le guide de profondeur de champ](DEPTH_OF_FIELD.md).
+
+### Scènes à deux animaux plus expressives
+
+Si la narration mentionne clairement deux animaux ensemble, le second cligne désormais des yeux de manière indépendante. Les regards sont orientés vers l'autre personnage lorsque le scénario ne demande pas de regarder un objet. Aucun paramètre, téléchargement de modèle ni abonnement supplémentaire n'est nécessaire.
