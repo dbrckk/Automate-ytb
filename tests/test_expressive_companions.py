@@ -42,6 +42,7 @@ class ExpressiveCompanionTests(unittest.TestCase):
             layers=create_layers(Path(folder))
             self.assertIn("companion",layers)
             self.assertIn("companion_blink",layers)
+            self.assertIn("companion_shadow",layers)
             with Image.open(layers["companion"]) as open_image, Image.open(layers["companion_blink"]) as shut_image:
                 self.assertEqual(open_image.size, (247, 332))
                 self.assertEqual(shut_image.size, open_image.size)
@@ -75,11 +76,12 @@ class ExpressiveCompanionTests(unittest.TestCase):
         self.assertEqual(len(captured),1)
         command=captured[0]
         graph=command[command.index("-filter_complex")+1]
-        self.assertIn("[shadowstage][11:v]overlay",graph)
+        self.assertIn("[shadowstage][13:v]overlay",graph)
+        self.assertIn("[guestground][11:v]overlay",graph)
         self.assertIn("[companions][12:v]overlay",graph)
         self.assertIn("enable='lt(mod(t+0.65,3.4),0.12)'",graph)
         self.assertIn("[guestblink][earleft]",graph)
-        self.assertEqual(graph.count("813+6*sin(t*0.58)+1.5*sin(t*1.21)"),2)
+        self.assertEqual(graph.count("813+6*sin(t*0.58)+1.5*sin(t*1.21)"),3)
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "Actual FFmpeg binaries are required")
