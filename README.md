@@ -818,3 +818,9 @@ Sur Android : Actions → *First animated V2 showcase (free)* →
 `showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
 ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
 sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
+
+### V2 — expressivité des scènes avec deux animaux
+
+Lorsque le texte original décrit explicitement deux animaux pris en charge et présents ensemble, le moteur dessine désormais **deux variantes du second personnage** (yeux ouverts / fermés). Son clignement est animé sur un rythme indépendant du personnage principal. L'animal secondaire garde son léger mouvement de respiration, tandis que le personnage principal dirige son regard vers lui si aucune interaction avec un objet n'exige déjà un autre regard. Le second regarde également vers le personnage principal.
+
+Ce dispositif reste une animation **2D procédurale** : le compagnon ne parle pas et n'exécute pas d'action que le scénario ne lui attribue pas. Aucun compte externe, modèle IA ou asset protégé n'est nécessaire. Les nouvelles versions de rendu invalident les anciens aperçus.
