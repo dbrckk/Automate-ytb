@@ -818,3 +818,9 @@ Sur Android : Actions → *First animated V2 showcase (free)* →
 `showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
 ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
 sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
+
+### Expérimental : scènes éducatives scientifiques 1080p
+
+Le module autonome `python -m automate_ytb.science_explainer --topic 'What if Earth stopped spinning?' --output /tmp/science.mp4 --seconds 4` produit une **première scène originale** de planète stylisée en 1920×1080, avec halo atmosphérique, étoiles, ombre et cartouche de titre. Il ne dépend d'aucun asset tiers ni API payante.
+
+**Limites explicites de cette première étape :** planète illustrative, non carte terrestre fidèle ; le MP4 actuel est un **plan fixe** encodé à 30 fps, pas encore une animation orbitale. Il n'est pas encore intégré au pipeline complet de narration, sous-titres et montage. Les prochaines étapes seront les trajectoires et la rotation réellement animées, la composition de plusieurs scènes, les transitions, puis l'audio et les sous-titres synchronisés. L'objectif est d'atteindre progressivement la qualité de la référence sans reproduire ses éléments protégés.
