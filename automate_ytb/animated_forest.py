@@ -35,7 +35,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v26-two-actor-scenes"
+FOREST_RIG_VERSION = "forest-animals-v27-expressive-companion"
 
 
 def character_kind(character: str) -> str | None:
@@ -162,10 +162,10 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
             d.arc((eye_x - 31, 206, eye_x + 31, 235),
                   start=0, end=180, fill=INK, width=7)
         else:
-            if gaze not in ("forward", "right", "down-right"):
+            if gaze not in ("forward", "right", "left", "down-right"):
                 raise ValueError("Unsupported original forest eye pose")
             shift_x, shift_y = {
-                "forward": (0, 0), "right": (12, 1),
+                "forward": (0, 0), "right": (12, 1), "left": (-12, 1),
                 "down-right": (8, 8)}[gaze]
             focus_x = eye_x + shift_x
             d.ellipse((focus_x - 24, 184 + shift_y,
@@ -257,7 +257,7 @@ def _sprite_tail(path: Path, *, kind: str):
     image.save(path, "PNG")
 
 
-def _sprite_companion(path: Path, *, kind: str) -> None:
+def _sprite_companion(path: Path, *, kind: str, blink: bool = False) -> None:
     """Compose a smaller, complete original second animal behind the lead.
 
     Secondary animals do not speak or perform unmentioned actions. Their
@@ -270,8 +270,8 @@ def _sprite_companion(path: Path, *, kind: str) -> None:
         parts = {name: root / (name + ".png")
                  for name in ("tail", "body", "left_leg", "right_leg")}
         _sprite_tail(parts["tail"], kind=kind)
-        _sprite_body(parts["body"], kind=kind, blink=False,
-                     emotion="neutral", gaze="forward", include_ears=True)
+        _sprite_body(parts["body"], kind=kind, blink=blink,
+                     emotion="neutral", gaze="left", include_ears=True)
         _sprite_leg(parts["left_leg"], kind=kind, side="left")
         _sprite_leg(parts["right_leg"], kind=kind, side="right")
         combined = Image.new("RGBA", (350, 470))
@@ -326,7 +326,10 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_ear(outputs["left_ear"], kind=kind, side="left")
     _sprite_ear(outputs["right_ear"], kind=kind, side="right")
     emotion = direction["emotion"] if direction else "neutral"
+    companion = companion_kind(narration, primary=kind)
     gaze = gaze_target(narration, held_prop=held_prop)
+    if companion and gaze == "forward":
+        gaze = "right"
     _sprite_body(outputs["neutral"], kind=kind, blink=False,
                  emotion=emotion, gaze="forward", include_ears=False)
     _sprite_body(outputs["body"], kind=kind, blink=False,
@@ -336,10 +339,11 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_mouth(outputs["mouth"], kind=kind)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
-    companion = companion_kind(narration, primary=kind)
     if companion:
         outputs["companion"] = folder / "companion.png"
+        outputs["companion_blink"] = folder / "companion_blink.png"
         _sprite_companion(outputs["companion"], kind=companion)
+        _sprite_companion(outputs["companion_blink"], kind=companion, blink=True)
     cue = create_prop_layers(folder, narration=narration, actor=kind,
                               held_prop=held_prop)
     if cue:
