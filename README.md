@@ -861,3 +861,18 @@ L'opération `geq` s'exécute uniquement sur l'asset transparent de
 280 × 92 pixels, et non sur la vidéo entière. La hauteur réelle et les
 ombres physiquement calculées ne sont pas simulées ; l'effet reste une
 illustration procédurale 2D, entièrement locale, gratuite et déterministe.
+
+### Effets lumineux liés au récit
+
+Les scènes originales mentionnant explicitement **« luciole(s) »** ou
+**« firefly/fireflies »** reçoivent une couche supplémentaire de lueurs
+chaudes, créée localement et animée indépendamment du personnage. Ces
+points lumineux restent du côté droit de la scène pour laisser libres
+les yeux et les expressions des animaux. Le rendu statique approuvé
+contient les mêmes lueurs que l'animation FFmpeg, et les empreintes de
+cache vidéo/art sont renouvelées.
+
+Aucune luciole n'est inventée si le script évoque seulement une étoile
+ou une lumière ; cette restriction évite d'introduire des objets qui ne
+figurent pas dans le scénario. Il s'agit d'effets 2D originaux, et non
+d'objets 3D ou d'une simulation physique d'insectes.
