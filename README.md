@@ -834,3 +834,18 @@ sans monter artificiellement avec ses oscillations verticales. Le poster de
 validation contient exactement la même ombre. Les scènes à un seul animal
 conservent leur pipeline habituel. Aucun modèle externe ou service payant
 n'est nécessaire : la lumière reste une composition 2D illustrée.
+
+### V2 — traces cinétiques originales lors des actions
+
+Les scènes animées d'animaux disposent d'une petite couche de **poussière
+ou d'éclaboussures**, uniquement pour les actions de **course** ou **saut**
+décrites et sélectionnées. Le rendu distingue les sols secs des ambiances
+pluvieuses ou de rivière. Les impacts d'un saut utilisent les mêmes phases
+de préparation et de réception que le mouvement du personnage (0,18 s et
+1,39 s dans le cycle local de 1,75 s). Les ressources sont dessinées en
+Python/Pillow, puis positionnées dans le vrai MP4 via FFmpeg. La scène au
+repos n'ajoute aucun effet, et la voix ou la durée ne changent pas.
+
+Ces traces sont un détail **2D discret**, pas un simulateur de particules ni
+une nouvelle capacité de mouvement 3D. Les scènes avec plusieurs actions
+successives utilisent pour l'instant l'action principale pour cet effet.
