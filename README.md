@@ -818,3 +818,17 @@ Sur Android : Actions → *First animated V2 showcase (free)* →
 `showcase.mp4`. Fonctionne sans GPU, téléchargement de modèle, API payante
 ou publication YouTube. Il s'agit d'une **bande de démonstration d'environ 17 s
 sans voix parlée**, non d'un épisode narratif final : le style est procédural 2D.
+
+
+### V2 — scènes originales à deux personnages plus expressives
+
+Lorsque la narration mentionne **explicitement deux animaux ensemble**, le
+second personnage ne reste plus une illustration totalement statique : il
+dispose de sa propre pose de clignement des yeux, d'une respiration et d'un
+léger mouvement indépendants du personnage principal, ainsi que d'une ombre
+de contact au sol. Les portraits fixes et les MP4 utilisent les mêmes dessins
+originaux. Les personnages seuls ne chargent pas ces calques supplémentaires.
+
+Cette animation reste volontairement en 2D, sans parole ni action inventée
+pour le second animal. Les caches de rendu sont invalidés afin que les
+anciennes vidéos ne remplacent pas les nouveaux résultats.
