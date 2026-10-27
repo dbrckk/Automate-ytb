@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
-GROUND_VERSION = "original-ground-contact-v1"
+GROUND_VERSION = "original-ground-contact-v2-height-responsive"
 ACTORS = ("owl", "fox", "rabbit", "cat")
 WEATHERS = ("day", "night", "cloudy", "rain", "wind", "storm")
 ACTIONS = ("idle", "walk", "run", "jump", "fly", "talk", "surprise", "rest")
@@ -38,8 +38,28 @@ def draw_contact_shadow(destination: Path, *, actor: str,
     plate.save(destination, format="PNG", optimize=True)
 
 
+def shadow_alpha_curve(action: str) -> str | None:
+    """Reviewed per-frame opacity, tied to the same leap/flight clock as the rig.
+
+    Shadows are darkest on contact and become lighter at jump apex/peak
+    flight height. These are expressions evaluated by FFmpeg against T,
+    never untrusted user-provided filter content.
+    """
+    if action not in ACTIONS:
+        raise ValueError("Invalid original shadow action")
+    if action == "jump":
+        # Flight spans approximately 0.18..1.39s of the 1.75s leap.
+        # The sine is positive only during flight, so the shadow has no
+        # discontinuity when the next jump cycle begins.
+        return "1-0.68*max(0,sin(3.141593*(mod(T,1.75)-0.18)/1.21))"
+    if action == "fly":
+        # Oppose the wing/body bob with a modest change in ambient contact.
+        return "0.67+0.23*sin(T*5.3)"
+    return None
+
+
 def shadow_stage(*, body_x: str, ground_y: int, offset_x: int,
-                 image_index: int) -> str:
+                 image_index: int, action: str = "idle") -> str:
     """Composite the shadow below the actor before the character layers.
 
     `body_x` is the internal validated pose expression from choreography,
@@ -53,6 +73,19 @@ def shadow_stage(*, body_x: str, ground_y: int, offset_x: int,
         raise ValueError("Invalid shadow stage location")
     if not 1 <= image_index <= 24:
         raise ValueError("Invalid shadow input index")
-    return (f"[0:v][{image_index}:v]overlay="
-            f"x='({body_x})+{offset_x}':y={ground_y}:"
-            f"eval=frame:format=auto[shadowstage];")
+    curve = shadow_alpha_curve(action)
+    # RGB planes pass through untouched. Only the premultiplied shadow
+    # opacity changes, on the small 280x92 sprite rather than the 720p scene.
+    # Preserve the cheaper original graph for non-airborne action types.
+    if curve is None:
+        return (f"[0:v][{image_index}:v]overlay="
+                f"x='({body_x})+{offset_x}':y={ground_y}:"
+                f"eval=frame:format=auto[shadowstage];")
+    return (
+        f"[{image_index}:v]format=gbrap,"
+        "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+        f"a='alpha(X,Y)*({curve})',format=rgba[contacttexture];"
+        f"[0:v][contacttexture]overlay="
+        f"x='({body_x})+{offset_x}':y={ground_y}:"
+        "eval=frame:format=auto[shadowstage];"
+    )
