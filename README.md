@@ -775,3 +775,14 @@ n'est nécessaire.
 ### Profondeur de champ cinématique de la V2
 
 Les nouveaux plans moyens, rapprochés, macro et épaules appliquent une **mise au point sélective** : le décor et les détails atmosphériques lointains deviennent doucement flous tandis que les animaux, accessoires et éléments proches restent nets. Le plan large conserve exactement ses images antérieures. Le flou est calculé **une seule fois par image de décor** en local, et non à chaque image vidéo ; aucune API ou ressource externe n'est utilisée. L'image approuvée correspond à la vidéo. Voir [la table des focales et les limites](docs/DEPTH_OF_FIELD.md).
+
+### V2 — inertie des articulations à la réception
+
+Après la phase de saut, les oreilles, les ailes, les pattes et les queues
+réagissent brièvement au contact avec le sol : une oscillation amortie démarre
+au temps de réception déjà défini par la chorégraphie (1,39 s sur un cycle de
+1,75 s), puis s'éteint. L'effet est léger, déterministe, sans nouveau service
+ni ressource téléchargée, et fonctionne dans les véritables rendus FFmpeg
+des animaux originaux. La narration, la durée des scènes et le son restent
+inchangés. Il s'agit de *follow-through* dessiné en 2D, non d'une simulation
+biomécanique ou d'une animation 3D.
