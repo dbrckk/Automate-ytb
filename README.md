@@ -849,3 +849,15 @@ repos n'ajoute aucun effet, et la voix ou la durée ne changent pas.
 Ces traces sont un détail **2D discret**, pas un simulateur de particules ni
 une nouvelle capacité de mouvement 3D. Les scènes avec plusieurs actions
 successives utilisent pour l'instant l'action principale pour cet effet.
+
+### V2 — ombres sensibles à la hauteur
+
+Les séquences de saut et de vol des animaux originaux modulent désormais en
+temps réel l'opacité de leur ombre au sol. L'ombre s'éclaircit pendant
+l'élévation, atteint sa valeur minimale près du sommet et retrouve sa
+présence à la réception. Les animations ordinaires conservent le pipeline
+FFmpeg précédent afin d'éviter un coût de calcul supplémentaire inutile.
+L'opération `geq` s'exécute uniquement sur l'asset transparent de
+280 × 92 pixels, et non sur la vidéo entière. La hauteur réelle et les
+ombres physiquement calculées ne sont pas simulées ; l'effet reste une
+illustration procédurale 2D, entièrement locale, gratuite et déterministe.

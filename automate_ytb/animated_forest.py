@@ -36,7 +36,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v29-kinetic-accents"
+FOREST_RIG_VERSION = "forest-animals-v30-dynamic-contact-shadow"
 
 
 def character_kind(character: str) -> str | None:
@@ -481,7 +481,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         # poses are composited last and remain intact throughout the gaze.
         shadow_graph = shadow_stage(
             body_x=body_x, ground_y=608,
-            offset_x=45, image_index=8)
+            offset_x=45, image_index=8, action=action)
         rotation_graph = (
             f"[1:v]format=rgba,rotate=a='{tail_angle}':ow=334:oh=334:c=none[tailspin];"
             f"[6:v]format=rgba,rotate=a='{left_angle}':ow=162:oh=162:c=none[legleft];"
