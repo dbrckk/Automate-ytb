@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-JOINT_VERSION = "original-joint-rotation-v2-ear-reactions"
+JOINT_VERSION = "original-joint-rotation-v3-impact-recoil"
 
 # Radians, deliberately bounded: avoid disconnected or spinning sprites.
 AMPLITUDES = {
@@ -24,6 +24,39 @@ AMPLITUDES = {
             "jump": 0.090, "fly": 0.062, "talk": 0.032,
             "surprise": 0.132, "rest": 0.010},
 }
+# A short, damped impulse follows a landing rather than letting ears,
+# wings, feet and tails stop abruptly with the torso. Radians stay small.
+IMPACT_AMPLITUDES = {
+    "wing": 0.070, "leg": 0.045, "tail": 0.095, "ear": 0.084,
+}
+JUMP_PERIOD = 1.75
+LANDING_TIME = 1.39
+
+
+def landing_recoil(action: str, *, part: str, side: str) -> str:
+    """Trusted FFmpeg angle impulse, zero outside the jump landing interval.
+
+    Decaying spring correction starts at zero on ground contact, oscillates
+    rapidly and settles before the next jump. Only validated action/rig enums
+    are accepted; no source narration enters the filter expression.
+    """
+    if action not in ACTIONS or part not in IMPACT_AMPLITUDES:
+        raise ValueError("Unknown original landing joint")
+    if (part == "tail" and side != "tail") or (
+            part != "tail" and side not in {"left", "right"}):
+        raise ValueError("Unknown original landing joint side")
+    if action != "jump":
+        return "0"
+    sign = -1 if side == "right" else 1
+    angle = sign * IMPACT_AMPLITUDES[part]
+    clock = "mod(t,1.75)"
+    elapsed = f"({clock}-1.39)"
+    return (
+        f"if(gte({clock},1.39),"
+        f"{angle:.4f}*exp(-9*({elapsed}))*sin(26*({elapsed})),0)"
+    )
+
+
 FREQUENCIES = {
     "idle": 1.6, "walk": 5.1, "run": 10.2, "jump": 3.6,
     "fly": 6.1, "talk": 2.0, "surprise": 7.5, "rest": 0.9,
@@ -45,5 +78,7 @@ def joint_angle(action: str, *, part: str, side: str) -> str:
     # A surprised animal briefly flicks the ears and settles instead of
     # indefinitely repeating an exaggerated alarm pose.
     envelope = "exp(-1.35*t)*" if part == "ear" and action == "surprise" else ""
+    recoil = landing_recoil(action, part=part, side=side)
     return (f"({envelope}({sign * amplitude:.4f}*sin(t*{frequency:.3f}+{phase:.6f})"
-            f"+{sign * amplitude * .14:.4f}*sin(t*{frequency * .46:.3f})))")
+            f"+{sign * amplitude * .14:.4f}*sin(t*{frequency * .46:.3f}))"
+            f"+({recoil}))")
