@@ -376,6 +376,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         scene_start_ms=scene["startMs"],
                         mouth_intervals=voice_activity_by_scene[scene_index],
                         landscape=scene_landscapes[scene_index],
+                        render_profile=render_profile,
                     )
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
