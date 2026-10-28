@@ -530,3 +530,7 @@ de direction au regard.
 En mode cartoon, les émotions écrites explicitement dans la narration
 déterminent maintenant la forme et le discret mouvement des sourcils
 des animaux. Aucun réglage ni téléchargement supplémentaire n'est requis.
+
+### Prévalidation des images réelles
+
+Le rendu MP4 génère aussi `visual-preflight.json`. Ce diagnostic vérifie de manière légère le début de la vidéo pour signaler des images potentiellement noires/blanches, figées ou des variations fortes de luminosité. Inspectez les alertes avant publication : ce ne sont pas des erreurs certaines et l'outil n'autorise jamais une publication automatique.
