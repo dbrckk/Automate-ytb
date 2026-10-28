@@ -239,7 +239,11 @@ def _srt_time(ms: int) -> str:
 def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            limit: int | None = None, resolution: str = "720p", fps: int = 24,
            music: Path | None = None, caption_timing: str = "estimated",
-           transition: str = "dissolve") -> dict:
+           transition: str = "dissolve",
+           render_profile: str = "preview") -> dict:
+    from .encoding_profiles import (settings, video_args, audio_bitrate,
+                                    VERSION as ENCODING_VERSION)
+    codec = settings(render_profile)
     if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
         raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
@@ -312,6 +316,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
+            "renderProfile": render_profile, "encodingVersion": ENCODING_VERSION,
             "rig": rig_tag if uses_motion_rig else None,
             "scene": scene["narration"] if uses_motion_rig else "",
             "topic": data["topic"] if uses_motion_rig else "",
@@ -353,6 +358,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         scene_start_ms=scene["startMs"],
                         mouth_intervals=voice_activity_by_scene[scene_index],
                         landscape=scene_landscapes[scene_index],
+                        render_profile=render_profile,
                     )
                 elif uses_forest_rig:
                     from .animated_forest import render_motion_clip as render_forest_clip
@@ -375,8 +381,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-loop", "1", "-framerate", str(fps),
                           "-i", str(_asset_path(plan_path, scene)), "-t", f"{seconds:.3f}",
-                          "-vf", motion, "-c:v", "libx264", "-preset", "veryfast",
-                          "-crf", "20", "-pix_fmt", "yuv420p", "-an", str(tmp)])
+                          "-vf", motion, *video_args(render_profile, still=True),
+                          "-an", str(tmp)])
                 os.replace(tmp, clip)
             finally:
                 tmp.unlink(missing_ok=True)
@@ -402,7 +408,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     edited_clips, transitions_report = transition_clips(
         clips, cache=cache, fps=fps,
         durations=[(s["endMs"] - s["startMs"]) / 1000 for s in scenes],
-        mode=transition)
+        mode=transition, render_profile=render_profile)
     concat = output / "clips.ffconcat"
     concat.write_text("ffconcat version 1.0\n" +
                       "".join(f"file {_quoted(c)}\n" for c in edited_clips), encoding="utf-8")
@@ -438,7 +444,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-i", str(music),
               "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", audio_bitrate(render_profile),
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     elif music is not None:
         # Silent storytelling also gets a modest, faded instrumental bed.
@@ -450,12 +456,13 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(music),
               "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+              "-c:v", "copy", "-c:a", "aac", "-b:a",
+              audio_bitrate(render_profile, music_only=True),
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     elif audio is not None:
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-c:v", "copy", "-c:a", "aac", "-b:a", audio_bitrate(render_profile),
               "-af", "apad,loudnorm=I=-16:LRA=11:TP=-1.5",
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     else:
@@ -478,6 +485,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                      "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
+        "renderProfile": render_profile,
+        "videoEncodingPreset": codec["preset"],
+        "videoEncodingCrf": codec["crf"],
+        "audioEncodingKbps": codec["audioKbps"],
         "targetDurationSeconds": scenes[-1]["endMs"] / 1000,
         "hasNarrationAudio": audio is not None,
         "hasBackgroundMusic": music is not None,
