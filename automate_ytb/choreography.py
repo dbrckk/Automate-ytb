@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-jump-follow-through"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -80,6 +80,14 @@ def secondary_position(action: str, *, base: int, side: str) -> str:
         "fly": 8.0, "talk": 2.0, "surprise": 6.6, "rest": 0.9,
     }[action]
     sign = "-" if side == "right" else "+"
+    if action == "jump":
+        # Anticipate and recover with the same 1.75-second flight cycle as
+        # body and legs; a short settling motion avoids a sharp snap.
+        cycle = "mod(t,1.75)"
+        airborne = (f"(min(1,max(0,(({cycle})-0.18)/0.57))"
+                    f"-min(1,max(0,(({cycle})-0.75)/0.64)))")
+        settle = f"exp(-9*max(0,({cycle})-1.39))*sin(17*max(0,({cycle})-1.39))"
+        return f"{base}{sign}{amplitude}*({airborne}){sign}4*({settle})"
     # Two frequencies create gentle organic follow-through, without noise,
     # unbounded motion or non-deterministic video output.
     follow = max(1, round(amplitude * 0.13, 2))
