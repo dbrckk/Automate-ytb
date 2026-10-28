@@ -37,7 +37,13 @@ class IndependentAnimalLegTests(unittest.TestCase):
                 x, y = leg_position(action, side=side)
                 self.assertIn("sin(", x + y)
                 self.assertNotIn(";", x + y)
-                self.assertTrue("180" in x and "184" in y)
+                if action in {"walk", "run"}:
+                    # Grounded paws are pinned in scene space during stance.
+                    self.assertTrue(x.startswith(str(180+LEG_ANCHORS[side])+"+"))
+                    self.assertTrue(y.startswith("519-"))
+                    self.assertIn("max(0,sin(", x+y)
+                else:
+                    self.assertTrue("180" in x and "184" in y)
         left = leg_position("walk", side="left")
         right = leg_position("walk", side="right")
         self.assertIn("3.141593", right[0] + right[1])
