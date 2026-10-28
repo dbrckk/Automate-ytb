@@ -882,3 +882,18 @@ d'objets 3D ou d'une simulation physique d'insectes.
 Le workflow Android propose désormais **render_profile = high** pour un vrai encodage H.264 avec preset `medium`, CRF 18, narration et musique AAC jusqu'à 256 kbit/s et **30 images/s**. Choisir également **1080p** dans Resolution pour exporter 1920 × 1080. Le profil `preview` conserve 24 images/s et un encodeur rapide pour économiser le temps de calcul GitHub Actions. Les clips animés et les transitions utilisent le même profil, et le cache distingue leurs paramètres. Le contrôle qualité vérifie le profil demandé et les caractéristiques du MP4 produit.
 
 Ce choix améliore la **qualité d'encodage et la fluidité temporelle**. Il n'ajoute ni détails aux illustrations 1280 × 720 agrandies, ni voix réaliste, ni scènes 3D. Une livraison professionnelle reste conditionnée à la qualité des sources, à l'écoute, au rythme du montage, aux licences et à la validation humaine.
+
+### Contrôle visuel automatique des vidéos (prévalidation)
+
+Après chaque rendu MP4, `visual-preflight.json` et la clé
+`visualPreflight` du `render-report.json` signalent des **anomalies
+techniques potentielles** : images quasiment noires ou blanches, périodes
+de plus de deux secondes sans changement visible, et variations de lumière
+brusques. L'analyse décode jusqu'à **18 secondes**, à **2 images/seconde**,
+en 96×54 pixels : elle reste légère, hors ligne et sans service payant.
+
+Les alertes sont **informatives** : une nuit sombre, un plan volontairement
+statique ou une coupe cinématique peut être légitime. Une inspection qui
+échoue est indiquée par `inspection-failed`, jamais par un faux succès.
+Ce diagnostic ne juge ni l'esthétique, ni l'intégralité de la vidéo, ni les
+droits des images et ne constitue pas une approbation de publication.
