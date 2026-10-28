@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v7-planted-contact-gait"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v8-natural-footstep-roll"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -133,7 +133,7 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
         # Crucially these coordinates exclude the oscillating parent body:
         # feet no longer slide vertically or horizontally with torso sway.
         swing = f"max(0,-sin(t*{frequency}+{phase}))"
-        progress = f"pow({swing},2)"
+        # Smoothstep lift keeps toe-off and landing velocities near zero.\n        progress = f"({swing})*({swing})*(3-2*({swing}))"
         x = f"{body_x}+{LEG_ANCHORS[side]}+{reach}*({progress})"
         y = f"{body_y}+335-{lift}*({progress})"
         return x, y
