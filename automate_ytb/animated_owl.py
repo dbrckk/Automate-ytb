@@ -406,13 +406,16 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        caption_segments: list[dict] | None = None,
                        scene_start_ms: int = 0,
                        mouth_intervals: list[tuple[float, float]] | None = None,
-                       landscape: str | None = None) -> None:
+                       landscape: str | None = None,
+                       render_profile: str = "preview") -> None:
     if not 0 < duration <= 3600 or fps not in (24,30):
         raise ValueError("Unsupported animation parameters")
     if (width,height) not in ((1280,720),(1920,1080)):
         raise ValueError("Unsupported rendering dimensions")
     if direction is not None:
         direction = validate_direction(direction)
+    from .encoding_profiles import video_args
+    video_args(render_profile)
     from .production import _run
     with tempfile.TemporaryDirectory(prefix="automate-ytb-rig-") as folder:
         layers=render_layers(Path(folder),topic=topic,narration=narration,
@@ -518,8 +521,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             args+=["-loop","1","-framerate",str(fps),"-i",str(layers[key])]
         args+=["-filter_complex",f,"-map","[out]","-frames:v",
                str(max(1,round(duration*fps))),"-r",str(fps),
-               "-c:v","libx264","-preset","veryfast","-crf","21",
-               "-pix_fmt","yuv420p","-an",str(destination)]
+               *video_args(render_profile),"-an",str(destination)]
         _run(args)
 
 
