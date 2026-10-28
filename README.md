@@ -876,3 +876,7 @@ Aucune luciole n'est inventée si le script évoque seulement une étoile
 ou une lumière ; cette restriction évite d'introduire des objets qui ne
 figurent pas dans le scénario. Il s'agit d'effets 2D originaux, et non
 d'objets 3D ou d'une simulation physique d'insectes.
+
+### Contrôle qualité audio de bout en bout
+
+Le contrôle de livraison analyse désormais le niveau sonore **sur toute la durée** du MP4 avec le filtre FFmpeg EBU R128, en complément du contrôle de présence du flux AAC et du pic sonore initial. Le rapport indique le niveau intégré (LUFS) et le pic réel (dBFS), avec avertissements pour les mixes trop faibles, trop forts ou proches de l'écrêtage. Ces métriques techniques ne prouvent pas à elles seules la qualité naturelle de la voix ; une écoute éditoriale reste nécessaire avant publication.
