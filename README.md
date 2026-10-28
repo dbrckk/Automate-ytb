@@ -894,3 +894,18 @@ ne déclenche pas de nouvelle pose. Les objets que le personnage tient ou
 observe conservent la priorité de mise au point.
 Les mêmes poses dessinées sont utilisées pour les images approuvées et
 les vrais clips MP4. Il s'agit de poses 2D illustrées, pas de suivi oculaire 3D.
+
+### Contrôle visuel automatique des vidéos (prévalidation)
+
+Après chaque rendu MP4, `visual-preflight.json` et la clé
+`visualPreflight` du `render-report.json` signalent des **anomalies
+techniques potentielles** : images quasiment noires ou blanches, périodes
+de plus de deux secondes sans changement visible, et variations de lumière
+brusques. L'analyse décode jusqu'à **18 secondes**, à **2 images/seconde**,
+en 96×54 pixels : elle reste légère, hors ligne et sans service payant.
+
+Les alertes sont **informatives** : une nuit sombre, un plan volontairement
+statique ou une coupe cinématique peut être légitime. Une inspection qui
+échoue est indiquée par `inspection-failed`, jamais par un faux succès.
+Ce diagnostic ne juge ni l'esthétique, ni l'intégralité de la vidéo, ni les
+droits des images et ne constitue pas une approbation de publication.

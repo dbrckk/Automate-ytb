@@ -467,6 +467,19 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     else:
         shutil.copy2(raw, result)
+    # Lightweight decoded-frame inspection is observational only: creative
+    # cuts, intentional darkness and low-motion shots require human review.
+    # An inspection error is disclosed instead of inventing a clean pass.
+    from .visual_preflight import inspect_video, VISUAL_QA_VERSION
+    try:
+        visual_preflight = inspect_video(result)
+    except (RuntimeError, ValueError) as exc:
+        visual_preflight = {
+            "version": VISUAL_QA_VERSION, "status": "inspection-failed",
+            "warnings": [str(exc)[:500]],
+            "sampledFrames": 0,
+        }
+    _write_json(output / "visual-preflight.json", visual_preflight)
     from .captions import subtitles_for_scenes
     srt = output / "draft-captions.srt"
     captions_text, captions_report = subtitles_for_scenes(
@@ -480,6 +493,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         for category in ("weather", "action", "emotion", "shot")
     }
     report = {
+        "visualPreflight": visual_preflight,
         "director": {"version": "keyword-cues-v1", "directedScenes": len(directed),
                      "counts": directions_report,
                      "method": "conservative-keyword-match-on-user-script"},
