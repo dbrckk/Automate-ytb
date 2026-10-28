@@ -882,3 +882,15 @@ d'objets 3D ou d'une simulation physique d'insectes.
 Le workflow Android propose désormais **render_profile = high** pour un vrai encodage H.264 avec preset `medium`, CRF 18, narration et musique AAC jusqu'à 256 kbit/s et **30 images/s**. Choisir également **1080p** dans Resolution pour exporter 1920 × 1080. Le profil `preview` conserve 24 images/s et un encodeur rapide pour économiser le temps de calcul GitHub Actions. Les clips animés et les transitions utilisent le même profil, et le cache distingue leurs paramètres. Le contrôle qualité vérifie le profil demandé et les caractéristiques du MP4 produit.
 
 Ce choix améliore la **qualité d'encodage et la fluidité temporelle**. Il n'ajoute ni détails aux illustrations 1280 × 720 agrandies, ni voix réaliste, ni scènes 3D. Une livraison professionnelle reste conditionnée à la qualité des sources, à l'écoute, au rythme du montage, aux licences et à la validation humaine.
+
+### V2 — regard guidé par la narration
+
+Les chouettes, renards, lapins et chats peuvent désormais diriger les pupilles
+vers la gauche, la droite, le haut ou le bas **uniquement quand le texte
+original décrit explicitement un regard** (français et anglais). Par exemple,
+« la chouette regarde les étoiles » produit un regard vers le haut.
+La marche à gauche, ou la présence du ciel sans indication de regard,
+ne déclenche pas de nouvelle pose. Les objets que le personnage tient ou
+observe conservent la priorité de mise au point.
+Les mêmes poses dessinées sont utilisées pour les images approuvées et
+les vrais clips MP4. Il s'agit de poses 2D illustrées, pas de suivi oculaire 3D.
