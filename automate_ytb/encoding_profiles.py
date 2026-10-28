@@ -32,3 +32,13 @@ def audio_bitrate(profile: str, *, music_only: bool = False) -> str:
     profile_settings = settings(profile)
     return str(profile_settings["musicOnlyKbps"] if music_only
                else profile_settings["audioKbps"]) + "k"
+
+
+def aac_args(profile: str, *, music_only: bool = False) -> list[str]:
+    """Portable AAC @48kHz, stereo for high-quality delivery."""
+    args = ["-c:a", "aac", "-b:a",
+            audio_bitrate(profile, music_only=music_only),
+            "-ar", "48000"]
+    if profile == "high":
+        args += ["-ac", "2"]
+    return args
