@@ -87,8 +87,10 @@ def create_bed(*, plan_path: Path, output: Path,
         raise ValueError("Soundtrack duration must be within one hour")
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    loops = {name: _loop(name) for name in CHORDS}
     moods = [_theme(scene.get("direction")) for scene in selected]
+    # Avoid rendering unrequested biomes: one-scene Android previews
+    # should only pay CPU time for one active musical theme.
+    loops = {name: _loop(name) for name in set(moods)}
     total_frames = round(ms * SAMPLERATE / 1000)
     loop_frames = LOOP_SECONDS * SAMPLERATE
     intro_frames = round(.25 * SAMPLERATE)
