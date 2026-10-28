@@ -24,6 +24,7 @@ from .voice_activity import mouth_gate_expression
 from .action_timeline import choreograph
 from .material_shading import shade_sprite
 from .sprite_supersampling import sprite_canvas, resolve_sprite
+from .expressive_face import draw_expression, append_expression
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -37,7 +38,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v32-directed-eye-attention"
+FOREST_RIG_VERSION = "forest-animals-v33-expressive-brow-acting"
 
 
 def character_kind(character: str) -> str | None:
@@ -300,7 +301,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear", "ambient_far", "ambient_near")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear", "ambient_far", "ambient_near", "expression")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -347,6 +348,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     _sprite_body(outputs["blink"], kind=kind, blink=True,
                  emotion=emotion, gaze=gaze, include_ears=False)
     _sprite_mouth(outputs["mouth"], kind=kind)
+    draw_expression(outputs["expression"], actor=kind, emotion=emotion)
     _sprite_leg(outputs["left_leg"], kind=kind, side="left")
     _sprite_leg(outputs["right_leg"], kind=kind, side="right")
     if companion:
@@ -410,6 +412,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
+        with Image.open(layers["expression"]) as brow:
+            combined.alpha_composite(brow.convert("RGBA"), (180, 184))
         cue = cue_for_scene(narration, held_prop=held_prop)
         if cue:
             location = (481, 437) if cue["action"] == "carry" else (652, 474)
@@ -570,6 +574,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         fps_graph, final, names = append_ambient_overlays(
             graph=fps_graph, label=final, names=names,
             weather=direction["weather"] if direction else "day")
+        fps_graph, final, names = append_expression(
+            graph=fps_graph, label=final, names=names,
+            body_x=body_x, body_y=body_y, action=action,
+            emotion=direction["emotion"] if direction else "neutral")
         fps_graph, final, names = append_story_glow(
             graph=fps_graph, label=final, names=names,
             enabled="story_glow" in layers)

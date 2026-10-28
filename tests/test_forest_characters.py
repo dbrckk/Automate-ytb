@@ -71,7 +71,7 @@ class ForestCharacterTests(unittest.TestCase):
             self.assertGreater(diff(images["rabbit"], images["cat"]), 16)
 
     def test_hash_tracks_exact_character_and_visual_direction(self):
-        self.assertIn("v32", FOREST_RIG_VERSION)
+        self.assertIn("v33", FOREST_RIG_VERSION)
         common = dict(
             kind="fox", topic="Forêt", narration="Le renard observe la pluie.",
             character="Original red fox", style="cartoon",
