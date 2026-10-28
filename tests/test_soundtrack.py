@@ -39,7 +39,7 @@ class SoundtrackTests(unittest.TestCase):
         first, second = self.root / "bed1.wav", self.root / "bed2.wav"
         a = create_bed(plan_path=self.plan_path, output=first)
         b = create_bed(plan_path=self.plan_path, output=second)
-        self.assertEqual(a["engine"], "ambient-original-v1")
+        self.assertEqual(a["engine"], "ambient-original-v2-continuous-stereo")
         self.assertEqual(a["sceneThemes"], b["sceneThemes"])
         self.assertIn("rain", a["sceneThemes"])
         self.assertIn("night", a["sceneThemes"])
