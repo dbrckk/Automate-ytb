@@ -17,6 +17,7 @@ import unicodedata
 
 from PIL import Image, ImageDraw
 
+from .companion_motion import guest_action, guest_animation_graph
 from .animated_owl import _bg, _weather_overlay
 from .cinematic_camera import framing_filter
 from .scenic_world import WORLD_VERSION
@@ -37,7 +38,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v31-narrated-firefly-glow"
+FOREST_RIG_VERSION = "forest-animals-v32-independent-guest-rig"
 
 
 def character_kind(character: str) -> str | None:
@@ -259,7 +260,8 @@ def _sprite_tail(path: Path, *, kind: str):
     image.save(path, "PNG")
 
 
-def _sprite_companion(path: Path, *, kind: str, blink: bool = False) -> None:
+def _sprite_companion(path: Path, *, kind: str, blink: bool = False,
+                      articulated_folder: Path | None = None) -> None:
     """Compose a smaller, complete original second animal behind the lead.
 
     Secondary animals do not speak or perform unmentioned actions. Their
@@ -285,6 +287,22 @@ def _sprite_companion(path: Path, *, kind: str, blink: bool = False) -> None:
         combined = combined.resize((247, 332), Image.Resampling.LANCZOS)
         path.parent.mkdir(parents=True, exist_ok=True)
         combined.save(path, format="PNG", optimize=True)
+        if articulated_folder is not None:
+            # Crop the original source sprites at the exact approved
+            # miniature scale so independent movement never changes species,
+            # palette, facial expression or authorship.
+            for part in parts:
+                if blink and part != "body":
+                    continue
+                with Image.open(parts[part]) as source:
+                    sprite = source.convert("RGBA")
+                    scaled = sprite.resize(
+                        (round(sprite.width * 247 / 350),
+                         round(sprite.height * 332 / 470)),
+                        Image.Resampling.LANCZOS)
+                label = "body_blink" if blink else part
+                scaled.save(articulated_folder / f"companion_{label}.png",
+                            format="PNG", optimize=True)
 
 
 def render_layers(folder: Path, *, kind: str, topic: str,
@@ -352,8 +370,12 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         outputs["companion"] = folder / "companion.png"
         outputs["companion_blink"] = folder / "companion_blink.png"
         outputs["companion_shadow"] = folder / "companion_shadow.png"
-        _sprite_companion(outputs["companion"], kind=companion)
-        _sprite_companion(outputs["companion_blink"], kind=companion, blink=True)
+        for part in ("tail", "body", "left_leg", "right_leg", "body_blink"):
+            outputs[f"companion_{part}"] = folder / f"companion_{part}.png"
+        _sprite_companion(outputs["companion"], kind=companion,
+                          articulated_folder=folder)
+        _sprite_companion(outputs["companion_blink"], kind=companion,
+                          blink=True, articulated_folder=folder)
         # Scale the original blurred ground shadow to the second actor's
         # 247px sprite. A separate input avoids reusing an FFmpeg stream.
         draw_contact_shadow(
@@ -503,21 +525,13 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             f"[10:v]format=rgba,rotate=a='{right_ear_angle}':ow=180:oh=280:c=none[earright];"
         )
         has_companion = "companion" in layers
-        # One extra PNG input after the 11 primary rig inputs; the rest of
-        # the trusted graph remains indexed identically for single actors.
-        # The guest follows an independent rhythm. Closed-eye and open-eye
-        # plates share an identical coordinate expression, avoiding snapping.
-        guest_x = "813+6*sin(t*0.58)+1.5*sin(t*1.21)"
-        guest_y = "265+2*sin(t*1.06)+sin(t*2.12)"
-        guest_stage = (
-            f"[shadowstage][13:v]overlay=x='({guest_x})+18':y=571:"
-            "eval=frame:format=auto[guestground];"
-            f"[guestground][11:v]overlay=x='{guest_x}':y='{guest_y}':"
-            "eval=frame:format=auto[companions];"
-            f"[companions][12:v]overlay=x='{guest_x}':y='{guest_y}':"
-            "enable='lt(mod(t+0.65,3.4),0.12)':"
-            "eval=frame:format=auto[guestblink]" if has_companion else ""
-        )
+        # The guest uses six independent parts (tail, torso, left/right paws,
+        # blink torso and contact shadow) behind the main character.
+        # Only explicit shared motion may select walking or running.
+        guest_stage = (guest_animation_graph(
+            prior="shadowstage", first_input=11,
+            action=guest_action(narration, has_companion=True))
+            if has_companion else "")
         base_stage = "guestblink" if has_companion else "shadowstage"
         fps_graph = (
             f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
@@ -547,7 +561,9 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         names = ["background", "tail", "neutral", "body", "blink", "mouth",
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
-            names.extend(("companion", "companion_blink", "companion_shadow"))
+            names.extend(("companion_tail", "companion_body",
+                          "companion_left_leg", "companion_right_leg",
+                          "companion_body_blink", "companion_shadow"))
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,

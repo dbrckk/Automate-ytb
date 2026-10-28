@@ -882,3 +882,20 @@ d'objets 3D ou d'une simulation physique d'insectes.
 Le workflow Android propose désormais **render_profile = high** pour un vrai encodage H.264 avec preset `medium`, CRF 18, narration et musique AAC jusqu'à 256 kbit/s et **30 images/s**. Choisir également **1080p** dans Resolution pour exporter 1920 × 1080. Le profil `preview` conserve 24 images/s et un encodeur rapide pour économiser le temps de calcul GitHub Actions. Les clips animés et les transitions utilisent le même profil, et le cache distingue leurs paramètres. Le contrôle qualité vérifie le profil demandé et les caractéristiques du MP4 produit.
 
 Ce choix améliore la **qualité d'encodage et la fluidité temporelle**. Il n'ajoute ni détails aux illustrations 1280 × 720 agrandies, ni voix réaliste, ni scènes 3D. Une livraison professionnelle reste conditionnée à la qualité des sources, à l'écoute, au rythme du montage, aux licences et à la validation humaine.
+
+### V2 — second personnage réellement articulé dans les scènes de groupe
+
+Quand la narration originale mentionne explicitement deux animaux réunis, le
+personnage secondaire n'est plus seulement une silhouette immobile. Le moteur
+dessine à partir de ses propres illustrations originales une queue, un tronc
+et deux pattes **sur quatre calques transparents indépendants**. Lorsque le
+texte indique explicitement une marche ou une course commune, ses pattes
+alternent les appuis et sa queue suit une oscillation secondaire. Sinon, il
+reste au repos pour éviter d'inventer une action non décrite.
+
+La version conserve le regard et le clignement déjà présents, l'ombre
+indépendante, les décors animés et la lumière atmosphérique. Les images de
+validation conservent les mêmes couleurs, formes et dimensions de personnage.
+La composition vidéo est un rig **2D procédural**, sans squelette 3D,
+synthèse distante ni média tiers. Les scripts, voix et sous-titres ne changent
+pas.
