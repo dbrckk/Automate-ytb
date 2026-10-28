@@ -23,6 +23,7 @@ from .action_timeline import choreograph
 from .material_shading import shade_sprite
 from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
+from .expressive_face import draw_expression, append_expression
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .story_glow import draw_story_glow, append_story_glow
@@ -36,7 +37,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v29-directed-eye-attention"
+RIG_VERSION = "owl-rig-v30-expressive-brow-acting"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -338,7 +339,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","ambient_far","ambient_near")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","ambient_far","ambient_near","expression")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -383,6 +384,8 @@ def render_layers(folder: Path, *, topic: str, narration: str,
           emotion=direction["emotion"] if direction else "neutral",
           gaze=gaze)
     _mouth(outputs["mouth"])
+    draw_expression(outputs["expression"], actor="owl",
+                    emotion=direction["emotion"] if direction else "neutral")
     cue = create_prop_layers(folder, narration=narration, actor="owl",
                                held_prop=held_prop)
     if cue:
@@ -500,6 +503,10 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         f, final_label, keys = append_ambient_overlays(
             graph=f, label=final_label, names=keys,
             weather=direction["weather"] if direction else "day")
+        f, final_label, keys = append_expression(
+            graph=f, label=final_label, names=keys,
+            body_x=body_x, body_y=body_y, action=action,
+            emotion=direction["emotion"] if direction else "neutral")
         f, final_label, keys = append_story_glow(
             graph=f, label=final_label, names=keys,
             enabled="story_glow" in layers)
@@ -552,6 +559,8 @@ def render_character_poster(*, topic: str, narration: str,
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
+        with Image.open(layers["expression"]) as brow:
+            composite.alpha_composite(brow.convert("RGBA"), (204, 186))
         cue = cue_for_scene(narration, held_prop=held_prop)
         if cue:
             position = (505, 439) if cue["action"] == "carry" else (652, 474)
