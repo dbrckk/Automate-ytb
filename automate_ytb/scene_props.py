@@ -115,13 +115,13 @@ GAZE_VERSION = "script-directed-attention-v1"
 # Script-grounded French/English glances. A directional noun without a
 # *looking* verb is insufficient: walking left must not redirect the eyes.
 _LOOK_VERB = re.compile(
-    r"\\b(?:regard\\w*|observ\\w*|fix\\w*|"
-    r"look\\w*|glanc\\w*|watch\\w*)\\b")
+    r"\b(?:regard\w*|observ\w*|fix\w*|"
+    r"look\w*|glanc\w*|watch\w*)\b")
 _GAZE_DIRECTIONS = (
-    ("left", re.compile(r"\\b(?:gauche|left)\\b")),
-    ("right", re.compile(r"\\b(?:droite|right)\\b")),
-    ("up", re.compile(r"\\b(?:haut|ciel|etoiles?|sky|stars?|above|up)\\b")),
-    ("down", re.compile(r"\\b(?:bas|sol|terre|ground|down|feet)\\b")),
+    ("left", re.compile(r"\b(?:gauche|left)\b")),
+    ("right", re.compile(r"\b(?:droite|right)\b")),
+    ("up", re.compile(r"\b(?:haut|ciel|etoiles?|sky|stars?|above|up)\b")),
+    ("down", re.compile(r"\b(?:bas|sol|terre|ground|down|feet)\b")),
 )
 
 
