@@ -909,3 +909,7 @@ ne nécessitent aucun service ou asset externe.
 
 Cela reste un jeu facial **2D**, sans capture d'acteur, vrai rig facial 3D
 ou synchronisation labiale par phonèmes.
+
+### Réactions de surprise avec amortissement naturel
+
+Les mouvements corporels de l'action `surprise` comprennent une oscillation amortie supplémentaire (retard et retour au repos). Les expressions gardent la cadence de la narration, sans nouveau service, modèle externe ni animation 3D revendiquée. Les sept autres actions ne reçoivent pas cette oscillation. Les empreintes de rendu changent pour éviter les versions vidéo périmées.
