@@ -28,7 +28,10 @@ class JointMotionTests(unittest.TestCase):
                 for side in sides:
                     expr = joint_angle(action, part=part, side=side)
                     self.assertEqual(expr, joint_angle(action, part=part, side=side))
-                    self.assertEqual(\n                        expr.count("sin("),\n                        1 if part == "leg" and action in {"walk", "run"}\n                        else 3 if action == "jump" else 2)
+                    self.assertEqual(
+                        expr.count("sin("),
+                        1 if part == "leg" and action in {"walk", "run"}
+                        else 3 if action == "jump" else 2)
                     self.assertNotIn(";", expr)
                     self.assertNotIn("\n", expr)
         self.assertNotEqual(joint_angle("run", part="leg", side="left"),
