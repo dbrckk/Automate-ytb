@@ -61,11 +61,13 @@ def _picture_decodes(path: Path, second: float) -> bool:
 
 def check(*, plan: Path, output: Path, expected_voice: str,
           expected_soundtrack: str, report_path: Path | None = None,
-          decode_frames: bool = True) -> dict:
+          decode_frames: bool = True, expected_render_profile: str = "preview") -> dict:
     if expected_voice not in ("none", "espeak", "kokoro"):
         raise ValueError("Expected voice must be none, espeak or kokoro")
     if expected_soundtrack not in ("none", "ambient"):
         raise ValueError("Expected soundtrack must be none or ambient")
+    from .encoding_profiles import settings
+    codec = settings(expected_render_profile)
     data = load_plan(plan)
     output = output.resolve()
     expected_audio = expected_voice != "none" or expected_soundtrack != "none"
@@ -101,6 +103,15 @@ def check(*, plan: Path, output: Path, expected_voice: str,
             errors.append("No preview may be automatically approved for publication")
         if episode.get("factChecked") is not False:
             errors.append("Fact-checking must not be falsely marked as complete")
+        metrics["renderProfile"] = rendered.get("renderProfile")
+        if rendered.get("renderProfile") != expected_render_profile:
+            errors.append("Rendered MP4 profile disagrees with the requested quality")
+        if episode.get("renderProfile") != expected_render_profile:
+            errors.append("Episode report lacks the requested delivery profile")
+        if rendered.get("videoEncodingPreset") != codec["preset"]:
+            errors.append("Reported H.264 encoder preset disagrees with the selected profile")
+        if rendered.get("videoEncodingCrf") != codec["crf"]:
+            errors.append("Reported H.264 CRF disagrees with the selected profile")
         if not rendered.get("previewOnly"):
             errors.append("Export must remain a preview")
         count = rendered.get("scenesRendered")
@@ -246,11 +257,14 @@ def main(argv=None) -> int:
     p.add_argument("--expect-voice", choices=["none", "espeak", "kokoro"], required=True)
     p.add_argument("--expect-soundtrack", choices=["none", "ambient"], required=True)
     p.add_argument("--report", type=Path)
+    p.add_argument("--expect-render-profile", choices=["preview", "high"],
+                   default="preview")
     args = p.parse_args(argv)
     try:
         result = check(plan=args.plan, output=args.output,
                        expected_voice=args.expect_voice,
                        expected_soundtrack=args.expect_soundtrack,
+                       expected_render_profile=args.expect_render_profile,
                        report_path=args.report)
     except (OSError, ValueError) as exc:
         print("ERROR:", exc, file=sys.stderr)
