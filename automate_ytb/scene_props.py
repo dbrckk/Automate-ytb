@@ -111,16 +111,42 @@ def cue_for_scene(narration: str, *, held_prop: str | None = None
     return cue
 
 
-def gaze_target(narration: str, *, held_prop: str | None = None) -> str:
-    """Return a bounded glance, never pretend to track 3D object coordinates.
+GAZE_VERSION = "script-directed-attention-v1"
+# Script-grounded French/English glances. A directional noun without a
+# *looking* verb is insufficient: walking left must not redirect the eyes.
+_LOOK_VERB = re.compile(
+    r"\\b(?:regard\\w*|observ\\w*|fix\\w*|"
+    r"look\\w*|glanc\\w*|watch\\w*)\\b")
+_GAZE_DIRECTIONS = (
+    ("left", re.compile(r"\\b(?:gauche|left)\\b")),
+    ("right", re.compile(r"\\b(?:droite|right)\\b")),
+    ("up", re.compile(r"\\b(?:haut|ciel|etoiles?|sky|stars?|above|up)\\b")),
+    ("down", re.compile(r"\\b(?:bas|sol|terre|ground|down|feet)\\b")),
+)
 
-    Objects to the right get a rightward look; a previously carried item
-    receives a gentle downward-right eye pose.
+
+def gaze_target(narration: str, *, held_prop: str | None = None) -> str:
+    """Select a small illustrated glance, never a fabricated eye tracker.
+
+    A narrated/carrying prop keeps precedence over generic direction cues.
+    Otherwise the first explicit gaze verb and nearby direction wins; a
+    location or movement direction without a gaze verb changes nothing.
     """
+    if not isinstance(narration, str) or len(narration) > 150_000:
+        raise ValueError("Invalid gaze narration")
     cue = cue_for_scene(narration, held_prop=held_prop)
-    if cue is None:
-        return "forward"
-    return "down-right" if cue["action"] == "carry" else "right"
+    if cue is not None:
+        return "down-right" if cue["action"] == "carry" else "right"
+    plain = _normalized(narration)
+    candidates = []
+    for gaze_verb in _LOOK_VERB.finditer(plain):
+        # Punctuation terminates the local clause, so a later unrelated
+        # direction is never attached to an earlier glance.
+        phrase = re.split(r"[.!?;]", plain[gaze_verb.end():gaze_verb.end()+65], maxsplit=1)[0]
+        for name, pattern in _GAZE_DIRECTIONS:
+            if match := pattern.search(phrase):
+                candidates.append((gaze_verb.start(), match.start(), name))
+    return min(candidates)[2] if candidates else "forward"
 
 
 def draw_prop(path: Path, *, kind: str) -> None:
