@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-JOINT_VERSION = "original-joint-rotation-v3-impact-recoil"
+JOINT_VERSION = "original-joint-rotation-v4-planted-contact"
 
 # Radians, deliberately bounded: avoid disconnected or spinning sprites.
 AMPLITUDES = {
@@ -74,6 +74,11 @@ def joint_angle(action: str, *, part: str, side: str) -> str:
     frequency = FREQUENCIES[action]
     sign = -1 if side == "right" else 1
     phase = 3.141593 if part == "leg" and side == "right" and action in {"run", "walk"} else 0
+    if part == "leg" and action in {"walk", "run"}:
+        # The paw's contact half-cycle holds a neutral angle; only the
+        # lifted swing rotates. A squared half-sine eases both boundaries.
+        swing = f"max(0,-sin(t*{frequency:.3f}+{phase:.6f}))"
+        return f"({sign * amplitude:.4f}*pow({swing},2))"
     # Two small harmonics rather than a perfectly repeated back-and-forth.
     # A surprised animal briefly flicks the ears and settles instead of
     # indefinitely repeating an exaggerated alarm pose.

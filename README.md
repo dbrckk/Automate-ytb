@@ -917,3 +917,19 @@ Après le rendu, `visual-preflight.json` et la clé `visualPreflight` du rapport
 ### Réactions corporelles de surprise plus naturelles
 
 Le geste narratif de surprise intègre maintenant un léger mouvement secondaire amorti du corps, horizontal et vertical. Les autres gestes restent inchangés. Cet effet 2D original, gratuit et déterministe ne modifie ni la narration ni la cadence audio.
+
+### V2 — marche et course avec pattes ancrées
+
+Le moteur 2D des animaux forestiers bloque désormais la position et
+l'angle de chaque patte pendant sa phase d'appui au sol. La patte quitte
+le sol seulement pendant sa phase de retour (swing), dont la hauteur et
+l'avance suivent une demi-sinusoïde au carré : vitesse verticale nulle
+au décollage et à la reprise d'appui. Les deux membres utilisent un
+décalage de phase de π pour alterner correctement. Le mouvement du
+corps, des oreilles, de la queue et la caméra restent indépendants.
+
+Les cycles sont locaux et sans nouveau modèle externe, téléchargement,
+GPU ou coût API. Il s'agit d'un déplacement illustré sur place et non
+d'une locomotion 3D avec trajectoire dans le monde. Des tests inspectent
+les expressions FFmpeg de contact et l'absence de glissement induit par
+l'oscillation du corps ; la CI conserve le rendu H.264 réel.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-surprise-followthrough"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v7-planted-contact-gait"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -126,6 +126,17 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
     parent_x, parent_y = body_position(action, x=body_x, y=body_y)
     reach, lift, frequency = LEG_MOTION[action]
     phase = "3.141593" if side == "right" and action in {"walk", "run"} else "0"
+    if action in {"walk", "run"}:
+        # Lock the paw to the world while planted (sin >= 0). During the
+        # opposite half-cycle it lifts and returns with zero velocity at
+        # toe-off/touchdown. Opposite phases alternate the feet.
+        # Crucially these coordinates exclude the oscillating parent body:
+        # feet no longer slide vertically or horizontally with torso sway.
+        swing = f"max(0,-sin(t*{frequency}+{phase}))"
+        progress = f"pow({swing},2)"
+        x = f"{body_x}+{LEG_ANCHORS[side]}+{reach}*({progress})"
+        y = f"{body_y}+335-{lift}*({progress})"
+        return x, y
     x = f"({parent_x})+{LEG_ANCHORS[side]}+{reach}*sin(t*{frequency}+{phase})"
     if action == "jump":
         # Feet tuck during the airborne arc, then extend before landing.
