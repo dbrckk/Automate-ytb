@@ -6,6 +6,7 @@ No external samples, downloaded models, paid API, or reuse of existing music.
 from __future__ import annotations
 
 from array import array
+from functools import lru_cache
 import math
 from pathlib import Path
 import sys
@@ -40,6 +41,7 @@ def _theme(direction: dict | None) -> str:
     return "warm"
 
 
+@lru_cache(maxsize=4)
 def _loop(theme: str) -> array:
     """Eight-second harmonic loop with phase-continuous period boundaries.
 
