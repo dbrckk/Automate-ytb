@@ -512,3 +512,7 @@ Les sauts et courses des animaux originaux créent une légère poussière,
 ou un effet de gouttelettes si le décor est humide. Ils sont ajoutés
 automatiquement au MP4 et n'utilisent aucun service payant. Les scènes
 sans saut ni course ne comportent pas ces effets.
+
+### Audio stéréo continu
+
+Avec Soundtrack = ambient, le moteur génère un WAV original à 48 kHz, deux canaux, avec boucles continues et fondus de météo/émotion. Le fond sonore ne chute plus volontairement à zéro au début de chaque plan. Les mesures de niveau sont disponibles dans media-report.json. Le fichier MP4 doit toujours être écouté.

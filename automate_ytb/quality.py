@@ -149,7 +149,7 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         if wanted_music and not (output / "background-original.wav").is_file():
             errors.append("Requested original music WAV missing")
         if episode.get("soundtrack", {}).get("engine") != (
-                "ambient-original-v1" if wanted_music else "none"):
+                "ambient-original-v2-continuous-stereo" if wanted_music else "none"):
             errors.append("Incorrect soundtrack source in episode report")
         info = _probe(video)
         streams = info.get("streams", [])

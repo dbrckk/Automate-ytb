@@ -1,12 +1,12 @@
-"""Original, license-independent ambient audio beds for YouTube previews.
+"""Deterministic original stereo ambience with seamless loops and mood changes.
 
-All samples are created mathematically from scratch. No sample packs, copyrighted
-melodies, internet requests, downloaded weights, or subscription services are used.
+A procedural bed, not an orchestral soundtrack or production-ready score.
+No external samples, downloaded models, paid API, or reuse of existing music.
 """
 from __future__ import annotations
 
 from array import array
-import hashlib
+from functools import lru_cache
 import math
 from pathlib import Path
 import sys
@@ -14,16 +14,18 @@ import wave
 
 from .production import load_plan
 
-SAMPLERATE = 16000
+SAMPLERATE = 48000
+CHANNELS = 2
 LOOP_SECONDS = 8
-# Simple non-referential chord colors; not copies of recorded audio.
+MOOD_CROSSFADE_SECONDS = 0.85
+VERSION = "ambient-original-v2-continuous-stereo"
+
 CHORDS = {
     "warm": (130.81, 164.81, 196.0),
     "wonder": (146.83, 174.61, 220.0),
     "night": (110.0, 146.83, 164.81),
     "rain": (123.47, 155.56, 185.0),
 }
-VERSION = "ambient-original-v1"
 
 
 def _theme(direction: dict | None) -> str:
@@ -39,37 +41,45 @@ def _theme(direction: dict | None) -> str:
     return "warm"
 
 
+@lru_cache(maxsize=4)
 def _loop(theme: str) -> array:
-    """A soft synthesized pad with subtle original arpeggio; fades every 8 s.
+    """Eight-second harmonic loop with phase-continuous period boundaries.
 
-    The fade protects the repeated loop from clicks without any processing API.
+    Rounding each oscillator to an exact integer number of cycles per loop
+    avoids a hard sample discontinuity without fading the music to silence
+    every eight seconds. The soft per-note envelope remains periodic too.
     """
-    chord = CHORDS[theme]
-    samples = array("h")
-    n = SAMPLERATE * LOOP_SECONDS
+    if theme not in CHORDS:
+        raise ValueError("Unknown original musical theme")
+    chord = tuple(round(f * LOOP_SECONDS) / LOOP_SECONDS for f in CHORDS[theme])
+    lower = round(CHORDS[theme][0] * LOOP_SECONDS / 2) / LOOP_SECONDS
+    result = array("h")
     motif = (0, 1, 2, 1)
-    for k in range(n):
+    for k in range(SAMPLERATE * LOOP_SECONDS):
         t = k / SAMPLERATE
-        seconds_in_note = t % 2
-        note = chord[motif[int(t / 2) % 4]] * 2
-        attack = min(1.0, seconds_in_note / 0.14)
-        release = min(1.0, (2.0 - seconds_in_note) / 0.44)
-        # Warm fundamental + airy fifth; envelope swells slowly.
-        pad = sum(math.sin(math.tau * f * t + 0.15 * j) for j, f in enumerate(chord))
-        pad += .30 * math.sin(math.tau * chord[0] / 2 * t)
-        pluck = math.sin(math.tau * note * t) * max(0.0, attack * release) * .23
-        swell = .63 + .10 * math.sin(math.tau * t / 8)
-        # The loop smoothly approaches zero at each boundary.
-        seam = min(1., t / .17, (LOOP_SECONDS - t) / .17)
-        output = max(-1., min(1., (pad * .19 + pluck) * swell * seam))
-        samples.append(int(output * 12000))
-    return samples
+        part = t % 2
+        note = 2 * chord[motif[int(t / 2) % 4]]
+        envelope = min(1.0, part / .14, max(0.0, (2.0-part) / .44))
+        pad = sum(math.sin(math.tau*f*t + .15*j)
+                  for j, f in enumerate(chord))
+        pad += .30 * math.sin(math.tau * lower * t)
+        motif_signal = math.sin(math.tau*note*t) * envelope * .23
+        swell = .63 + .10 * math.sin(math.tau*t/LOOP_SECONDS)
+        sample = (pad*.19 + motif_signal) * swell
+        result.append(round(max(-1.0, min(1.0, sample)) * 12000))
+    return result
+
+
+def _smoothstep(value: float) -> float:
+    v = min(1.0, max(0.0, value))
+    return v*v*(3-2*v)
 
 
 def create_bed(*, plan_path: Path, output: Path,
                limit: int | None = None) -> dict:
     data = load_plan(plan_path)
-    if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0):
+    if limit is not None and (
+            not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0):
         raise ValueError("Scene limit must be a positive integer")
     selected = data["scenes"][:limit]
     if not selected:
@@ -79,44 +89,68 @@ def create_bed(*, plan_path: Path, output: Path,
         raise ValueError("Soundtrack duration must be within one hour")
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    loops = {name: _loop(name) for name in CHORDS}
-    scene_moods = [_theme(s.get("direction")) for s in selected]
-    target_samples = round(ms * SAMPLERATE / 1000)
+    moods = [_theme(scene.get("direction")) for scene in selected]
+    # Avoid rendering unrequested biomes: one-scene Android previews
+    # should only pay CPU time for one active musical theme.
+    loops = {name: _loop(name) for name in set(moods)}
+    total_frames = round(ms * SAMPLERATE / 1000)
+    loop_frames = LOOP_SECONDS * SAMPLERATE
+    intro_frames = round(.25 * SAMPLERATE)
+    outro_frames = round(.65 * SAMPLERATE)
+    blend_frames = round(MOOD_CROSSFADE_SECONDS * SAMPLERATE)
+    # Small side-to-side phase variation, without making a duplicate mono WAV.
+    stereo_offset = round(.009 * SAMPLERATE)
     produced = 0
-    fade_frames = int(SAMPLERATE * .22)
+    transitions = 0
+
     with wave.open(str(output), "wb") as dst:
-        dst.setnchannels(1)
+        dst.setnchannels(CHANNELS)
         dst.setsampwidth(2)
         dst.setframerate(SAMPLERATE)
-        for scene, mood in zip(selected, scene_moods):
-            end = min(target_samples, round(scene["endMs"] * SAMPLERATE / 1000))
-            count = end - produced
-            if count <= 0:
+        for idx, (scene, mood) in enumerate(zip(selected, moods)):
+            end = min(total_frames, round(scene["endMs"] * SAMPLERATE / 1000))
+            if end <= produced:
                 raise ValueError("Invalid non-monotonic scene timing")
-            src = loops[mood]
-            loop_length = len(src)
-            cursor = 0
-            while cursor < count:
-                block_count = min(8192, count - cursor)
+            previous_mood = moods[idx-1] if idx else mood
+            change = previous_mood != mood
+            if change:
+                transitions += 1
+            current = loops[mood]
+            previous = loops[previous_mood]
+            cursor = produced
+            scene_start = produced
+            while cursor < end:
+                frames = min(8192, end-cursor)
                 block = array("h")
-                for j in range(block_count):
-                    frame = cursor + j
-                    # A deterministic, click-free short fade between authored
-                    # scenes and at the very beginning/end of each episode.
-                    envelope = min(
-                        1.0, frame / fade_frames,
-                        max(0.0, (count - 1 - frame) / fade_frames))
-                    block.append(round(src[frame % loop_length] * envelope))
+                for j in range(frames):
+                    frame = cursor+j
+                    phase = frame % loop_frames
+                    right_phase = (frame+stereo_offset) % loop_frames
+                    weight = (_smoothstep((frame-scene_start)/blend_frames)
+                              if change else 1.0)
+                    # A changing mood fades between two continuous loops.
+                    left = (previous[phase]*(1-weight) +
+                            current[phase]*weight)
+                    right = (previous[right_phase]*(1-weight) +
+                             current[right_phase]*weight)
+                    gain = min(1.0, frame/max(1,intro_frames),
+                               max(0.0, (total_frames-1-frame)/max(1,outro_frames)))
+                    block.append(round(left*gain))
+                    block.append(round((.88*right + .12*left)*gain))
                 if sys.byteorder != "little":
                     block.byteswap()
                 dst.writeframesraw(block.tobytes())
-                cursor += block_count
+                cursor += frames
             produced = end
     return {
-        "file": str(output), "engine": VERSION, "source": "procedural-original",
-        "durationSeconds": round(target_samples / SAMPLERATE, 3),
-        "sampleRate": SAMPLERATE, "sceneThemes": scene_moods,
+        "file": str(output), "engine": VERSION,
+        "source": "procedural-original",
+        "durationSeconds": round(total_frames/SAMPLERATE, 3),
+        "sampleRate": SAMPLERATE, "channels": CHANNELS,
+        "loopSeconds": LOOP_SECONDS, "seamlessHarmonicLoop": True,
+        "moodCrossfadeSeconds": MOOD_CROSSFADE_SECONDS,
+        "moodTransitions": transitions, "sceneThemes": moods,
         "containsThirdPartyMusic": False, "externalApiCalls": 0,
         "providerCostUsd": "0",
-        "note": "Synthetic ambient draft with scene cross-fades to silence; verify musical suitability.",
+        "note": "Continuous synthetic stereo ambience; still requires human listening review.",
     }

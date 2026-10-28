@@ -4,6 +4,8 @@ import tempfile
 import unittest
 import wave
 
+from automate_ytb.soundtrack import SAMPLERATE
+
 from scripts.render_animation_showcase import (
     SCENES, SCENE_SECONDS, FPS, _stamp, write_captions, write_original_score)
 
@@ -33,8 +35,8 @@ class AnimationShowcaseTests(unittest.TestCase):
             write_original_score(path)
             with wave.open(str(path),"rb") as wav:
                 self.assertEqual(wav.getnchannels(),1)
-                self.assertEqual(wav.getframerate(),16000)
-                self.assertAlmostEqual(wav.getnframes()/16000,17.0,places=2)
+                self.assertEqual(wav.getframerate(),SAMPLERATE)
+                self.assertAlmostEqual(wav.getnframes()/SAMPLERATE,17.0,places=2)
             self.assertGreater(path.stat().st_size,400000)
 
 
