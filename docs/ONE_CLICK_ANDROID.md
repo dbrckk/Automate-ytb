@@ -524,3 +524,12 @@ regard vers le haut, le bas, la gauche ou la droite. Le moteur adapte les
 pupilles du personnage sans ajout d'assets, de GPU ou de service payant.
 La narration reste la source de vérité : un mouvement seul n'impose pas
 de direction au regard.
+
+### Rapport visuel après l'export
+
+Les livrables incluent `visual-preflight.json`, résumé de l'analyse des
+premières 18 secondes à deux images par seconde. Consultez ses avertissements
+en cas de plans noirs/blancs, immobilité prolongée ou sauts de luminosité.
+Une alerte ne prouve pas un défaut artistique (nuits et coupures peuvent
+être voulues). Le rapport reste une aide à la vérification humaine, et
+aucune publication n'est autorisée automatiquement.
