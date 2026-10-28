@@ -35,7 +35,7 @@ class FootContactGaitTests(unittest.TestCase):
         for action in ("idle", "talk", "rest", "jump", "fly", "surprise"):
             x, y = leg_position(action, side="left")
             self.assertNotIn("pow(max(0,-sin(", x+y)
-            self.assertNotIn("pow(max(0,-sin(", joint_angle(action, part="leg", side="left")))
+            self.assertNotIn("pow(max(0,-sin(", joint_angle(action, part="leg", side="left"))
 
     def test_input_validation_is_unchanged(self):
         for invalid_action in ("walk;movie=/etc/passwd", "slide"):
