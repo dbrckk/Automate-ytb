@@ -516,3 +516,11 @@ sans saut ni course ne comportent pas ces effets.
 ### Export vidéo plus propre : profil high
 
 Dans **One-click YouTube preview**, choisir **Render profile: high** et **Resolution: 1080p** pour un MP4 1920 × 1080 à 30 images/s, H.264 CRF 18 et AAC 256 kbit/s. Le rendu consomme davantage de CPU et de minutes GitHub Actions ; le mode **preview** garde les réglages économiques 24 images/s. Les illustrations de départ sont des dessins 2D de 1280 × 720, donc l'export 1080p ne crée pas à lui seul de nouveaux détails visuels. Un export technique haute qualité reste un brouillon tant que voix, montage, graphismes, musique et droits n'ont pas été examinés.
+
+### Regards expressifs dans les scènes
+
+Les récits originaux en français ou en anglais peuvent maintenant décrire un
+regard vers le haut, le bas, la gauche ou la droite. Le moteur adapte les
+pupilles du personnage sans ajout d'assets, de GPU ou de service payant.
+La narration reste la source de vérité : un mouvement seul n'impose pas
+de direction au regard.
