@@ -894,3 +894,18 @@ ne déclenche pas de nouvelle pose. Les objets que le personnage tient ou
 observe conservent la priorité de mise au point.
 Les mêmes poses dessinées sont utilisées pour les images approuvées et
 les vrais clips MP4. Il s'agit de poses 2D illustrées, pas de suivi oculaire 3D.
+
+### V2 — jeu facial animé des personnages
+
+Les quatre personnages dessinés (chouette, renard, lapin, chat) possèdent
+désormais un **calque de sourcils expressifs** synchronisé avec l'émotion
+explicitement détectée dans la narration française ou anglaise : surprise,
+inquiétude, curiosité, joie ou expression neutre. Les sourcils ont des
+trajectoires discrètes propres à la réaction et suivent le mouvement du
+corps dans le MP4; les affiches approuvées présentent le même visage à
+la pose de repos. Les expressions ne masquent pas les pupilles, paupières
+ni la bouche animée. Les calques originaux sont dessinés en local et
+ne nécessitent aucun service ou asset externe.
+
+Cela reste un jeu facial **2D**, sans capture d'acteur, vrai rig facial 3D
+ou synchronisation labiale par phonèmes.
