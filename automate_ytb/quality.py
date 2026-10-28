@@ -27,7 +27,7 @@ MAX_REPORT_BYTES = 1_000_000
 def _probe(path: Path) -> dict:
     done = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries",
-         "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate",
+         "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,sample_rate,channels",
          "-of", "json", str(path)], capture_output=True, text=True,
         timeout=60, check=False,
     )
@@ -175,10 +175,35 @@ def check(*, plan: Path, output: Path, expected_voice: str,
             metrics["resolution"] = list(dimensions)
             if dimensions not in ((1280, 720), (1920, 1080)):
                 errors.append("Unexpected video resolution")
+            selected_resolution = rendered.get("resolution")
+            expected_dimensions = {"720p": (1280, 720), "1080p": (1920, 1080)}.get(selected_resolution)
+            if expected_dimensions is None or dimensions != expected_dimensions:
+                errors.append("Encoded video resolution differs from export report")
+            try:
+                rate = video_streams[0]["r_frame_rate"]
+                numerator, denominator = (int(v) for v in rate.split("/"))
+                actual_fps = numerator / denominator
+                metrics["actualFps"] = actual_fps
+                if denominator <= 0 or abs(actual_fps - rendered.get("fps", 0)) > 0.02:
+                    errors.append("Actual encoded frame rate differs from render report")
+            except (KeyError, ValueError, ZeroDivisionError, TypeError):
+                errors.append("Cannot verify actual video frame rate")
             if video_streams[0].get("codec_name") != "h264":
                 errors.append("Unexpected video codec")
         if audio_streams and audio_streams[0].get("codec_name") != "aac":
             errors.append("Unexpected audio codec")
+        if audio_streams:
+            try:
+                rate = int(audio_streams[0]["sample_rate"])
+                channels = int(audio_streams[0]["channels"])
+                metrics["audioSampleRate"] = rate
+                metrics["audioChannels"] = channels
+                if rate != 48000:
+                    errors.append("Encoded AAC audio must be 48kHz")
+                if expected_render_profile == "high" and channels != 2:
+                    errors.append("High-quality output must use stereo AAC")
+            except (ValueError, KeyError, TypeError):
+                errors.append("Could not verify AAC sample rate and channels")
         if expected_audio and audio_streams:
             # A technically present AAC stream can still be completely silent.
             # Sample the beginning without analyzing or retaining private speech.
