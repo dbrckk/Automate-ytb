@@ -37,7 +37,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v31-narrated-firefly-glow"
+FOREST_RIG_VERSION = "forest-animals-v32-directed-eye-attention"
 
 
 def character_kind(character: str) -> str | None:
@@ -164,10 +164,11 @@ def _sprite_body(path: Path, *, kind: str, blink: bool,
             d.arc((eye_x - 31, 206, eye_x + 31, 235),
                   start=0, end=180, fill=INK, width=7)
         else:
-            if gaze not in ("forward", "right", "left", "down-right"):
+            if gaze not in ("forward", "right", "left", "up", "down", "down-right"):
                 raise ValueError("Unsupported original forest eye pose")
             shift_x, shift_y = {
                 "forward": (0, 0), "right": (12, 1), "left": (-12, 1),
+                "up": (0, -10), "down": (0, 10),
                 "down-right": (8, 8)}[gaze]
             focus_x = eye_x + shift_x
             d.ellipse((focus_x - 24, 184 + shift_y,
