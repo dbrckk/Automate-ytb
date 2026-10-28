@@ -241,7 +241,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            music: Path | None = None, caption_timing: str = "estimated",
            transition: str = "dissolve",
            render_profile: str = "preview") -> dict:
-    from .encoding_profiles import (settings, video_args, audio_bitrate,
+    from .encoding_profiles import (settings, video_args, aac_args,
                                     VERSION as ENCODING_VERSION)
     codec = settings(render_profile)
     if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
@@ -445,7 +445,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-i", str(music),
               "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", audio_bitrate(render_profile),
+              "-c:v", "copy", *aac_args(render_profile),
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     elif music is not None:
         # Silent storytelling also gets a modest, faded instrumental bed.
@@ -457,13 +457,12 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(music),
               "-filter_complex", filters, "-map", "0:v:0", "-map", "[out]",
-              "-c:v", "copy", "-c:a", "aac", "-b:a",
-              audio_bitrate(render_profile, music_only=True),
+              "-c:v", "copy", *aac_args(render_profile, music_only=True),
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     elif audio is not None:
         _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
               "-i", str(raw), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
-              "-c:v", "copy", "-c:a", "aac", "-b:a", audio_bitrate(render_profile),
+              "-c:v", "copy", *aac_args(render_profile),
               "-af", "apad,loudnorm=I=-16:LRA=11:TP=-1.5",
               "-t", f"{duration:.3f}", "-movflags", "+faststart", str(result)])
     else:
