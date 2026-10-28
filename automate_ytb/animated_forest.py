@@ -38,7 +38,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v33-expressive-brow-acting"
+FOREST_RIG_VERSION = "forest-animals-v34-surprise-followthrough"
 
 
 def character_kind(character: str) -> str | None:
