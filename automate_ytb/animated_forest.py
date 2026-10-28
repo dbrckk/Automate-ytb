@@ -383,8 +383,7 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                             style: str, destination: Path,
                             direction: dict | None = None,
                             held_prop: str | None = None,
-                            landscape: str | None = None,
-                       render_profile: str = "preview"):
+                            landscape: str | None = None):
     """Return a real static pose using exactly the approved motion layers."""
     with tempfile.TemporaryDirectory(prefix="automate-ytb-forest-poster-") as folder:
         layers = render_layers(Path(folder), kind=kind, topic=topic,
@@ -436,7 +435,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                        caption_segments: list[dict] | None = None,
                        scene_start_ms: int = 0,
                        mouth_intervals: list[tuple[float, float]] | None = None,
-                       landscape: str | None = None):
+                       landscape: str | None = None,
+                       render_profile: str = "preview"):
     if not 0 < duration <= 3600 or fps not in (24, 30):
         raise ValueError("Invalid forest animation duration or FPS")
     if (width, height) not in ((1280, 720), (1920, 1080)):
