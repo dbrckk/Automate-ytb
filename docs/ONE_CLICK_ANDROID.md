@@ -524,3 +524,9 @@ regard vers le haut, le bas, la gauche ou la droite. Le moteur adapte les
 pupilles du personnage sans ajout d'assets, de GPU ou de service payant.
 La narration reste la source de vérité : un mouvement seul n'impose pas
 de direction au regard.
+
+### Expressions faciales V2
+
+En mode cartoon, les émotions écrites explicitement dans la narration
+déterminent maintenant la forme et le discret mouvement des sourcils
+des animaux. Aucun réglage ni téléchargement supplémentaire n'est requis.
