@@ -876,3 +876,9 @@ Aucune luciole n'est inventée si le script évoque seulement une étoile
 ou une lumière ; cette restriction évite d'introduire des objets qui ne
 figurent pas dans le scénario. Il s'agit d'effets 2D originaux, et non
 d'objets 3D ou d'une simulation physique d'insectes.
+
+### Ambiance audio stéréo continue (V2)
+
+La musique instrumentale originale est désormais synthétisée en **48 kHz stéréo**. Les oscillateurs sont ajustés pour éviter les ruptures aux boucles de huit secondes. Lorsqu'une scène change d'ambiance, le moteur effectue un fondu progressif entre deux thèmes, sans revenir au silence à chaque plan. La normalisation EBU R128 et le ducking de la voix restent actifs.
+
+Ces pistes restent des nappes instrumentales synthétiques : l'écoute et la direction musicale humaines restent nécessaires pour évaluer leur qualité artistique.
