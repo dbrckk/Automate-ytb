@@ -13,7 +13,7 @@ class PlantedFootGaitTests(unittest.TestCase):
             self.assertIn("max(0,sin(",right[1])
             self.assertIn("3.141593",right[1])
             self.assertNotIn("3.141593",left[1])
-            self.assertIn("335",left[1])
+            self.assertTrue(left[1].startswith("519-"))
             self.assertEqual(left,leg_position(action,side="left"))
             self.assertNotIn(";",left[0]+left[1]+right[0]+right[1])
 
