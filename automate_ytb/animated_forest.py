@@ -383,7 +383,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                             style: str, destination: Path,
                             direction: dict | None = None,
                             held_prop: str | None = None,
-                            landscape: str | None = None):
+                            landscape: str | None = None,
+                       render_profile: str = "preview"):
     """Return a real static pose using exactly the approved motion layers."""
     with tempfile.TemporaryDirectory(prefix="automate-ytb-forest-poster-") as folder:
         layers = render_layers(Path(folder), kind=kind, topic=topic,
@@ -442,6 +443,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
         raise ValueError("Invalid forest animation resolution")
     if direction is not None:
         direction = validate_direction(direction)
+    from .encoding_profiles import video_args
+    video_args(render_profile)
     from .production import _run
     with tempfile.TemporaryDirectory(prefix="automate-ytb-forest-") as folder:
         layers = render_layers(Path(folder), kind=kind, topic=topic,
@@ -589,8 +592,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                      "-i", str(layers[name])]
         args += ["-filter_complex", fps_graph, "-map", "[out]",
                  "-frames:v", str(max(1, round(duration * fps))),
-                 "-r", str(fps), "-c:v", "libx264", "-preset",
-                 "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                 "-r", str(fps), *video_args(render_profile),
                  "-an", str(destination)]
         _run(args)
 
