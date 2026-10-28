@@ -917,3 +917,16 @@ Après le rendu, `visual-preflight.json` et la clé `visualPreflight` du rapport
 ### Réactions corporelles de surprise plus naturelles
 
 Le geste narratif de surprise intègre maintenant un léger mouvement secondaire amorti du corps, horizontal et vertical. Les autres gestes restent inchangés. Cet effet 2D original, gratuit et déterministe ne modifie ni la narration ni la cadence audio.
+
+### V2 — appuis des pattes au sol sans glissement vertical
+
+Les renards, lapins et chats originaux en marche/course ont maintenant des
+**appuis stables** : pendant la moitié du cycle où une patte est au sol,
+elle conserve des coordonnées de scène fixes, au lieu de monter et descendre
+avec le rebond du corps. Seule la phase d'oscillation relève et avance la
+patte, avec vitesse nulle au départ et à la réception. La patte gauche et
+la patte droite alternent, les mouvements de saut/vol/rest restent distincts.
+Il s'agit d'un rig 2D procédural et non d'un solveur IK ou de vraie
+simulation physique. Les fichiers audio, les sous-titres et les timecodes
+des scènes ne changent pas. La génération vidéo est vérifiée via décodage
+réel H.264.
