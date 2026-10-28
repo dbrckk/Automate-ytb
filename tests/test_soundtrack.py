@@ -48,7 +48,7 @@ class SoundtrackTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(first.read_bytes()).digest(),
                          hashlib.sha256(second.read_bytes()).digest())
         with wave.open(str(first), "rb") as audio:
-            self.assertEqual(audio.getnchannels(), 1)
+            self.assertEqual(audio.getnchannels(), 2)
             self.assertEqual(audio.getframerate(), SAMPLERATE)
             self.assertEqual(audio.getnframes(), 30 * SAMPLERATE)
 
