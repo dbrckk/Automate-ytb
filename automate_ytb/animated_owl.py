@@ -36,7 +36,7 @@ from .depth_layers import draw_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v28-narrated-firefly-glow"
+RIG_VERSION = "owl-rig-v29-directed-eye-attention"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -241,10 +241,11 @@ def _body(path: Path, *, blink: bool, emotion: str = "neutral",
         if blink:
             d.arc((dx-35,162,dx+35,190),0,180,fill=INK,width=8)
         else:
-            if gaze not in ("forward", "right", "down-right"):
+            if gaze not in ("forward", "right", "left", "up", "down", "down-right"):
                 raise ValueError("Unsupported original owl eye pose")
             shift_x, shift_y = {
                 "forward": (0, 0), "right": (13, 0),
+                "left": (-13, 0), "up": (0, -11), "down": (0, 10),
                 "down-right": (9, 8)}[gaze]
             eye_x = dx + shift_x
             d.ellipse((eye_x-29,139+shift_y,
