@@ -39,7 +39,7 @@ class CharacterFinishingTests(unittest.TestCase):
             self.assertGreater(owl.getchannel("A").getbbox()[3],350)
 
     def test_variable_blinks_and_reaction_double_blink_are_safe(self):
-        self.assertIn("v5", CHOREOGRAPHY_VERSION)
+        self.assertIn("v6", CHOREOGRAPHY_VERSION)
         initial=blink_enable("idle",scene_index=1)
         other=blink_enable("idle",scene_index=2)
         self.assertNotEqual(initial,other)

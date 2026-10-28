@@ -913,3 +913,7 @@ ou synchronisation labiale par phonèmes.
 ### Contrôle visuel automatique sur les MP4 réellement encodés
 
 Après le rendu, `visual-preflight.json` et la clé `visualPreflight` du rapport de rendu documentent une inspection **non bloquante** d'images réellement décodées : presque noires/blanches, immobilité prolongée et sauts de luminosité. Le module examine les **18 premières secondes**, à 2 images par seconde en miniature 96×54, gratuitement et hors ligne. Les alertes n'attestent pas d'un défaut artistique (nuit, fondu et coupe peuvent être intentionnels), et un échec de décodage est annoncé comme `inspection-failed`. Cette analyse partielle ne valide ni l'esthétique, ni tout le film, ni les droits des assets et ne déclenche aucune publication.
+
+### Réactions corporelles de surprise plus naturelles
+
+Le geste narratif de surprise intègre maintenant un léger mouvement secondaire amorti du corps, horizontal et vertical. Les autres gestes restent inchangés. Cet effet 2D original, gratuit et déterministe ne modifie ni la narration ni la cadence audio.
