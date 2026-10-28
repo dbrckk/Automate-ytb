@@ -11,15 +11,19 @@ import hashlib
 from pathlib import Path
 import tempfile
 
+from .encoding_profiles import video_args
+
 
 VERSION = "hold-frame-dissolve-v1"
 DISSOLVE_SECONDS = 0.32
 
 
 def transition_clips(clips: list[Path], *, cache: Path, fps: int,
-                     durations: list[float], mode: str = "dissolve"
+                     durations: list[float], mode: str = "dissolve",
+                     render_profile: str = "preview"
                      ) -> tuple[list[Path], dict]:
     """Create resumable, original, visually transitioned *silent* scene clips."""
+    video_args(render_profile)
     if mode not in {"dissolve", "cut"}:
         raise ValueError("Unknown scene transition; use dissolve or cut")
     if fps not in {24, 30}:
@@ -43,7 +47,7 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                     durations[i] * 0.35)
         # Never depend on a mutable clip name alone; production scene clips
         # contain approved image hashes, timing, direction and render version.
-        source = f"{VERSION}|{previous.name}|{current.name}|{fps}|{blend:.6f}"
+        source = f"{VERSION}|{previous.name}|{current.name}|{fps}|{blend:.6f}|{render_profile}"
         key = hashlib.sha256(source.encode()).hexdigest()[:20]
         dest = cache / f"scene-{i+1:03d}-dissolve-{key}.mp4"
         if not dest.is_file() or not dest.stat().st_size:
@@ -70,8 +74,8 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                           "-framerate", str(fps), "-i", str(still),
                           "-filter_complex", graph, "-map", "[out]",
                           "-frames:v", str(round(durations[i] * fps)),
-                          "-r", str(fps), "-c:v", "libx264", "-preset", "veryfast",
-                          "-crf", "21", "-pix_fmt", "yuv420p", "-an", str(temp)])
+                          "-r", str(fps), *video_args(render_profile),
+                          "-an", str(temp)])
                     if not temp.is_file() or not temp.stat().st_size:
                         raise RuntimeError("Empty cinematic transition clip")
                     temp.replace(dest)

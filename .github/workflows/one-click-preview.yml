@@ -64,6 +64,11 @@ on:
         type: choice
         options: [720p, 1080p]
         default: 720p
+      render_profile:
+        type: choice
+        description: "preview = fast 24fps; high = H.264 medium CRF 18, 30fps and AAC 256k (slower CPU render)"
+        options: [preview, high]
+        default: preview
 
 permissions:
   contents: read
@@ -131,6 +136,7 @@ jobs:
           YT_CAPTION_TIMING: ${{ inputs.caption_timing }}
           YT_TRANSITION: ${{ inputs.transition }}
           YT_RESOLUTION: ${{ inputs.resolution }}
+          YT_RENDER_PROFILE: ${{ inputs.render_profile }}
         run: |
           python -m automate_ytb.scene_plan \
             --topic "$YT_TOPIC" --script build/script.txt \
@@ -144,7 +150,8 @@ jobs:
             --voice "$YT_VOICE" --voice-style "$YT_VOICE_STYLE" --resolution "$YT_RESOLUTION" \
             --soundtrack "$YT_SOUNDTRACK" \
             --caption-timing "$YT_CAPTION_TIMING" \
-            --transition "$YT_TRANSITION"
+            --transition "$YT_TRANSITION" \
+            --render-profile "$YT_RENDER_PROFILE"
       - name: Package Kokoro voice attribution for editorial review
         if: ${{ inputs.voice == 'kokoro' }}
         run: cp docs/VOICE_CREDITS.md build/video/VOICE_CREDITS.md
@@ -152,11 +159,13 @@ jobs:
         env:
           EXPECT_VOICE: ${{ inputs.voice }}
           EXPECT_SOUNDTRACK: ${{ inputs.soundtrack }}
+          EXPECT_PROFILE: ${{ inputs.render_profile }}
         run: |
           python -m automate_ytb.quality \
             --plan build/scene-plan.json --output build/video \
             --expect-voice "$EXPECT_VOICE" \
             --expect-soundtrack "$EXPECT_SOUNDTRACK" \
+            --expect-render-profile "$EXPECT_PROFILE" \
             --report build/video/quality-report.json
       - name: Review technical output and export VTT subtitles
         env:

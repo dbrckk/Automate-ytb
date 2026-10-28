@@ -27,7 +27,7 @@ MAX_REPORT_BYTES = 1_000_000
 def _probe(path: Path) -> dict:
     done = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries",
-         "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate",
+         "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate,sample_rate,channels",
          "-of", "json", str(path)], capture_output=True, text=True,
         timeout=60, check=False,
     )
@@ -61,11 +61,13 @@ def _picture_decodes(path: Path, second: float) -> bool:
 
 def check(*, plan: Path, output: Path, expected_voice: str,
           expected_soundtrack: str, report_path: Path | None = None,
-          decode_frames: bool = True) -> dict:
+          decode_frames: bool = True, expected_render_profile: str = "preview") -> dict:
     if expected_voice not in ("none", "espeak", "kokoro"):
         raise ValueError("Expected voice must be none, espeak or kokoro")
     if expected_soundtrack not in ("none", "ambient"):
         raise ValueError("Expected soundtrack must be none or ambient")
+    from .encoding_profiles import settings
+    codec = settings(expected_render_profile)
     data = load_plan(plan)
     output = output.resolve()
     expected_audio = expected_voice != "none" or expected_soundtrack != "none"
@@ -101,6 +103,15 @@ def check(*, plan: Path, output: Path, expected_voice: str,
             errors.append("No preview may be automatically approved for publication")
         if episode.get("factChecked") is not False:
             errors.append("Fact-checking must not be falsely marked as complete")
+        metrics["renderProfile"] = rendered.get("renderProfile")
+        if rendered.get("renderProfile") != expected_render_profile:
+            errors.append("Rendered MP4 profile disagrees with the requested quality")
+        if episode.get("renderProfile") != expected_render_profile:
+            errors.append("Episode report lacks the requested delivery profile")
+        if rendered.get("videoEncodingPreset") != codec["preset"]:
+            errors.append("Reported H.264 encoder preset disagrees with the selected profile")
+        if rendered.get("videoEncodingCrf") != codec["crf"]:
+            errors.append("Reported H.264 CRF disagrees with the selected profile")
         if not rendered.get("previewOnly"):
             errors.append("Export must remain a preview")
         count = rendered.get("scenesRendered")
@@ -164,10 +175,35 @@ def check(*, plan: Path, output: Path, expected_voice: str,
             metrics["resolution"] = list(dimensions)
             if dimensions not in ((1280, 720), (1920, 1080)):
                 errors.append("Unexpected video resolution")
+            selected_resolution = rendered.get("resolution")
+            expected_dimensions = {"720p": (1280, 720), "1080p": (1920, 1080)}.get(selected_resolution)
+            if expected_dimensions is None or dimensions != expected_dimensions:
+                errors.append("Encoded video resolution differs from export report")
+            try:
+                rate = video_streams[0]["r_frame_rate"]
+                numerator, denominator = (int(v) for v in rate.split("/"))
+                actual_fps = numerator / denominator
+                metrics["actualFps"] = actual_fps
+                if denominator <= 0 or abs(actual_fps - rendered.get("fps", 0)) > 0.02:
+                    errors.append("Actual encoded frame rate differs from render report")
+            except (KeyError, ValueError, ZeroDivisionError, TypeError):
+                errors.append("Cannot verify actual video frame rate")
             if video_streams[0].get("codec_name") != "h264":
                 errors.append("Unexpected video codec")
         if audio_streams and audio_streams[0].get("codec_name") != "aac":
             errors.append("Unexpected audio codec")
+        if audio_streams:
+            try:
+                rate = int(audio_streams[0]["sample_rate"])
+                channels = int(audio_streams[0]["channels"])
+                metrics["audioSampleRate"] = rate
+                metrics["audioChannels"] = channels
+                if rate != 48000:
+                    errors.append("Encoded AAC audio must be 48kHz")
+                if expected_render_profile == "high" and channels != 2:
+                    errors.append("High-quality output must use stereo AAC")
+            except (ValueError, KeyError, TypeError):
+                errors.append("Could not verify AAC sample rate and channels")
         if expected_audio and audio_streams:
             # A technically present AAC stream can still be completely silent.
             # Sample the beginning without analyzing or retaining private speech.
@@ -246,11 +282,14 @@ def main(argv=None) -> int:
     p.add_argument("--expect-voice", choices=["none", "espeak", "kokoro"], required=True)
     p.add_argument("--expect-soundtrack", choices=["none", "ambient"], required=True)
     p.add_argument("--report", type=Path)
+    p.add_argument("--expect-render-profile", choices=["preview", "high"],
+                   default="preview")
     args = p.parse_args(argv)
     try:
         result = check(plan=args.plan, output=args.output,
                        expected_voice=args.expect_voice,
                        expected_soundtrack=args.expect_soundtrack,
+                       expected_render_profile=args.expect_render_profile,
                        report_path=args.report)
     except (OSError, ValueError) as exc:
         print("ERROR:", exc, file=sys.stderr)

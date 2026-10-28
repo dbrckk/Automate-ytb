@@ -876,3 +876,9 @@ Aucune luciole n'est inventée si le script évoque seulement une étoile
 ou une lumière ; cette restriction évite d'introduire des objets qui ne
 figurent pas dans le scénario. Il s'agit d'effets 2D originaux, et non
 d'objets 3D ou d'une simulation physique d'insectes.
+
+### Profil d'export vidéo haute qualité (facultatif)
+
+Le workflow Android propose désormais **render_profile = high** pour un vrai encodage H.264 avec preset `medium`, CRF 18, narration et musique AAC jusqu'à 256 kbit/s et **30 images/s**. Choisir également **1080p** dans Resolution pour exporter 1920 × 1080. Le profil `preview` conserve 24 images/s et un encodeur rapide pour économiser le temps de calcul GitHub Actions. Les clips animés et les transitions utilisent le même profil, et le cache distingue leurs paramètres. Le contrôle qualité vérifie le profil demandé et les caractéristiques du MP4 produit.
+
+Ce choix améliore la **qualité d'encodage et la fluidité temporelle**. Il n'ajoute ni détails aux illustrations 1280 × 720 agrandies, ni voix réaliste, ni scènes 3D. Une livraison professionnelle reste conditionnée à la qualité des sources, à l'écoute, au rythme du montage, aux licences et à la validation humaine.

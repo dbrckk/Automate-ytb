@@ -259,8 +259,11 @@ def build_preview(*, plan_path: Path, output: Path,
                   soundtrack: str = "none",
                   caption_timing: str = "estimated",
                   transition: str = "dissolve",
-                  voice_style: str = "natural") -> dict:
+                  voice_style: str = "natural",
+                  render_profile: str = "preview") -> dict:
     from .voice_pacing import speaking_speed
+    from .encoding_profiles import settings as export_settings
+    export_settings(render_profile)
     speaking_speed(style=voice_style)
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
@@ -306,7 +309,9 @@ def build_preview(*, plan_path: Path, output: Path,
         plan=plan_path, destination=output / "story-preflight.json")
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
-                               resolution=resolution, fps=24,
+                               resolution=resolution,
+                               fps=30 if render_profile == "high" else 24,
+                               render_profile=render_profile,
                                music=soundtrack_file,
                                transition=transition,
                                caption_timing=("audio" if voice_file is not None
@@ -320,6 +325,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "status": "draft", "publicationApproved": False, "factChecked": False,
         "reviewBeforePublication": True, "topic": data["topic"],
         "art": art, "voice": details,
+        "renderProfile": render_profile,
         "voicePreview": str(voice_sample) if voice_sample is not None else None,
         "soundtrack": soundtrack_report,
         "render": result,
@@ -361,6 +367,8 @@ def main(argv=None) -> int:
                    default="estimated",
                    help="Audio mode measures synthesized phrase boundaries; not word alignment")
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
+    p.add_argument("--render-profile", choices=["preview", "high"],
+                   default="preview", help="H.264/AAC encoding: fast preview or higher-quality 30fps")
     p.add_argument("--limit", type=int)
     args = p.parse_args(argv)
     try:
@@ -370,7 +378,8 @@ def main(argv=None) -> int:
                                voice_style=args.voice_style, resolution=args.resolution,
                                soundtrack=args.soundtrack, limit=args.limit,
                                caption_timing=args.caption_timing,
-                               transition=args.transition)
+                               transition=args.transition,
+                               render_profile=args.render_profile)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],

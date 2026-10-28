@@ -435,13 +435,16 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                        caption_segments: list[dict] | None = None,
                        scene_start_ms: int = 0,
                        mouth_intervals: list[tuple[float, float]] | None = None,
-                       landscape: str | None = None):
+                       landscape: str | None = None,
+                       render_profile: str = "preview"):
     if not 0 < duration <= 3600 or fps not in (24, 30):
         raise ValueError("Invalid forest animation duration or FPS")
     if (width, height) not in ((1280, 720), (1920, 1080)):
         raise ValueError("Invalid forest animation resolution")
     if direction is not None:
         direction = validate_direction(direction)
+    from .encoding_profiles import video_args
+    video_args(render_profile)
     from .production import _run
     with tempfile.TemporaryDirectory(prefix="automate-ytb-forest-") as folder:
         layers = render_layers(Path(folder), kind=kind, topic=topic,
@@ -589,8 +592,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                      "-i", str(layers[name])]
         args += ["-filter_complex", fps_graph, "-map", "[out]",
                  "-frames:v", str(max(1, round(duration * fps))),
-                 "-r", str(fps), "-c:v", "libx264", "-preset",
-                 "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                 "-r", str(fps), *video_args(render_profile),
                  "-an", str(destination)]
         _run(args)
 
