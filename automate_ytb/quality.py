@@ -191,6 +191,34 @@ def check(*, plan: Path, output: Path, expected_voice: str,
                         errors.append("The exported audio stream is effectively silent")
                     elif peak > -0.1:
                         warnings.append("Audio peak approaches digital clipping; listen to output")
+        if expected_audio and audio_streams:
+            # Measure the entire soundtrack rather than only the opening.
+            # A silent middle/end or sustained clipping can pass the initial
+            # four-second peak check. EBU R128 measurements remain advisory
+            # because artistic loudness varies by narration and genre.
+            dynamics = subprocess.run(
+                ["ffmpeg", "-nostdin", "-hide_banner", "-i", str(video),
+                 "-map", "0:a:0", "-vn", "-af",
+                 "ebur128=peak=true", "-f", "null", "-"],
+                capture_output=True, text=True, timeout=180, check=False)
+            if dynamics.returncode:
+                warnings.append("Full-program audio dynamics could not be measured")
+            else:
+                tail = dynamics.stderr.rsplit("Summary:", 1)[-1]
+                integrated = re.search(r"Integrated loudness:\\s*I:\\s*(-?\\d+(?:\\.\\d+)?) LUFS", tail)
+                true_peak = re.search(r"True peak:\\s*Peak:\\s*(-?\\d+(?:\\.\\d+)?) dBFS", tail)
+                if integrated:
+                    lufs = float(integrated[1])
+                    metrics["integratedLoudnessLUFS"] = lufs
+                    if lufs < -30:
+                        warnings.append("Program loudness is unusually low; review voice audibility")
+                    elif lufs > -10:
+                        warnings.append("Program loudness is unusually high; review listening comfort")
+                if true_peak:
+                    dbtp = float(true_peak[1])
+                    metrics["truePeakDbFS"] = dbtp
+                    if dbtp > -0.5:
+                        warnings.append("True peak is close to clipping; review the final mix")
         try:
             duration = float(info["format"]["duration"])
         except (KeyError, TypeError, ValueError, OverflowError):
