@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-surprise-followthrough"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v7-foot-stance-lock"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -135,11 +135,16 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
         tuck = f"(({rise})*({rise})*(3-2*({rise}))-({fall})*({fall})*(3-2*({fall})))"
         y = f"({parent_y})+335-{lift}*({tuck})"
     elif action in {"walk", "run"}:
-        # A planted stance occupies half of each gait cycle. The leg only
-        # lifts during the other half, with zero vertical speed at toe-off
-        # and touchdown. Opposite phases alternate the planted foot.
+        # World-space foot planting: while the foot is grounded its x/y
+        # coordinates are fixed, even when the actor body keeps bobbing.
+        # Only the swing phase lifts and advances the independently
+        # articulated leg; the squared sinusoid has zero velocity at
+        # takeoff and touchdown. Right/left alternate by pi radians.
         swing = f"max(0,sin(t*{frequency}+{phase}))"
-        y = f"({parent_y})+335-{lift}*({swing})*({swing})"
+        planted_x = body_x + LEG_ANCHORS[side]
+        planted_y = body_y + 335
+        x = f"{planted_x}+{reach}*({swing})*({swing})"
+        y = f"{planted_y}-{lift}*({swing})*({swing})"
     elif action == "fly":
         y = f"({parent_y})+335+{lift}*sin(t*{frequency}+{phase})"
     else:
