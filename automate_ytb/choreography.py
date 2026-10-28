@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v5-expressive-blinks"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-reaction-followthrough"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -38,8 +38,10 @@ def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
         raise ValueError("Unsafe rig origin")
     horizontal, hf, vertical, vf, kind = PROFILES[action]
     if kind == "reaction":
-        xp = f"{x}+{horizontal}*exp(-1.3*t)*sin(t*8)"
-        yp = f"{y}-{vertical}*exp(-1.1*t)*abs(sin(t*{vf}))"
+        xp = (f"{x}+{horizontal}*exp(-1.3*t)*sin(t*8)"
+              f"+3*exp(-0.8*t)*sin(t*3.1)")
+        yp = (f"{y}-{vertical}*exp(-1.1*t)*abs(sin(t*{vf}))"
+              f"+4*exp(-1.8*t)*sin(t*12)")
     else:
         # Secondary low-frequency sway prevents perfectly repeated robotic arcs.
         xp = f"{x}+{horizontal}*sin(t*{hf})+1.2*sin(t*0.37)"
