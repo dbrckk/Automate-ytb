@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v6-surprise-followthrough"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v7-landing-settle"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -146,6 +146,20 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
         y = f"({parent_y})+335-{lift}*(0.5+0.5*sin(t*{frequency}+{phase}))"
     return x, y
 
+
+def landing_settle(action: str) -> str:
+    """Trusted transient landing compression; zero for other action classes.
+
+    A smooth impact pulse after each authored 1.75 s jump cycle. This
+    expression can drive a squash or ground shadow in later rig layers.
+    """
+    if action not in ACTIONS or action not in PROFILES:
+        raise ValueError("Unknown original animation action")
+    if action != "jump":
+        return "0"
+    phase = "mod(t,1.75)"
+    impact = f"max(0,1-abs(({phase})-1.39)/0.18)"
+    return f"({impact})*({impact})"
 
 
 def blink_enable(action: str, *, scene_index: int) -> str:
