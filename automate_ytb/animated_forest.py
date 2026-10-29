@@ -588,7 +588,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             graph=fps_graph, label=final, names=names)
         fps_graph, final, names = append_motion_accent(
             graph=fps_graph, label=final, names=names,
-            action=action, body_x=body_x, ground_y=586)
+            action=action, body_x=body_x, ground_y=586,
+            foot_origin_x=180)
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
             shot, width=width, height=height, fps=fps,

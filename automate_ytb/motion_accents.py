@@ -7,12 +7,15 @@ an accent. No particle simulation, downloads or external animation models.
 from __future__ import annotations
 
 import hashlib
+import math
 from pathlib import Path
 from random import Random
 
+from .choreography import LEG_ANCHORS, LEG_MOTION
+
 from PIL import Image, ImageDraw, ImageFilter
 
-KINETIC_VERSION = "original-motion-accents-v1"
+KINETIC_VERSION = "original-motion-accents-v2-footfall-locked"
 KINETIC_ACTIONS = frozenset(("jump", "run"))
 WEATHERS = frozenset(("day", "night", "cloudy", "rain", "wind", "storm"))
 LANDSCAPES = frozenset(("forest", "river", "meadow", "village"))
@@ -36,7 +39,7 @@ def draw_motion_accent(destination: Path, *, action: str, weather: str,
              (172, 151, 110))
     plate = Image.new("RGBA", (600, 220), (0, 0, 0, 0))
     d = ImageDraw.Draw(plate, "RGBA")
-    anchors = (102, 500) if action == "jump" else (72, 157)
+    anchors = (102, 500) if action == "jump" else (250,)
     for center in anchors:
         for i in range(11):
             x = center + rnd.randrange(-68, 69)
@@ -66,7 +69,7 @@ def draw_motion_accent(destination: Path, *, action: str, weather: str,
 
 def append_motion_accent(*, graph: str, label: str, names: list[str],
                          action: str, body_x: str,
-                         ground_y: int) -> tuple[str, str, list[str]]:
+                         ground_y: int, foot_origin_x: int | None = None) -> tuple[str, str, list[str]]:
     """Append a safe accent over actor feet, only for a specified jump/run.
 
     The PNG is transparent and softly blurred; the reviewed expressions
@@ -84,13 +87,34 @@ def append_motion_accent(*, graph: str, label: str, names: list[str],
         raise ValueError("Invalid grounded motion level")
     if not isinstance(label, str) or not label or not isinstance(graph, str):
         raise ValueError("Invalid image graph")
+    if foot_origin_x is not None and (
+            not isinstance(foot_origin_x, int) or isinstance(foot_origin_x, bool)
+            or not 0 <= foot_origin_x <= 900):
+        raise ValueError("Invalid original foot origin")
     input_index = len(names)
     if action == "run":
+        # Trigger two individually positioned puffs on the exact touchdown
+        # phases used by the independently planted run paws. Previously,
+        # 0.55s repeated against the 10.2-rad/s stride and visibly drifted.
+        frequency = LEG_MOTION["run"][2]
+        period = 2 * math.pi / frequency
+        half = period / 2
+        left_cycle = f"mod(t,{period:.6f})"
+        right_cycle = f"mod(t+{half:.6f},{period:.6f})"
+        # The 300px effect plate is centered at x=125. The foot anchor is
+        # fixed in world-space while planted (not parented to torso sway).
+        origin = str(foot_origin_x) if foot_origin_x is not None else f"({body_x})"
+        left_x = f"({origin})+{LEG_ANCHORS['left']}-125"
+        right_x = f"({origin})+{LEG_ANCHORS['right']}-125"
         graph += (
-            f";[{label}][{input_index}:v]overlay="
-            f"x='({body_x})+24-14*mod(t,0.55)':"
-            f"y='{ground_y}-12-20*mod(t,0.55)':"
-            "enable='between(mod(t,0.55),0.06,0.27)':"
+            f";[{input_index}:v]split=2[footpuffleft][footpuffright]"
+            f";[{label}][footpuffleft]overlay="
+            f"x='{left_x}':y='{ground_y}-12-17*({left_cycle})':"
+            f"enable='between({left_cycle},0,0.13)':"
+            "eval=frame:format=auto[runstepA]"
+            ";[runstepA][footpuffright]overlay="
+            f"x='{right_x}':y='{ground_y}-12-17*({right_cycle})':"
+            f"enable='between({right_cycle},0,0.13)':"
             "eval=frame:format=auto[motiondone]"
         )
     else:
