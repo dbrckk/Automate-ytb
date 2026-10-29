@@ -37,7 +37,7 @@ from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v32-independent-foreground-wind"
+RIG_VERSION = "owl-rig-v33-continuous-jump"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
