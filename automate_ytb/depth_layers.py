@@ -10,7 +10,7 @@ import random
 from pathlib import Path
 from PIL import Image, ImageDraw
 
-DEPTH_VERSION = "original-foreground-parallax-v1"
+DEPTH_VERSION = "original-foreground-parallax-v2-independent-weather-sway"
 BIOMES = ("forest", "river", "village", "meadow")
 
 
@@ -66,22 +66,75 @@ def draw_foreground(destination: Path, *, landscape: str, seed: str,
     im.save(destination, format="PNG")
 
 
+
+WEATHER_SWAY = {
+    # Main lateral arc, secondary gust and angular speed (radians/second).
+    "day": (2.0, 1.0, 0.63),
+    "night": (1.2, 0.7, 0.41),
+    "cloudy": (3.0, 1.5, 0.88),
+    "rain": (4.0, 2.0, 1.10),
+    "wind": (7.0, 3.0, 1.44),
+    "storm": (8.0, 4.0, 1.72),
+}
+
+
+def split_foreground(source: Path, left: Path, right: Path) -> None:
+    """Losslessly partition the original RGBA plate into independent halves.
+
+    The approved original poster uses the unsplit layer. Two halves recreate
+    its first video frame exactly; no overlapping pixels or central seams.
+    """
+    with Image.open(source) as picture:
+        if picture.mode != "RGBA" or picture.size != (1280, 720):
+            raise ValueError("Expected original RGBA foreground plate")
+        for output, region, pos in (
+            (left, (0, 0, 640, 720), (0, 0)),
+            (right, (640, 0, 1280, 720), (640, 0)),
+        ):
+            if output == source or left == right:
+                raise ValueError("Foreground halves must use distinct paths")
+            half = Image.new("RGBA", picture.size)
+            half.paste(picture.crop(region), pos)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            half.save(output, format="PNG")
+
+
 def overlay_foreground(*, graph: str, label: str, names: list[str],
-                       scene_index: int, duration: float) -> tuple[str,str,list[str]]:
-    """Append a side-edge parallax plate with mild horizontal and vertical sway."""
-    if not isinstance(scene_index,int) or isinstance(scene_index,bool) or not 1 <= scene_index <= 1200:
+                       scene_index: int, duration: float,
+                       weather: str = "day") -> tuple[str, str, list[str]]:
+    """Add independent, out-of-phase vegetation sway on both camera edges.
+
+    Mild organic oscillation in calm weather; stronger but bounded gusts in
+    wind and storms. These are trusted literal FFmpeg expressions, not user
+    input. The first frame is aligned to the approved still (all sin(0)=0).
+    """
+    if (not isinstance(scene_index, int) or isinstance(scene_index, bool)
+            or not 1 <= scene_index <= 1200):
         raise ValueError("Invalid scene index")
-    if not isinstance(duration,(float,int)) or isinstance(duration,bool) or not 0 < duration <= 3600:
+    if (not isinstance(duration, (int, float)) or isinstance(duration, bool)
+            or not 0 < duration <= 3600):
         raise ValueError("Invalid video duration")
-    if "foreground" not in names:
-        names = names + ["foreground"]
-    idx=names.index("foreground")
-    new_label="fgdone"
-    if label == new_label:
-        raise ValueError("Foreground label already used")
-    sign=1 if scene_index%2 else -1
-    # Frame-safe overlay: 1280x720 plate, moving at most 3px on screen.
-    extra=(f";[{label}][{idx}:v]overlay="
-           f"x='{sign}*2*sin(t*0.63)':y='2*sin(t*0.47)':"
-           f"eval=frame:format=auto[{new_label}]")
-    return graph+extra,new_label,names
+    if weather not in WEATHER_SWAY:
+        raise ValueError("Unsupported weather-driven parallax")
+    if not isinstance(graph, str) or not isinstance(label, str) or not label:
+        raise ValueError("Invalid graph input")
+    if any(key in names for key in ("foreground_left", "foreground_right")):
+        raise ValueError("Foreground already applied")
+    a, b, speed = WEATHER_SWAY[weather]
+    # Each plate has a different rhythm and opposite lateral direction.
+    # Both oscillations start at zero and max displacement is <= 12px.
+    scene_sign = 1 if scene_index % 2 else -1
+    left_index = len(names)
+    right_index = left_index + 1
+    a_text, b_text = f"{a:g}", f"{b:g}"
+    left_x = (f"{scene_sign}*{a_text}*sin(t*{speed:.2f})"
+              f"+{b_text}*sin(t*{speed*2.2:.3f})")
+    right_x = (f"-{scene_sign}*{a_text}*sin(t*{speed*0.83:.3f})"
+               f"-{b_text}*sin(t*{speed*1.71:.3f})")
+    graph += (
+        f";[{label}][{left_index}:v]overlay=x='{left_x}':"
+        "y='1.4*sin(t*0.52)':eval=frame:format=auto[fgleftrender]"
+        f";[fgleftrender][{right_index}:v]overlay=x='{right_x}':"
+        "y='-1.1*sin(t*0.71)':eval=frame:format=auto[fgdone]"
+    )
+    return graph, "fgdone", names + ["foreground_left", "foreground_right"]

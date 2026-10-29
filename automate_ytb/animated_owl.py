@@ -33,11 +33,11 @@ from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_AC
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
 from .living_world import draw_ambient_layers, append_ambient_overlays
-from .depth_layers import draw_foreground, overlay_foreground
+from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v31-surprise-followthrough"
+RIG_VERSION = "owl-rig-v32-independent-foreground-wind"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -357,6 +357,10 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
+    outputs["foreground_left"] = folder / "foreground_left.png"
+    outputs["foreground_right"] = folder / "foreground_right.png"
+    split_foreground(outputs["foreground"], outputs["foreground_left"],
+                     outputs["foreground_right"])
     draw_lighting(outputs["lighting"],
                   weather=direction["weather"] if direction else "day",
                   landscape=landscape or "forest",
@@ -512,7 +516,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             enabled="story_glow" in layers)
         f, final_label, keys = overlay_foreground(
             graph=f, label=final_label, names=keys,
-            scene_index=scene_index, duration=duration)
+            scene_index=scene_index, duration=duration,
+            weather=direction["weather"] if direction else "day")
         f, final_label, keys = overlay_lighting(
             graph=f, label=final_label, names=keys)
         f, final_label, keys = append_motion_accent(

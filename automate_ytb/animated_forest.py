@@ -35,10 +35,10 @@ from .motion_accents import draw_motion_accent, append_motion_accent, KINETIC_AC
 from .joint_motion import joint_angle
 from .focus_depth import soften_environment_plate
 from .living_world import draw_ambient_layers, append_ambient_overlays
-from .depth_layers import draw_foreground, overlay_foreground
+from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v35-planted-contact-gait"
+FOREST_RIG_VERSION = "forest-animals-v36-independent-foreground-wind"
 
 
 def character_kind(character: str) -> str | None:
@@ -319,6 +319,10 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     draw_foreground(outputs["foreground"], landscape=landscape or "forest",
                     seed=f"{topic}|{narration}|{scene_index}",
                     night=bool(direction and direction["weather"] == "night"))
+    outputs["foreground_left"] = folder / "foreground_left.png"
+    outputs["foreground_right"] = folder / "foreground_right.png"
+    split_foreground(outputs["foreground"], outputs["foreground_left"],
+                     outputs["foreground_right"])
     draw_lighting(outputs["lighting"],
                   weather=direction["weather"] if direction else "day",
                   landscape=landscape or "forest",
@@ -583,7 +587,8 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             enabled="story_glow" in layers)
         fps_graph, final, names = overlay_foreground(
             graph=fps_graph, label=final, names=names,
-            scene_index=scene_index, duration=duration)
+            scene_index=scene_index, duration=duration,
+            weather=direction["weather"] if direction else "day")
         fps_graph, final, names = overlay_lighting(
             graph=fps_graph, label=final, names=names)
         fps_graph, final, names = append_motion_accent(
