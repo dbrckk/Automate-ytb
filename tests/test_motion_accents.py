@@ -17,7 +17,7 @@ from automate_ytb.animated_owl import render_layers as owl_layers
 
 class KineticEffectsTests(unittest.TestCase):
     def test_original_deterministic_weather_sensitive_transparency(self):
-        self.assertIn("v1", KINETIC_VERSION)
+        self.assertIn("v2", KINETIC_VERSION)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             a, b, c = [root / f"{i}.png" for i in range(3)]
@@ -57,7 +57,11 @@ class KineticEffectsTests(unittest.TestCase):
                     self.assertIn("1.39,1.65", graph)
                     self.assertIn("split=2", graph)
                 else:
-                    self.assertIn("mod(t,0.55)", graph)
+                    self.assertIn("split=2", graph)
+                    self.assertIn("[runstepA]", graph)
+                    self.assertNotIn("mod(t,0.55)", graph)
+                    self.assertIn("mod(t,", graph)
+                    self.assertIn("mod(t+", graph)
         graph, label, names = append_motion_accent(
             graph="start", label="g", names=["background"],
             action="idle", body_x="180", ground_y=586)
