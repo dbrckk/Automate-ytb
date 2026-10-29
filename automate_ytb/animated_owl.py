@@ -517,7 +517,8 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
             graph=f, label=final_label, names=keys)
         f, final_label, keys = append_motion_accent(
             graph=f, label=final_label, names=keys,
-            action=action, body_x=body_x, ground_y=545)
+            action=action, body_x=body_x, ground_y=545,
+            foot_origin_x=204)
         from .cinematic_camera import framing_filter
         shot = direction["shot"] if direction else "wide"
         camera = framing_filter(
