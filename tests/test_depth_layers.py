@@ -75,7 +75,7 @@ class LayeredDepthTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             overlay_foreground(**args, weather="storm;movie=secret")
         with self.assertRaises(ValueError):
-            overlay_foreground(**args, weather="day", scene_index=0)
+            overlay_foreground(graph="[0:v]null[g]", label="g",\n                               names=["background"], scene_index=0,\n                               duration=2.8, weather="day")
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "Real encoded FFmpeg video required")
