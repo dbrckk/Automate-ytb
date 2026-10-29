@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from PIL import Image, ImageChops, ImageStat
 
-from automate_ytb.depth_layers import draw_foreground, overlay_foreground
+from automate_ytb.depth_layers import draw_foreground, split_foreground, overlay_foreground, WEATHER_SWAY
 from automate_ytb.animated_forest import render_motion_clip, render_character_poster
 
 
@@ -36,11 +36,46 @@ class LayeredDepthTests(unittest.TestCase):
             graph="[0:v]null[g]",label="g",names=["background"],
             scene_index=2,duration=3.5)
         self.assertEqual(label,"fgdone")
-        self.assertEqual(inputs,["background","foreground"])
+        self.assertEqual(inputs,["background","foreground_left","foreground_right"])
         self.assertIn("sin(t*0.63)",graph)
+        self.assertIn("[2:v]overlay",graph)
+        self.assertIn("[fgleftrender]",graph)
         self.assertIn("[1:v]",graph)
         with self.assertRaises(ValueError):
             overlay_foreground(graph="",label="g",names=[],scene_index=0,duration=2)
+
+    def test_split_rebuilds_identical_plate_without_seams(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            original, left, right = (folder / f"{name}.png"
+                                      for name in ("original", "left", "right"))
+            draw_foreground(original, landscape="forest", seed="split-test")
+            split_foreground(original, left, right)
+            with Image.open(original) as source, Image.open(left) as lhs, Image.open(right) as rhs:
+                self.assertEqual(lhs.size, (1280,720))
+                self.assertEqual(rhs.size, (1280,720))
+                self.assertIsNone(lhs.getchannel("A").crop((640,0,1280,720)).getbbox())
+                self.assertIsNone(rhs.getchannel("A").crop((0,0,640,720)).getbbox())
+                combined = lhs.copy()
+                combined.alpha_composite(rhs)
+                self.assertIsNone(ImageChops.difference(source, combined).getbbox())
+            with self.assertRaises(ValueError):
+                split_foreground(original, left, left)
+
+    def test_storm_wind_is_stronger_and_independent_of_calm(self):
+        args = dict(graph="[0:v]null[g]", label="g", names=["background"],
+                    scene_index=3, duration=2.8)
+        clear, _, _ = overlay_foreground(**args, weather="day")
+        storm, _, _ = overlay_foreground(**args, weather="storm")
+        self.assertNotEqual(clear, storm)
+        self.assertIn("8*sin(t*1.72)", storm)
+        self.assertIn("sin(t*1.428)", storm)
+        self.assertEqual(set(WEATHER_SWAY),
+                         {"day","night","cloudy","rain","wind","storm"})
+        with self.assertRaises(ValueError):
+            overlay_foreground(**args, weather="storm;movie=secret")
+        with self.assertRaises(ValueError):
+            overlay_foreground(**args, weather="day", scene_index=0)
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "Real encoded FFmpeg video required")
