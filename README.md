@@ -946,3 +946,16 @@ Le saut garde ses effets d'impulsion et de réception précédents.
 
 Cela corrige un défaut de synchronisation perceptible ; il ne s'agit pas
 d'une simulation physique 3D, et aucune musique, voix ni durée ne change.
+
+### V2 — végétation réellement multicouche et sensible à la météo
+
+Les herbes, roseaux et feuillages du premier plan ne défilent plus comme un
+bloc unique. Le calque original reste inchangé dans les posters approuvés,
+mais son rendu vidéo est séparé en **deux plaques RGBA indépendantes** (gauche
+et droite) avec oscillations déphasées et vitesses différentes. Le vent
+renforce le mouvement, les tempêtes l'accentuent et les scènes nocturnes
+restent plus calmes. Les oscillations commencent au même emplacement que
+l'illustration fixe et sont bornées à 12 pixels par côté.
+
+La technique reste un effet 2,5D procédural, sans simulation physique, GPU
+supplémentaire, actifs tiers ni modification de la voix ou des sous-titres.
