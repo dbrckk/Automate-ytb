@@ -933,3 +933,16 @@ GPU ou coût API. Il s'agit d'un déplacement illustré sur place et non
 d'une locomotion 3D avec trajectoire dans le monde. Des tests inspectent
 les expressions FFmpeg de contact et l'absence de glissement induit par
 l'oscillation du corps ; la CI conserve le rendu H.264 réel.
+
+### Animation V2 — effets de contact réellement liés aux foulées
+
+Les petites projections de poussière (ou éclaboussures selon la météo) apparaissent
+désormais aux **appuis alternés des pattes gauche et droite** pendant la course,
+à la fréquence exacte de la marche du rig (10,2 radians/s), et non plus sur
+un cycle indépendant de 0,55 seconde qui dérivait visuellement. Les effets
+sont centrés sur les coordonnées fixes des pattes en contact avec le sol et
+restent déterministes, légers et produits localement avec Pillow + FFmpeg.
+Le saut garde ses effets d'impulsion et de réception précédents.
+
+Cela corrige un défaut de synchronisation perceptible ; il ne s'agit pas
+d'une simulation physique 3D, et aucune musique, voix ni durée ne change.
