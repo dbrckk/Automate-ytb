@@ -534,3 +534,10 @@ des animaux. Aucun réglage ni téléchargement supplémentaire n'est requis.
 ### Prévalidation des images réelles
 
 Le rendu MP4 génère aussi `visual-preflight.json`. Ce diagnostic vérifie de manière légère le début de la vidéo pour signaler des images potentiellement noires/blanches, figées ou des variations fortes de luminosité. Inspectez les alertes avant publication : ce ne sont pas des erreurs certaines et l'outil n'autorise jamais une publication automatique.
+
+### Mouvement météorologique du premier plan
+
+Les deux côtés de la végétation du premier plan bougent maintenant
+indépendamment. Le vent et les tempêtes accroissent automatiquement leur
+oscillation ; les nuits restent plus calmes. Les images approuvées et les
+premières images vidéo conservent la même composition, sans option à régler.
