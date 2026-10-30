@@ -74,7 +74,7 @@ class CameraProfileTests(unittest.TestCase):
             topic="Original topic", narration="A flying owl",
             character="Original purple owl", style="cartoon",
             scene_id="scene-001", direction=d)
-        self.assertIn("v33", RIG_VERSION)
+        self.assertIn("v34", RIG_VERSION)
         self.assertEqual(h, art_brief_sha256(
             topic="Original topic", narration="A flying owl",
             character="Original purple owl", style="cartoon",
