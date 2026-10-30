@@ -6,7 +6,7 @@ from automate_ytb.director import ACTIONS
 
 class OrganicAnimationTests(unittest.TestCase):
     def test_all_actions_have_repeatable_secondary_sway(self):
-        self.assertIn("v7", CHOREOGRAPHY_VERSION)
+        self.assertIn("v8", CHOREOGRAPHY_VERSION)
         for action in ACTIONS:
             a=secondary_position(action,base=357,side="tail")
             self.assertEqual(a,secondary_position(action,base=357,side="tail"))
