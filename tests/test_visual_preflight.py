@@ -9,7 +9,7 @@ from pathlib import Path
 
 from automate_ytb.visual_preflight import (
     SAMPLE_FPS, SAMPLE_SIZE, VISUAL_QA_VERSION,
-    analyze_samples, inspect_video,
+    analyze_samples, inspect_video, sampling_windows,
 )
 
 
@@ -20,7 +20,7 @@ class VisualPreflightTests(unittest.TestCase):
         black=bytes([0])*pixels
         white=bytes([255])*pixels
         report=analyze_samples(black+white+black, width=w, height=h, fps=2)
-        self.assertIn("v1", VISUAL_QA_VERSION)
+        self.assertIn("v2", VISUAL_QA_VERSION)
         self.assertEqual(report["nearBlackFrames"],2)
         self.assertEqual(report["nearWhiteFrames"],1)
         self.assertEqual(report["largeLumaSteps"],2)
@@ -43,6 +43,44 @@ class VisualPreflightTests(unittest.TestCase):
         self.assertEqual(report["status"],"no-obvious-sampled-defects")
         self.assertEqual(report["consecutiveNearStillFrames"],0)
         self.assertEqual(report["sampledDurationSeconds"],4)
+
+    def test_full_episode_sampling_is_bounded_and_time_distributed(self):
+        self.assertEqual(sampling_windows(1.4), [(0.0, 1.4)])
+        self.assertEqual(sampling_windows(18), [(0.0, 18.0)])
+        self.assertEqual(sampling_windows(120),
+                         [(0.0, 6.0), (57.0, 6.0), (114.0, 6.0)])
+        for duration in (18.01, 19, 100, 900, 3600):
+            windows = sampling_windows(duration)
+            self.assertEqual(len(windows), 3)
+            self.assertEqual(windows[0][0], 0)
+            self.assertLessEqual(sum(length for _, length in windows), 18)
+            self.assertTrue(all(start >= 0 and start + length <= duration + .001
+                                for start, length in windows))
+        for invalid in (0, -1, float("nan"), float("inf"), True, 100000000):
+            with self.assertRaises(ValueError):
+                sampling_windows(invalid)
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
+                         "Actual FFmpeg with ffprobe required")
+    def test_late_black_tail_is_found_without_scanning_full_video(self):
+        with tempfile.TemporaryDirectory() as folder:
+            dest=Path(folder)/"late-black.mp4"
+            subprocess.run(
+                ["ffmpeg","-nostdin","-hide_banner","-v","error","-y",
+                 "-f","lavfi","-i","testsrc2=size=96x54:rate=12",
+                 "-t","22","-vf","fade=t=out:st=18:d=0.2",
+                 "-threads","1","-c:v","libx264","-preset","ultrafast",
+                 "-pix_fmt","yuv420p",str(dest)],
+                capture_output=True,check=True,timeout=60)
+            report=inspect_video(dest)
+            self.assertEqual(report["samplingStrategy"],"opening-middle-ending")
+            self.assertEqual(len(report["sampledWindows"]),3)
+            self.assertLessEqual(report["sampledFrames"],36)
+            self.assertGreaterEqual(report["videoDurationSeconds"],21)
+            self.assertEqual(report["sampledWindows"][0]["nearBlackFrames"],0)
+            self.assertGreater(report["sampledWindows"][-1]["nearBlackFrames"],0)
+            self.assertEqual(report["status"],"review")
+            self.assertTrue(any("16.00s" in text for text in report["warnings"]))
 
     def test_reject_bad_raw_sample_shapes_and_files(self):
         with self.assertRaises(ValueError):

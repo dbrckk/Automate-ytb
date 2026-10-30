@@ -541,3 +541,7 @@ Les deux côtés de la végétation du premier plan bougent maintenant
 indépendamment. Le vent et les tempêtes accroissent automatiquement leur
 oscillation ; les nuits restent plus calmes. Les images approuvées et les
 premières images vidéo conservent la même composition, sans option à régler.
+
+### Contrôle visuel des vidéos longues
+
+Le fichier `visual-preflight.json` indique les fenêtres inspectées au début, au milieu et à la fin de la vidéo, avec les avertissements propres à chaque fenêtre. Une absence d'alerte ne dispense pas de visionner l'épisode complet avant publication.

@@ -1,5 +1,7 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Feuille de route vérifiable : [plan de travail V2 et critères d'acceptation](docs/QUALITY_ROADMAP.md).**
+
 Première version fonctionnelle inspirée des **étapes** de la démonstration vidéo : étudier une niche, définir un concept, écrire une narration, composer des scènes, produire une voix, assembler une vidéo, créer des miniatures et préparer sa diffusion. Ce dépôt **ne copie pas** les vidéos ni les personnages de Murph.
 
 Voir aussi [les décors originaux guidés par le scénario](docs/STORY_LANDSCAPES.md), avec paysages persistants en mode cartoon.
@@ -974,3 +976,7 @@ même reflet sans animation.
 La génération est déterministe, entièrement hors ligne et n'utilise ni média
 externe ni modèle payant. L'animation reste stylisée en 2D : ce n'est pas un
 système de suivi oculaire biomécanique.
+
+### Contrôle MP4 sur début, milieu et fin
+
+Le diagnostic visuel décode désormais jusqu'à 18 secondes réparties sur toute la chronologie des épisodes longs (six secondes au début, au milieu et à la fin), au lieu de ne regarder que les 18 premières secondes. Le rapport `visual-preflight.json` précise les plages examinées et détecte notamment une fin presque noire. Ce contrôle reste un **échantillonnage**, pas une certification de la totalité des images.
