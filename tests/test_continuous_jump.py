@@ -26,7 +26,7 @@ def evaluate_trusted_expression(expr: str, time_s: float) -> float:
 
 class ContinuousJumpTests(unittest.TestCase):
     def test_jump_returns_to_ground_without_boundary_teleport(self):
-        self.assertIn("v8", CHOREOGRAPHY_VERSION)
+        self.assertIn("v9", CHOREOGRAPHY_VERSION)
         x, y = body_position("jump", x=180, y=184)
         self.assertIn("mod(t,1.75)", y)
         self.assertNotIn(";", x + y)
