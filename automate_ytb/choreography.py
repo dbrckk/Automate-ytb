@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v7-planted-contact-gait"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v8-continuous-jump-loop"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -46,17 +46,19 @@ def body_position(action: str, *, x: int, y: int) -> tuple[str, str]:
         # Secondary low-frequency sway prevents perfectly repeated robotic arcs.
         xp = f"{x}+{horizontal}*sin(t*{hf})+1.2*sin(t*0.37)"
         if kind == "leap":
-            # Repeated four-stage leap: brief crouch, eased ascent, descent,
-            # soft landing. Continuous at each boundary; no external assets.
-            cycle = "mod(t,1.75)"
-            crouch = f"min(1,({cycle})/0.18)"
-            launch = f"min(1,max(0,(({cycle})-0.18)/0.57))"
-            descend = f"min(1,max(0,(({cycle})-0.75)/0.64))"
-            land = f"min(1,max(0,(({cycle})-1.39)/0.36))"
-            smooth = lambda u: f"(({u})*({u})*(3-2*({u})))"
-            height = f"({smooth(launch)}-{smooth(descend)})"
-            yp = (f"{y}+12*({smooth(crouch)})-"
-                  f"({vertical}+12)*({height})-12*({smooth(land)})")
+            # Periodic crouch -> take-off -> fall -> landing recovery.
+            # At the loop boundary both displacement and velocity approach 0.
+            phase = "mod(t,1.75)"
+            smooth = lambda v: f"(({v})*({v})*(3-2*({v})))"
+            prep = f"min(1,({phase})/0.18)"
+            rise = f"min(1,max(0,(({phase})-0.18)/0.57))"
+            fall = f"min(1,max(0,(({phase})-0.75)/0.64))"
+            recover = f"min(1,max(0,(({phase})-1.39)/0.36))"
+            crouch = f"({smooth(prep)}-{smooth(rise)})"
+            air = f"({smooth(rise)}-{smooth(fall)})"
+            impact = f"({smooth(fall)}-{smooth(recover)})"
+            yp = (f"{y}+12*({crouch})-"
+                  f"{vertical}*({air})+6*({impact})")
         elif kind == "steps":
             sign = "+" if kind == "steps" else "-"
             yp = f"{y}{sign}{vertical}*abs(sin(t*{vf}))"
