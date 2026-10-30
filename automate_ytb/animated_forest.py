@@ -25,6 +25,7 @@ from .action_timeline import choreograph
 from .material_shading import shade_sprite
 from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .expressive_face import draw_expression, append_expression
+from .eye_glints import draw_eye_glints, eye_overlay_expression
 from .character_finishing import finish_forest_face
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable, leg_position
 from .director import validate_direction
@@ -38,7 +39,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v36-independent-foreground-wind"
+FOREST_RIG_VERSION = "forest-animals-v37-eye-micro-acting"
 
 
 def character_kind(character: str) -> str | None:
@@ -301,7 +302,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True, exist_ok=True)
     outputs = {name: folder / (name + ".png")
-               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear", "ambient_far", "ambient_near", "expression")}
+               for name in ("background", "tail", "neutral", "body", "blink", "mouth", "left_leg", "right_leg", "effects", "foreground", "lighting", "shadow", "left_ear", "right_ear", "ambient_far", "ambient_near", "expression", "eye_glint")}
     _bg(outputs["background"], topic=topic, narration=narration,
         scene_index=scene_index, scene_count=scene_count,
         style=style, direction=direction,landscape=landscape)
@@ -345,6 +346,7 @@ def render_layers(folder: Path, *, kind: str, topic: str,
     gaze = gaze_target(narration, held_prop=held_prop)
     if companion and gaze == "forward":
         gaze = "right"
+    draw_eye_glints(outputs["eye_glint"], actor=kind, gaze=gaze)
     _sprite_body(outputs["neutral"], kind=kind, blink=False,
                  emotion=emotion, gaze="forward", include_ears=False)
     _sprite_body(outputs["body"], kind=kind, blink=False,
@@ -416,6 +418,8 @@ def render_character_poster(*, kind: str, topic: str, narration: str,
                           ("right_leg", (366, 519))):
             with Image.open(layers[name]) as sprite:
                 combined.alpha_composite(sprite.convert("RGBA"), pos)
+        with Image.open(layers["eye_glint"]) as glint:
+            combined.alpha_composite(glint.convert("RGBA"), (180, 184))
         with Image.open(layers["expression"]) as brow:
             combined.alpha_composite(brow.convert("RGBA"), (180, 184))
         cue = cue_for_scene(narration, held_prop=held_prop)
@@ -527,6 +531,10 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             "enable='lt(mod(t+0.65,3.4),0.12)':"
             "eval=frame:format=auto[guestblink]" if has_companion else ""
         )
+        eye_index = 14 if has_companion else 11
+        eye_stage = eye_overlay_expression(
+            body_x=body_x, body_y=body_y,
+            input_index=eye_index, from_label="c")
         base_stage = "guestblink" if has_companion else "shadowstage"
         fps_graph = (
             f"[{base_stage}][earleft]overlay=x='({body_x})-15':"
@@ -540,7 +548,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
             "[3:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
             f"[b][look]overlay=x='{body_x}':"
             f"y='{body_y}':eval=frame:format=auto[c];"
-            f"[c][4:v]overlay=x='{body_x}':"
+            f"{eye_stage}[eyeacting][4:v]overlay=x='{body_x}':"
             f"y='{body_y}':"
             f"enable='{blink}':eval=frame:format=auto[d];"
             f"[d][5:v]overlay=x='{body_x}':"
@@ -557,6 +565,7 @@ def render_motion_clip(*, kind: str, topic: str, narration: str,
                  "left_leg", "right_leg", "shadow", "left_ear", "right_ear"]
         if has_companion:
             names.extend(("companion", "companion_blink", "companion_shadow"))
+        names.append("eye_glint")
         fps_graph, final, names = append_overlays(
             graph=fps_graph, label=final, names=names,
             narration=narration, duration=duration,

@@ -24,6 +24,7 @@ from .material_shading import shade_sprite
 from .sprite_supersampling import sprite_canvas, resolve_sprite
 from .cinematic_paint import paint_sky_bloom, paint_horizon_mist
 from .expressive_face import draw_expression, append_expression
+from .eye_glints import draw_eye_glints, eye_overlay_expression
 from .character_finishing import finish_owl_feathers
 from .choreography import body_position, secondary_position, mouth_expression, blink_enable
 from .story_glow import draw_story_glow, append_story_glow
@@ -37,7 +38,7 @@ from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
 
-RIG_VERSION = "owl-rig-v32-independent-foreground-wind"
+RIG_VERSION = "owl-rig-v33-eye-micro-acting"
 OUTLINE = (50, 36, 86, 255)
 PURPLE = (131, 86, 200, 255)
 DARK_PURPLE = (98, 60, 161, 255)
@@ -339,7 +340,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
         direction = validate_direction(direction)
     folder.mkdir(parents=True,exist_ok=True)
     outputs={k:folder/(k+".png") for k in
-             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","ambient_far","ambient_near","expression")}
+             ("background","left","right","neutral","body","blink","mouth","effects","foreground","lighting","shadow","ambient_far","ambient_near","expression","eye_glint")}
     _bg(outputs["background"],topic=topic,narration=narration,
         scene_index=scene_index,scene_count=scene_count,style=style,
         direction=direction,landscape=landscape)
@@ -378,6 +379,7 @@ def render_layers(folder: Path, *, topic: str, narration: str,
     _wing(outputs["left"],right=False)
     _wing(outputs["right"],right=True)
     gaze = gaze_target(narration, held_prop=held_prop)
+    draw_eye_glints(outputs["eye_glint"], actor="owl", gaze=gaze)
     _body(outputs["neutral"],blink=False,
           emotion=direction["emotion"] if direction else "neutral",
           gaze="forward")
@@ -469,6 +471,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           f"[1:v]format=rgba,rotate=a='{left_angle}':ow=270:oh=270:c=none[wingleft];"
           f"[2:v]format=rgba,rotate=a='{right_angle}':ow=270:oh=270:c=none[wingright];"
         )
+        eye_stage = eye_overlay_expression(
+            body_x=body_x, body_y=body_y,
+            input_index=8, from_label="d")
         f=(
           f"[shadowstage][wingleft]overlay=x='{left_x}':"
           f"y='{left_y}':eval=frame:format=auto[a];"
@@ -479,7 +484,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
           "[4:v]format=rgba,fade=t=in:st=0.18:d=0.42:alpha=1[look];"
           f"[c][look]overlay=x='{body_x}':"
           f"y='{body_y}':eval=frame:format=auto[d];"
-          f"[d][5:v]overlay=x='{body_x}':"
+          f"{eye_stage}[eyeacting][5:v]overlay=x='{body_x}':"
           f"y='{body_y}':"
           f"enable='{blink}':eval=frame:format=auto[e];"
           f"[e][6:v]overlay=x='{body_x}':"
@@ -488,7 +493,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         )
         f = shadow_graph + rotation_graph + f
         final_label = "f"
-        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow"]
+        keys = ["background", "left", "right", "neutral", "body", "blink", "mouth", "shadow", "eye_glint"]
         f, final_label, keys = append_overlays(
             graph=f, label=final_label, names=keys,
             narration=narration, duration=duration,
@@ -565,6 +570,8 @@ def render_character_poster(*, topic: str, narration: str,
                                ("body", (204,186))):
             with Image.open(layers[name]) as sprite:
                 composite.alpha_composite(sprite.convert("RGBA"),position)
+        with Image.open(layers["eye_glint"]) as glint:
+            composite.alpha_composite(glint.convert("RGBA"), (204, 186))
         with Image.open(layers["expression"]) as brow:
             composite.alpha_composite(brow.convert("RGBA"), (204, 186))
         cue = cue_for_scene(narration, held_prop=held_prop)
