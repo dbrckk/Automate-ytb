@@ -959,3 +959,18 @@ l'illustration fixe et sont bornées à 12 pixels par côté.
 
 La technique reste un effet 2,5D procédural, sans simulation physique, GPU
 supplémentaire, actifs tiers ni modification de la voix ou des sous-titres.
+
+### V2 — micro-animation des reflets oculaires
+
+Les quatre animaux originaux disposent d'une **nouvelle couche de reflets des
+yeux** dessinée localement, calée sur le regard prescrit par la narration.
+Le calque suit la tête avec une variation de position inférieure à deux pixels
+et apparaît seulement après la transition de regard. Les clignements sont
+composés **au-dessus** du reflet pour éviter de faire apparaître des yeux
+ouverts pendant une pose fermée. Les personnages compagnons et les plans de
+rapprochement restent compatibles ; les illustrations approuvées incluent le
+même reflet sans animation.
+
+La génération est déterministe, entièrement hors ligne et n'utilise ni média
+externe ni modèle payant. L'animation reste stylisée en 2D : ce n'est pas un
+système de suivi oculaire biomécanique.
