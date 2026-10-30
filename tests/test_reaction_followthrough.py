@@ -6,7 +6,7 @@ from automate_ytb.choreography import CHOREOGRAPHY_VERSION, body_position
 
 class ReactionFollowThroughTests(unittest.TestCase):
     def test_surprise_has_two_damped_motion_frequencies(self):
-        self.assertIn("v8", CHOREOGRAPHY_VERSION)
+        self.assertIn("v9", CHOREOGRAPHY_VERSION)
         x, y = body_position("surprise", x=180, y=184)
         for term in ("exp(-1.3*t)", "exp(-0.8*t)", "sin(t*3.1)"):
             self.assertIn(term, x)
