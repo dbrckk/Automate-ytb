@@ -8,7 +8,7 @@ from automate_ytb.joint_motion import joint_angle, JOINT_VERSION
 
 class FootContactGaitTests(unittest.TestCase):
     def test_paws_are_world_locked_during_contact_and_alternate(self):
-        self.assertIn("v7", CHOREOGRAPHY_VERSION)
+        self.assertIn("v8", CHOREOGRAPHY_VERSION)
         self.assertIn("v4", JOINT_VERSION)
         for action in ("walk", "run"):
             reach, lift, frequency = LEG_MOTION[action]
