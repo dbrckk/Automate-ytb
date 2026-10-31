@@ -15,9 +15,10 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
+from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v1-1080x1920"
+PORTRAIT_VERSION = "original-science-shorts-v2-1080x1920-timed-captions"
 INK = (238, 247, 250, 255)
 
 
@@ -76,7 +77,13 @@ def _sky(seed: int) -> Image.Image:
 
 class PortraitScienceScene:
     """Dedicated safe-area composition independent of landscape coordinates."""
-    def __init__(self, *, topic: str, narration: str, scene_index: int):
+    def __init__(self, *, topic: str, narration: str, scene_index: int,
+                 caption_segments: list[dict] | None = None,
+                 scene_start_ms: int = 0):
+        if (type(scene_start_ms) is not int or not 0 <= scene_start_ms <= 3_600_000):
+            raise ValueError("Unsafe science caption scene start")
+        if caption_segments is not None and not isinstance(caption_segments, list):
+            raise ValueError("Invalid audio caption markers")
         if not isinstance(topic, str) or not 1 <= len(topic.strip()) <= 180:
             raise ValueError("Science Shorts require an authored topic")
         if not isinstance(narration, str) or not 1 <= len(narration.strip()) <= 9000:
@@ -96,6 +103,41 @@ class PortraitScienceScene:
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
         self.base = _sky(seed)
         self._globes: dict[int, Image.Image] = {}
+        self.scene_start_ms = scene_start_ms
+        self.caption_segments = caption_segments
+        self._caption_duration_ms: int | None = None
+        self._caption_cues: list[dict] = []
+
+    def active_caption(self, t: float, duration: float) -> str:
+        """Return the exact phrase selected by the same timing as the SRT.
+
+        With narration, boundaries are measured at synth-phrase level, not
+        guessed per word. Silent previews use the existing estimated SRT
+        timings and remain clearly identified as estimates.
+        """
+        if (not isinstance(t, (int, float)) or
+                not isinstance(duration, (int, float)) or
+                not math.isfinite(t) or not math.isfinite(duration) or
+                not 0 <= t <= duration <= 180):
+            raise ValueError("Unsafe portrait caption clock")
+        duration_ms = round(duration * 1000)
+        if duration_ms != self._caption_duration_ms:
+            item = {
+                "narration": self.narration,
+                "startMs": self.scene_start_ms,
+                "endMs": self.scene_start_ms + duration_ms,
+            }
+            if self.caption_segments is not None:
+                item["captionSegments"] = self.caption_segments
+            self._caption_cues = timed_cues_for_scene(
+                item, use_audio_boundaries=self.caption_segments is not None)
+            self._caption_duration_ms = duration_ms
+        when = self.scene_start_ms + round(t * 1000)
+        for cue in self._caption_cues:
+            if cue["startMs"] <= when < cue["endMs"]:
+                return cue["text"]
+        # An endpoint frame may land precisely at the scene's final ms.
+        return self._caption_cues[-1]["text"]
 
     def _planet_at(self, t: float, *, size: int = 680) -> Image.Image:
         step = int(t * 2.5)
@@ -208,7 +250,9 @@ class PortraitScienceScene:
         d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
                             fill=(5, 17, 37, 240),
                             outline=(84, 165, 190, 150), width=2)
-        summary = _lines(d, self.narration, size=31, width=842, maximum=3)
+        summary = _lines(
+            d, self.active_caption(t, duration),
+            size=31, width=842, maximum=3)
         for i, line in enumerate(summary):
             d.text((111, 1551 + 46*i), line, font=_font(31, True),
                    fill=INK)
