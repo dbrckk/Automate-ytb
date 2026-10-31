@@ -73,7 +73,7 @@ class LandscapeTests(unittest.TestCase):
                           "forest", "forest"])
         self.assertEqual(landscapes_for_scenes([{"narration": "A fox sleeps."}]),
                          ["forest"])
-        self.assertIn("v1", WORLD_VERSION)
+        self.assertIn("v2", WORLD_VERSION)
         with self.assertRaises(ValueError):
             landscapes_for_scenes([{"wrong": "narration"}])
 
