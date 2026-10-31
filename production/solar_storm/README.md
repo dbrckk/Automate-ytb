@@ -84,3 +84,21 @@ Motion effects are intentionally short-lived and keep the bottom-center
 caption safe area clear. Final artistic quality and positioning require
 viewing the actual MP4 on a phone, including audio, before public approval.
 No paid AI animation or image API is needed.
+
+### Retrait des anciens doublons dans le master vidéo
+
+La revue visuelle des **13 plans effectivement décodés** du rendu H.264 fusionnant
+caméra et animations a révélé que les anciens libellés ASS `Context` étaient
+parfois superposés aux nouvelles animations `Motion` en haut de l'image
+(notamment « EARTH'S MAGNETIC SHIELD », « NASA / SDO » et « AURORAS »).
+`apply_motion_graphics` supprime désormais uniquement les anciennes lignes
+de dialogue de style `Context` **lorsqu'il construit avec succès** les six
+animations synchronisées, en conservant les sous-titres `Voice` et les fichiers
+SRT/JSON. Les crédits de source NASA restent indiqués dans
+`publication.txt`, le rapport de production et les nouveaux repères « NASA /
+SDO ». Le diagnostic `motion_graphics.json` expose
+`suppressed_legacy_context_titles` pour rendre la suppression vérifiable.
+
+La source originale des 13 clips n'est pas modifiée et aucune étape de
+génération payante n'est introduite. Une nouvelle inspection du MP4 encodé
+reste nécessaire avant l'approbation éditoriale.
