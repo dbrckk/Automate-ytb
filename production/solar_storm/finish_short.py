@@ -17,6 +17,7 @@ sys.path.insert(0,str(HERE.parent/"titan"))
 from word_align import align_narration
 from review_frames import create_contact_sheet
 from review_shots import review_encoded_shots
+from motion_graphics import apply_motion_graphics
 
 OUT=HERE/"out"
 DONE=OUT/"final"
@@ -148,6 +149,9 @@ def main():
     voice=OUT/"narration.wav"
     words,details=align_narration(voice,scenes,DONE,model_name="base.en")
     caption_groups=build_captions(scenes,words)
+    motion=apply_motion_graphics(DONE/"captions.ass",scenes,words)
+    (DONE/"motion_graphics.json").write_text(
+        json.dumps(motion,indent=2),encoding="utf-8")
     length=float(report["duration"])
     ambience(scenes,length)
     source=OUT/"Solar_Storm_Base_EN.mp4"
@@ -191,6 +195,7 @@ def main():
         "shot_count":report["shot_count"],"caption_groups":caption_groups,
         "speech_recognition_fraction":round(verified,3),
         "visual_review":review,"shot_review":shot_review,
+        "motion_graphics":motion,
         "editorial_approved":False,
         "inferred_words":sum(not w["recognized"] for w in words),
         "caption_source":"actual Kokoro WAV via faster-whisper",
@@ -198,7 +203,8 @@ def main():
         "checks":["NASA source decodes","ffmpeg full video/audio decode",
                   "1080x1920 30 fps","AAC 48000 Hz","word timing checked",
                   "six actual decoded scene frames and Android contact sheet",
-                  "all actual encoded NASA shots visually sampled"]}
+                  "all actual encoded NASA shots visually sampled",
+                  "six voice-synced animated educational graphic cues"]}
     (DONE/"qa.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (DONE/"publication.txt").write_text((OUT/"publication.txt").read_text(),encoding="utf-8")
     print("SOLAR_FINAL_OK",json.dumps(qa),flush=True)

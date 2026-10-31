@@ -165,7 +165,7 @@ def clip(key,index,scene,offset,length):
     source_duration=duration(source)
     seek=max(0,min(offset,source_duration-length-.1))
     dest=OUT/f"shot_{index:02}.mp4"
-    # Motion over real decoded NASA footage: fixed 30fps output, no speed drift.
+    # Cinematic motion on genuine NASA source imagery without time stretching.
     vf=build_portrait_camera(key,index)
     run(["ffmpeg","-y","-v","error","-ss",f"{seek:.3f}","-i",source,
         "-t",f"{length:.3f}","-an","-vf",vf,"-r","30",
