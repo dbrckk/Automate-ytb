@@ -20,6 +20,7 @@ WHITE = (232, 248, 250, 255)
 NAVY = (10, 38, 63, 242)
 WARM = (252, 128, 75, 235)
 COLD = (81, 167, 246, 225)
+DARK_TEXT = (3, 17, 28, 255)  # WCAG contrast >7:1 over warm and cool cards
 
 BEATS = ("solar", "wind", "coriolis", "sinking", "heat")
 BADGES = {
@@ -204,7 +205,10 @@ def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         d.rounded_rectangle((x, 860, x+220, 1130), radius=36,
                             fill=(hue[0], hue[1], hue[2], 60),
                             outline=hue, width=5)
-        _label(d, (x+38, 982), text, color=hue, size=42)
+        # A hue-colored caption on the matching colored background vanished in
+        # the encoded MP4. White here is only ~2.3:1 contrast; navy ink
+        # exceeds 7:1 on both orange and blue reservoir fills.
+        _label(d, (x+38, 982), text, color=DARK_TEXT, size=42)
     for lane in range(4):
         y = 1175+lane*55
         points = [(150+x, round(y+25*math.sin(x/83+t*.35+lane)))
@@ -221,11 +225,71 @@ def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            color=CYAN, size=39)
 
 
+
+# Script-specific conceptual waypoints, not generated or user-controlled facts.
+# These are qualitative descriptions of the visual diagram, never claims of a
+# numerical climate model. They live in the 43-pixel band between badge and art.
+PROGRESSION = {
+    "solar": (
+        ("CAUSE · SUNLIGHT", "INPUT · LATITUDES", "RESULT · HEATING"),
+        ("CAUSE · SOLEIL", "ÉCART · LATITUDES", "EFFET · CHALEUR")),
+    "wind": (
+        ("CAUSE · WIND", "TRANSFER · DRAG", "EFFECT · CURRENTS"),
+        ("CAUSE · VENTS", "TRANSFERT · FRICTION", "EFFET · COURANTS")),
+    "coriolis": (
+        ("CAUSE · ROTATION", "EFFECT · DEFLECTION", "RESULT · GYRES"),
+        ("CAUSE · ROTATION", "EFFET · DÉVIATION", "RÉSULTAT · GYRES")),
+    "sinking": (
+        ("CAUSE · COLD + SALT", "EFFECT · DENSITY", "RESULT · SINKING"),
+        ("CAUSE · FROID + SEL", "EFFET · DENSITÉ", "RÉSULTAT · PLONGÉE")),
+    "heat": (
+        ("CAUSE · CURRENTS", "TRANSFER · HEAT", "EFFECT · CLIMATE"),
+        ("CAUSE · COURANTS", "TRANSFERT · CHALEUR", "EFFET · CLIMAT")),
+}
+
+
+def _progress_ribbon(draw: ImageDraw.ImageDraw, beat: str,
+                     progress: float, english: bool) -> None:
+    """Show three authored causal stages, with continuous time-driven filling.
+
+    The concise ribbon is outside the main 600..1490 illustration and the
+    1522..1722 subtitle area, so it cannot conceal scientific explanation or
+    any original subtitle. No per-frame textures, blurs, network calls or RNG.
+    """
+    if beat not in BEATS or not math.isfinite(progress) or not 0 <= progress <= 1:
+        raise ValueError("Invalid storyboard progress")
+    stage = min(2, int(3 * progress))
+    steps = PROGRESSION[beat][0 if english else 1]
+    draw.rounded_rectangle((80, 548, 1000, 595), radius=14,
+                           fill=(8, 30, 53, 242),
+                           outline=(86, 161, 197, 122), width=2)
+    _label(draw, (104, 556), steps[stage], size=29)
+    for index in range(3):
+        left, top, width, height = 686 + index * 100, 572, 82, 7
+        draw.rounded_rectangle((left, top, left + width, top + height),
+                               radius=3, fill=(46, 77, 104, 255))
+        fraction = min(1.0, max(0.0, 3 * progress - index))
+        painted = round(width * fraction)
+        if painted >= 2:
+            draw.rounded_rectangle((left, top, left + painted, top + height),
+                                   radius=3, fill=GOLD if index == stage else CYAN)
+    # A moving point makes progress continuous even while the text holds.
+    marker_x = 686 + round(282 * progress)
+    draw.ellipse((marker_x - 4, 567, marker_x + 4, 575), fill=GOLD)
+
 def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
-                    t: float, english: bool) -> None:
-    """Draw one narrative-specific animation within the established safe bands."""
-    if beat not in BEATS or not math.isfinite(t) or t < 0 or type(english) is not bool:
+                    t: float, english: bool, *,
+                    duration: float | None = None) -> None:
+    """Draw native educational motion; optionally show real-time causal progression."""
+    if (beat not in BEATS or type(t) not in (int, float)
+            or not math.isfinite(t) or t < 0 or type(english) is not bool):
         raise ValueError("Invalid ocean storyboard animation")
+    if duration is not None and (
+            type(duration) not in (int, float) or not math.isfinite(duration)
+            or not 0 < duration <= 180 or t > duration):
+        raise ValueError("Invalid storyboard duration")
+    if duration is not None:
+        _progress_ribbon(draw, beat, t / duration, english)
     draw.rounded_rectangle((80, 600, 1000, 1490), radius=40,
                            fill=NAVY, outline=(97, 176, 210, 124), width=3)
     for x in range(140, 990, 105):
