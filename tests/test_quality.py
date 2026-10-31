@@ -10,8 +10,9 @@ from unittest.mock import patch
 
 from automate_ytb.episode import build_preview, main as episode_main
 from automate_ytb.production import _write_json
-from automate_ytb.quality import check
+from automate_ytb.quality import check, CUE, _verify_caption_timeline
 from automate_ytb.scene_plan import plan
+from automate_ytb.captions import subtitles_for_scenes, srt_time
 
 
 class QualityGateTests(unittest.TestCase):
@@ -33,6 +34,66 @@ class QualityGateTests(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_quality_gate_detects_shifted_but_monotonic_caption_cues(self):
+        scene = {
+            "narration": (
+                "The ocean waves begin to rise above the distant shoreline. "
+                "The atmosphere pushes another current over the mountains. "
+                "The planet continues to rotate while daylight changes."),
+            "startMs": 0, "endMs": 12000,
+        }
+        srt, report = subtitles_for_scenes([scene])
+        self.assertGreaterEqual(report["cueCount"], 3)
+        original = list(CUE.finditer(srt))
+        self.assertEqual(
+            _verify_caption_timeline(
+                original, [scene], "estimated-proportional-phrases"), [])
+        # Shift BOTH sides of an internal boundary; SRT remains strictly
+        # increasing and covers all twelve seconds, but the phrase no longer
+        # starts when its approved timeline says it should.
+        boundary = original[0]["b"]
+        changed = srt.replace(boundary, srt_time(
+            (int(boundary[:2])*3600+int(boundary[3:5])*60+
+             int(boundary[6:8]))*1000+int(boundary[9:])+113))
+        forged = list(CUE.finditer(changed))
+        self.assertEqual(len(forged), len(original))
+        self.assertLess(
+            int(forged[0]["b"][-3:]), 1000)
+        self.assertEqual(forged[0]["b"], forged[1]["a"])
+        self.assertTrue(any(
+            "Subtitle timeline differs" in msg
+            for msg in _verify_caption_timeline(
+                forged, [scene], "estimated-proportional-phrases")))
+
+    def test_exact_audio_phrase_boundary_check_rejects_tampered_markers(self):
+        scene = {
+            "narration": "The Earth turns. The ocean moves.",
+            "startMs": 2000, "endMs": 7000,
+        }
+        from automate_ytb.captions import caption_phrases
+        phrases = caption_phrases(scene["narration"])
+        self.assertGreaterEqual(len(phrases), 2)
+        boundary = 4500
+        scene["captionSegments"] = [
+            {"text": phrases[0], "startMs": 2000, "endMs": boundary},
+            {"text": phrases[1], "startMs": boundary, "endMs": 7000},
+        ]
+        srt, report = subtitles_for_scenes(
+            [scene], use_audio_boundaries=True)
+        self.assertEqual(
+            _verify_caption_timeline(
+                list(CUE.finditer(srt)), [scene], report["method"]), [])
+        self.assertTrue(_verify_caption_timeline(
+            list(CUE.finditer(srt)), [scene],
+            "estimated-proportional-phrases"))
+        broken = dict(scene)
+        broken["captionSegments"] = [dict(c) for c in scene["captionSegments"]]
+        broken["captionSegments"][0]["endMs"] += 42
+        self.assertTrue(_verify_caption_timeline(
+            list(CUE.finditer(srt)), [broken], report["method"]))
+        self.assertTrue(_verify_caption_timeline(
+            list(CUE.finditer(srt)), [scene], None))
 
     def test_cli_actually_forwards_music_choice_to_preview(self):
         stub = {
@@ -65,6 +126,7 @@ class QualityGateTests(unittest.TestCase):
         self.assertEqual(checked["status"], "passed", checked["errors"])
         self.assertEqual(checked["checks"]["streams"].count("audio"), 1)
         self.assertEqual(checked["checks"]["sampledFramesDecoded"], 2)
+        self.assertTrue(checked["checks"]["subtitleTimelineMatchesPlan"])
         self.assertTrue(report_path.is_file())
         self.assertFalse(json.loads(report_path.read_text())["publicationApproved"])
 
