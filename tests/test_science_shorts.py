@@ -149,6 +149,8 @@ class ScienceShortsTests(unittest.TestCase):
         halfway = scene._planet_at(.2)
         next_pose = scene._planet_at(.4)
         self.assertEqual(len(scene._globes), 2)
+        self.assertIn((0, 680), scene._globes)
+        self.assertIn((1, 680), scene._globes)
         self.assertEqual(halfway.tobytes(),
                          Image.blend(first, next_pose, .5).tobytes())
         self.assertIsNotNone(ImageChops.difference(
@@ -156,6 +158,12 @@ class ScienceShortsTests(unittest.TestCase):
         self.assertIsNotNone(ImageChops.difference(
             halfway.convert("RGB"), next_pose.convert("RGB")).getbbox())
         self.assertEqual(halfway.tobytes(), scene._planet_at(.2).tobytes())
+        # Cache identities include the full resolution; no integer key
+        # collisions when future shots request differently sized globes.
+        small = scene._planet_at(0, size=72)
+        self.assertIn((0, 72), scene._globes)
+        self.assertNotEqual(small.size, first.size)
+        self.assertEqual(len(scene._globes), 3)
         # Every 30fps frame may interpolate without computing a new pose.
         for frame in range(1, 12):
             scene._planet_at(frame / 30)
