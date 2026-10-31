@@ -1,0 +1,56 @@
+name: Dispatch full 9:16 science Shorts release QA
+
+# An explicit release candidate is rendered only when this gate changes or
+# when a maintainer requests it. No per-commit expensive render or auto-upload.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/science-shorts-release-candidate.yml
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: science-shorts-release-dispatch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Start real Kokoro / 1080x1920 / 30fps production QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch real video and all media/visual QA checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This dispatches the existing production workflow rather than
+          # duplicating synthesis, encoding, SRT, quality, or visual QA code.
+          gh workflow run one-click-preview.yml --ref main \
+            --raw-field 'topic=Why Do Ocean Currents Move?' \
+            --raw-field 'original_script=The Sun warms tropical oceans more strongly than polar seas. Winds push surface water into large currents. Earth’s rotation bends the paths of moving water. Cold salty water can sink and travel through the deep ocean. These movements help redistribute heat around the planet.' \
+            --raw-field 'character=Original animated Earth and ocean science graphics' \
+            --raw-field 'style=science' \
+            --raw-field 'language=en' \
+            --raw-field 'voice=kokoro' \
+            --raw-field 'voice_name=af_heart' \
+            --raw-field 'voice_style=natural' \
+            --raw-field 'soundtrack=ambient' \
+            --raw-field 'transition=dissolve' \
+            --raw-field 'caption_timing=audio' \
+            --raw-field 'duration_seconds=30' \
+            --raw-field 'shot_seconds=6' \
+            --raw-field 'resolution=shorts' \
+            --raw-field 'render_profile=high'
+          {
+            echo '### Full production Shorts quality gate dispatched'
+            echo 'Open the **One-click YouTube preview (free)** workflow and select the newest workflow_dispatch run.'
+            echo 'Requirements: real 1080×1920 H.264 at 30 fps, English Kokoro narration, audio-timed captions, generated soundtrack, full encoded-video visual review, and passing consolidated QA.'
+            echo '**This dispatch is not an approval to publish.** Inspect the actual MP4, audio, and artifact reports on a phone.'
+          } >> "$GITHUB_STEP_SUMMARY"
