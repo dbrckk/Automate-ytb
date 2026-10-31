@@ -59,6 +59,46 @@ class VoiceTimedMotionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "spoken scene"):
             build_motion_graphics(scenes, recognized_anchors())
 
+    def test_real_caption_context_does_not_duplicate_new_acoustic_hud(self):
+        # A real decoded 35s 9:16 MP4 showed repeated EARTH'S MAGNETIC
+        # SHIELD, NASA / SDO and AURORAS captions near the upper left.
+        # The new Motion layer replaces those legacy context titles while
+        # actual Voice subtitles and timestamps must survive unchanged.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "captions.ass"
+            original = (
+                "[Script Info]\\nPlayResX: 1080\\nPlayResY: 1920\\n"
+                "[V4+ Styles]\\nStyle: Context,DejaVu Sans,39\\n"
+                "[Events]\\n"
+                "Format: Layer, Start, End, Style, Name, MarginL, MarginR, "
+                "MarginV, Effect, Text\\n"
+                "Dialogue: 1,0:00:18.35,0:00:21.40,Context,,0,0,0,,"
+                "EARTH'S MAGNETIC SHIELD\\n"
+                "Dialogue: 4,0:00:18.50,0:00:19.50,Voice,,0,0,0,,"
+                "our magnetic field\\n"
+                "Dialogue: 1,0:00:05.23,0:00:09.22,Context,,0,0,0,,"
+                "EXTREME ULTRAVIOLET - NASA / SDO\\n"
+                "Dialogue: 1,0:00:25.00,0:00:27.00,Context,,0,0,0,,"
+                "AURORAS - SPACE WEATHER\\n"
+            )
+            path.write_text(original, encoding="utf-8")
+            report = apply_motion_graphics(
+                path, narrated_scenes(), recognized_anchors())
+            composed = path.read_text(encoding="utf-8")
+            self.assertEqual(report["suppressed_legacy_context_titles"], 3)
+            self.assertEqual(composed.count("EARTH'S MAGNETIC SHIELD"), 1)
+            self.assertEqual(composed.count("NASA / SDO"), 1)
+            self.assertNotIn("Dialogue: 1,0:00:18.35", composed)
+            self.assertNotIn("EXTREME ULTRAVIOLET -", composed)
+            self.assertNotIn("AURORAS - SPACE WEATHER", composed)
+            self.assertIn(
+                "Dialogue: 4,0:00:18.50,0:00:19.50,Voice,,0,0,0,,"
+                "our magnetic field", composed)
+            self.assertEqual(composed.count("Style: Motion,"), 1)
+            self.assertEqual(
+                composed.count("Dialogue: "), report["events"] + 1)
+            self.assertFalse(report["editorial_approved"])
+
     def test_ass_style_and_vector_effects_are_only_added_once(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "captions.ass"
