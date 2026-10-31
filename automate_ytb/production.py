@@ -343,6 +343,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "synthesizedGestureCues": (
                 scene.get("captionSegments")
                 if uses_motion_rig and caption_timing == "audio" else None),
+            "portraitCaptionsVersion": ("shorts-on-video-srt-cues-v1"
+                                        if science_art and resolution == "shorts"
+                                        else None),
             "voiceActivityVersion": MOUTH_VERSION if uses_motion_rig else None,
             "voiceActivity": (voice_activity_by_scene[scene_index]
                               if uses_motion_rig else None),
@@ -367,7 +370,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         scene_index=index, scene_count=len(data["scenes"]),
                         style="science", duration=seconds,
                         width=w, height=h, fps=fps, destination=tmp,
-                        direction=scene.get("direction"))
+                        direction=scene.get("direction"),
+                        caption_segments=(scene.get("captionSegments")
+                                          if caption_timing == "audio" else None),
+                        scene_start_ms=scene["startMs"])
                 elif uses_owl_rig:
                     from .animated_owl import render_motion_clip
                     index = int(scene["id"].split("-")[1])
