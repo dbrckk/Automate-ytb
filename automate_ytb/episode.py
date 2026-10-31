@@ -287,6 +287,8 @@ def build_preview(*, plan_path: Path, output: Path,
         raise ValueError("Caption timing must be estimated or audio")
     if transition not in {"cut", "dissolve"}:
         raise ValueError("Transition must be cut or dissolve")
+    if resolution == "shorts" and style != "science":
+        raise ValueError("Native 9:16 Shorts currently require science style")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -380,7 +382,7 @@ def main(argv=None) -> int:
     p.add_argument("--caption-timing", choices=["estimated", "audio"],
                    default="estimated",
                    help="Audio mode measures synthesized phrase boundaries; not word alignment")
-    p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
+    p.add_argument("--resolution", choices=["720p", "1080p", "shorts"], default="720p")
     p.add_argument("--render-profile", choices=["preview", "high"],
                    default="preview", help="H.264/AAC encoding: fast preview or higher-quality 30fps")
     p.add_argument("--limit", type=int)
