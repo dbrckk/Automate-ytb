@@ -1,0 +1,50 @@
+name: Produce Solar Storm short — NASA + Kokoro
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/solar-storm-documentary.yml"
+      - "production/solar_storm/**"
+      - "production/titan/word_align.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solar-storm-production:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: System audio and video
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng libsndfile1
+      - name: Install open-source narrator and word aligner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[speech]" "faster-whisper>=1.1,<1.4" soundfile requests scipy
+      - name: Render new Solar Storm documentary with NASA video
+        run: python production/solar_storm/render_short.py
+      - name: Master English captions, original score, and verify MP4
+        run: python production/solar_storm/finish_short.py
+      - name: Publish completed video and separate QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: solar-storm-english-short
+          path: |
+            production/solar_storm/out/final/Solar_Storm_Short_EN_1080x1920.mp4
+            production/solar_storm/out/final/cover.jpg
+            production/solar_storm/out/final/subtitles_en.srt
+            production/solar_storm/out/final/publication.txt
+            production/solar_storm/out/final/qa.json
+            production/solar_storm/out/final/word_timestamps.json
+            production/solar_storm/out/production_report.json
+          if-no-files-found: error
+          retention-days: 14
