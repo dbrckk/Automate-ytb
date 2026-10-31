@@ -416,7 +416,9 @@ def render_character_poster(*, topic: str, narration: str,
 def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        scene_count: int, style: str, duration: float,
                        width: int, height: int, fps: int, destination: Path,
-                       direction: dict | None = None, **_unused) -> None:
+                       direction: dict | None = None,
+                       caption_segments: list[dict] | None = None,
+                       scene_start_ms: int = 0, **_unused) -> None:
     if style!="science" or (width,height) not in ((1280,720),(1920,1080),(1080,1920)):
         raise ValueError("Unsupported science style or resolution")
     if fps not in (24,30) or not .1<=duration<=180:
@@ -425,8 +427,9 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         raise RuntimeError("FFmpeg required to render science animation")
     if (width, height) == (1080, 1920):
         from .science_portrait import PortraitScienceScene
-        shot = PortraitScienceScene(topic=topic, narration=narration,
-                                    scene_index=scene_index)
+        shot = PortraitScienceScene(
+            topic=topic, narration=narration, scene_index=scene_index,
+            caption_segments=caption_segments, scene_start_ms=scene_start_ms)
     else:
         shot = ScienceScene(topic=topic,narration=narration,scene_index=scene_index,
                             size=(width,height))
