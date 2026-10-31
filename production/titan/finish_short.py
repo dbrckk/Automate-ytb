@@ -124,7 +124,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     (folder/"subtitles_final.srt").write_text("\n".join(srt),encoding="utf-8")
     overlays=[
-        (1,.15,.45,"Key","TITAN  /  SATURN'S LARGEST MOON",375),
+        (1,.15,.45,"Key","SATURN  /  HOME TO TITAN",375),
         (2,.45,.38,"Key","LAKES OF METHANE + ETHANE",365),
         (3,.55,.55,"Key","EVAPORATION → CLOUDS → RAIN",380),
         (4,.42,.45,"Value","−179°C",385),
@@ -187,9 +187,14 @@ def render(source, report, voice, folder):
         "-i",source,"-i",folder/"ambience.wav",
         "-filter_complex",af,"-map","0:v:0","-map","[a]",
         "-vf",vf,"-r","30","-c:v","libx264","-crf","18","-preset","medium",
-        "-pix_fmt","yuv420p","-c:a","aac","-b:a","192k",
+        "-pix_fmt","yuv420p","-c:a","aac","-b:a","192k","-ar","48000",
         "-movflags","+faststart","-t",f"{length:.4f}",output)
     run("ffmpeg","-v","error","-i",output,"-f","null","-")
+    probe = subprocess.run(["ffprobe","-v","error","-select_streams","a:0",
+        "-show_entries","stream=sample_rate","-of","default=noprint_wrappers=1:nokey=1",
+        str(output)],capture_output=True,text=True,check=True)
+    if probe.stdout.strip() != "48000":
+        raise RuntimeError(f"Unsupported output audio sample rate: {probe.stdout.strip()}")
     run("ffmpeg","-y","-v","error","-ss","1.4","-i",output,
         "-frames:v","1",folder/"cover_enhanced.jpg")
     qa={"file":output.name,"duration":duration(output),"subtitles_burned":True,
