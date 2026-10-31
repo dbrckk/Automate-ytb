@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v48-phase-synced-joints"
+VERSION = "render-v49-opt-in-science-motion"
 
 
 def _sha(path: Path) -> str:
@@ -283,6 +283,12 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         rig_tag = scene.get("motionRig")
         local_art = (scene.get("assetProvider") == "automate-local-graphics"
                      and scene.get("renderStyle") == "cartoon")
+        science_art = (scene.get("assetProvider") == "automate-local-graphics"
+                       and scene.get("renderStyle") == "science"
+                       and rig_tag == "original-science-v1")
+        if (scene.get("renderStyle") == "science" or
+                rig_tag == "original-science-v1") and not science_art:
+            raise ValueError("Science motion rig needs approved original science artwork")
         from .animated_forest import character_kind
         forest_kind = character_kind(data["originalCharacterBible"])
         expected_forest_rig = (
@@ -300,7 +306,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                 direction=scene.get("direction"),
                 held_prop=carried_by_scene[scene_index],
                 landscape=scene_landscapes[scene_index])
-            if rig_tag == expected_forest_rig and local_art:
+            if science_art:
+                from .science_motion import art_brief_sha256 as science_hash
+                actual = science_hash(**brief_args)
+            elif rig_tag == expected_forest_rig and local_art:
                 from .animated_forest import art_brief_sha256 as forest_hash
                 actual = forest_hash(kind=forest_kind, **brief_args)
             else:
@@ -312,7 +321,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         uses_owl_rig = (rig_tag == "original-owl-v1" and local_art)
         uses_forest_rig = (expected_forest_rig is not None
                            and rig_tag == expected_forest_rig and local_art)
-        uses_motion_rig = uses_owl_rig or uses_forest_rig
+        uses_motion_rig = uses_owl_rig or uses_forest_rig or science_art
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
@@ -343,7 +352,16 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                       + f"d=1:s={w}x{h}:fps={fps},format=yuv420p")
             tmp = clip.with_name(clip.stem + ".tmp.mp4")
             try:
-                if uses_owl_rig:
+                if science_art:
+                    from .science_motion import render_motion_clip as science_clip
+                    index = int(scene["id"].split("-")[1])
+                    science_clip(
+                        topic=data["topic"], narration=scene["narration"],
+                        scene_index=index, scene_count=len(data["scenes"]),
+                        style="science", duration=seconds,
+                        width=w, height=h, fps=fps, destination=tmp,
+                        direction=scene.get("direction"))
+                elif uses_owl_rig:
                     from .animated_owl import render_motion_clip
                     index = int(scene["id"].split("-")[1])
                     render_motion_clip(
