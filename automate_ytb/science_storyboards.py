@@ -57,7 +57,7 @@ def classify(topic: str, narration: str) -> str | None:
 
 
 def _label(draw: ImageDraw.ImageDraw, xy: tuple[int, int], value: str,
-           *, color=WHITE, size: int = 29) -> None:
+           *, color=WHITE, size: int = 36) -> None:
     draw.text(xy, value, font=_font(size, True), fill=color)
 
 
@@ -108,10 +108,10 @@ def _solar(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         d.rounded_rectangle((611, y, 915, y+145), radius=19,
                             fill=(color[0], color[1], color[2], 46),
                             outline=color, width=3)
-        _label(d, (638, y+25), title, size=28)
+        _label(d, (638, y+25), title, size=36)
         _label(d, (638, y+79), 
                ("WARM" if y==1015 else "COOL") if english else
-               ("CHAUD" if y==1015 else "FROID"), color=color, size=32)
+               ("CHAUD" if y==1015 else "FROID"), color=color, size=42)
     for i, end_y in enumerate((868, 1086, 1306)):
         _arrow(d, (410, sun_y+(i-1)*19),
                (590, end_y), GOLD if i==1 else (172, 212, 236, 170), 5)
@@ -119,7 +119,7 @@ def _solar(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
                 sun_y+(i-1)*19+((end_y-(sun_y+(i-1)*19))*((t*53+i*97)%136)/158),
                 GOLD if i==1 else CYAN, 5)
     _label(d, (165, 1401), "UNEQUAL HEATING" if english else "CHAUFFAGE INÉGAL",
-           color=GOLD, size=32)
+           color=GOLD, size=40)
 
 
 def _wind(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
@@ -145,9 +145,9 @@ def _wind(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         _marker(d, x, y+17*math.sin((x-145)/83+t*.7+k), GOLD, 9)
         _arrow(d, (min(827,x-33), y+38), (min(905,x+53),y+38),
                (146, 227, 252, 202), 5)
-    _label(d, (162, 742), "WIND" if english else "VENT", size=34)
+    _label(d, (162, 742), "WIND" if english else "VENT", size=44)
     _label(d, (162, 1370), "SURFACE CURRENT" if english else "COURANT DE SURFACE",
-           color=CYAN, size=31)
+           color=CYAN, size=39)
 
 
 def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
@@ -169,7 +169,7 @@ def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
               fill=(13, 47, 72, 245), outline=GOLD, width=5)
     _label(d, (cx-40, cy-19), "↻", color=GOLD, size=49)
     _label(d, (213, 1435), "CURVED PATH · SCHEMATIC" if english else "TRAJET COURBE · SCHÉMA",
-           color=CYAN, size=27)
+           color=CYAN, size=34)
 
 
 def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
@@ -190,11 +190,11 @@ def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
     # Stylized polar ice; no real-world polar location claim.
     d.polygon(((740, 895),(779, 840),(833, 895),(892, 895)),
               fill=(216, 241, 253, 210))
-    _label(d, (160, 791), "SURFACE" if english else "SURFACE", size=29)
+    _label(d, (160, 791), "SURFACE" if english else "SURFACE", size=36)
     _label(d, (161, 1214), "DEEP WATER" if english else "EAU PROFONDE",
-           color=CYAN, size=28)
-    _label(d, (580, 1376), "DENSE WATER SINKS" if english else "L'EAU DENSE PLONGE",
-           color=COLD, size=24)
+           color=CYAN, size=36)
+    _label(d, (514, 1378), "DENSE WATER SINKS" if english else "L'EAU DENSE PLONGE",
+           color=COLD, size=36)
 
 
 def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
@@ -204,7 +204,7 @@ def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         d.rounded_rectangle((x, 860, x+220, 1130), radius=36,
                             fill=(hue[0], hue[1], hue[2], 60),
                             outline=hue, width=5)
-        _label(d, (x+38, 982), text, color=hue, size=32)
+        _label(d, (x+38, 982), text, color=hue, size=42)
     for lane in range(4):
         y = 1175+lane*55
         points = [(150+x, round(y+25*math.sin(x/83+t*.35+lane)))
@@ -215,10 +215,10 @@ def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
                 GOLD if lane%2 else CYAN, 9)
     _arrow(d, (408, 993), (675, 993), GOLD, 11)
     _label(d, (201, 753), "MOVING HEAT" if english else "CHALEUR EN MOUVEMENT",
-           color=GOLD, size=34)
+           color=GOLD, size=44)
     _label(d, (195, 1426),
            "CLIMATE CONNECTIONS" if english else "LIENS CLIMATIQUES",
-           color=CYAN, size=29)
+           color=CYAN, size=39)
 
 
 def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
@@ -243,5 +243,5 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
     elif beat == "heat":
         _heat(draw, t, english)
     _label(draw, (115, 620),
-           "ILLUSTRATIVE SCIENCE" if english else "SCIENCE ILLUSTRÉE",
-           color=(158, 195, 211, 225), size=20)
+           "SCHEMATIC · NOT TO SCALE" if english else "SCHÉMA · HORS ÉCHELLE",
+           color=(158, 195, 211, 225), size=29)
