@@ -13,7 +13,7 @@ from random import Random
 
 from PIL import ImageDraw
 
-WORLD_VERSION = "original-landscapes-v1"
+WORLD_VERSION = "original-landscapes-v2-forest-ground-details"
 LANDSCAPES = ("forest", "river", "village", "meadow")
 PATTERNS = (
     ("river", r"\b(riviere\w*|fleuve\w*|ruisseau\w*|torrent\w*|river\w*|stream\w*|brook\w*)\b"),
@@ -59,6 +59,83 @@ def draw_landscape_details(draw: ImageDraw.ImageDraw, *, kind: str,
         raise ValueError("Unsupported authored landscape")
     rnd = Random(seed ^ 0xACBC11)
     if kind == "forest":
+        # A separate forest silhouette is needed: generic background trees
+        # alone cannot communicate a woodland floor at small mobile sizes.
+        # Keep the original 0..600px actor area completely unobstructed.
+        earth = (33, 61, 65) if night else (58, 94, 72)
+        root = (43, 47, 57) if night else (82, 75, 65)
+        stone = (73, 91, 100) if night else (132, 147, 133)
+        stone_edge = (117, 139, 143) if night else (187, 198, 168)
+        moss = (50, 93, 82) if night else (96, 151, 95)
+        fern = (58, 109, 97) if night else (73, 145, 101)
+        fern_light = (98, 141, 120) if night else (132, 185, 115)
+        # Low irregular bank, rather than a full-screen flat grass block.
+        draw.polygon(
+            [(602, 700), (651, 669), (717, 680), (777, 644),
+             (841, 657), (906, 632), (983, 660), (1052, 641),
+             (1118, 666), (1214, 637), (1280, 657),
+             (1280, 720), (602, 720)],
+            fill=earth)
+        # Bark roots lead the eye toward the background trees without
+        # entering the body/shadow area of any original rig.
+        for x, y, span in ((711, 674, 70), (910, 658, 84),
+                           (1106, 674, 76), (1239, 669, 52)):
+            draw.arc((x-span, y-27, x+span, y+34), 184, 346,
+                     fill=root, width=7)
+            draw.arc((x-span//2, y-15, x+span//2, y+25), 185, 338,
+                     fill=moss, width=3)
+        # Small mossy boulders, distinct overlapping planes and contact
+        # shadows; never use photos or external protected assets.
+        for x, y, scale in ((732, 631, 1.0), (970, 642, .78),
+                             (1178, 610, 1.14)):
+            w, h = round(64*scale), round(32*scale)
+            draw.ellipse((x-w-8, y+h-8, x+w+10, y+h+14),
+                         fill=(27, 47, 56) if night else (42, 79, 65))
+            draw.polygon(
+                [(x-w, y+8), (x-w//2, y-h//2), (x+9, y-h),
+                 (x+w-9, y-h//2), (x+w, y+h//2),
+                 (x+w-15, y+h), (x-w+8, y+h)],
+                fill=stone, outline=root, width=3)
+            draw.line([(x-w+11, y+5), (x-w//2, y-h//2+8),
+                       (x+8, y-h+9), (x+w-13, y-h//2+7)],
+                      fill=stone_edge, width=3)
+            draw.arc((x-w//2, y-h//2-1, x+w//2, y+10),
+                     183, 321, fill=moss, width=5)
+        # Fern fronds alternate directions for a layered, natural woodland.
+        for x, y, height in ((663, 664, 67), (814, 688, 87),
+                             (1047, 677, 72), (1244, 699, 93)):
+            direction = -1 if (x // 100) % 2 else 1
+            top = (x+direction*17, y-height)
+            draw.line([(x, y), (x+direction*9, y-height//2), top],
+                      fill=fern, width=4)
+            for index in range(1, 8):
+                fraction = index/9
+                px = x+direction*(9*fraction+8*fraction*fraction)
+                py = y-height*fraction
+                leaf_len = round(16*(1-.45*fraction))
+                for side in (-1, 1):
+                    draw.line(
+                        [(px, py), (px+side*leaf_len, py-8-5*fraction)],
+                        fill=fern_light if index % 2 else fern, width=4)
+        # Small unmistakable toadstools add a mobile-legible woodland cue.
+        for x, y, radius in ((779, 696, 16), (1014, 698, 13),
+                              (1193, 680, 19)):
+            cap = (129, 89, 113) if night else (185, 90, 81)
+            highlight = (183, 150, 168) if night else (242, 197, 149)
+            draw.line((x, y, x+2, y-radius), fill=stone_edge, width=6)
+            draw.ellipse((x-radius, y-radius*2, x+radius, y-radius//2),
+                         fill=cap, outline=root, width=2)
+            for offset in (-radius//2, radius//3):
+                draw.ellipse((x+offset-2, y-radius*2+5,
+                              x+offset+3, y-radius*2+10),
+                             fill=highlight)
+        # Seed-sensitive but controlled ground detail across the right side.
+        for _ in range(32):
+            x = rnd.randrange(624, 1256)
+            y = rnd.randrange(690, 716)
+            width = rnd.randrange(3, 8)
+            draw.arc((x-width, y-width, x+width, y+width),
+                     215, 345, fill=fern, width=2)
         return
     if kind == "river":
         # Winding stream, layered riverbanks, reflected ripples and bridge.
