@@ -17,9 +17,10 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
+from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v5-1080x1920-lossless-text-fluid-planet-ocean-flow"
+PORTRAIT_VERSION = "original-science-shorts-v6-1080x1920-lossless-text-fluid-planet-ocean-flow-topic-storyboards"
 INK = (238, 247, 250, 255)
 
 
@@ -176,6 +177,7 @@ class PortraitScienceScene:
             raise ValueError("Invalid science scene index")
         self.topic, self.narration, self.scene_index = topic, narration, scene_index
         self.mode = scene_mode(narration)
+        self.beat = classify_storyboard(topic, narration)
         self.english = bool(re.search(
             r"\b(the|what|earth|would|could|ocean|wind|because)\b",
             narration, flags=re.IGNORECASE))
@@ -281,9 +283,11 @@ class PortraitScienceScene:
         }
         d.rounded_rectangle((80, 477, 750, 537), radius=22,
                             fill=(12, 47, 72, 234))
-        d.text((113, 488), badges[self.mode][0 if self.english else 1],
+        d.text((113, 488), (STORYBOARD_BADGES[self.beat] if self.beat else badges[self.mode])[0 if self.english else 1],
                font=_font(30, bold=True), fill=GOLD+(255,))
-        if self.mode in ("orbital", "daylight"):
+        if self.beat is not None:
+            draw_storyboard(d, self.beat, t, self.english)
+        elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
             center_x = 540 + round(16 * math.sin(t*.32))
             center_y = 955 + round(12 * math.sin(t*.40))
