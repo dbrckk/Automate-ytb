@@ -9,6 +9,8 @@ on:
       - "production/solar_storm/science_vfx.py"
       - "production/solar_storm/preview_science_vfx.py"
       - "tests/test_solar_storm_science_vfx.py"
+      - "tests/test_solar_storm_motion_qa.py"
+      - "production/solar_storm/review_motion.py"
       - ".github/workflows/science-motion-preview.yml"
   workflow_dispatch:
 
@@ -32,6 +34,8 @@ jobs:
           python -m pip install "numpy>=1.26,<3" "Pillow>=10,<13"
       - name: Verify actual animated pixels, authored source role and H264
         run: python -m unittest discover -s tests -p test_solar_storm_science_vfx.py -v
+      - name: Verify final master motion safety gate without downloading NASA videos
+        run: python -m unittest discover -s tests -p test_solar_storm_motion_qa.py -v
       - name: Render five independently animated science shots and final review MP4
         run: python production/solar_storm/preview_science_vfx.py
       - name: Preserve playable MP4 and contact sheet
