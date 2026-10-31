@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/titan-documentary.yml"
       - "production/titan/render_short.py"
+      - "production/titan/finish_short.py"
   workflow_dispatch:
 
 permissions:
@@ -30,6 +31,12 @@ jobs:
           python -m pip install -e ".[speech]" soundfile requests
       - name: Render documentary and run output decode verification
         run: python production/titan/render_short.py
+      - name: Burn animated English subtitles, add factual overlays, mix ambience, decode test
+        run: |
+          python production/titan/finish_short.py \
+            --input production/titan/out/Titan_NASA_Kokoro_EN_1080x1920.mp4 \
+            --report production/titan/out/production_report.json \
+            --outdir production/titan/out/enhanced
       - name: Upload completed production and QA report
         uses: actions/upload-artifact@v4
         with:
@@ -41,5 +48,10 @@ jobs:
             production/titan/out/cover.jpg
             production/titan/out/publication.txt
             production/titan/out/production_report.json
+            production/titan/out/enhanced/Titan_Documentary_Enhanced_EN.mp4
+            production/titan/out/enhanced/cover_enhanced.jpg
+            production/titan/out/enhanced/subtitles_final.srt
+            production/titan/out/enhanced/captions.ass
+            production/titan/out/enhanced/qa_enhanced.json
           if-no-files-found: error
           retention-days: 14
