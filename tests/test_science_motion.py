@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 import shutil
 import subprocess
 import tempfile
@@ -16,7 +17,7 @@ from automate_ytb.science_motion import (
 
 class ScienceMotionTests(unittest.TestCase):
     def test_story_controls_distinct_original_modes_and_real_motion(self):
-        self.assertIn("science-motion-v1", SCIENCE_VERSION)
+        self.assertIn("science-motion-v2", SCIENCE_VERSION)
         cues = {
             "La planète continue sa rotation.": "orbital",
             "L'air et le vent continuent leur déplacement.": "atmosphere",
@@ -40,6 +41,38 @@ class ScienceMotionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Earth/ocean"):
             ScienceScene(topic="A story about a purple owl",
                          narration="The owl goes to sleep.",scene_index=1)
+
+    def test_long_shot_globe_keeps_rotating_after_previous_five_second_limit(self):
+        shot = ScienceScene(
+            topic="Why Earth keeps rotating",
+            narration="The Earth rotates under the stars.",
+            scene_index=1)
+        self.assertEqual(len(shot._globes), 0)
+        first = shot._globe_at(4.9)
+        later = shot._globe_at(6.5)
+        self.assertIsNotNone(ImageChops.difference(first, later).getbbox())
+        self.assertEqual(shot._globe_at(6.5).tobytes(), later.tobytes())
+        self.assertIn(int(6.5 * 2.5), shot._globes)
+        self.assertNotIn(11, shot._globes)
+        # The scene continues to change through 6 seconds, not just the
+        # moving stars or animated camera while the planet is frozen.
+        for instant in (7.1, 8.1, 9.1, 10.1, 11.1, 12.1,
+                        13.1, 14.1, 15.1, 16.1):
+            shot._globe_at(instant)
+            self.assertLessEqual(len(shot._globes), 8)
+        self.assertEqual(shot.frame(6.1, 7).size, (1280, 720))
+
+    def test_ocean_atmosphere_and_night_mode_allocate_globes_only_when_needed(self):
+        common = dict(topic="What if Earth's oceans changed?", scene_index=2)
+        with patch("automate_ytb.science_motion._planet",
+                   side_effect=AssertionError("Unneeded sphere render")):
+            for narration in (
+                "The oceans begin to move.",
+                "The wind and atmosphere keep moving."):
+                scene = ScienceScene(narration=narration, **common)
+                self.assertEqual(scene._globes, {})
+                self.assertEqual(scene.frame(.4, 1).size, (1280, 720))
+                self.assertEqual(scene._globes, {})
 
     def test_art_fingerprint_is_bound_to_the_authored_scene(self):
         common=dict(topic="Why Earth rotates",narration="The Earth spins.",
