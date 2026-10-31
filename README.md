@@ -573,7 +573,14 @@ désormais **Kokoro** par défaut (voix française `ff_siwis` ou anglaise
 `af_heart`), en remplacement de la voix eSpeak plus mécanique.
 La voix de synthèse est produite sur GitHub Actions, sans API payante,
 avec débit `natural` de 0,94x par défaut. Deux autres styles sont
-proposés : `gentle` (0,88x) et `lively` (1,04x).
+proposés : `gentle` (0,88x) et `lively` (1,04x). Dans le même formulaire
+Android, **`voice_name` permet de choisir le locuteur** : `auto` conserve
+le locuteur par défaut, `af_heart` et `af_bella` proposent deux timbres
+féminins anglais, `am_michael` un timbre masculin anglais, et `ff_siwis`
+la voix française dédiée. Les combinaisons langue/locuteur invalides sont
+rejetées avant la synthèse ; pour `espeak` ou `none`, utiliser `auto`.
+Le choix change l'identité vocale du modèle, **sans garantir qu'une voix
+spécifique soit plus naturelle** : écouter `voice-sample.mp3` et valider.
 
 En mode `caption_timing=audio`, les pauses entre phrases suivent
 modérément leur ponctuation : courtes pour une virgule, plus longues
