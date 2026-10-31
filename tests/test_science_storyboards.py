@@ -42,6 +42,7 @@ class TopicStoryboardTests(unittest.TestCase):
                 scene = PortraitScienceScene(
                     topic=self.topic, narration=narration, scene_index=1)
                 self.assertEqual(scene.beat, beat)
+                self.assertTrue(scene.english, "English science needs English labels")
                 initial = scene.frame(0., 1.)
                 later = scene.frame(.4, 1.)
                 self.assertEqual(initial.size, PORTRAIT_SIZE)
