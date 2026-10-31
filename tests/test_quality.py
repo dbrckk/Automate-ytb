@@ -68,7 +68,7 @@ class QualityGateTests(unittest.TestCase):
 
     def test_exact_audio_phrase_boundary_check_rejects_tampered_markers(self):
         scene = {
-            "narration": "The Earth turns. The ocean moves.",
+            "narration": "The Earth continues turning beyond the edge. The oceans remain in motion.",
             "startMs": 2000, "endMs": 7000,
         }
         from automate_ytb.captions import caption_phrases
