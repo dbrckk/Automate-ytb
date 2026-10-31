@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import unittest
 
-from PIL import ImageChops
+from PIL import Image, ImageChops
 
 from automate_ytb.captions import (
     caption_phrases, timed_cues_for_scene,
@@ -139,6 +139,43 @@ class ScienceShortsTests(unittest.TestCase):
             scene_index=1)
         no_planet.frame(.5, 1.0)
         self.assertFalse(no_planet._globes)
+
+    def test_portrait_planet_moves_at_intermediate_frames_without_reprojection(self):
+        self.assertIn("fluid-planet", PORTRAIT_VERSION)
+        scene = PortraitScienceScene(
+            topic="Why the Earth rotates",
+            narration="The Earth keeps turning.", scene_index=1)
+        first = scene._planet_at(0)
+        halfway = scene._planet_at(.2)
+        next_pose = scene._planet_at(.4)
+        self.assertEqual(len(scene._globes), 2)
+        self.assertEqual(halfway.tobytes(),
+                         Image.blend(first, next_pose, .5).tobytes())
+        self.assertIsNotNone(ImageChops.difference(
+            first.convert("RGB"), halfway.convert("RGB")).getbbox())
+        self.assertIsNotNone(ImageChops.difference(
+            halfway.convert("RGB"), next_pose.convert("RGB")).getbbox())
+        self.assertEqual(halfway.tobytes(), scene._planet_at(.2).tobytes())
+        # Every 30fps frame may interpolate without computing a new pose.
+        for frame in range(1, 12):
+            scene._planet_at(frame / 30)
+        self.assertEqual(len(scene._globes), 2)
+        self.assertLessEqual(len(scene._globes), 6)
+
+    def test_portrait_interpolation_rejects_unsafe_requests(self):
+        scene = PortraitScienceScene(
+            topic="Earth under the Sun",
+            narration="Earth keeps moving.", scene_index=1)
+        for time in (-.01, float("nan"), float("inf")):
+            with self.subTest(time=time), self.assertRaises(ValueError):
+                scene._planet_at(time)
+        for size in (0, 12, 1100, True):
+            with self.subTest(size=size), self.assertRaises(ValueError):
+                scene._planet_at(.1, size=size)
+        scene._planet_at(.2)
+        for time in (11, 18, 32, 59, 91):
+            scene._planet_at(time)
+            self.assertLessEqual(len(scene._globes), 6)
 
     def test_wrong_topics_and_unsafe_times_are_rejected(self):
         with self.assertRaises(ValueError):
