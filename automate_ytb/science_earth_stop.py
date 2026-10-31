@@ -44,9 +44,9 @@ def classify(topic: str, narration: str) -> str | None:
         return None
     if not re.search(r"\b(stop|stops|stopped|stopping|halt|arret|arrete|cess|immobil|spin|spinning|rotation|tourner)\b", name):
         return None
-    if re.search(r"\b(astronaut|space suit|combinaison|surviv|safety|advice|conseil)\b", words):
+    if re.search(r"\b(astronauts?|space suit|combinaison|survivors?|survival|survive|survived|safety|advice|conseil)\b", words):
         return "astronaut"
-    if re.search(r"\b(ocean|sea|seas|waves?|tsunami|flood|poles?|eaux?|vagues?|marees?)\b", words):
+    if re.search(r"\b(oceans?|sea|seas|waves?|tsunami|flood|poles?|eaux?|vagues?|marees?)\b", words):
         return "ocean"
     if re.search(r"\b(air|winds?|atmosphere|vents?|tempete|storm)\b", words):
         return "wind"
