@@ -1,67 +1,175 @@
-name: Publish Solar Storm video as a direct MP4 link
+name: Publish verified Solar Storm MP4 — selected run
 
+# A public GitHub Release is created only on explicit workflow_dispatch.
+# Never silently reuse an older success when a newer production failed.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/publish-solar-storm-video.yml"
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Optional production run ID (blank: newest main-branch production, required to have succeeded)"
+        type: string
+        required: false
 
 permissions:
   actions: read
   contents: write
 
+concurrency:
+  group: solar-storm-video-release
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
-      - name: Download the already validated solar storm video
+      - name: Verify provenance of selected production run
+        id: provenance
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUESTED_RUN: ${{ inputs.source_run_id }}
         run: |
           set -euo pipefail
-          gh run download 41236660065 --repo "$GITHUB_REPOSITORY" \
-            --name solar-storm-english-short --dir "$RUNNER_TEMP/solar"
-          test -s "$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4"
-          test -s "$RUNNER_TEMP/solar/final/qa.json"
-          python3 - "$RUNNER_TEMP/solar/final/qa.json" <<'PY'
-          import json,sys
-          q=json.load(open(sys.argv[1],encoding='utf-8'))
-          assert q["status"]=="passed", q
-          assert q["shot_count"]>=10, q
-          print("Validated original QA:",q["shot_count"],"shots")
+          RUN_ID="$REQUESTED_RUN"
+          if [[ -z "$RUN_ID" ]]; then
+            RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow solar-storm-documentary.yml --branch main --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')"
+          fi
+          if [[ ! "$RUN_ID" =~ ^[0-9]{5,15}$ ]]; then
+            echo "::error::No valid Solar Storm production run ID"
+            exit 1
+          fi
+          gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --json databaseId,status,conclusion,headBranch,headSha,workflowName,url \
+            > "$RUNNER_TEMP/source-run.json"
+          python3 - "$RUNNER_TEMP/source-run.json" "$GITHUB_OUTPUT" <<'PY'
+          import json, re, sys
+          from pathlib import Path
+          info = json.loads(Path(sys.argv[1]).read_text())
+          if (info.get("status") != "completed" or
+                  info.get("conclusion") != "success" or
+                  info.get("headBranch") != "main" or
+                  info.get("workflowName") !=
+                  "Produce Solar Storm short — NASA + Kokoro"):
+              raise SystemExit("Refusing to publish unsuccessful, wrong or non-main production: " + str(info))
+          sha = info.get("headSha")
+          if not isinstance(sha, str) or not re.fullmatch("[a-f0-9]{40}", sha):
+              raise SystemExit("Invalid source commit")
+          with Path(sys.argv[2]).open("a") as stream:
+              stream.write(f"run_id={info['databaseId']}\n")
+              stream.write(f"source_sha={sha}\n")
+              stream.write(f"source_url={info['url']}\n")
+          print("Accepted source", info["url"])
           PY
+
+      - name: Download exact artifact and verify real final video
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ steps.provenance.outputs.run_id }}
+          SOURCE_SHA: ${{ steps.provenance.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" \
+            --name solar-storm-english-short --dir "$RUNNER_TEMP/solar"
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg
-          ffprobe -v error -show_entries format=duration,size \
-            -of default=noprint_wrappers=1 \
-            "$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4"
-          sha256sum "$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4"
+          python3 - "$RUNNER_TEMP/solar" "$SOURCE_RUN" "$SOURCE_SHA" <<'PY'
+          import hashlib, json, math, subprocess, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          final = root / "final"
+          video = final / "Solar_Storm_Short_EN_1080x1920.mp4"
+          required = [video, final/"qa.json", final/"subtitles_en.srt",
+              final/"publication.txt", final/"contact_sheet.jpg",
+              final/"shot_contact_sheet.jpg", final/"shot_review.json",
+              final/"review_frames.json", root/"production_report.json"]
+          for path in required:
+              if not path.is_file() or not path.stat().st_size:
+                  raise SystemExit(f"Missing release evidence: {path}")
+          qa = json.loads((final/"qa.json").read_text())
+          shot = json.loads((final/"shot_review.json").read_text())
+          scene = json.loads((final/"review_frames.json").read_text())
+          production = json.loads((root/"production_report.json").read_text())
+          if (qa.get("status") != "passed" or qa.get("shot_count") != 13 or
+                  shot.get("sampled_shots") != 13 or
+                  scene.get("sampled_scenes") != 6 or
+                  qa.get("editorial_approved") is not False or
+                  shot.get("editorial_approved") is not False or
+                  len(production.get("shot_plan", [])) != 13):
+              raise SystemExit("Release requires successful full 13-shot and 6-scene technical QA")
+          p = subprocess.run(["ffprobe", "-v", "error", "-of", "json",
+              "-show_entries", "stream=codec_type,codec_name,width,height,"
+              "r_frame_rate,sample_rate:format=duration", str(video)],
+              text=True, capture_output=True, check=True)
+          media = json.loads(p.stdout)
+          v = [s for s in media["streams"] if s.get("codec_type") == "video"]
+          a = [s for s in media["streams"] if s.get("codec_type") == "audio"]
+          duration = float(media["format"]["duration"])
+          if (len(v) != 1 or len(a) != 1 or
+                  v[0].get("codec_name") != "h264" or
+                  v[0].get("width") != 1080 or v[0].get("height") != 1920 or
+                  v[0].get("r_frame_rate") != "30/1" or
+                  a[0].get("codec_name") != "aac" or
+                  a[0].get("sample_rate") != "48000" or
+                  not math.isfinite(duration) or not 10 < duration < 180 or
+                  abs(duration - float(qa.get("duration", -100))) > 0.35):
+              raise SystemExit("Failed to verify source MP4 H.264/AAC streams and real duration")
+          with video.open("rb") as stream:
+              digest = hashlib.file_digest(stream, "sha256").hexdigest()
+          receipt = {"source_run_id":int(sys.argv[2]),"source_sha":sys.argv[3],
+              "mp4_sha256":digest,"mp4_bytes":video.stat().st_size,
+              "duration_seconds":round(duration,3),"reviewed_scenes":6,
+              "reviewed_shots":13,"technical_qa_passed":True,
+              "editorial_approved":False,"youtube_published":False}
+          (root/"release-provenance.json").write_text(json.dumps(receipt,indent=2)+"\n")
+          print("Verified original video", duration, digest)
+          PY
 
-      - name: Publish one permanent direct-download GitHub release asset
+      - name: Create run-specific immutable download link
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ steps.provenance.outputs.run_id }}
+          SOURCE_SHA: ${{ steps.provenance.outputs.source_sha }}
+          SOURCE_URL: ${{ steps.provenance.outputs.source_url }}
         run: |
           set -euo pipefail
-          ASSET="$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4"
-          TAG="solar-storm-en-2026-10-31"
+          TAG="solar-storm-en-run-$SOURCE_RUN"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release already exists; replace verified asset"
-            gh release upload "$TAG" "$ASSET#Solar_Storm_EN_1080x1920.mp4" \
-              --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$TAG" \
-              "$ASSET#Solar_Storm_EN_1080x1920.mp4" \
-              "$RUNNER_TEMP/solar/final/subtitles_en.srt#Solar_Storm_EN.srt" \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" \
-              --title "Solar Storm — English 1080x1920 MP4" \
-              --notes "35-second English NASA space-weather short. Direct downloadable video asset, not a temporary ChatGPT Library link. NASA SDO observations, separate NASA science visualizations, and original generated narration. See repository for credits." \
-              --latest=false
+            echo "This run already has a release; never overwrite an existing video."
+            ASSETS="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --json assets --jq '.assets[].name')"
+            for REQUIRED in Solar_Storm_EN_1080x1920.mp4 Solar_Storm_EN.srt \
+              publication.txt shot_contact_sheet.jpg release-provenance.json; do
+              if ! grep -Fxq "$REQUIRED" <<< "$ASSETS"; then
+                echo "::error::Existing release has missing asset: $REQUIRED"
+                exit 1
+              fi
+            done
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+              --jq '.assets[] | [.name,.size,.url] | @tsv'
+            exit 0
           fi
-          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Solar_Storm_EN_1080x1920.mp4"
-          echo "DIRECT_VIDEO_URL=$URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "$URL"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --json assets --jq '.assets[] | [.name, .size, .url] | @tsv'
+          {
+            echo "Original NASA solar-storm documentary — verified download."
+            echo "Source Actions run: $SOURCE_URL"
+            echo "Source commit: $SOURCE_SHA"
+            echo "MP4 SHA256 and technical QA: release-provenance.json"
+            echo "NASA footage depicts separate observations and explanatory graphics."
+            echo "See publication.txt for attribution."
+            echo "This is not artistic approval or a YouTube upload."
+          } > "$RUNNER_TEMP/release-notes.txt"
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4#Solar_Storm_EN_1080x1920.mp4" \
+            "$RUNNER_TEMP/solar/final/subtitles_en.srt#Solar_Storm_EN.srt" \
+            "$RUNNER_TEMP/solar/final/publication.txt#publication.txt" \
+            "$RUNNER_TEMP/solar/final/shot_contact_sheet.jpg#shot_contact_sheet.jpg" \
+            "$RUNNER_TEMP/solar/release-provenance.json#release-provenance.json" \
+            --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" \
+            --title "Solar Storm — verified run $SOURCE_RUN" \
+            --notes-file "$RUNNER_TEMP/release-notes.txt" --latest=false
+          DIRECT="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Solar_Storm_EN_1080x1920.mp4"
+          echo "### Verified download" >> "$GITHUB_STEP_SUMMARY"
+          echo "$DIRECT" >> "$GITHUB_STEP_SUMMARY"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | [.name,.size,.url] | @tsv'
