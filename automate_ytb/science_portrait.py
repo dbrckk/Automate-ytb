@@ -102,7 +102,7 @@ class PortraitScienceScene:
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
         self.base = _sky(seed)
-        self._globes: dict[int, Image.Image] = {}
+        self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
         self._caption_duration_ms: int | None = None
@@ -141,7 +141,8 @@ class PortraitScienceScene:
 
     def _planet_pose(self, step: int, size: int) -> Image.Image:
         """Lazy/bounded cached image at an exact sampled yaw orientation."""
-        key = step * 1000 + size
+        # Tuple keys cannot alias for two valid resolutions and pose indexes.
+        key = (step, size)
         if key not in self._globes:
             if len(self._globes) >= 6:
                 del self._globes[next(iter(self._globes))]
