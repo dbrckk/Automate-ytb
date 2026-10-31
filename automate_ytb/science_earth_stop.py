@@ -47,9 +47,9 @@ def classify(topic: str, narration: str) -> str | None:
         return None
     if re.search(r"\b(astronauts?|space suit|combinaison|survivors?|survival|survive|survived|safety|advice|conseil)\b", words):
         return "astronaut"
-    if re.search(r"\\b(poles?|polar|poleward|equatorial bulge|geoid|polaire|poles?|bourrelet|redistribut)\\b", words):
+    if re.search(r"\b(poles?|polar|poleward|equatorial bulge|geoid|polaire|poles?|bourrelet|redistribut)\b", words):
         return "poles"
-    if re.search(r"\\b(oceans?|sea|seas|waves?|tsunami|flood|eaux?|vagues?|marees?)\\b", words):
+    if re.search(r"\b(oceans?|sea|seas|waves?|tsunami|flood|eaux?|vagues?|marees?)\b", words):
         return "ocean"
     if re.search(r"\b(air|winds?|atmosphere|vents?|tempete|storm)\b", words):
         return "wind"
@@ -81,11 +81,13 @@ def _star_motion(d: ImageDraw.ImageDraw, t: float, speed: float = 1.):
 
 
 def _globe(picture: Image.Image, globe_at: Callable, t: float, duration: float,
-           *, stopped: bool = False, diameter: int = 620):
+           *, stopped: bool = False, frozen: bool = False,
+           diameter: int = 620):
     u = t / duration
     # Animated orientation integrates a slowing angular velocity, ending at
     # zero for an instantaneous-stop *visual analogy*, not a dynamics model.
-    spin = 5*duration*(u - .5*u*u) if stopped else t*4
+    spin = (0.0 if frozen else
+            5*duration*(u - .5*u*u) if stopped else t*4)
     planet = globe_at(spin, size=diameter)
     cx = 540 + round(20*math.sin(t*.35))
     cy = 1017 + round(14*math.sin(t*.54))
@@ -203,7 +205,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
             d.ellipse((x,y,x+3+j%4,y+3+j%4),
                       fill=(221,250,251,150))
     elif beat == "poles":
-        cx,cy=_globe(picture,globe_at,t,duration,stopped=True,diameter=600)
+        cx,cy=_globe(picture,globe_at,t,duration,frozen=True,diameter=600)
         d=ImageDraw.Draw(picture, "RGBA")
         # A deliberately schematic cross-section: arrows and water bands
         # converge toward two polar ends. Not a hydrodynamic prediction.
@@ -243,7 +245,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
     elif beat == "day":
         # After a stopped rotation, preserve the fixed orientation: orbital
         # illumination can change, but the globe must not keep spinning.
-        cx,cy=_globe(picture,globe_at,t,duration,stopped=True,diameter=560)
+        cx,cy=_globe(picture,globe_at,t,duration,frozen=True,diameter=560)
         d=ImageDraw.Draw(picture,"RGBA")
         r=280
         d.pieslice((cx-r,cy-r,cx+r,cy+r),270,90,
