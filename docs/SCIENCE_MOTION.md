@@ -80,4 +80,12 @@ Le premier export complet de 30 secondes comptait environ 44 mots et 13,6 second
 
 ## Vérifications de sortie
 
+## Storyboards scientifiques originaux et spécifiques à la narration
+
+Pour le sujet **courants océaniques**, le moteur de Shorts reconnaît maintenant cinq notions scientifiques dans le texte original, sans décider à partir d'un simple numéro de plan : **chauffage solaire différentiel**, **vents et courants de surface**, **déviation/gyres liée à l'effet Coriolis**, **plongée des eaux denses**, **redistribution de chaleur**. Chaque notion possède une composition 1080 × 1920 indépendante et des flèches, particules ou chemins recalculés à chaque instant de la scène. Les textes du graphique basculent entre anglais et français lorsque la langue est identifiable.
+
+Le rendu conserve les zones sûres du titre et des sous-titres, les minutages issus de la synthèse audio et l'interdiction d'inventer automatiquement des faits. Les graphiques ne prétendent **ni reconstituer une carte réelle de courants, ni être une simulation du système climatique** : les légendes restent qualitatives et le dessin signale son caractère illustratif. Les sujets pour lesquels les concepts ne peuvent pas être détectés conservent le moteur historique au lieu de recevoir un faux schéma. Aucun téléchargement de texture, modèle ou service payant n'est nécessaire.
+
+La CI couvre la détection du concept, les cinq images différentes, les changements réels de pixels entre images, la reproductibilité, la conservation des zones UI, l'absence de projection planétaire coûteuse dans les nouveaux schémas et la rétrocompatibilité avec un sujet sans correspondance. Une nouvelle exécution du **vrai workflow Kokoro 9:16** est demandée automatiquement lorsque le moteur de scènes scientifiques change. Cette production restera une **prévisualisation technique**, nécessitant une revue scientifique, artistique et sonore avant toute diffusion.
+
 Les régressions `tests/test_science_motion.py` couvrent les quatre modes visuels, les images successives distinctes, l’empreinte des ressources de la narration et un vrai H.264 à 30 fps. La CI doit réussir l'ensemble de la chaîne avant fusion, et une revue humaine doit contrôler le film complet. Des animations multisciences généralisables, une direction artistique native 1080p et l'alignement mot à mot fiable restent des objectifs futurs.
