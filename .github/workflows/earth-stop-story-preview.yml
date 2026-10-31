@@ -2,6 +2,11 @@ name: Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/earth-stop-story-preview.yml"
+      - "automate_ytb/science_earth_stop.py"
+      - "automate_ytb/science_portrait.py"
   push:
     branches: [main]
     paths:
