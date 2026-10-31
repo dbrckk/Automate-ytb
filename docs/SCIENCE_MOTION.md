@@ -28,6 +28,12 @@ Le poster d'approbation reste en 1280×720 : sa géométrie diffère donc volont
 
 Pour Android : sélectionner `style = science`, `resolution = shorts`, `render_profile = high` et, si souhaité, `voice = kokoro`. Les vérifications du pipeline et `tests/test_science_shorts.py` contrôlent la taille exacte, le mouvement entre les images, les limitations d'entrée et le vrai codec H.264.
 
+## Revue visuelle native 9:16 sur Android
+
+Le workflow **One-click YouTube preview** extrait maintenant les planches de contrôle directement du MP4 final en conservant son ratio d’image. Pour une vidéo verticale 1080×1920, chaque échantillon est décodé en **360×640** (format 9:16) et inséré dans un aperçu portrait de **quatre scènes par page**, sans découpage 16:9. Les bandes des titres et les sous-titres restent entièrement visibles pour une vérification sur smartphone. Les vidéos horizontales conservent leurs huit scènes par page et leur rendu habituel. Le rapport `review/visual-review.json` expose l'orientation, les dimensions des images et le nombre de scènes par planche.
+
+Les scènes approuvées avec le rig `original-science-v1` et le style `science` sont aussi soumises à la détection d’animations figées sur **deux images réellement décodées du MP4**. Une animation scientifique complètement immobile déclenche une erreur technique ; les plans documentaires volontairement fixes restent autorisés. L'échantillonnage demeure limité et ne certifie ni la qualité cinématographique ni l'exactitude des faits.
+
 ## Typographie mobile sans perte de texte
 
 Les titres et les sous-titres incrustés en mode `shorts` sont désormais mis en lignes en tenant compte de leur largeur réelle : le moteur adapte la taille des glyphes dans les limites de lisibilité, répartit aussi les termes techniques trop longs et évite les points de suspension qui supprimaient parfois des mots. Tous les textes des phrases sont contrôlés avant l'encodage des images. Un titre ou un fragment incompatible avec la zone réservée provoque une erreur explicite : il doit être raccourci ou découpé dans le script, sans supprimer silencieusement du contenu. Le SRT exporté conserve son contenu intégral. Les vidéos précédemment mises en cache sont invalidées pour le rendu portrait. Cette sécurité typographique ne remplace pas l'inspection du film sur téléphone.
