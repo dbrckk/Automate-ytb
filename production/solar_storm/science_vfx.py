@@ -79,38 +79,89 @@ def _backdrop() -> Image.Image:
     return frame
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=16)
 def _orb(kind: str, radius: int) -> Image.Image:
-    n = radius * 2 + 30
-    c = n // 2
-    orb = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    d = ImageDraw.Draw(orb)
-    for r in range(radius + 12, 0, -2):
-        outer = r - radius
-        if kind == "sun":
-            col = ((255, 128, 42, max(0, 11 - outer)) if outer > 0
-                   else (255, 121 + round(110 * (1-r/max(1, radius))),
-                         63 + round(107 * (1-r/max(1,radius))), 255))
+    """Shaded spherical material, authored surface grain and terminator.
+
+    Cached once by type/radius: full raster is drawn only during scene setup.
+    These are illustrator-style *schematic* planets, not NASA cartographic data.
+    """
+    if kind not in {"sun", "earth"} or not 10 <= radius <= 220:
+        raise ValueError("Invalid material sphere")
+    n=radius*2+34
+    c=n//2
+    orb=Image.new("RGBA",(n,n),(0,0,0,0))
+    d=ImageDraw.Draw(orb)
+    for k in range(16,0,-1):
+        r=radius+k
+        if kind=="sun":
+            col=(255,149,62,round(7*(17-k)/16))
         else:
-            val = 1 - r/max(1,radius)
-            col = ((28 + int(28*val), 109 + int(90*val),
-                    171 + int(70*val), 255) if outer <= 0 else
-                   (38, 163, 226, max(0, 9-outer)))
-        if col[3] > 0:
-            d.ellipse((c-r, c-r, c+r, c+r), fill=col)
-    if kind == "earth":
-        d.arc((c-radius+9, c-radius+9, c+radius-9, c+radius-9),
-              200, 305, fill=(168, 245, 255, 200), width=4)
-        rng=random.Random(211)
-        for _ in range(12):
-            x=rng.randint(-radius+8,radius-8)
-            y=rng.randint(-radius+8,radius-8)
-            if (x*x+y*y)**.5 < radius-11:
-                rr=rng.randint(3,11)
-                d.ellipse((c+x-rr,c+y-rr//2,c+x+rr,c+y+rr//2),
-                          fill=(63, 183, 154, 170))
-        d.arc((c-radius+24,c-radius+24,c+radius-24,c+radius-24),
-              280, 70, fill=(218,247,252,120),width=3)
+            col=(70,167,233,round(5*(17-k)/16))
+        d.ellipse((c-r,c-r,c+r,c+r),fill=col)
+
+    pixels=orb.load()
+    r2=radius*radius
+    for yy in range(-radius,radius+1):
+        for xx in range(-radius,radius+1):
+            rs=xx*xx+yy*yy
+            if rs>=r2:
+                continue
+            nx,ny=xx/radius,yy/radius
+            nz=math.sqrt(max(0.0,1.0-rs/r2))
+            # Sun and Earth use distinct authored material shaders and real
+            # directional shading, rather than a flat colored circle.
+            light=max(0.0,.38*nx-.44*ny+.81*nz)
+            if kind=="sun":
+                turbulence=(math.sin(xx*.28+math.cos(yy*.063)*5.3)
+                            +math.sin(yy*.21+math.sin(xx*.083)*2.7)
+                            +.5*math.cos((xx+yy)*.42))/2.5
+                temp=.53+.37*light+.13*turbulence
+                red=min(255,max(0,round(197+61*temp)))
+                green=min(255,max(0,round(70+124*temp)))
+                blue=min(255,max(0,round(25+90*temp)))
+                # Irregular hot streaks and darker granular gaps.
+                pixels[c+xx,c+yy]=(red,green,blue,255)
+            else:
+                long=math.atan2(nx,nz)
+                lat=math.asin(max(-1,min(1,-ny)))
+                relief=(math.sin(long*4+math.sin(lat*3.1))
+                        +.67*math.cos(lat*6.3+long*2.2)
+                        +.35*math.sin(long*9.2-lat*4.5))
+                ice=abs(ny)>.89
+                land=relief>.58 and not ice
+                cloud=(math.sin(long*12+lat*5.3)
+                       +.45*math.cos(long*7-lat*11))>1.19
+                shade=max(.25,min(1.,.24+.89*light))
+                if ice:
+                    base=(184,223,234)
+                elif cloud:
+                    base=(179,223,237)
+                elif land:
+                    base=(65,165,132) if relief<1.15 else (126,174,129)
+                else:
+                    base=(25,118,184) if light>.4 else (20,76,146)
+                pixels[c+xx,c+yy]=tuple(
+                    max(0,min(255,round(v*shade))) for v in base)+(255,)
+    d=ImageDraw.Draw(orb)
+    if kind=="sun":
+        # Sparse photospheric darker regions (not literal real sunspot data).
+        rng=random.Random(radius*7+91)
+        for _ in range(13):
+            px=rng.uniform(-radius*.63,radius*.63)
+            py=rng.uniform(-radius*.63,radius*.63)
+            if px*px+py*py>(radius*.77)**2:
+                continue
+            rr=max(1,round(radius*.012+rng.random()*radius*.018))
+            d.ellipse((c+px-rr,c+py-rr,c+px+rr,c+py+rr),
+                      fill=(170,72,38,105))
+        d.arc((c-radius+7,c-radius+7,c+radius-7,c+radius-7),
+              199,300,fill=(255,231,166,140),width=3)
+    else:
+        d.arc((c-radius+3,c-radius+3,c+radius-3,c+radius-3),
+              192,310,fill=(187,244,255,185),width=3)
+        d.arc((c-radius+9,c-radius+9,c+radius-9,c+radius-9),
+              296,52,fill=(80,173,234,115),width=3)
     return orb
 
 
@@ -271,7 +322,7 @@ def _shield(im,t,duration):
 
 def _satellite(im,t,duration):
     p=t/duration
-    _orb_at(im,"earth",270,775,205)
+    _orb_at(im,"earth",270,770,154)
     d=ImageDraw.Draw(im)
     sx=270+17*math.sin(p*math.tau*.7)
     sy=406+14*math.cos(p*math.tau*.8)
