@@ -9,7 +9,7 @@ import math
 from pathlib import Path
 import subprocess
 
-from PIL import Image, ImageDraw, ImageFont, ImageStat
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageStat
 
 
 EXPECTED_SIZE = (1080, 1920)
@@ -39,17 +39,24 @@ def _signature(image: Image.Image) -> int:
     return sum((value >= average) << index for index, value in enumerate(pixels))
 
 
-def create_contact_sheet(video: Path, segments: list[dict], output: Path) -> dict:
+def create_contact_sheet(video: Path, segments: list[dict], output: Path,
+                         *, labels: list[str] | None = None) -> dict:
     """Fail on corrupt/fully black frames; flag suspicious visual repetition.
 
     The sampled middle frame is one per actual spoken scene. Images appear only
     in the external review artifact; no frame numbers are embedded into the MP4.
     """
     video, output = Path(video), Path(output)
-    if not video.is_file() or not 1 <= len(segments) <= 12:
-        raise ValueError("Need an encoded video and 1–12 narration segments")
+    max_samples = 24 if labels is not None else 12
+    if not video.is_file() or not 1 <= len(segments) <= max_samples:
+        raise ValueError("Need an encoded video and a valid review timeline")
+    if labels is not None and (len(labels) != len(segments) or
+            any(not isinstance(label, str) or not 1 <= len(label) <= 35 or
+                "\\n" in label or "\\r" in label for label in labels)):
+        raise ValueError("Invalid review frame labels")
     entries: list[dict] = []
     signatures: list[int] = []
+    thumbnails: list[Image.Image] = []
     tiles: list[Image.Image] = []
     previous_end = 0.0
     for index, segment in enumerate(segments):
@@ -67,13 +74,20 @@ def create_contact_sheet(video: Path, segments: list[dict], output: Path) -> dic
         if black > 0.998 and contrast < 5.0:
             raise RuntimeError(f"Blank decoded Solar Storm frame: scene {index + 1}")
         signature = _signature(image)
-        similarities = [i+1 for i, earlier in enumerate(signatures)
-                        if (signature ^ earlier).bit_count() <= 4]
+        # AHash alone groups visually different NASA false-color sources.
+        # Also require close actual RGB imagery before warning about repetition.
+        thumb = image.resize((24, 24), Image.Resampling.BILINEAR)
+        similarities = [i+1 for i, (earlier, old_thumb) in
+                        enumerate(zip(signatures, thumbnails))
+                        if (signature ^ earlier).bit_count() <= 4 and
+                        sum(ImageStat.Stat(ImageChops.difference(
+                            thumb, old_thumb)).mean) / 3 < 16]
         entries.append({"scene": index+1, "at_seconds": round(second, 3),
                         "black_fraction": round(black, 4),
                         "channel_contrast": round(contrast, 2),
                         "possible_duplicate_of": similarities})
         signatures.append(signature)
+        thumbnails.append(thumb)
         tiles.append(image.resize((360, 640), Image.Resampling.LANCZOS))
         previous_end = end
 
@@ -89,8 +103,10 @@ def create_contact_sheet(video: Path, segments: list[dict], output: Path) -> dic
         x, y = (index % cols)*360, (index // cols)*686
         sheet.paste(tile, (x, y))
         item = entries[index]
+        caption = (labels[index] if labels is not None else
+                   f"SCENE {index+1}  •  {item['at_seconds']:.1f}s")
         draw.text((x+13, y+648),
-                  f"SCENE {index+1}  •  {item['at_seconds']:.1f}s",
+                  caption,
                   font=font, fill=(232, 239, 247))
     output.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(output, format="JPEG", quality=88, optimize=True)
