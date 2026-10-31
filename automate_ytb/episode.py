@@ -161,6 +161,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     total_trimmed_ms = 0.0
     trimmed_phrases = 0
     inserted_pause_ms = 0
+    measured_scene_pacing = []
     for index, scene in enumerate(scenes):
         phrases = (caption_phrases(scene["narration"])
                    if caption_timing == "audio" else [scene["narration"]])
@@ -197,6 +198,12 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
         min_ms = math.ceil(actual_samples * 1000 / sample_rate + 350)
         durations_ms[index] = max(durations_ms[index], min_ms)
         target_samples = math.ceil(durations_ms[index] * sample_rate / 1000)
+        measured_scene_pacing.append({
+            "sceneId": scene["id"],
+            "spokenAudioMs": round(actual_samples * 1000 / sample_rate),
+            "sceneDurationMs": round(target_samples * 1000 / sample_rate),
+            "tailPaddingMs": round((target_samples - actual_samples) * 1000 / sample_rate),
+        })
         chunks.extend(b"\x00" * (2 * (target_samples - actual_samples)))
         complete_audio.append(bytes(chunks))
         phrase_timings.append((phrases, starts))
@@ -264,6 +271,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
         "audioSeconds": round(sum(len(audio) for audio in complete_audio)
                               / (2 * sample_rate), 3),
         "sampleRate": sample_rate, "providerApiCalls": 0,
+        "measuredScenePacing": measured_scene_pacing,
     }
 
 def build_preview(*, plan_path: Path, output: Path,
@@ -301,6 +309,19 @@ def build_preview(*, plan_path: Path, output: Path,
                                   engine=voice, voice_name=voice_name,
                                   caption_timing=caption_timing,
                                   narration_style=voice_style)
+        from .narration_pacing import inspect as inspect_narration_pacing
+        strict = (style == "science" and resolution == "shorts"
+                  and voice == "kokoro" and caption_timing == "audio"
+                  and limit is None)
+        pacing = inspect_narration_pacing(
+            details["measuredScenePacing"], strict=strict)
+        production._write_json(output / "narration-pacing.json", pacing)
+        if pacing["status"] == "failed":
+            raise ValueError(
+                "Narration is too short for the requested science Short: "
+                f"{pacing['totalTailPaddingMs']} ms of digital tail silence. "
+                "Expand the original narration for sparse scenes or revise "
+                "the requested duration; see narration-pacing.json.")
     # Short stand-alone listening sample for a quick Android audition,
     # without clipping or changing the full soundtrack or narration.
     voice_sample = None
@@ -341,6 +362,7 @@ def build_preview(*, plan_path: Path, output: Path,
         "status": "draft", "publicationApproved": False, "factChecked": False,
         "reviewBeforePublication": True, "topic": data["topic"],
         "art": art, "voice": details,
+        "narrationPacing": pacing if voice_file is not None else None,
         "renderProfile": render_profile,
         "voicePreview": str(voice_sample) if voice_sample is not None else None,
         "soundtrack": soundtrack_report,
