@@ -24,6 +24,7 @@ PALETTES = {
     "cinematic": ((14, 24, 46), (49, 89, 121), (244, 187, 104)),
     "cartoon": ((37, 41, 96), (96, 60, 151), (253, 201, 85)),
     "documentary": ((15, 42, 46), (30, 98, 98), (143, 226, 198)),
+    "science": ((9, 28, 56), (16, 85, 115), (88, 224, 246)),
 }
 FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -391,6 +392,7 @@ def build(topic: str, out_root: Path, *, brief_path: Path | None = None,
         "cinematic": "cinematic editorial illustration, soft volumetric light",
         "cartoon": "original rounded 3D storybook characters, warm expressive shapes",
         "documentary": "clean documentary infographics and restrained cinematography",
+        "science": "original schematic science graphics with clearly distinguished Earth and ocean features",
     }[style]
     prompts = [{
         "scene": i, "durationSeconds": scene["durationSeconds"],

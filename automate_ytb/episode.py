@@ -292,6 +292,12 @@ def build_preview(*, plan_path: Path, output: Path,
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
+    # Create mobile deliverables before slow TTS and video encoding, so
+    # invalid styles or thumbnail failures cannot waste a finished MP4.
+    data = production.load_plan(plan_path)
+    thumbs = output / "thumbnails"
+    thumbs.mkdir(exist_ok=True)
+    pictures = make_thumbnails(data["topic"], style, thumbs)
     art = create_local_art(plan_path, style=style, limit=limit)
     voice_file = None
     details = {"engine": "none", "wordAlignment": False}
@@ -333,10 +339,6 @@ def build_preview(*, plan_path: Path, output: Path,
                                caption_timing=("audio" if voice_file is not None
                                                else "estimated") if caption_timing == "audio"
                                               else "estimated")
-    thumbs = output / "thumbnails"
-    thumbs.mkdir(exist_ok=True)
-    data = production.load_plan(plan_path)
-    pictures = make_thumbnails(data["topic"], style, thumbs)
     summary = {
         "status": "draft", "publicationApproved": False, "factChecked": False,
         "reviewBeforePublication": True, "topic": data["topic"],
