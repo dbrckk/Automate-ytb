@@ -26,6 +26,16 @@ peuvent être longs. La qualité, la prononciation et le ton doivent être
 écoutés avant toute publication ; le modèle français ne comprend qu'une
 voix dédiée dans son catalogue officiel.
 
+**Continuité entre fragments de légende :** lorsque les contraintes de largeur du
+sous-titre coupent une même phrase **sans ponctuation**, Kokoro n'insère plus
+les 95 ms de silence artificiel entre ces morceaux. Les points, virgules et
+autres ponctuations conservent des pauses spécifiques ; le moteur eSpeak
+provisoire conserve son ancien comportement. Les repères SRT/VTT sont
+recalculés à partir des durées PCM produites, ce qui évite de déclarer un
+alignement mot à mot inexistant. Cette correction supprime une cause de
+hachage, mais la prosodie reste liée aux capacités de Kokoro et à la
+synthèse indépendante des segments. Écouter le MP3 reste indispensable.
+
 **Styles :** `natural` (0,94x), `gentle` (0,88x) et `lively` (1,04x)
 modifient le **débit de génération natif**, pas l'identité du locuteur.
 Des pauses ponctuées sont ajoutées uniquement entre phrases et
