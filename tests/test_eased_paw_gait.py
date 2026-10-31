@@ -19,7 +19,7 @@ def evaluate_trusted(expression: str, t: float) -> float:
 
 class EasedPawGaitTests(unittest.TestCase):
     def test_plant_contact_is_world_locked_and_paws_alternate(self):
-        self.assertIn("v9", CHOREOGRAPHY_VERSION)
+        self.assertIn("v10", CHOREOGRAPHY_VERSION)
         for action, frequency, reach, lift in (
             ("walk", 5.1, 12, 11), ("run", 10.2, 21, 20)
         ):
