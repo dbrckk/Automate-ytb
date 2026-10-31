@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -75,6 +76,28 @@ class RainbowScienceTests(unittest.TestCase):
                                  "Rainbow optics must not instantiate an Earth globe")
                 signatures.append(hash(first_hero.tobytes()))
         self.assertEqual(len(set(signatures)), 5)
+
+    def test_real_release_workflow_script_selects_all_five_unique_physics(self):
+        # This protects against a failure actually observed in an encoded
+        # production MP4: scene 1 reused the rainbow arc (word "eyes") and
+        # scene 4 reused internal reflection (word "reflected").
+        from automate_ytb.scene_plan import beats
+        workflow = (Path(__file__).resolve().parents[1] / ".github" /
+                    "workflows" / "rainbow-science-release-candidate.yml")
+        content = workflow.read_text(encoding="utf-8")
+        block = re.search(
+            r"(?m)^      original_script: >-\n((?:^        .+\n){5})",
+            content)
+        self.assertIsNotNone(block, "Could not read actual production narration")
+        authored = " ".join(row.strip() for row in block.group(1).splitlines())
+        phrases = beats(authored)
+        self.assertEqual(len(phrases), 5)
+        self.assertEqual(tuple(classify(self.topic, text) for text in phrases),
+                         BEATS)
+        for beat, narration in zip(BEATS, phrases):
+            shot = PortraitScienceScene(
+                topic=self.topic, narration=narration, scene_index=1)
+            self.assertEqual(shot.rainbow_beat, beat)
 
     def test_rendered_static_rights_poster_does_not_show_false_earth(self):
         with tempfile.TemporaryDirectory() as temp:
