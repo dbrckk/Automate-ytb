@@ -24,7 +24,9 @@ MEDIA={
     "sun131":"https://svs.gsfc.nasa.gov/vis/a010000/a014500/a014536/20240222_XFlare_131A_2048p30.webm",
     "sun171":"https://svs.gsfc.nasa.gov/vis/a010000/a014500/a014536/20240222_XFlare_171A_2048p30.webm",
     "sun304":"https://svs.gsfc.nasa.gov/vis/a010000/a014500/a014536/20240222_XFlare_304A_2048p30.webm",
-    "cme":"https://svs.gsfc.nasa.gov/vis/a020000/a020200/a020297/H_0219_VC_Animation_Earth_Only.mp4",
+    # CME launch is a NASA conceptual animation showing the Sun, not Earth.
+    "cme_launch":"https://svs.gsfc.nasa.gov/vis/a010000/a013000/a013003/CME.webm",
+    "magnetosphere":"https://svs.gsfc.nasa.gov/vis/a020000/a020200/a020297/H_0219_VC_Animation_Earth_Only.mp4",
     "satellite":"https://svs.gsfc.nasa.gov/vis/a010000/a014900/a014956/14956_SatelliteImpact01_4K_YouTube.mp4",
     "satellite2":"https://svs.gsfc.nasa.gov/vis/a010000/a014900/a014956/14956_SatelliteImpact02_4K_YouTube.mp4",
     "aurora":"https://svs.gsfc.nasa.gov/vis/a010000/a015000/a015077/15077_AuroraTimelapse_4K_YouTube.mp4",
@@ -43,11 +45,56 @@ SCENES=[
 SHOT_PLAN=[
     [("sun131",1.0,.61),("sun304",11.0,.39)],
     [("sun171",8.0,.52),("sun131",17.0,.48)],
-    [("sun304",24.0,.49),("cme",3.0,.51)],
-    [("cme",5.5,.60),("cme",12.0,.40)],
+    [("sun304",24.0,.49),("cme_launch",1.5,.51)],
+    [("magnetosphere",5.5,.60),("magnetosphere",12.0,.40)],
     [("aurora",9.0,.35),("satellite",2.0,.34),("satellite2",3.0,.31)],
     [("aurora",21.0,.56),("sun171",24.0,.44)],
 ]
+# Role metadata prevents confusing a solar launch with Earth's magnetosphere.
+VISUAL_ROLE={
+    "sun131":"solar_observation",
+    "sun171":"solar_observation",
+    "sun304":"solar_observation",
+    "cme_launch":"solar_cme_animation",
+    "magnetosphere":"earth_magnetosphere_animation",
+    "aurora":"aurora_footage",
+    "satellite":"space_technology_animation",
+    "satellite2":"space_technology_animation",
+}
+SCENE_ALLOWED_ROLES=(
+    frozenset({"solar_observation"}),
+    frozenset({"solar_observation"}),
+    frozenset({"solar_observation","solar_cme_animation"}),
+    frozenset({"earth_magnetosphere_animation"}),
+    frozenset({"aurora_footage","space_technology_animation"}),
+    frozenset({"aurora_footage","solar_observation"}),
+)
+
+
+def validate_storyboard():
+    """Reject scientifically mismatched footage before expensive rendering."""
+    if len(SHOT_PLAN)!=len(SCENES) or len(SCENE_ALLOWED_ROLES)!=len(SCENES):
+        raise ValueError("Narrated scene and NASA storyboard length mismatch")
+    if set(VISUAL_ROLE)!=set(MEDIA):
+        raise ValueError("NASA source role catalog does not match sources")
+    for index,(scene,allowed) in enumerate(zip(SHOT_PLAN,SCENE_ALLOWED_ROLES)):
+        roles=set()
+        if len(scene)<2:
+            raise ValueError(f"Scene {index+1} needs two or more shots")
+        if abs(sum(share for _,_,share in scene)-1)>1e-7:
+            raise ValueError(f"Invalid source proportions in scene {index+1}")
+        for key,seek,share in scene:
+            if key not in MEDIA or VISUAL_ROLE[key] not in allowed:
+                raise ValueError(f"Scientifically mismatched source in scene {index+1}: {key}")
+            if not 0<=seek<900 or not 0<share<1:
+                raise ValueError(f"Invalid offset or fraction in scene {index+1}")
+            roles.add(VISUAL_ROLE[key])
+        if index==2 and "solar_cme_animation" not in roles:
+            raise ValueError("Scene 3 must show a Sun-origin CME animation")
+        if index==4 and not {"aurora_footage","space_technology_animation"}<=roles:
+            raise ValueError("Scene 5 must show both aurora and satellite impacts")
+
+
 VOICE="am_michael"
 VOICE_SPEEDS=[1.04,.97,1.00,.96,1.02,.93]
 
@@ -115,8 +162,12 @@ def clip(key,index,scene,offset,length):
     # Center-weighted vertical crop; actual 2K/4K source pixels, never stretch.
     # A gentle vertical tracking adjustment respects compact phone composition.
     offset_px=[0,0,0,0,0,0,0,100,0,-170,80,0,0][index%13]
+    # The CME animation places the Sun toward the left. This focal crop
+    # preserves the solar limb and ejecta in a vertical 9:16 viewport.
+    x_expr=("(in_w-out_w)*0.32+14*sin(n/80)" if key=="cme_launch"
+            else f"(in_w-out_w)/2+{offset_px}+22*sin(n/125)")
     vf=("scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
-        f"crop=1080:1920:x='max(0,min(in_w-out_w,(in_w-out_w)/2+{offset_px}+22*sin(n/125)))':"
+        f"crop=1080:1920:x='max(0,min(in_w-out_w,{x_expr}))':"
         "y='max(0,min(in_h-out_h,(in_h-out_h)/2))',"
         "setsar=1,format=yuv420p")
     run(["ffmpeg","-y","-v","error","-ss",f"{seek:.3f}","-i",source,
@@ -125,9 +176,13 @@ def clip(key,index,scene,offset,length):
         "-pix_fmt","yuv420p","-movflags","+faststart",dest])
     if abs(duration(dest)-length)>.25:
         raise RuntimeError(f"Shot time mismatch {dest}")
-    return dest,{"scene":scene,"source":key,"start":seek,"duration":length}
+    return dest,{"scene":scene,"source":key,"start":seek,"duration":length,
+                 "visual_role":VISUAL_ROLE[key],
+                 "source_type":("observation" if key.startswith("sun") or key=="aurora"
+                                else "NASA conceptual animation")}
 
 def main():
+    validate_storyboard()
     for name,url in MEDIA.items():
         src=download(url)
         print("SOURCE",name,src.name,"duration",round(duration(src),2),flush=True)
@@ -159,7 +214,7 @@ def main():
         "voice":VOICE,"voice_speeds":VOICE_SPEEDS,"duration":duration(out),
         "shot_count":len(clips),"shot_plan":report,"segments":segments,
         "references":list(MEDIA.values()),
-        "note":"SDO solar imagery is false-color; other clips are separate NASA illustrations/footage, not one historical storm"}
+        "note":"SDO false-color observations, NASA conceptual CME launch and magnetosphere animations, and independent aurora footage; not one historical storm"}
     (OUT/"production_report.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (OUT/"publication.txt").write_text(
         "Title: Can a Storm on the Sun Reach Earth?\n"
@@ -168,8 +223,8 @@ def main():
         "coronal mass ejections are distinct phenomena. Clips illustrate "
         "the physics; they do not show one continuous historical storm. "
         "Credits: NASA Goddard Space Flight Center/SDO, NASA GSFC Conceptual "
-        "Image Lab/Bailee DesRocher, NASA/Mike Toillion. "
-        "NASA SVS 14536, 20297, 14956, 15077.\n"
+        "Image Lab/Bailee DesRocher, NASA GSFC/CIL/Krystofer Kim, NASA/Mike Toillion. "
+        "NASA SVS 14536, 13029, 20297, 14956, 15077.\n"
         "Hashtags: #Sun #SpaceWeather #SolarStorm #ScienceShorts\n",
         encoding="utf-8")
     print("BASE_OK",out,round(duration(out),3),len(clips),flush=True)
