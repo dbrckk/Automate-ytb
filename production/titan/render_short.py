@@ -38,6 +38,17 @@ SCENES = [
     ("rain", "At minus one hundred and seventy nine degrees Celsius, water is frozen solid.", 0.8),
     ("chemistry", "Here, even the weather runs on a completely different kind of chemistry.", 1.1),
 ]
+# Shot-by-shot documentary direction. Each segment follows one narration beat.
+# Multiple active camera angles use actual NASA animation frames (not still zooms).
+# Fractions sum to 1 for each scene; cuts remain inside its spoken sentence.
+SHOT_PLAN = {
+    0: [("time", 12.0, 1.0)],                       # Titan landscape hook
+    1: [("intro", 28.0, 0.58), ("time", 23.0, 0.42)], # Saturn, then Titan sky
+    2: [("lake", 0.5, 0.62), ("lake", 6.4, 0.38)],    # Two views of the lake
+    3: [("time", 1.0, 0.43), ("rain", 3.5, 0.57)],   # Clouds, then rainfall
+    4: [("rain", 0.8, 0.61), ("time", 27.0, 0.39)],  # Cold precipitation / terrain
+    5: [("chemistry", 1.1, 0.60), ("chemistry", 18.0, 0.40)],
+}
 VOICE = "af_heart"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
@@ -159,9 +170,25 @@ def main():
     print("NARRATION",duration,flush=True)
     events=subtitle_file(segs)
     clips=[]
-    for i, (key,_,seek) in enumerate(SCENES):
-        segment_duration=segs[i]["speech_duration"]+0.24
-        clips.append(make_clip(key,i,segment_duration,seek))
+    shots=[]
+    shot_index=0
+    for scene_index, (key, _, seek) in enumerate(SCENES):
+        segment_duration=segs[scene_index]["speech_duration"]+0.24
+        plan=SHOT_PLAN.get(scene_index, [(key,seek,1.0)])
+        if abs(sum(fraction for _,_,fraction in plan)-1.0)>1e-8:
+            raise ValueError("Shot durations do not cover narration scene")
+        if len(plan)>3 or min(fraction*segment_duration for _,_,fraction in plan)<.9:
+            raise ValueError("Overly short or excessive shot direction")
+        elapsed=0.0
+        for beat_index, (source_key, source_seek, fraction) in enumerate(plan):
+            # The last beat takes remaining duration to prevent timestamp drift.
+            length=(segment_duration-elapsed if beat_index==len(plan)-1
+                    else segment_duration*fraction)
+            clips.append(make_clip(source_key,shot_index,length,source_seek))
+            shots.append({"scene":scene_index,"beat":beat_index,"source":source_key,
+                          "seek":source_seek,"duration":round(length,3)})
+            elapsed+=length
+            shot_index+=1
     concat=OUT/"list.txt"
     concat.write_text("".join(f"file '{str(p)}'\n" for p in clips))
     plain=OUT/"assembled.mp4"
@@ -182,7 +209,7 @@ def main():
     info={"video":output.name,"duration":probe(output),
           "dimensions":"1080x1920","fps":30,"voice":"Kokoro-82M af_heart",
           "sources":[{"url":NASA+x,"credit":"NASA Goddard Space Flight Center / Conceptual Image Lab"} for x in MEDIA.values()],
-          "segments":segs,"caption_events":len(events),
+          "segments":segs,"shot_plan":shots,"shot_count":len(shots),"caption_events":len(events),
           "warnings":["Scientific visualizations show plausible Titan conditions, not footage captured at Titan's surface."]}
     (OUT/"production_report.json").write_text(json.dumps(info,indent=2))
     (OUT/"publication.txt").write_text(
