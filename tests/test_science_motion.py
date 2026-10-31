@@ -50,7 +50,7 @@ class ScienceMotionTests(unittest.TestCase):
         self.assertEqual(len(shot._globes), 0)
         first = shot._globe_at(4.9)
         later = shot._globe_at(6.5)
-        self.assertIsNotNone(ImageChops.difference(first, later).getbbox())
+        self.assertIsNotNone(ImageChops.difference(first.convert('RGB'), later.convert('RGB')).getbbox())
         self.assertEqual(shot._globe_at(6.5).tobytes(), later.tobytes())
         self.assertIn(int(6.5 * 2.5), shot._globes)
         self.assertNotIn(11, shot._globes)
@@ -62,7 +62,7 @@ class ScienceMotionTests(unittest.TestCase):
             self.assertLessEqual(len(shot._globes), 8)
         self.assertEqual(shot.frame(6.1, 7).size, (1280, 720))
 
-    def test_ocean_atmosphere_and_night_mode_allocate_globes_only_when_needed(self):
+    def test_ocean_atmosphere_do_not_allocate_globes(self):
         common = dict(topic="What if Earth's oceans changed?", scene_index=2)
         with patch("automate_ytb.science_motion._planet",
                    side_effect=AssertionError("Unneeded sphere render")):
