@@ -984,3 +984,7 @@ Le diagnostic visuel décode désormais jusqu'à 18 secondes réparties sur tout
 ### Mode scientifique animé (Earth/ocean, expérimental)
 
 Depuis Android, **Actions → One-click YouTube preview** : sélectionner `science`, un sujet explicitement consacré à la Terre ou aux océans, puis `1080p` et `high`. Les diagrammes originaux sont animés à 30 fps avec la voix Kokoro en option. Les vidéos animées en 1080p sont désormais tracées directement en 1920×1080 (le poster d’approbation reste 720p), sans être un modèle 3D ni une simulation scientifique exacte. Voir [périmètre, limites et mode d'emploi](docs/SCIENCE_MOTION.md). Publication soumise à validation humaine.
+
+### Shorts scientifiques natifs 9:16
+
+Le mode `science` accepte désormais `resolution = shorts` dans **Actions → One-click YouTube preview**. Le moteur crée directement des images originales en **1080×1920**, à **30 fps**, avec une composition portrait (titres, globe, vagues, circulation atmosphérique et textes disposés pour le téléphone). Il ne recadre pas le 16:9. Choisir de préférence `render_profile = high` et la voix Kokoro si elle est disponible. Les illustrations restent schématiques et la publication exige une revue humaine. [Détails](docs/SCIENCE_MOTION.md).
