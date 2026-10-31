@@ -25,7 +25,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v9-causal-earth-stop-scenes-native-portrait"
+PORTRAIT_VERSION = "original-science-shorts-v9-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
 INK = (238, 247, 250, 255)
 
 
