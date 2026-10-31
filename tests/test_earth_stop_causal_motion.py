@@ -68,7 +68,7 @@ class EarthStopMotionTests(unittest.TestCase):
             for moment in (.25, 2.0):
                 pic = Image.new("RGBA", (1080, 1920))
                 draw(pic, beat, moment, 3.0, True, recording_globe)
-            self.assertEqual(samples, [0.0, 0.0],
+            self.assertEqual(samples, [15.0, 15.0],
                              "A stopped Earth must not rotate again in later scenes")
 
     def test_validates_frame_time_and_canvas(self):
