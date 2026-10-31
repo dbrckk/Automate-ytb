@@ -139,6 +139,7 @@ class PortraitScienceScene:
         self.caption_segments = caption_segments
         self._caption_duration_ms: int | None = None
         self._caption_cues: list[dict] = []
+        self._caption_layouts: dict[str, tuple[tuple[str, ...], int]] = {}
         self._title_layout = _fit_lines(
             self.topic, size=47, width=860, maximum=2, minimum=22)
 
@@ -163,8 +164,16 @@ class PortraitScienceScene:
             }
             if self.caption_segments is not None:
                 item["captionSegments"] = self.caption_segments
-            self._caption_cues = timed_cues_for_scene(
+            cues = timed_cues_for_scene(
                 item, use_audio_boundaries=self.caption_segments is not None)
+            # Validate every caption before FFmpeg gets past the first frame.
+            # An unusually long phrase must fail rather than disappear from
+            # a later part of a video after minutes of expensive encoding.
+            layouts = {cue["text"]: _fit_lines(
+                cue["text"], size=31, width=842, maximum=3, minimum=22)
+                for cue in cues}
+            self._caption_cues = cues
+            self._caption_layouts = layouts
             self._caption_duration_ms = duration_ms
         when = self.scene_start_ms + round(t * 1000)
         for cue in self._caption_cues:
@@ -284,9 +293,8 @@ class PortraitScienceScene:
         d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
                             fill=(5, 17, 37, 240),
                             outline=(84, 165, 190, 150), width=2)
-        summary, summary_size = _fit_lines(
-            self.active_caption(t, duration),
-            size=31, width=842, maximum=3, minimum=22)
+        summary, summary_size = self._caption_layouts[
+            self.active_caption(t, duration)]
         for i, line in enumerate(summary):
             d.text((111, 1551 + 46*i), line,
                    font=_font(summary_size, True), fill=INK)
