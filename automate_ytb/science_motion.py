@@ -7,6 +7,7 @@ asset is generated locally. No third-party image, model or music is copied.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 import json
 import math
 from pathlib import Path
@@ -149,8 +150,9 @@ def _background(seed: int, size: tuple[int, int] = SIZE) -> Image.Image:
     return Image.alpha_composite(
         im, halo.filter(ImageFilter.GaussianBlur(round(105 * scale))))
 
-def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
-    """Approximate original land outlines, sphere projection and illumination."""
+@lru_cache(maxsize=1)
+def _planet_texture() -> Image.Image:
+    """Immutable original continent atlas, shared by every rotating pose."""
     texture = Image.new("RGB", (768,384), (23,123,186))
     draw = ImageDraw.Draw(texture)
     continents = [
@@ -172,23 +174,40 @@ def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
         points = [(round((lon+180)/360*767),round((90-lat)/180*383))
                   for lon,lat in shape]
         draw.polygon(points, fill=(67+i%3*7,153+i%4*5,99+i%3*10))
-    lookup = texture.load()
+    return texture
+
+
+@lru_cache(maxsize=4)
+def _planet_halo(size: int) -> Image.Image:
+    """Resolution-specific soft glow; never mutate this cached template."""
     scale = size / 408
     margin = round(28 * scale)
-    globe = Image.new("RGBA", (size + 2*margin, size + 2*margin),
-                      (0, 0, 0, 0))
-    halo = Image.new("RGBA", globe.size)
+    halo = Image.new("RGBA", (size + 2*margin, size + 2*margin))
     ImageDraw.Draw(halo).ellipse(
         (round(12*scale), round(12*scale),
          size + round(44*scale), size + round(44*scale)),
         fill=(46, 194, 239, 139))
-    globe.alpha_composite(
-        halo.filter(ImageFilter.GaussianBlur(round(21*scale))))
+    return halo.filter(ImageFilter.GaussianBlur(round(21*scale)))
+
+
+def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
+    """Approximate original sphere, sharing only yaw-independent atlas/glow."""
+    lookup = _planet_texture().load()
+    scale = size / 408
+    margin = round(28 * scale)
+    globe = _planet_halo(size).copy()
     surface=Image.new("RGBA",(size,size))
     pixels=surface.load()
     radius=size/2
     for y in range(size):
         ny=(radius-y)/radius
+        # Latitude, sampling row, polar ice and latitudinal cloud phase do
+        # not depend on x or planetary yaw. Compute each only once per row
+        # rather than once for every pixel of native 680px portrait globes.
+        lat=math.asin(max(-1,min(1,ny)))
+        v=max(0,min(383,int((.5-lat/math.pi)*383)))
+        ice=.30 if abs(lat)>1.3 else 0
+        cloud_lat=math.sin(lat*6)*1.7
         for x in range(size):
             nx=(x-radius)/radius
             dist=nx*nx+ny*ny
@@ -196,15 +215,12 @@ def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
                 continue
             z=math.sqrt(1-dist)
             lon=math.atan2(nx,z)+yaw
-            lat=math.asin(max(-1,min(1,ny)))
             u=int(((lon/math.tau+.5)%1)*767)
-            v=max(0,min(383,int((.5-lat/math.pi)*383)))
             red,green,blue=lookup[u,v]
             light=max(.10,min(1.13,.14+.83*z-.55*nx+.18*ny))
             edge=(1-z)**5
-            cloud=.12 if (math.sin(13*lon+math.sin(lat*6)*1.7)
+            cloud=.12 if (math.sin(13*lon+cloud_lat)
                          +math.sin(9*lat+lon*3))>1.6 else 0
-            ice=.30 if abs(lat)>1.3 else 0
             pixels[x,y]=(min(255,int(red*light+(cloud+ice)*110+edge*22)),
                          min(255,int(green*light+(cloud+ice)*115+edge*48)),
                          min(255,int(blue*light+(cloud+ice)*120+edge*80)),
