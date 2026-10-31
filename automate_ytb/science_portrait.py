@@ -19,7 +19,7 @@ from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v4-1080x1920-lossless-text-fluid-planet"
+PORTRAIT_VERSION = "original-science-shorts-v5-1080x1920-ocean-flow"
 INK = (238, 247, 250, 255)
 
 
@@ -105,6 +105,54 @@ def _sky(seed: int) -> Image.Image:
         (0, 425, 1080, 1505), fill=(42, 158, 220, 56))
     return Image.alpha_composite(
         plate, glow.filter(ImageFilter.GaussianBlur(126)))
+
+
+def _ocean_currents(draw: ImageDraw.ImageDraw, t: float) -> None:
+    """Original layered 2D currents and eddies, animated by the frame clock.
+
+    This is an illustrative flow field, not a geographic or fluid-dynamics
+    prediction. All paths stay inside the 9:16 visual band (y=900..1460).
+    No downloaded textures, model inference or pseudorandom frame jitter.
+    """
+    # Independent streams drift at different speeds and depths. Each glowing
+    # tracer has a short curved tail and moving arrow tip, not a static row of
+    # particles disguised as fluid motion.
+    for lane in range(3):
+        baseline = 1033 + lane * 164
+        speed = (34, 49, 62)[lane]
+        for index in range(10):
+            x = (index * 153 + t * speed + lane * 53) % 1350 - 135
+            path = []
+            for segment in range(10):
+                xx = x - segment * 8
+                yy = baseline + 15 * math.sin(xx / 124 + lane * .9 + t * .36)
+                path.append((round(xx), round(yy)))
+            # A wide blue trail under the bright narrow trace; computed
+            # analytically for each frame with no pose snapping.
+            draw.line(path, fill=(36, 151, 216, 95), width=9, joint="curve")
+            draw.line(path[:7], fill=(167, 234, 252, 187), width=3,
+                      joint="curve")
+            px, py = path[0]
+            draw.ellipse((px-4, py-4, px+4, py+4),
+                         fill=(241, 253, 255, 215))
+            draw.polygon([(px+4, py), (px-10, py-6), (px-10, py+6)],
+                         fill=(244, 209, 116, 205))
+    # Offset eddies make the central regions read as directed circulation,
+    # rather than five parallel scrolling wave textures.
+    for idx, (cx, cy, rx, ry) in enumerate(
+            ((335, 1150, 93, 64), (750, 1343, 104, 69))):
+        spin = round(t * (24 if idx == 0 else -21)) % 360
+        for ring in range(2):
+            inset = ring * 18
+            draw.arc((cx-rx+inset, cy-ry+inset, cx+rx-inset,
+                      cy+ry-inset), spin + ring*87,
+                     spin + ring*87 + 191,
+                     fill=(141, 232, 249, 177-ring*40), width=4)
+        theta = math.radians(spin + 190)
+        px = round(cx + rx * math.cos(theta))
+        py = round(cy + ry * math.sin(theta))
+        draw.ellipse((px-5, py-5, px+5, py+5),
+                     fill=(255, 205, 99, 225))
 
 
 class PortraitScienceScene:
@@ -308,6 +356,7 @@ class PortraitScienceScene:
                 y = 810+(i*67)%590
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
+            _ocean_currents(d, t)
         # Compact subtitle excerpt in a dedicated lower-middle safe band.
         d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
                             fill=(5, 17, 37, 240),
