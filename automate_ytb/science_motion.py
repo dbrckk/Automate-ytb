@@ -17,7 +17,7 @@ import subprocess
 import unicodedata
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-SCIENCE_VERSION = "science-motion-v1-original-infographics"
+SCIENCE_VERSION = "science-motion-v2-continuous-lazy-globe"
 SIZE = (1280, 720)
 GOLD = (251, 200, 119)
 CYAN = (113, 219, 244)
@@ -207,10 +207,20 @@ class ScienceScene:
         seed=int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}".encode()).digest()[:8],"big")
         self.base=_background(seed)
-        # Art cached per shot; the globe uses actual sphere-projected
-        # continents, illumination and a subtle evolution in longitude.
-        self.globes=tuple(_planet(yaw=.027*i) for i in range(12))
+        # Cache only the globe poses actually used in this shot. The previous
+        # implementation precomputed 12 costly images even in ocean scenes
+        # and then froze the globe when t exceeded 4.8 seconds.
+        self._globes: dict[int, Image.Image] = {}
         self.city=random.Random(seed+29)
+
+    def _globe_at(self, t: float) -> Image.Image:
+        """Unbounded scene-time rotation with a small deterministic LRU cache."""
+        index = int(t * 2.5)
+        if index not in self._globes:
+            if len(self._globes) >= 8:
+                del self._globes[next(iter(self._globes))]
+            self._globes[index] = _planet(yaw=(0.027 * index) % math.tau)
+        return self._globes[index]
 
     def frame(self, t: float, duration: float) -> Image.Image:
         if not 0<=t<=duration<=3600:
@@ -221,8 +231,8 @@ class ScienceScene:
         travel=fraction*fraction*(3-2*fraction)
         cx=585+int(12*math.sin(t*.42))+int(30*(travel-.5))
         cy=350+int(6*math.sin(t*.62))
-        globe=self.globes[min(11,int(t*2.5))]
         if self.mode=="orbital":
+            globe=self._globe_at(t)
             img.alpha_composite(globe,(cx-230,cy-230))
             d=ImageDraw.Draw(img,"RGBA")
             for rad in (229,249):
@@ -245,6 +255,7 @@ class ScienceScene:
                 d.text((946,346),units,font=_font(20),
                        fill=(176,221,231))
         elif self.mode=="daylight":
+            globe=self._globe_at(t)
             img.alpha_composite(globe,(187,127))
             dark=Image.alpha_composite(
                 globe,Image.new("RGBA",globe.size,(3,7,30,112)))
