@@ -20,8 +20,38 @@ def normalize(word):
     return re.sub(r"[^a-z0-9]", "", word.lower().replace("’", "'"))
 
 
+def expand_numeric_words(script, observations):
+    """Expand recognizer's '179' back to 'one hundred and seventy nine'.
+
+    These component-word durations are interpolated from an actual *number*
+    span; they are not described as individually acoustically verified.
+    """
+    expected = [normalize(word) for word in script.split()]
+    expanded = []
+    for item in observations:
+        token = normalize(item["word"])
+        if token.isdecimal() and len(token) <= 6:
+            from num2words import num2words
+            candidate = re.findall(r"[a-z]+", num2words(int(token), lang="en").lower())
+            found = any(expected[i:i+len(candidate)] == candidate
+                        for i in range(len(expected)-len(candidate)+1))
+            if found and len(candidate)>1:
+                weights = [max(1,len(word)) for word in candidate]
+                a, b = float(item["start"]), float(item["end"])
+                cursor = a
+                for word, weight in zip(candidate,weights):
+                    nxt = cursor + (b-a)*weight/sum(weights)
+                    expanded.append({"word":word,"start":cursor,"end":nxt,
+                                     "derived_from_number":True})
+                    cursor = nxt
+                continue
+        expanded.append(item)
+    return expanded
+
+
 def recover_words(script, observations, start, end):
     """Return words with monotonic timing; unmatched tokens are disclosed."""
+    observations = expand_numeric_words(script, observations)
     original = script.split()
     labels = [normalize(w) for w in original]
     audible = [normalize(x["word"]) for x in observations]
@@ -34,7 +64,7 @@ def recover_words(script, observations, start, end):
             a = max(start, min(end, float(word["start"])))
             b = max(start, min(end, float(word["end"])))
             if b > a and b-a < 2.0:
-                matches[i] = (a, b)
+                matches[i] = (a, b, not bool(word.get("derived_from_number", False)))
     coverage = len(matches) / max(1, len(original))
     if coverage < 0.62:
         raise RuntimeError(
@@ -43,8 +73,9 @@ def recover_words(script, observations, start, end):
         )
 
     result = [None] * len(original)
-    for index, (a, b) in matches.items():
-        result[index] = {"word": original[index], "start": a, "end": b, "recognized": True}
+    for index, (a, b, verified) in matches.items():
+        result[index] = {"word": original[index], "start": a, "end": b,
+                         "recognized": verified}
 
     # Fill a mismatched word only between real speech anchors; mark it inferred.
     # Interpolate within bounded time rather than inventing an exact word boundary.
