@@ -1,6 +1,6 @@
 # Titan documentary — cinematic production workflow
 
-This workflow builds a ~29-second vertical science short in **English**, using licensed/public-domain NASA scientific visualizations and Kokoro-82M narration. Its production target is **1080 × 1920 / 30 fps / H.264 / AAC**.
+This workflow builds a ~33-second vertical science short in **English**, using licensed/public-domain NASA scientific visualizations and Kokoro-82M narration. Its production target is **1080 × 1920 / 30 fps / H.264 / AAC**.
 
 ## Why this production route
 
@@ -43,10 +43,22 @@ Do **not** distribute the raw NASA/Kokoro base as the final short: use `enhanced
 
 ## Documentary shot direction — October 31 revision
 
-The renderer defines `SHOT_PLAN`: six factual narration scenes are now edited into **11 separate shots**. This is an edit of moving NASA animation frames, not a slideshow or crop of still images. The cut fractions remain inside each sentence and cover its complete spoken duration. Source offsets avoid long periods of empty sky, and all source shots use FFmpeg at 1080×1920 / 30 fps.
+The renderer defines `SHOT_PLAN`: six factual narration scenes are now edited into **12 separate shots**. This is an edit of moving NASA animation frames, not a slideshow or crop of still images. The cut fractions remain inside each sentence and cover its complete spoken duration. Source offsets avoid long periods of empty sky, and all source shots use FFmpeg at 1080×1920 / 30 fps.
 
 The first run of this plan exposed two pale-blue sky shots unsuitable for the described orange Titan atmosphere. Those source selections were explicitly corrected before delivery. Editorial QA should still reject misleading color/planet depictions and verify NASA sources are visualizations, not surface photography.
 
 The subtitle compositor now **starts new groups at scene boundaries** and terminates groups at sentence punctuation so captions cannot show words from the next spoken scene. Mobile readability uses a larger outlined sans-serif face with a bottom safety margin, while the acoustic aligner still distinguishes directly recognized words from interpolated numerical expressions.
 
 This upgrade intentionally does **not** claim photorealism or a cinematic-grade human narrator. The next major quality task should be to curate more diverse professionally animated source material with verified physics and stronger storytelling, rather than apply more filters.
+
+## Climate-model upgrade and source attribution
+
+The updated movie adds a separate NASA Scientific Visualization Studio **Titan Atmospheric Model** animation from [SVS 5530](https://svs.gsfc.nasa.gov/5530/) showing methane cloud circulation. The existing lakes, rainfall and chemistry sequences remain NASA [SVS 20403](https://svs.gsfc.nasa.gov/20403/).
+
+The documentary script now follows a short clear chain: unfamiliar shoreline → Saturn/Titan → frozen hydrocarbon seas → methane cloud circulation → methane rain → alien chemistry. All animations are **simulations / artist visualizations**, not historical video of Titan's surface.
+
+Voice performance uses small scene-specific pace changes via `VOICE_SPEEDS`, with Kokoro `af_heart`; no paid speech API is required. The subtitle timing is still validated against actual WAV audio with word-level flags. The scientific callouts are aligned to the revised scene indexes and ambient rain is attached to the rain segment only.
+
+The first exported new cut revealed two blue-hued landscape angles inconsistent with the surrounding orange atmospheric shots. Those angles were removed from `SHOT_PLAN` in a subsequent build. This is an editorial correction, not a claim that Titan’s real light or colors can be reproduced exactly from these animations.
+
+**Release gate:** require success of source download, narrator render, acoustic caption QA, AAC 48kHz, FFmpeg full decode, and a manual contact-sheet inspection for color continuity. Do not publish merely because the CI workflow exits successfully.
