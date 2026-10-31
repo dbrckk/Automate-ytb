@@ -29,25 +29,26 @@ MEDIA = {
     "rain": "Titan_Climate_4k_h264.mov",
     "time": "Titan_Timelapse_4k_h264.mov",
     "chemistry": "Webb_Titan_Shot3_h264_4k.mov",
+    "cloud_model": "https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005530/titanAtmo_velFX_5-9-2025d_summer_4k.mp4",
 }
 SCENES = [
-    ("time", "What if you stood beside an ocean on another world?", 12.0),
-    ("intro", "Beyond Saturn's rings lies Titan, its largest moon, beneath a thick orange sky.", 28.0),
-    ("lake", "Its vast lakes are filled with liquid methane and ethane, not water.", 0.5),
-    ("time", "Methane evaporates, forms clouds, and sometimes falls back as rain.", 1.0),
-    ("rain", "At minus one hundred and seventy nine degrees Celsius, water is frozen solid.", 0.8),
-    ("chemistry", "Here, even the weather runs on a completely different kind of chemistry.", 1.1),
+    ("time", "Imagine standing beside a sea on Titan, where even the rain is not water.", 12.0),
+    ("intro", "Beyond Saturn's rings, this moon hides beneath a thick orange atmosphere.", 28.0),
+    ("lake", "Its lakes hold methane and ethane, liquids chilled to minus one hundred and seventy nine degrees Celsius.", 0.5),
+    ("cloud_model", "Sunlight lifts methane into the air, while winds carry clouds around the moon.", 2.0),
+    ("rain", "Then methane rains back onto frozen shores and flows toward the lakes.", 0.8),
+    ("chemistry", "A familiar weather cycle, running on extraordinary alien chemistry.", 1.1),
 ]
 # Shot-by-shot documentary direction. Each segment follows one narration beat.
 # Multiple active camera angles use actual NASA animation frames (not still zooms).
 # Fractions sum to 1 for each scene; cuts remain inside its spoken sentence.
 SHOT_PLAN = {
-    0: [("time", 12.0, 1.0)],                       # Titan landscape hook
-    1: [("intro", 28.0, 0.58), ("rain", 0.8, 0.42)], # Saturn, then Titan sky
-    2: [("lake", 0.5, 0.62), ("lake", 6.4, 0.38)],    # Two views of the lake
-    3: [("time", 1.0, 0.43), ("rain", 3.5, 0.57)],   # Clouds, then rainfall
-    4: [("rain", 0.8, 0.61), ("time", 3.5, 0.39)],  # Cold precipitation / terrain
-    5: [("chemistry", 1.1, 0.60), ("chemistry", 18.0, 0.40)],
+    0: [("time", 12.0, 0.63), ("rain", 2.3, 0.37)],            # Lake + precipitation hook
+    1: [("intro", 28.0, 0.57), ("rain", 0.8, 0.43)],           # Saturn then Titan surface
+    2: [("lake", 0.5, 0.55), ("lake", 6.2, 0.45)],            # High-resolution liquid lakes
+    3: [("cloud_model", 2.5, 0.56), ("cloud_model", 16.2, 0.44)], # Real NASA atmosphere model
+    4: [("rain", 4.0, 0.58), ("time", 7.0, 0.42)],             # Actual methane rain animation
+    5: [("chemistry", 1.4, 0.52), ("time", 14.0, 0.48)],      # Chemistry and closing surface
 }
 VOICE = "af_heart"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -88,12 +89,14 @@ def produce_narration():
     from kokoro import KPipeline
     pipe = KPipeline(lang_code="a")
     sr = 24000
+    # Restrained performance direction: more energy at the hook and a reflective outro.
+    voice_speeds = [1.04, 0.98, 0.94, 1.02, 1.00, 0.95]
     all_samples = []
     segments = []
     cursor = 0
     for i, (_, text, _) in enumerate(SCENES):
         parts = []
-        for _,_,audio in pipe(text, voice=VOICE, speed=0.99, split_pattern=r"\n+"):
+        for _,_,audio in pipe(text, voice=VOICE, speed=voice_speeds[i], split_pattern=r"\n+"):
             parts.append(np.asarray(audio,dtype=np.float32))
         if not parts:
             raise RuntimeError(f"No Kokoro audio for scene {i}")
@@ -138,7 +141,7 @@ def subtitle_file(segments):
     return events
 
 def make_clip(key, shotno, length, seek):
-    source=CACHE/MEDIA[key]
+    source=CACHE/Path(MEDIA[key]).name
     dur=probe(source)
     # Use original animation frames, never a zoom over a static picture.
     usable_start=min(max(0.,seek),max(0.,dur-length-0.1))
@@ -164,7 +167,7 @@ def make_clip(key, shotno, length, seek):
 def main():
     # Do not substitute procedural placeholder cards when a source fails.
     for key,filename in MEDIA.items():
-        retrieve(NASA+filename,CACHE/filename)
+        retrieve(filename if filename.startswith("https://") else NASA+filename,CACHE/Path(filename).name)
         print("MEDIA",key,probe(CACHE/filename),flush=True)
     segs, duration=produce_narration()
     print("NARRATION",duration,flush=True)
@@ -208,15 +211,15 @@ def main():
          "-i",output,"-frames:v","1",OUT/"cover.jpg"])
     info={"video":output.name,"duration":probe(output),
           "dimensions":"1080x1920","fps":30,"voice":"Kokoro-82M af_heart",
-          "sources":[{"url":NASA+x,"credit":"NASA Goddard Space Flight Center / Conceptual Image Lab"} for x in MEDIA.values()],
-          "segments":segs,"shot_plan":shots,"shot_count":len(shots),"caption_events":len(events),
+          "sources":[{"url":x if x.startswith("https://") else NASA+x,"credit":"NASA Goddard Space Flight Center / Scientific Visualization Studio"} for x in MEDIA.values()],
+          "segments":segs,"voice_speeds":voice_speeds,"shot_plan":shots,"shot_count":len(shots),"caption_events":len(events),
           "warnings":["Scientific visualizations show plausible Titan conditions, not footage captured at Titan's surface."]}
     (OUT/"production_report.json").write_text(json.dumps(info,indent=2))
     (OUT/"publication.txt").write_text(
-        "Title: Titan Has Oceans — But They're Not Made of Water\n"
-        "Description: The lakes on Saturn's largest moon contain liquid methane and ethane. "
+        "Title: Why Titan Has Methane Rain Instead of Water\n"
+        "Description: Titan has methane lakes, rain clouds, and an alien weather cycle. "
         "A short science documentary using public-domain NASA visualizations. "
-        "Visualization credit: NASA/GSFC Conceptual Image Lab.\n"
+        "Visualizations: NASA/GSFC Conceptual Image Lab and NASA SVS climate model (SVS 20403, 5530).\n"
         "Hashtags: #Titan #Saturn #Space #ScienceShorts\n")
     assert output.stat().st_size>500000
     run(["ffmpeg","-v","error","-i",output,"-f","null","-"])
