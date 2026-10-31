@@ -10,7 +10,7 @@ import unittest
 
 from PIL import Image
 
-from automate_ytb.review_board import _selection, _motion_metrics, generate
+from automate_ytb.review_board import _selection, _motion_metrics, _frame_at, generate
 from automate_ytb.scene_plan import plan
 
 
@@ -32,11 +32,14 @@ class ReviewBoardTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def _video(self, *, color=None, duration=30):
-        filename = self.folder / ("black.mp4" if color else "colors.mp4")
-        source = (f"color=c={color}:s=640x360:r=6:d={duration}"
+    def _video(self, *, color=None, duration=30, portrait=False):
+        resolution = "360x640" if portrait else "640x360"
+        filename = self.folder / (
+            ("portrait-" if portrait else "landscape-") +
+            ("black.mp4" if color else "colors.mp4"))
+        source = (f"color=c={color}:s={resolution}:r=6:d={duration}"
                   if color else
-                  f"testsrc2=size=640x360:rate=6:duration={duration}")
+                  f"testsrc2=size={resolution}:rate=6:duration={duration}")
         subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y",
                         "-f", "lavfi", "-i", source,
                         "-c:v", "libx264", "-preset", "ultrafast",
@@ -56,7 +59,10 @@ class ReviewBoardTests(unittest.TestCase):
         with Image.open(self.folder/"board"/"storyboard-01.jpg") as image:
             self.assertEqual(image.size, (1120, 2030))
         persisted = json.loads((self.folder/"board"/"visual-review.json").read_text())
-        self.assertEqual(persisted["schemaVersion"], 2)
+        self.assertEqual(persisted["schemaVersion"], 3)
+        self.assertEqual(persisted["videoOrientation"], "landscape")
+        self.assertEqual(persisted["decodedReviewFrameSize"], [640, 360])
+        self.assertEqual(persisted["contactSheetScenesPerPage"], 8)
         self.assertEqual(persisted["motionPairsCompared"], 5)
         self.assertEqual(persisted["frozenAnimatedSceneCount"], 0)
         self.assertEqual(len(persisted["frames"]), 5)
@@ -66,6 +72,51 @@ class ReviewBoardTests(unittest.TestCase):
             persisted["frames"][0]["timeSeconds"])
         self.assertNotIn("frame", persisted["frames"][0])
         self.assertFalse(persisted["publicationApproved"])
+
+    def test_native_9_16_contact_sheets_preserve_all_tall_frames(self):
+        video = self._video(portrait=True)
+        decoded = _frame_at(video, 1.5, portrait=True)
+        self.assertEqual(decoded.size, (360, 640))
+        reviewed = generate(
+            plan=self.plan_file, video=video,
+            destination=self.folder/"portrait-board", max_samples=5)
+        self.assertTrue(reviewed["technicalVisualCheckPassed"], reviewed["errors"])
+        self.assertEqual(reviewed["videoOrientation"], "portrait")
+        self.assertEqual(reviewed["decodedReviewFrameSize"], [360, 640])
+        self.assertTrue(reviewed["contactSheetPreservesFrame"])
+        self.assertEqual(reviewed["contactSheetScenesPerPage"], 4)
+        self.assertEqual(reviewed["pages"],
+                         ["storyboard-01.jpg", "storyboard-02.jpg"])
+        self.assertEqual(reviewed["sampledSceneCount"], 5)
+        self.assertEqual(reviewed["motionPairsCompared"], 5)
+        self.assertTrue(all(
+            item["motion"]["changedPixelFraction"] > 0.01
+            for item in reviewed["frames"]))
+        for filename in reviewed["pages"]:
+            with Image.open(self.folder/"portrait-board"/filename) as image:
+                self.assertEqual(image.size, (1120, 2030))
+
+    def test_native_science_rig_freezing_is_blocked_without_blocking_stills(self):
+        original = json.loads(self.plan_file.read_text(encoding="utf8"))
+        for scene in original["scenes"]:
+            scene["motionRig"] = "original-science-v1"
+            scene["renderStyle"] = "science"
+        self.plan_file.write_text(json.dumps(original), encoding="utf8")
+        frozen = generate(
+            plan=self.plan_file,
+            video=self._video(color="gray", portrait=True),
+            destination=self.folder/"frozen-science", max_samples=5)
+        self.assertFalse(frozen["technicalVisualCheckPassed"])
+        self.assertEqual(frozen["frozenAnimatedSceneCount"], 5)
+        self.assertTrue(all(x["animatedRigExpected"]
+                            for x in frozen["frames"]))
+        moving = generate(
+            plan=self.plan_file, video=self._video(portrait=True),
+            destination=self.folder/"moving-science", max_samples=5)
+        self.assertTrue(moving["technicalVisualCheckPassed"], moving["errors"])
+        self.assertEqual(moving["frozenAnimatedSceneCount"], 0)
+        self.assertTrue(all(x["animatedRigExpected"]
+                            for x in moving["frames"]))
 
     def test_black_mp4_is_flagged_as_bad_preview(self):
         report = generate(plan=self.plan_file, video=self._video(color="black"),
