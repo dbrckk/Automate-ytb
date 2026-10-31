@@ -18,7 +18,7 @@ from automate_ytb.science_motion import (
 
 class ScienceMotionTests(unittest.TestCase):
     def test_story_controls_distinct_original_modes_and_real_motion(self):
-        self.assertIn("science-motion-v3", SCIENCE_VERSION)
+        self.assertIn("science-motion-v4", SCIENCE_VERSION)
         cues = {
             "La planète continue sa rotation.": "orbital",
             "L'air et le vent continuent leur déplacement.": "atmosphere",
