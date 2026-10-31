@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-JOINT_VERSION = "original-joint-rotation-v4-planted-contact"
+JOINT_VERSION = "original-joint-rotation-v5-continuous-jump-phase"
 
 # Radians, deliberately bounded: avoid disconnected or spinning sprites.
 AMPLITUDES = {
@@ -34,11 +34,10 @@ LANDING_TIME = 1.39
 
 
 def landing_recoil(action: str, *, part: str, side: str) -> str:
-    """Trusted FFmpeg angle impulse, zero outside the jump landing interval.
+    """Bounded, C1-continuous landing impulse during the last 0.36s of a jump.
 
-    Decaying spring correction starts at zero on ground contact, oscillates
-    rapidly and settles before the next jump. Only validated action/rig enums
-    are accepted; no source narration enters the filter expression.
+    Compact pulse vanishes with zero velocity at both ends of the period:
+    no abrupt leftover joint angle when modulo time wraps at 1.75s.
     """
     if action not in ACTIONS or part not in IMPACT_AMPLITUDES:
         raise ValueError("Unknown original landing joint")
@@ -49,13 +48,12 @@ def landing_recoil(action: str, *, part: str, side: str) -> str:
         return "0"
     sign = -1 if side == "right" else 1
     angle = sign * IMPACT_AMPLITUDES[part]
-    clock = "mod(t,1.75)"
-    elapsed = f"({clock}-1.39)"
-    return (
-        f"if(gte({clock},1.39),"
-        f"{angle:.4f}*exp(-9*({elapsed}))*sin(26*({elapsed})),0)"
-    )
-
+    phase = "mod(t,1.75)"
+    elapsed = f"max(0,({phase}-1.39))"
+    elapsed_norm = f"min(1,max(0,({elapsed})/0.36))"
+    envelope = f"16*pow({elapsed_norm},2)*pow(1-({elapsed_norm}),2)"
+    return (f"({angle:.4f}*({envelope})*exp(-6*({elapsed}))"
+            f"*sin(26*({elapsed})))")
 
 FREQUENCIES = {
     "idle": 1.6, "walk": 5.1, "run": 10.2, "jump": 3.6,
@@ -74,6 +72,23 @@ def joint_angle(action: str, *, part: str, side: str) -> str:
     frequency = FREQUENCIES[action]
     sign = -1 if side == "right" else 1
     phase = 3.141593 if part == "leg" and side == "right" and action in {"run", "walk"} else 0
+    if action == "jump":
+        # Body, wing, leg, ear and tail rotations must share the exact
+        # original smoothstep flight cycle. Start/end at neutral with zero
+        # wrap velocity, instead of an unrelated 3.6 Hz oscillation.
+        clock = "mod(t,1.75)"
+        smooth = lambda v: f"(({v})*({v})*(3-2*({v})))"
+        def ramp(start: str, duration: str) -> str:
+            return smooth(f"min(1,max(0,(({clock})-{start})/{duration}))")
+        prep = ramp("0", "0.18")
+        rise = ramp("0.18", "0.57")
+        fall = ramp("0.75", "0.64")
+        airborne = f"({rise}-{fall})"
+        anticipation = f"({prep}-{rise})"
+        recoil = landing_recoil(action, part=part, side=side)
+        return (f"({sign * amplitude:.4f}*({airborne})"
+                f"+({-sign * amplitude * 0.18:.4f})*({anticipation})"
+                f"+({recoil}))")
     if part == "leg" and action in {"walk", "run"}:
         # The paw's contact half-cycle holds a neutral angle; only the
         # lifted swing rotates. A squared half-sine eases both boundaries.
