@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from unittest.mock import patch
 import shutil
@@ -13,7 +14,7 @@ from PIL import Image, ImageChops
 
 from automate_ytb.science_motion import (
     SCIENCE_VERSION, ScienceScene, scene_mode, art_brief_sha256,
-    render_motion_clip, FULL_HD)
+    render_motion_clip, FULL_HD, _planet, _planet_texture, _planet_halo)
 
 
 class ScienceMotionTests(unittest.TestCase):
@@ -62,6 +63,53 @@ class ScienceMotionTests(unittest.TestCase):
             shot._globe_at(instant)
             self.assertLessEqual(len(shot._globes), 8)
         self.assertEqual(shot.frame(6.1, 7).size, (1280, 720))
+
+    def test_sphere_static_atlas_and_halo_are_cached_without_mutation(self):
+        atlas = _planet_texture()
+        self.assertIs(_planet_texture(), atlas)
+        halo = _planet_halo(72)
+        self.assertIs(_planet_halo(72), halo)
+        before = halo.tobytes()
+        first = _planet(size=72, yaw=.0)
+        next_pose = _planet(size=72, yaw=.83)
+        self.assertEqual(halo.tobytes(), before)
+        self.assertEqual(first.tobytes(), _planet(size=72, yaw=.0).tobytes())
+        self.assertIsNotNone(ImageChops.difference(
+            first.convert("RGB"), next_pose.convert("RGB")).getbbox())
+        self.assertEqual(first.size, (72+2*round(28*72/408),)*2)
+
+    def test_optimized_sphere_pixels_match_original_per_pixel_formula(self):
+        # Direct reference math at a few opaque surface pixels ensures that
+        # moving latitude/ice/cloud work outside the inner loop changes no
+        # globe colors or science image appearance.
+        size, yaw = 72, .37
+        planet = _planet(size=size, yaw=yaw)
+        texture = _planet_texture().load()
+        margin = round(28*size/408)
+        radius = size/2
+        for x, y in ((36,36),(18,31),(53,43)):
+            with self.subTest(x=x,y=y):
+                nx = (x-radius)/radius
+                ny = (radius-y)/radius
+                dist = nx*nx+ny*ny
+                self.assertLess(dist, .994)
+                z = math.sqrt(1-dist)
+                lon = math.atan2(nx,z)+yaw
+                lat = math.asin(max(-1,min(1,ny)))
+                u = int(((lon/math.tau+.5)%1)*767)
+                v = max(0,min(383,int((.5-lat/math.pi)*383)))
+                red,green,blue = texture[u,v]
+                light = max(.10,min(1.13,.14+.83*z-.55*nx+.18*ny))
+                edge = (1-z)**5
+                cloud = .12 if (math.sin(13*lon+math.sin(lat*6)*1.7)
+                         +math.sin(9*lat+lon*3)) > 1.6 else 0
+                ice = .30 if abs(lat)>1.3 else 0
+                expected = (
+                    min(255,int(red*light+(cloud+ice)*110+edge*22)),
+                    min(255,int(green*light+(cloud+ice)*115+edge*48)),
+                    min(255,int(blue*light+(cloud+ice)*120+edge*80)),
+                    255)
+                self.assertEqual(planet.getpixel((x+margin,y+margin)), expected)
 
     def test_ocean_atmosphere_do_not_allocate_globes(self):
         common = dict(topic="What if Earth's oceans changed?", scene_index=2)
