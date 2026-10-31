@@ -91,8 +91,8 @@ class ScienceShortsTests(unittest.TestCase):
             data["scenes"] = data["scenes"][:1]
             data["sceneCount"] = 1
             data["scenes"][0]["startMs"] = 0
-            data["scenes"][0]["endMs"] = 300
-            data["targetDurationSeconds"] = .3
+            data["scenes"][0]["endMs"] = 1000
+            data["targetDurationSeconds"] = 1.0
             p.write_text(json.dumps(data), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "science style"):
                 build_preview(plan_path=p, output=root/"bad",
