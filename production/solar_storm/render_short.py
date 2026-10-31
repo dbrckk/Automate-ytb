@@ -242,8 +242,9 @@ def main():
          "nasa_source_shots":len(report)-animated,
         "voice":VOICE,"voice_speeds":VOICE_SPEEDS,"duration":duration(out),
         "shot_count":len(clips),"shot_plan":report,"segments":segments,
-        "references":list(MEDIA.values()),
-        "note":"SDO false-color solar observations, NASA space/aurora footage and four original per-frame animated schematic explanations; never one historical storm"}
+        "references":sorted({MEDIA[shot["source"]] for shot in report
+                               if shot["source"] in MEDIA}),
+        "note":"SDO false-color solar observations, NASA space/aurora footage and five original per-frame animated schematic explanations; never one historical storm"}
     (OUT/"production_report.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (OUT/"publication.txt").write_text(
         "Title: Can a Storm on the Sun Reach Earth?\n"
@@ -252,9 +253,10 @@ def main():
         "field, orbital technology and Sun/Earth connections. Solar flares and "
         "coronal mass ejections are distinct phenomena. Clips illustrate "
         "the physics; they do not show one continuous historical storm. "
-        "Credits: NASA Goddard Space Flight Center/SDO, NASA GSFC Conceptual "
-        "Image Lab/Bailee DesRocher, NASA GSFC/CIL/Krystofer Kim, NASA/Mike Toillion. "
-        "NASA SVS 14536, 13029, 20297, 14956, 15077.\n"
+        "NASA footage credits: NASA Goddard Space Flight Center/SDO, "
+        "NASA GSFC Conceptual Image Lab/Bailee DesRocher, NASA/Mike Toillion. "
+        "NASA SVS 14536, 20297, 14956, 15077. Five additional science "
+        "sequences are original animations, not NASA observation footage.\n"
         "Hashtags: #Sun #SpaceWeather #SolarStorm #ScienceShorts\n",
         encoding="utf-8")
     print("BASE_OK",out,round(duration(out),3),len(clips),flush=True)
