@@ -80,6 +80,10 @@ Le premier export complet de 30 secondes comptait environ 44 mots et 13,6 second
 
 ## Vérifications de sortie
 
+## Lisibilité native sur téléphone
+
+Le contrôle de la première vidéo encodée avec les cinq nouveaux schémas a révélé des libellés internes trop petits dans un aperçu mobile, malgré une exportation 1080×1920 correcte. Les textes principaux des schémas ont donc été agrandis (environ 34 à 44 px natifs selon leur rôle), le titre de concept passe de 30 à 36 px, et les sous-titres visent 40 px au lieu de 31 px. Les cas de sous-titres exceptionnellement longs conservent l'adaptation existante sans coupure des mots. La grille conserve les zones sûres, et la mention **« schématique, non à l'échelle »** remplace la formule plus ambiguë « science illustrée ». Les tests vérifient la largeur réelle des glyphes, trois lignes maximum et l'absence de débordement de la zone de sous-titres sur les cinq phrases de référence.
+
 ## Storyboards scientifiques originaux et spécifiques à la narration
 
 Pour le sujet **courants océaniques**, le moteur de Shorts reconnaît maintenant cinq notions scientifiques dans le texte original, sans décider à partir d'un simple numéro de plan : **chauffage solaire différentiel**, **vents et courants de surface**, **déviation/gyres liée à l'effet Coriolis**, **plongée des eaux denses**, **redistribution de chaleur**. Chaque notion possède une composition 1080 × 1920 indépendante et des flèches, particules ou chemins recalculés à chaque instant de la scène. Les textes du graphique basculent entre anglais et français lorsque la langue est identifiable.

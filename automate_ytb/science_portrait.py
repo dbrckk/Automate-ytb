@@ -221,7 +221,7 @@ class PortraitScienceScene:
             # An unusually long phrase must fail rather than disappear from
             # a later part of a video after minutes of expensive encoding.
             layouts = {cue["text"]: _fit_lines(
-                cue["text"], size=31, width=842, maximum=3, minimum=22)
+                cue["text"], size=40, width=842, maximum=3, minimum=22)
                 for cue in cues}
             self._caption_cues = cues
             self._caption_layouts = layouts
@@ -285,7 +285,7 @@ class PortraitScienceScene:
         d.rounded_rectangle((80, 477, 750, 537), radius=22,
                             fill=(12, 47, 72, 234))
         d.text((113, 488), (STORYBOARD_BADGES[self.beat] if self.beat else badges[self.mode])[0 if self.english else 1],
-               font=_font(30, bold=True), fill=GOLD+(255,))
+               font=_font(36, bold=True), fill=GOLD+(255,))
         if self.beat is not None:
             draw_storyboard(d, self.beat, t, self.english)
         elif self.mode in ("orbital", "daylight"):
