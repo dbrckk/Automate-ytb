@@ -15,7 +15,7 @@ from automate_ytb.joint_motion import (
 
 class ImpactFollowthroughTests(unittest.TestCase):
     def test_recoil_only_activates_for_validated_jumps(self):
-        self.assertIn("v4", JOINT_VERSION)
+        self.assertIn("v5", JOINT_VERSION)
         self.assertEqual(set(IMPACT_AMPLITUDES), {"ear", "wing", "leg", "tail"})
         self.assertTrue(all(0 < amplitude < .12
                             for amplitude in IMPACT_AMPLITUDES.values()))
@@ -25,7 +25,7 @@ class ImpactFollowthroughTests(unittest.TestCase):
                 self.assertEqual(expr, landing_recoil("jump", part=part, side=side))
                 self.assertIn("mod(t,1.75)", expr)
                 self.assertIn("1.39", expr)
-                self.assertIn("exp(-9*", expr)
+                self.assertIn("exp(-6*", expr)
                 self.assertIn("sin(26*", expr)
                 self.assertNotIn(";", expr)
                 self.assertEqual(landing_recoil("rest", part=part, side=side), "0")
