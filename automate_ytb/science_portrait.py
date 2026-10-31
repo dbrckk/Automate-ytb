@@ -20,7 +20,7 @@ from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v7-1080x1920-lossless-text-causal-storyboard-ribbon-high-contrast"
+PORTRAIT_VERSION = "original-science-shorts-v7-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-ribbon-high-contrast"
 INK = (238, 247, 250, 255)
 
 
