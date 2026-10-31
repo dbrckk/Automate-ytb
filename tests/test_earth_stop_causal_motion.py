@@ -16,6 +16,7 @@ STORY = {
     "wind": "But the air keeps moving and strong winds sweep across the land.",
     "ocean": "The oceans would create waves and water could flood the coast.",
     "day": "A single day might last most of a year; months of daylight.",
+    "poles": "Over time, oceans redistribute toward the poles.",
     "astronaut": "What advice could our astronauts give survivors?",
 }
 
@@ -38,6 +39,8 @@ class EarthStopMotionTests(unittest.TestCase):
                                              scene_index=1)
                 self.assertEqual(scene.earth_stop_beat, beat)
         self.assertIsNone(classify("Ocean Currents", "Strong wind"))
+        self.assertEqual(classify(TOPIC, "Eventually the oceans shift toward the poles."), "poles")
+        self.assertEqual(classify(TOPIC, "The oceans would create waves."), "ocean")
         self.assertIsNone(classify("Rainbows in the Sky", "Earth moves"))
         self.assertEqual(classify("Que se passe-t-il si la Terre arrête sa rotation?",
                                   "Les vents seront violents."), "wind")
@@ -54,6 +57,19 @@ class EarthStopMotionTests(unittest.TestCase):
                         a.convert("RGB").crop((100, 650, 1000, 1450)),
                         b.convert("RGB").crop((100, 650, 1000, 1450)),
                     ).getbbox(), f"{beat} must animate within central scene")
+
+    def test_stopped_earth_does_not_restart_spin_in_daylight_or_polar_story(self):
+        samples = []
+        def recording_globe(t, *, size=560):
+            samples.append(t)
+            return _fake_globe(t, size=size)
+        for beat in ("poles", "day"):
+            samples.clear()
+            for moment in (.25, 2.0):
+                pic = Image.new("RGBA", (1080, 1920))
+                draw(pic, beat, moment, 3.0, True, recording_globe)
+            self.assertEqual(samples, [0.0, 0.0],
+                             "A stopped Earth must not rotate again in later scenes")
 
     def test_validates_frame_time_and_canvas(self):
         pic = Image.new("RGBA", (1080,1920))
