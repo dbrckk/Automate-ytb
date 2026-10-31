@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-from PIL import Image
+from PIL import Image, ImageStat
 
 from production.solar_storm.motion_graphics import (
     CUES, apply_motion_graphics, build_motion_graphics,
@@ -93,11 +93,16 @@ class VoiceTimedMotionTests(unittest.TestCase):
             frame = Path(tmp) / "motion.png"
             cmd = ["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
                    "color=c=0x101820:s=1080x1920:r=30",
-                   "-vf", f"ass=filename={path}", "-frames:v", "1",
-                   "-update", "1", str(frame)]
+                   "-vf", f"ass=filename={path},select=gte(t\\,0.87)",
+                   "-frames:v", "1", "-update", "1", str(frame)]
             subprocess.run(cmd, check=True, timeout=35)
             with Image.open(frame) as image:
                 self.assertEqual(image.size, (1080, 1920))
+                hud = image.convert("RGB").crop((65, 195, 550, 335))
+                # This is the real burned-in animated HUD, not merely an
+                # ASS file accepted syntactically by libass.
+                self.assertGreater(max(x[1] for x in ImageStat.Stat(hud).extrema),
+                                   120, "Acoustic graphics did not reach MP4 frame")
 
 
 if __name__ == "__main__":
