@@ -125,8 +125,8 @@ def subtitles_for_scenes(scenes: list[dict], *,
             cue += 1
             start, stop = segment["startMs"], segment["endMs"]
             output.append(
-                f"{cue}\\n{srt_time(start)} --> {srt_time(stop)}\\n"
-                f"{segment['text']}\\n")
+                f"{cue}\n{srt_time(start)} --> {srt_time(stop)}\n"
+                f"{segment['text']}\n")
             if stop - start < 650:
                 warnings.append(f"Short subtitle cue {cue}: check script pacing")
     return "\n".join(output), {
