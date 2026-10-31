@@ -11,7 +11,6 @@ import subprocess
 import time
 
 import numpy as np
-import requests
 import soundfile as sf
 
 HERE=Path(__file__).resolve().parent
@@ -109,6 +108,9 @@ def duration(path):
     return float(result.stdout.strip())
 
 def download(url):
+    # The storyboard contract is importable by lightweight repository tests.
+    # HTTP is required only during the real source download.
+    import requests
     path=CACHE/Path(url).name
     if path.is_file() and path.stat().st_size>100_000:
         duration(path)
