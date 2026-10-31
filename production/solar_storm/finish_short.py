@@ -16,6 +16,7 @@ HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE.parent/"titan"))
 from word_align import align_narration
 from review_frames import create_contact_sheet
+from review_shots import review_encoded_shots
 
 OUT=HERE/"out"
 DONE=OUT/"final"
@@ -179,17 +180,25 @@ def main():
     review=create_contact_sheet(dest,scenes,DONE/"contact_sheet.jpg")
     (DONE/"review_frames.json").write_text(
         json.dumps(review,indent=2),encoding="utf-8")
+    shot_review=review_encoded_shots(
+        dest,report["shot_plan"],length,DONE/"shot_contact_sheet.jpg")
+    if shot_review["sampled_shots"] != report["shot_count"]:
+        raise RuntimeError("Incomplete decoded shot review")
+    (DONE/"shot_review.json").write_text(
+        json.dumps(shot_review,indent=2),encoding="utf-8")
     verified=sum(w["recognized"] for w in words)/len(words)
     qa={"status":"passed","video":dest.name,"duration":length,
         "shot_count":report["shot_count"],"caption_groups":caption_groups,
         "speech_recognition_fraction":round(verified,3),
-        "visual_review":review,"editorial_approved":False,
+        "visual_review":review,"shot_review":shot_review,
+        "editorial_approved":False,
         "inferred_words":sum(not w["recognized"] for w in words),
         "caption_source":"actual Kokoro WAV via faster-whisper",
         "streams":streams,"source_attribution":"NASA SVS; see publication.txt",
         "checks":["NASA source decodes","ffmpeg full video/audio decode",
                   "1080x1920 30 fps","AAC 48000 Hz","word timing checked",
-                  "six actual decoded scene frames and Android contact sheet"]}
+                  "six actual decoded scene frames and Android contact sheet",
+                  "all actual encoded NASA shots visually sampled"]}
     (DONE/"qa.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (DONE/"publication.txt").write_text((OUT/"publication.txt").read_text(),encoding="utf-8")
     print("SOLAR_FINAL_OK",json.dumps(qa),flush=True)

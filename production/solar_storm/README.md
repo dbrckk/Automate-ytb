@@ -14,6 +14,10 @@ The successful run uploads `solar-storm-english-short` including:
   unmatched words remain explicitly flagged in `word_timestamps.json`.
 - `contact_sheet.jpg`: six real decoded MP4 frames sampled at the middle of
   each spoken scene, **outside** the published video.
+- `shot_contact_sheet.jpg`: each of the **13 actual edited NASA shots** sampled
+  from the final encoded Short; label text appears **only on the review sheet**.
+- `shot_review.json`: source key, narration scene, extracted timestamps,
+  black frame checks and possible repeated frames for all edited shots.
 - `review_frames.json`: frame positions, darkness/contrast statistics,
   and possible visual duplication warnings, including nonadjacent scenes.
 - `qa.json`: technical stream checks and the visual review result.
@@ -36,3 +40,10 @@ frame numbers, internal counters, slides, a watermark, or telemetry to the
 published Short. External NASA media remain credited in the accompanying
 publication description; production is local/open source apart from licensed
 NASA source retrieval, and does not invoke paid AI image APIs.
+
+The shot-level reviewer checks the encoded 13-shot timeline against the final
+video duration, requires six narration scenes and rejects corrupt or fully
+black sampled frames. It also compares actual RGB thumbnails before flagging
+lookalikes, avoiding misleading similarity warnings from false-color NASA
+footage that has different color palettes. These are still technical checks;
+full-motion continuity and factual framing require human approval.
