@@ -36,6 +36,10 @@ Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement 
 
 La rotation schématique de la Terre reste active au-delà de la cinquième seconde d'un plan. Les différentes orientations sont calculées seulement lorsqu'elles sont visibles, puis conservées dans un cache mémoire borné à huit poses. Les scènes d'océan et d'atmosphère ne chargent aucune sphère terrestre inutile. Cela réduit les calculs superflus et évite le gel visuel de l'ancien moteur, sans prétendre reproduire fidèlement la vitesse réelle de rotation de la Terre.
 
+## Optimisation CPU du globe
+
+Le moteur réutilise maintenant, entre les différentes orientations de la Terre, son atlas original de continents et son halo pré-calculé par résolution. Les calculs dépendant uniquement de la latitude (échantillonnage vertical, nuages et glace polaire) sont effectués une fois par ligne plutôt que pour chaque pixel. Les images rendues conservent leur résolution réelle et les mêmes formules de couleur, sans ajouter de dépendance ni consommer de crédits de génération. Le nombre d’orientations stockées par scène reste borné. Les tests vérifient des couleurs de pixels contre les équations de référence, la stabilité des résultats et l’absence de mutation des ressources mises en cache. Aucun gain chiffré n’est affirmé sans mesure sur un environnement de production.
+
 ## Vérifications de sortie
 
 Les régressions `tests/test_science_motion.py` couvrent les quatre modes visuels, les images successives distinctes, l’empreinte des ressources de la narration et un vrai H.264 à 30 fps. La CI doit réussir l'ensemble de la chaîne avant fusion, et une revue humaine doit contrôler le film complet. Des animations multisciences généralisables, une direction artistique native 1080p et l'alignement mot à mot fiable restent des objectifs futurs.
