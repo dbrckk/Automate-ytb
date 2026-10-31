@@ -39,6 +39,37 @@ The CME animation has an authored horizontal focal crop so that the
 Sun's limb and solar ejecta remain visible in native 9:16 portrait;
 this framing still requires review using the actual rendered MP4.
 
+## Full-frame educational motion (new master)
+
+The output is deliberately **not** a slideshow, a static background or a
+collection of camera moves: five of the thirteen timed shots are replaced
+with completely original, continuously moving explanatory diagrams rendered
+as real H.264 at 30 frames per second. NASA footage remains in eight shots,
+and all thirteen visual spans retain their original audio timing.
+
+| Encoded shot | Time within narration | Actual moving visual |
+| --- | --- | --- |
+| 2 | The Sun can launch storms | Original coronal loops expanding from the Sun |
+| 6 | Charged plasma expelled | Traveling CME shell, colored trails and independent particles |
+| 8 | Earth's magnetic field reacts | Multiple deforming field lines, compressed day-side shield, advected solar wind |
+| 10 | Satellite impacts | Independently moving satellite, orbit line and intermittent signal arcs |
+| 13 | The Sun/Earth connection | Two separate celestial bodies with traveling magnetized wave paths |
+
+These are intentionally **schematic**, not observations or claims of
+numerically simulated physical trajectories. All diagrams carry an explicit
+"NOT TO SCALE" label. They are generated with Pillow and encoded through
+FFmpeg directly from rendered frames, **without paid inference or image APIs**.
+The other eight clips retain original NASA video and dynamic 9:16 source-aware
+camera behavior. Real source and original animation provenance are separated
+in the production JSON, final review and publication credits. The original
+NASA CME reference remains in the verified catalog but is not part of the
+five schematic inserts.
+
+The raw animation module supports deterministic frame samples, several
+independent moving parts, and a full H.264 regression checking real frame
+differences. The master still needs editorial inspection for physical
+clarity, legibility, animation continuity and phone-safe captions.
+
 ## Release verification
 
 After merging, the existing push-triggered Solar Storm GitHub Actions
