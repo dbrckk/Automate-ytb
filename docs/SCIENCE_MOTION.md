@@ -88,7 +88,7 @@ L'ancien Short de référence réclamait 30 secondes mais durait **31,555 second
 
 ## Storyboard narratif en trois étapes et contraste des notions
 
-L'inspection des images **réellement décodées** du Short de référence a montré que les mentions « WARM » et « COOL » étaient pratiquement invisibles : elles utilisaient exactement les mêmes couleurs que les réservoirs qu'elles étaient censées expliquer. Les noms sont désormais blancs sur les fonds orange et bleu, avec conservation du codage chaud/froid.
+L'inspection des images **réellement décodées** du Short de référence a montré que les mentions « WARM » et « COOL » étaient pratiquement invisibles : elles utilisaient exactement les mêmes couleurs que les réservoirs qu'elles étaient censées expliquer. Les noms utilisent désormais une encre bleu nuit sur les fonds orange et bleu, avec un contraste calculé supérieur à 7:1 pour chacune des deux cartes, tout en conservant le codage chaud/froid.
 
 Les cinq diagrammes de courants océaniques gagnent un indicateur temporel **cause → mécanisme → conséquence**. Chaque scène propose trois descriptions scientifiques fixes en anglais et en français, pré-écrites pour cette explication et sélectionnées selon le temps réellement écoulé dans la scène. Une barre de progression évolue de manière continue avec les images, à 30 images par seconde, sans masquer les sous-titres ni demander de synthèse vocale additionnelle. Les temps sont normalisés par la durée effective de la scène (qui peut varier légèrement après synthèse Kokoro), et non par une hypothèse de six secondes fixes. Le code ne crée pas de nouvelle allégation factuelle ou de simulation géophysique.
 
