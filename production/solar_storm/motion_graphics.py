@@ -198,7 +198,20 @@ def apply_motion_graphics(captions_path: Path,
             "Style: Motion," in content):
         raise ValueError("Missing ASS styles/events or already composited graphics")
     events, report = build_motion_graphics(scenes, words)
-    # ASS styles belong before [Events]; all event rows are appended after.
+    # The older captions renderer also drew long-lived Context titles for
+    # scenes 2-5. Once the voice-anchored Motion HUD is installed those become
+    # repeated overprints (confirmed in the actual decoded NASA H.264 MP4).
+    # Retire ONLY Context dialogue rows, never acoustic Voice subtitles,
+    # timestamp rows, SRT captions, styles or source attribution metadata.
+    legacy_context = re.compile(
+        r"^Dialogue: [0-9]+,[^,\\n]+,[^,\\n]+,Context,")
+    original_lines = content.splitlines(keepends=True)
+    cleaned = [line for line in original_lines
+               if not legacy_context.match(line)]
+    report["suppressed_legacy_context_titles"] = (
+        len(original_lines) - len(cleaned))
+    content = "".join(cleaned)
+    # ASS styles belong before [Events]; all motion event rows are appended.
     content = content.replace("\n[Events]", STYLE + "\n[Events]", 1)
     path.write_text(content.rstrip("\n") + "\n" + "\n".join(events) + "\n",
                     encoding="utf-8")
