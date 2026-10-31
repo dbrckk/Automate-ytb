@@ -133,9 +133,15 @@ def make_clip(key, shotno, length, seek):
     usable_start=min(max(0.,seek),max(0.,dur-length-0.1))
     clip=OUT/f"scene_{shotno:02d}.mp4"
     # 9:16 reframing; avoid distorted aspect ratio or letterboxing.
-    vf=("scale=1080:1920:force_original_aspect_ratio=increase:"
-        "flags=lanczos,crop=1080:1920,setsar=1,"
-        "eq=contrast=1.035:saturation=1.04,format=yuv420p")
+    # Keep the science subject in the frame rather than always cropping at the center.
+    # These offsets are in scaled pixels; the gentle pan preserves source motion.
+    focal_offsets = [0, 650, 70, 0, -120, 240]
+    focal = focal_offsets[shotno] if shotno < len(focal_offsets) else 0
+    vf=(
+        "scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
+        f"crop=1080:1920:x='max(0,min(in_w-out_w,(in_w-out_w)/2+{focal}+32*sin(n/95)))':y=0,"
+        "setsar=1,eq=contrast=1.03:saturation=1.04,format=yuv420p"
+    )
     run(["ffmpeg","-y","-hide_banner","-loglevel","error",
          "-stream_loop","-1","-ss",str(usable_start),"-i",source,
          "-t",f"{length:.3f}","-an","-vf",vf,
