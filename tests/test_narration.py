@@ -113,7 +113,7 @@ class SpeechTests(unittest.TestCase):
         self.assertIn("case \"$YT_LANGUAGE:$YT_VOICE_NAME\" in", workflow)
         self.assertIn("en:af_heart|en:af_bella|en:am_michael|fr:ff_siwis)", workflow)
         self.assertIn('VOICE_ARGS=(--voice-name "$YT_VOICE_NAME")', workflow)
-        self.assertIn('"\${VOICE_ARGS[@]}"', workflow)
+        self.assertIn('"${VOICE_ARGS[@]}"', workflow)
 
     def test_segment_pause_is_driven_by_punctuation_not_chunk_boundaries(self):
         self.assertEqual(_segment_pause_ms("Une phrase continue"), 0)
