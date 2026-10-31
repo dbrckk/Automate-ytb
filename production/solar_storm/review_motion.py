@@ -42,6 +42,20 @@ def inspect_original_motion(video: Path, shots: list[dict],
     if not Path(video).is_file():
         raise ValueError("Final H.264 master must exist for motion QA")
     spans,_=timeline(shots,video_duration)
+    # Validate authored coverage and provenance *before* opening FFmpeg.
+    # This avoids needlessly decoding a corrupt or missing source in tests
+    # and makes a real production failure actionable at the correct layer.
+    originals=[
+        (index, shot) for index,shot in enumerate(shots,start=1)
+        if shot.get("original_science_animation")]
+    if len(originals)!=EXPECTED_COUNT:
+        raise RuntimeError(
+            f"Expected {EXPECTED_COUNT} original moving science shots, "
+            f"found {len(originals)}")
+    for index,shot in originals:
+        if not str(shot.get("source","")).startswith("original_"):
+            raise ValueError(
+                f"Original motion source attribution invalid for shot {index}")
     findings=[]
     for index,(shot,span) in enumerate(zip(shots,spans),start=1):
         if not shot.get("original_science_animation"):
