@@ -566,6 +566,18 @@ mesurer le plaisir du spectateur ni autoriser la publication.
 Exécution locale facultative :
 `python -m automate_ytb.story_preflight --plan build/scene-plan.json --report story-preflight.json`.
 
+### Continuité naturelle entre fragments de narration Kokoro
+
+Les sous-titres mobiles peuvent fractionner une seule phrase en plusieurs
+segments de 40 caractères environ. Dans le mode `caption_timing=audio`,
+ces segments sont synthétisés séparément. Désormais **aucun silence de
+95 ms n'est ajouté artificiellement aux coupures sans ponctuation** ;
+seules les pauses justifiées par la ponctuation sont conservées et mesurées
+dans la forme d'onde qui fixe les repères SRT/VTT. Cette correction évite
+l'effet « arrêt de voix à chaque ligne de sous-titre » mais ne prétend
+pas être un alignement acoustique de chaque mot ni une correction de la
+prosodie interne du moteur. Vérifier `voice-sample.mp3` avant diffusion.
+
 ### Voix neuronale par défaut — Kokoro
 
 Le workflow Android `One-click YouTube preview` sélectionne
