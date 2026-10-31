@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# PR animation work should not keep multiple superseded 400-test suites
+# running concurrently; main-branch delivery checks remain non-cancellable.
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   tests:
     runs-on: ubuntu-latest
