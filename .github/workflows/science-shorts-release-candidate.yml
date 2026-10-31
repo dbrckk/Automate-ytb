@@ -1,7 +1,7 @@
-name: Dispatch full 9:16 science Shorts release QA
+name: Verify full 9:16 science Shorts release candidate
 
-# An explicit release candidate is rendered only when this gate changes or
-# when a maintainer requests it. No per-commit expensive render or auto-upload.
+# Explicit releases only. The called job owns generation, MP4/audio quality,
+# SRT/VTT, contact-sheet integrity, and the downloadable MP4 artifact.
 on:
   workflow_dispatch:
   push:
@@ -9,48 +9,53 @@ on:
     paths:
       - .github/workflows/science-shorts-release-candidate.yml
 
+# Rendering and QA must be part of THIS run. A fire-and-forget dispatch can
+# report green despite a subsequent Kokoro, FFmpeg, or media-QA failure.
 permissions:
   contents: read
-  actions: write
 
 concurrency:
-  group: science-shorts-release-dispatch-${{ github.ref }}
+  group: science-shorts-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  dispatch:
-    name: Start real Kokoro / 1080x1920 / 30fps production QA
+  render-and-verify:
+    name: Render and verify real 30s English Kokoro 1080x1920 MP4
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Do Ocean Currents Move?"
+      original_script: >-
+        The Sun warms tropical oceans more strongly than polar seas.
+        Winds push surface water into large currents.
+        Earth's rotation bends the paths of moving water.
+        Cold salty water can sink and travel through the deep ocean.
+        These movements help redistribute heat around the planet.
+      character: "Original animated Earth and ocean science graphics"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm production QA passed and locate release artifact
+    needs: render-and-verify
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 2
     steps:
-      - name: Dispatch real video and all media/visual QA checks
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
+      - name: Record success only after complete encoded-video checks
         run: |
-          set -euo pipefail
-          # This dispatches the existing production workflow rather than
-          # duplicating synthesis, encoding, SRT, quality, or visual QA code.
-          gh workflow run one-click-preview.yml --ref main \
-            --raw-field 'topic=Why Do Ocean Currents Move?' \
-            --raw-field 'original_script=The Sun warms tropical oceans more strongly than polar seas. Winds push surface water into large currents. Earth’s rotation bends the paths of moving water. Cold salty water can sink and travel through the deep ocean. These movements help redistribute heat around the planet.' \
-            --raw-field 'character=Original animated Earth and ocean science graphics' \
-            --raw-field 'style=science' \
-            --raw-field 'language=en' \
-            --raw-field 'voice=kokoro' \
-            --raw-field 'voice_name=af_heart' \
-            --raw-field 'voice_style=natural' \
-            --raw-field 'soundtrack=ambient' \
-            --raw-field 'transition=dissolve' \
-            --raw-field 'caption_timing=audio' \
-            --raw-field 'duration_seconds=30' \
-            --raw-field 'shot_seconds=6' \
-            --raw-field 'resolution=shorts' \
-            --raw-field 'render_profile=high'
           {
-            echo '### Full production Shorts quality gate dispatched'
-            echo 'Open the **One-click YouTube preview (free)** workflow and select the newest workflow_dispatch run.'
-            echo 'Requirements: real 1080×1920 H.264 at 30 fps, English Kokoro narration, audio-timed captions, generated soundtrack, full encoded-video visual review, and passing consolidated QA.'
-            echo '**This dispatch is not an approval to publish.** Inspect the actual MP4, audio, and artifact reports on a phone.'
+            echo '### Native science Shorts production release gate PASSED'
+            echo 'The reusable production job completed real Kokoro narration,'
+            echo '1080x1920 H.264 at 30 fps, SRT/VTT, soundtrack and visual QA.'
+            echo 'Find **automate-ytb-free-preview** in THIS runs Artifacts.'
+            echo '**Human editorial approval and voice listening are still required.**'
           } >> "$GITHUB_STEP_SUMMARY"
