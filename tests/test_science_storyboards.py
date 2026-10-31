@@ -103,9 +103,17 @@ class TopicStoryboardTests(unittest.TestCase):
                 self.assertEqual(len(set(bands)), 3)
                 self.assertEqual(len(PROGRESSION[beat][0]), 3)
                 self.assertEqual(len(PROGRESSION[beat][1]), 3)
-                captions = [f.crop((65, 1522, 1015, 1722)).tobytes()
-                            for f in timeline]
-                self.assertEqual(len(set(captions)), 1)
+                # The source narration may legitimately span multiple SRT
+                # cues, so later captions can change. Compare each instant
+                # against the same frame WITHOUT the progression ribbon,
+                # proving that cue timing and caption pixels were untouched.
+                from unittest.mock import patch
+                with patch("automate_ytb.science_storyboards._progress_ribbon"):
+                    plain = [scene.frame(t, 6.0) for t in (.7, 2.7, 4.7)]
+                for timed, original in zip(timeline, plain):
+                    self.assertEqual(
+                        timed.crop((65, 1522, 1015, 1722)).tobytes(),
+                        original.crop((65, 1522, 1015, 1722)).tobytes())
                 # Original frame resolution and the actual animated hero
                 # remain unchanged; no slower compositing or globe projection.
                 self.assertTrue(all(f.size == PORTRAIT_SIZE for f in timeline))
