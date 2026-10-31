@@ -88,6 +88,57 @@ class TopicStoryboardTests(unittest.TestCase):
                         probe.textbbox((0, 0), line,
                                        font=_font(fontsize, True))[2], 842)
 
+    def test_cause_process_effect_progresses_without_overwriting_subtitles(self):
+        from automate_ytb.science_storyboards import PROGRESSION
+        self.assertEqual(set(PROGRESSION), set(BEATS))
+        for beat, narration in self.examples:
+            with self.subTest(beat=beat):
+                scene = PortraitScienceScene(
+                    topic=self.topic, narration=narration, scene_index=1)
+                timeline = [scene.frame(t, 6.0) for t in (.7, 2.7, 4.7)]
+                # A real timeline has three independent chapter states and a
+                # continuously moving fill; it is not a static stage badge.
+                bands = [f.crop((80, 548, 1000, 595)).tobytes()
+                         for f in timeline]
+                self.assertEqual(len(set(bands)), 3)
+                self.assertEqual(len(PROGRESSION[beat][0]), 3)
+                self.assertEqual(len(PROGRESSION[beat][1]), 3)
+                captions = [f.crop((65, 1522, 1015, 1722)).tobytes()
+                            for f in timeline]
+                self.assertEqual(len(set(captions)), 1)
+                # Original frame resolution and the actual animated hero
+                # remain unchanged; no slower compositing or globe projection.
+                self.assertTrue(all(f.size == PORTRAIT_SIZE for f in timeline))
+                self.assertFalse(scene._globes)
+
+    def test_heat_reservoir_names_are_readable_against_colored_cards(self):
+        scene = PortraitScienceScene(
+            topic=self.topic,
+            narration="Currents redistribute heat around Earth and influence climate.",
+            scene_index=5)
+        frame = scene.frame(2.5, 6.0)
+        self.assertEqual(scene.beat, "heat")
+        # Previously the WARM/COOL glyphs used identical foreground and
+        # background hues; on the real encoded MP4 both words vanished.
+        for x in (208, 733):
+            with self.subTest(x=x):
+                pixels = frame.crop((x, 981, x+146, 1032)).getdata()
+                self.assertGreater(sum(1 for r, g, b in pixels
+                                       if r >= 225 and g >= 235 and b >= 235), 15)
+
+    def test_causal_timeline_rejects_invalid_durations(self):
+        from PIL import ImageDraw
+        from automate_ytb.science_storyboards import PROGRESSION
+        pen = ImageDraw.Draw(Image.new("RGBA", PORTRAIT_SIZE), "RGBA")
+        self.assertEqual(len(PROGRESSION), 5)
+        for duration in (0, -1, float("nan"), float("inf"), 181, True):
+            with self.subTest(duration=duration), self.assertRaises(ValueError):
+                draw_storyboard(pen, "heat", .1, True, duration=duration)
+        with self.assertRaises(ValueError):
+            draw_storyboard(pen, "heat", 5.01, True, duration=5.0)
+        with self.assertRaises(ValueError):
+            draw_storyboard(pen, "wind", float("nan"), True, duration=6.0)
+
     def test_storyboard_rejects_invalid_animation_arguments(self):
         canvas = Image.new("RGBA", PORTRAIT_SIZE)
         from PIL import ImageDraw
