@@ -51,6 +51,7 @@ SHOT_PLAN = {
     5: [("chemistry", 1.4, 0.52), ("time", 14.0, 0.48)],      # Chemistry and closing surface
 }
 VOICE = "af_heart"
+VOICE_SPEEDS = [1.04, 0.98, 0.94, 1.02, 1.00, 0.95]
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 def run(cmd):
@@ -90,13 +91,12 @@ def produce_narration():
     pipe = KPipeline(lang_code="a")
     sr = 24000
     # Restrained performance direction: more energy at the hook and a reflective outro.
-    voice_speeds = [1.04, 0.98, 0.94, 1.02, 1.00, 0.95]
     all_samples = []
     segments = []
     cursor = 0
     for i, (_, text, _) in enumerate(SCENES):
         parts = []
-        for _,_,audio in pipe(text, voice=VOICE, speed=voice_speeds[i], split_pattern=r"\n+"):
+        for _,_,audio in pipe(text, voice=VOICE, speed=VOICE_SPEEDS[i], split_pattern=r"\n+"):
             parts.append(np.asarray(audio,dtype=np.float32))
         if not parts:
             raise RuntimeError(f"No Kokoro audio for scene {i}")
@@ -212,7 +212,7 @@ def main():
     info={"video":output.name,"duration":probe(output),
           "dimensions":"1080x1920","fps":30,"voice":"Kokoro-82M af_heart",
           "sources":[{"url":x if x.startswith("https://") else NASA+x,"credit":"NASA Goddard Space Flight Center / Scientific Visualization Studio"} for x in MEDIA.values()],
-          "segments":segs,"voice_speeds":voice_speeds,"shot_plan":shots,"shot_count":len(shots),"caption_events":len(events),
+          "segments":segs,"voice_speeds":VOICE_SPEEDS,"shot_plan":shots,"shot_count":len(shots),"caption_events":len(events),
           "warnings":["Scientific visualizations show plausible Titan conditions, not footage captured at Titan's surface."]}
     (OUT/"production_report.json").write_text(json.dumps(info,indent=2))
     (OUT/"publication.txt").write_text(
