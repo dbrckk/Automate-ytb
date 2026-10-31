@@ -365,19 +365,32 @@ def _connection(im,t,duration):
     _orb_at(im,"sun",124,530,81)
     _orb_at(im,"earth",438,539,59)
     paths=[]
+    curves=[]
     for k in range(6):
         off=(k-2.5)*24
-        paths.append((_curve(((210,520),(272,340+off),
-                              (330,695-off),(376,538))),
-                      (80,200+k*7,250,140+k*10),3))
+        sway=31*math.sin(t*1.85+k*.72)
+        curve=_curve(((210,520),(272,340+off+sway),
+                      (330,695-off-sway),(376,538)),72)
+        curves.append(curve)
+        paths.append((curve,(80,200+k*7,250,140+k*10),3))
+        # A broad animated signal pulse actually travels along each path.
+        head=(t*.36+k*.115)%1
+        left=max(0,int((head-.09)*(len(curve)-1)))
+        right=min(len(curve),int((head+.09)*(len(curve)-1))+1)
+        if right-left>=3:
+            paths.append((curve[left:right],(216,247,255,245),5))
     _glow(im,paths)
     d=ImageDraw.Draw(im)
     for k in range(28):
-        frac=(k/28+t*.15)%1
-        line=_curve(((210,520),(272,340+(k%4-2)*24),
-                     (330,695-(k%4-2)*24),(376,538)),40)
+        frac=(k/28+t*.22)%1
+        line=curves[k%len(curves)]
         x,y=line[min(len(line)-1,int(frac*(len(line)-1)))]
         _dot(d,x,y,2+(k%3),(183,234,255,200))
+    for idx in range(7):
+        a=t*1.65+idx*math.tau/7
+        rr=89+11*math.sin(t*2+idx*.6)
+        x,y=124+rr*math.cos(a),530+rr*math.sin(a)
+        _dot(d,x,y,2,(255,190,100,220))
     _text(d,(50,745),"THE SUN",size=18,fill=(255,194,116),bold=True)
     _text(d,(382,745),"EARTH",size=18,fill=(160,226,250),bold=True)
 
