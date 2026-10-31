@@ -60,7 +60,7 @@ class TopicStoryboardTests(unittest.TestCase):
 
     def test_existing_non_story_topics_keep_the_generic_animation(self):
         shot = PortraitScienceScene(topic="How Earth rotates",
-                                    narration="Earth rotates every day.", scene_index=1)
+                                    narration="The Earth moves from daylight to night.", scene_index=1)
         self.assertIsNone(shot.beat)
         self.assertEqual(shot.mode, "daylight")
         shot.frame(.2, 1.)
