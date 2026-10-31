@@ -19,7 +19,7 @@ from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v5-1080x1920-ocean-flow"
+PORTRAIT_VERSION = "original-science-shorts-v5-1080x1920-lossless-text-fluid-planet-ocean-flow"
 INK = (238, 247, 250, 255)
 
 
