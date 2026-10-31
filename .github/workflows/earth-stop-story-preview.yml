@@ -30,13 +30,13 @@ jobs:
     with:
       topic: "What If Earth Suddenly Stopped Spinning?"
       original_script: >-
-        What if Earth suddenly stopped spinning?
-        At the equator, the ground moves east at roughly seventeen hundred kilometers per hour, and inertia would carry objects onward.
-        The atmosphere would keep moving at first, sending enormous winds across continents.
-        The oceans would keep moving too, producing devastating coastal waves and floods.
-        Over longer timescales, losing Earth's equatorial bulge could redistribute ocean water toward the poles.
+        What if Earth suddenly stopped spinning without warning, and its familiar rotation vanished beneath our feet in just one moment?
+        At the equator, the surface travels east at seventeen hundred kilometers per hour; inertia would send objects onward.
+        The atmosphere would keep moving at first, driving immense winds and hurling debris through exposed cities.
+        The oceans would keep moving too, producing destructive coastal waves, dangerous flooding and widespread devastation.
+        Over longer periods, Earth's changing shape could slowly redistribute ocean water toward the poles.
         Day and night would follow a radically different cycle, with long periods of sunlight and darkness.
-        Astronauts and people on the ground would face huge risks, and these drawings are explanatory rather than a physical simulation.
+        Even astronauts and ground survivors would face enormous dangers in this hypothetical, rapidly transformed world.
       character: "Original explanatory moving Earth, buildings, oceans and astronaut"
       style: science
       language: en
@@ -46,8 +46,8 @@ jobs:
       soundtrack: ambient
       transition: dissolve
       caption_timing: audio
-      duration_seconds: 42
-      shot_seconds: 6
+      duration_seconds: 46
+      shot_seconds: 6.6
       resolution: shorts
       render_profile: high
 
