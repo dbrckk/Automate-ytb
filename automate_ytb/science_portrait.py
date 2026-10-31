@@ -19,7 +19,7 @@ from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v3-1080x1920-lossless-text"
+PORTRAIT_VERSION = "original-science-shorts-v4-1080x1920-lossless-text-fluid-planet"
 INK = (238, 247, 250, 255)
 
 
@@ -134,7 +134,7 @@ class PortraitScienceScene:
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
         self.base = _sky(seed)
-        self._globes: dict[int, Image.Image] = {}
+        self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
         self._caption_duration_ms: int | None = None
@@ -182,14 +182,33 @@ class PortraitScienceScene:
         # An endpoint frame may land precisely at the scene's final ms.
         return self._caption_cues[-1]["text"]
 
-    def _planet_at(self, t: float, *, size: int = 680) -> Image.Image:
-        step = int(t * 2.5)
-        key = step * 1000 + size
+    def _planet_pose(self, step: int, size: int) -> Image.Image:
+        """Cache six independent projected Earth orientations by pose and size."""
+        key = (step, size)
         if key not in self._globes:
             if len(self._globes) >= 6:
                 del self._globes[next(iter(self._globes))]
             self._globes[key] = _planet(size=size, yaw=(step*.027) % math.tau)
         return self._globes[key]
+
+    def _planet_at(self, t: float, *, size: int = 680) -> Image.Image:
+        """Interpolate native Earth poses for smooth per-frame 30fps motion.
+
+        Only two adjacent projected globes are blended: expensive original
+        projections remain sampled at 2.5Hz, without a full re-render at
+        30fps. This is a cinematic interpolation, not a physical simulation.
+        """
+        if (not isinstance(t, (int, float)) or not math.isfinite(t)
+                or t < 0 or type(size) is not int or not 32 <= size <= 1080):
+            raise ValueError("Unsafe planet interpolation parameters")
+        progress = t * 2.5
+        step = int(progress)
+        fraction = progress - step
+        first = self._planet_pose(step, size)
+        if fraction < 1e-10:
+            return first
+        second = self._planet_pose(step + 1, size)
+        return Image.blend(first, second, fraction)
 
     def frame(self, t: float, duration: float) -> Image.Image:
         if not isinstance(t, (float, int)) or not isinstance(duration, (float, int)):
