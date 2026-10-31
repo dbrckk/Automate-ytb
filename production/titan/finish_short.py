@@ -76,7 +76,7 @@ WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Narration,DejaVu Sans,62,&H00FFFFFF,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,0,0,1,5,1,2,65,65,315,1
+Style: Narration,DejaVu Sans,68,&H00FFFFFF,&H00FFFFFF,&HAC10171B,&H99000000,-1,0,0,0,100,100,0,0,1,6,2,2,64,64,325,1
 Style: Key,DejaVu Sans,41,&H00F4EFE4,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,1,0,1,3,0,7,65,65,380,1
 Style: Value,DejaVu Sans,83,&H00FFFFFF,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,-1,0,1,3,1,7,65,65,425,1
 
@@ -85,14 +85,29 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     # Keep contextual groups legible even on 5-inch phones; never a slide/card.
     groups=[]
-    current=[]
-    for w in words:
-        if current and (len(current)>=4 or len(" ".join(x["word"] for x in current+[w]))>28):
+    offset=0
+    for segment in segments:
+        # Each caption group must stay inside its narrated sentence. Never
+        # leak upcoming text into the previous scene or across a picture cut.
+        count=len(segment["text"].split())
+        sentence_words=words[offset:offset+count]
+        if len(sentence_words)!=count:
+            raise ValueError("Missing aligned words for scene")
+        offset+=count
+        current=[]
+        for word in sentence_words:
+            line=" ".join(x["word"] for x in current+[word])
+            if current and (len(current)>=4 or len(line)>30):
+                groups.append(current)
+                current=[]
+            current.append(word)
+            if word["word"].endswith((".", "?", "!")):
+                groups.append(current)
+                current=[]
+        if current:
             groups.append(current)
-            current=[]
-        current.append(w)
-    if current:
-        groups.append(current)
+    if offset!=len(words):
+        raise ValueError("Subtitle timeline has unassigned words")
 
     ass_rows=[]
     srt=[]
