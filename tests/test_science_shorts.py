@@ -15,7 +15,7 @@ from automate_ytb.captions import (
     subtitles_for_scenes, srt_time,
 )
 from automate_ytb.science_portrait import (
-    PORTRAIT_SIZE, PORTRAIT_VERSION, PortraitScienceScene, _fit_lines,
+    PORTRAIT_SIZE, PORTRAIT_VERSION, PortraitScienceScene, _fit_lines, _ocean_currents,
 )
 from automate_ytb.scene_plan import plan
 from automate_ytb.episode import create_local_art, build_preview
@@ -175,6 +175,48 @@ class ScienceShortsTests(unittest.TestCase):
                     probe.textbbox((0, 0), row,
                                    font=_font(font_size, True))[2],
                     maximum_width)
+
+    def test_ocean_currents_have_multiple_visible_continuous_flow_lanes(self):
+        self.assertIn("ocean-flow", PORTRAIT_VERSION)
+        def flow(time):
+            canvas = Image.new("RGBA", PORTRAIT_SIZE, (8, 28, 49, 255))
+            pen = ImageDraw.Draw(canvas, "RGBA")
+            _ocean_currents(pen, time)
+            return canvas.crop((40, 930, 1035, 1470))
+        frame0 = flow(0.0)
+        frame1 = flow(1/30)
+        frame2 = flow(2/30)
+        self.assertEqual(frame0.size, (995, 540))
+        self.assertEqual(frame1.tobytes(), flow(1/30).tobytes())
+        # Pillow RGBA getbbox may ignore color differences when the alpha
+        # difference is zero. Compare the actual RGB pixels explicitly.
+        self.assertIsNotNone(ImageChops.difference(
+            frame0.convert("RGB"), frame1.convert("RGB")).getbbox())
+        self.assertIsNotNone(ImageChops.difference(
+            frame1.convert("RGB"), frame2.convert("RGB")).getbbox())
+        # Different flow streams have independent animated particles and
+        # displaced loop elements, not a static pictorial background.
+        for y in (1033, 1197, 1361):
+            row = frame1.crop((20, y-930-25, 970, y-930+25))
+            background = Image.new("RGBA", row.size, (8, 28, 49, 255))
+            self.assertIsNotNone(ImageChops.difference(
+                row.convert("RGB"), background.convert("RGB")).getbbox())
+
+    def test_ocean_scene_remains_native_portrait_with_safe_overlay_bands(self):
+        scene = PortraitScienceScene(
+            topic="What if Earth's ocean currents changed?",
+            narration="The ocean currents move across the water.",
+            scene_index=5)
+        before = scene.frame(0, 1)
+        after = scene.frame(1/30, 1)
+        self.assertEqual(before.size, (1080, 1920))
+        self.assertFalse(scene._globes)
+        self.assertIsNotNone(ImageChops.difference(
+            before.crop((90, 990, 990, 1420)),
+            after.crop((90, 990, 990, 1420))).getbbox())
+        self.assertEqual(
+            before.crop((65, 1522, 1015, 1722)).tobytes(),
+            after.crop((65, 1522, 1015, 1722)).tobytes())
 
     def test_portrait_globe_is_demand_loaded_and_cache_is_bounded(self):
         scene = PortraitScienceScene(topic="Why Earth rotates",

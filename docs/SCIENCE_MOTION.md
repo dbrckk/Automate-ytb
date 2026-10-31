@@ -50,6 +50,12 @@ Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement 
 
 La rotation schématique de la Terre reste active au-delà de la cinquième seconde d'un plan. Les différentes orientations sont calculées seulement lorsqu'elles sont visibles, puis conservées dans un cache mémoire borné à huit poses. Les scènes d'océan et d'atmosphère ne chargent aucune sphère terrestre inutile. Cela réduit les calculs superflus et évite le gel visuel de l'ancien moteur, sans prétendre reproduire fidèlement la vitesse réelle de rotation de la Terre.
 
+## Courants océaniques multicouches (Shorts 9:16)
+
+Les scènes de mode `ocean` combinent désormais quatre couches de vagues animées avec **trois courants d'eau indépendants**, des particules à traînée lumineuse et deux tourbillons dont l'orientation évolue continûment à **30 images/seconde**. Les lignes de courant et leurs vitesses restent différentes selon la profondeur. Ce sont des graphiques originaux générés localement, et non une carte physique des courants ou une simulation hydrodynamique. Les éléments sont positionnés dans la bande visuelle centrale afin de préserver les titres, les légendes et les contrôles de l’interface mobile. La cache des clips portrait a été invalidée pour que les vidéos précédentes ne masquent pas cette évolution.
+
+Les régressions vérifient des images distinctes d'une frame à l'autre, un rendu reproductible, l’activité des trois courants, l’absence de globe chargé dans le mode océan et les sous-titres inchangés. Une revue éditoriale du MP4 reste nécessaire, en particulier pour les sujets scientifiques spécifiques où ces courants schématiques ne doivent pas être interprétés comme une représentation exacte.
+
 ## Rotation continue pour les Shorts (9:16)
 
 Les plans verticaux animés interpolent maintenant les deux orientations calculées les plus proches du globe à chaque image (30 fps). Cela limite les saccades de la carte terrestre visibles auparavant toutes les 0,4 seconde, sans exécuter la coûteuse projection complète de la sphère à chaque nouvelle image. Le cache conserve au maximum six poses, avec des clés distinctes selon l'orientation et la résolution. Cette interpolation visuelle ne constitue pas une simulation physique ; une revue du film exporté demeure indispensable. Le rendu horizontal et les vidéos documentaires NASA restent inchangés.
