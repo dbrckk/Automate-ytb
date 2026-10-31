@@ -44,7 +44,7 @@ class AllShotReviewTests(unittest.TestCase):
             self.assertEqual(report["frames"][0]["narration_scene"], 1)
             self.assertEqual(report["frames"][-1]["narration_scene"], 6)
             self.assertEqual(report["frames"][-1]["shot"], 13)
-            self.assertEqual(report["frames"][-1]["source"], "aurora")
+            self.assertEqual(report["frames"][-1]["source"], "sun131")
             with Image.open(output) as rendered:
                 self.assertEqual(rendered.format, "JPEG")
                 self.assertEqual(rendered.size, (1080, 3430))
