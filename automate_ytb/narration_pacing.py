@@ -7,13 +7,20 @@ from __future__ import annotations
 
 MAX_SHORT_TAIL_MS = 1500
 MAX_SHORT_TAIL_FRACTION = 0.20
+MAX_SHORT_DURATION_DRIFT_MS = 600
 
 
-def inspect(scene_pacing: list[dict], *, strict: bool = False) -> dict:
+def inspect(scene_pacing: list[dict], *, strict: bool = False,
+            requested_duration_ms: int | None = None) -> dict:
     if not isinstance(scene_pacing, list) or not 1 <= len(scene_pacing) <= 1200:
         raise ValueError("Narration pacing requires 1-1200 measured scenes")
     if type(strict) is not bool:
         raise ValueError("Strict pacing must be a boolean")
+
+    if requested_duration_ms is not None and (
+            type(requested_duration_ms) is not int or
+            not 1 <= requested_duration_ms <= 3_600_000):
+        raise ValueError("Requested narration duration must be an integer millisecond count")
 
     rows = []
     for item in scene_pacing:
@@ -37,6 +44,8 @@ def inspect(scene_pacing: list[dict], *, strict: bool = False) -> dict:
     duration = sum(item["sceneDurationMs"] for item in rows)
     padding = sum(item["tailPaddingMs"] for item in rows)
     ratio = padding / duration
+    drift_ms = (duration - requested_duration_ms
+                if requested_duration_ms is not None else None)
     too_long = [item["sceneId"] for item in rows
                 if item["tailPaddingMs"] > MAX_SHORT_TAIL_MS]
     findings = []
@@ -46,6 +55,10 @@ def inspect(scene_pacing: list[dict], *, strict: bool = False) -> dict:
     if ratio > MAX_SHORT_TAIL_FRACTION:
         findings.append(
             "Narration leaves more than 20% of the selected video timeline as tail padding")
+    if drift_ms is not None and abs(drift_ms) > MAX_SHORT_DURATION_DRIFT_MS:
+        findings.append(
+            f"Synthesized narration changes requested duration by {drift_ms:+d} ms; "
+            "shorten or expand the authored script; never crop or speed up speech")
     return {
         "schemaVersion": 1,
         "method": "synthesized-pcm-scene-tail-silence-v1",
@@ -55,6 +68,9 @@ def inspect(scene_pacing: list[dict], *, strict: bool = False) -> dict:
         "maxAllowedSceneTailPaddingMs": MAX_SHORT_TAIL_MS,
         "maxAllowedTailPaddingFraction": MAX_SHORT_TAIL_FRACTION,
         "totalSceneDurationMs": duration,
+        "requestedDurationMs": requested_duration_ms,
+        "durationDriftMs": drift_ms,
+        "maxAllowedDurationDriftMs": MAX_SHORT_DURATION_DRIFT_MS,
         "totalTailPaddingMs": padding,
         "tailPaddingFraction": round(ratio, 4),
         "maxSceneTailPaddingMs": max(item["tailPaddingMs"] for item in rows),
