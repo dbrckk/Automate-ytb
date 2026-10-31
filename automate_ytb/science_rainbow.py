@@ -9,10 +9,11 @@ claimed. No external assets, models, network requests or paid API credits.
 from __future__ import annotations
 
 import math
+import random
 import re
 import unicodedata
 
-from PIL import ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
 
@@ -34,6 +35,32 @@ ICE = (192, 239, 251, 238)
 WHITE = (235, 249, 255, 255)
 INK = (9, 24, 48, 255)
 GOLD = (254, 201, 109, 245)
+
+
+def daylight_background(seed: int) -> Image.Image:
+    """One-time atmospheric blue-sky plate: no stars behind daytime optics."""
+    if type(seed) is not int:
+        raise ValueError("Rainbow background needs a deterministic integer seed")
+    w,h=1080,1920
+    plate=Image.new("RGBA",(w,h))
+    draw=ImageDraw.Draw(plate)
+    for y in range(h):
+        p=y/(h-1)
+        draw.line((0,y,w,y),
+                  fill=(round(9+27*p),round(56+68*p),
+                        round(110+56*p),255),width=1)
+    rng=random.Random(seed)
+    haze=Image.new("RGBA",(w,h))
+    hd=ImageDraw.Draw(haze)
+    for index in range(9):
+        cx=rng.randint(70,w-70)
+        cy=rng.randint(480,1590)
+        rx=rng.randint(98,205)
+        ry=rng.randint(29,67)
+        hd.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),
+                   fill=(215,245,253,22+index%3*6))
+    return Image.alpha_composite(
+        plate,haze.filter(ImageFilter.GaussianBlur(35)))
 
 
 def _plain(value: str) -> str:
