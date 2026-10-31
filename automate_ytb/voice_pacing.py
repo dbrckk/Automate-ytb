@@ -7,7 +7,7 @@ emotion cloning or phoneme-perfect audio.
 from __future__ import annotations
 
 STYLES = {"natural": 0.94, "gentle": 0.88, "lively": 1.04}
-VERSION = "kokoro-phrasing-v1"
+VERSION = "kokoro-phrasing-v2-no-artificial-mid-sentence-pauses"
 
 
 def speaking_speed(*, style: str) -> float:
@@ -36,4 +36,8 @@ def natural_pause_ms(phrase: str, *, neural: bool) -> int:
         return 160
     if trimmed.endswith(","):
         return 105
-    return 95
+    # Caption width may split a single natural sentence into several
+    # synthesized pieces. A fixed 95 ms stop at every such boundary makes
+    # otherwise flowing narration sound like unrelated teleprompter lines.
+    # Keep only pauses justified by authored punctuation.
+    return 0
