@@ -25,13 +25,13 @@ CACHE.mkdir(exist_ok=True, parents=True)
 NASA = "https://svs.gsfc.nasa.gov/vis/a020000/a020400/a020403/"
 MEDIA = {
     "intro": "JWST_Titan_Intro_Final_V001.mp4",
-    "lake": "Methane_1080_h264_V2.mp4",
-    "rain": "Titan_Climate_1080_h264.mp4",
-    "time": "Titan_Timelapse_1080_h264.mp4",
-    "chemistry": "Webb_Titan_Shot3_h264_1080.mp4",
+    "lake": "Methane_4k_h264_V2.mov",
+    "rain": "Titan_Climate_4k_h264.mov",
+    "time": "Titan_Timelapse_4k_h264.mov",
+    "chemistry": "Webb_Titan_Shot3_h264_4k.mov",
 }
 SCENES = [
-    ("intro", "What if you stood beside an ocean on another world?", 23.0),
+    ("time", "What if you stood beside an ocean on another world?", 12.0),
     ("intro", "This is Titan, Saturn's largest moon, beneath a thick orange sky.", 28.0),
     ("lake", "Its vast lakes are filled with liquid methane and ethane, not water.", 0.5),
     ("rain", "Methane evaporates, forms clouds, and sometimes falls back as rain.", 0.8),
