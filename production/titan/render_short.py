@@ -168,7 +168,7 @@ def main():
     # Do not substitute procedural placeholder cards when a source fails.
     for key,filename in MEDIA.items():
         retrieve(filename if filename.startswith("https://") else NASA+filename,CACHE/Path(filename).name)
-        print("MEDIA",key,probe(CACHE/filename),flush=True)
+        print("MEDIA",key,probe(CACHE/Path(filename).name),flush=True)
     segs, duration=produce_narration()
     print("NARRATION",duration,flush=True)
     events=subtitle_file(segs)
