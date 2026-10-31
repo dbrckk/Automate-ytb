@@ -128,11 +128,22 @@ class TopicStoryboardTests(unittest.TestCase):
         self.assertEqual(scene.beat, "heat")
         # Previously the WARM/COOL glyphs used identical foreground and
         # background hues; on the real encoded MP4 both words vanished.
-        for x in (208, 733):
+        from automate_ytb.science_storyboards import DARK_TEXT, WARM, COLD
+        for x, hue in ((208, WARM), (733, COLD)):
             with self.subTest(x=x):
                 pixels = frame.crop((x, 981, x+146, 1032)).getdata()
                 self.assertGreater(sum(1 for r, g, b in pixels
-                                       if r >= 225 and g >= 235 and b >= 235), 15)
+                                       if r < 35 and g < 45 and b < 55), 15)
+                def luminance(rgb):
+                    values = [v/255 for v in rgb[:3]]
+                    rgb_linear = [
+                        v/12.92 if v <= .04045 else ((v+.055)/1.055)**2.4
+                        for v in values]
+                    return sum(w*v for w, v in zip((.2126, .7152, .0722),
+                                                    rgb_linear))
+                high, low = sorted((luminance(DARK_TEXT), luminance(hue)),
+                                   reverse=True)
+                self.assertGreaterEqual((high+.05)/(low+.05), 7.0)
 
     def test_causal_timeline_rejects_invalid_durations(self):
         from PIL import ImageDraw
