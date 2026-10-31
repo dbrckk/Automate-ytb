@@ -1,6 +1,55 @@
 name: One-click YouTube preview (free)
 
 on:
+  # The same real encoding/voice/QA job is also callable as a release gate.
+  # Unlike a fire-and-forget dispatch, the parent job inherits its result.
+  workflow_call:
+    inputs:
+      topic:
+        type: string
+        required: true
+      original_script:
+        type: string
+        required: true
+      character:
+        type: string
+        required: true
+      style:
+        type: string
+        required: true
+      language:
+        type: string
+        required: true
+      voice:
+        type: string
+        required: true
+      voice_style:
+        type: string
+        required: true
+      voice_name:
+        type: string
+        required: true
+      soundtrack:
+        type: string
+        required: true
+      transition:
+        type: string
+        required: true
+      caption_timing:
+        type: string
+        required: true
+      duration_seconds:
+        type: number
+        required: true
+      shot_seconds:
+        type: number
+        required: true
+      resolution:
+        type: string
+        required: true
+      render_profile:
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       topic:
