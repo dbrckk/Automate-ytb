@@ -25,13 +25,13 @@ from .animated_forest import (
 from .narration import SpeechEngine
 
 
-LOCAL_RIGHTS = ("Original geometric scene cards generated locally by Automate-ytb "
+LOCAL_RIGHTS = ("Original illustrations and scene cards generated locally by Automate-ytb "
                 "from the user's authored narrative; no third-party media imported.")
 
 
 def create_local_art(plan_path: Path, *, style: str = "cartoon",
                      limit: int | None = None) -> dict:
-    if style not in {"cartoon", "cinematic", "documentary"}:
+    if style not in {"cartoon", "cinematic", "documentary", "science"}:
         raise ValueError("Unsupported graphic style")
     data = production.load_plan(plan_path)
     scenes = data["scenes"][:limit]
@@ -46,7 +46,8 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
     character_text = data["originalCharacterBible"].casefold()
     is_owl = any(word in character_text for word in ("owl", "chouette", "hibou"))
     forest_kind = None if is_owl else character_kind(data["originalCharacterBible"])
-    rig = ("original-owl-v1" if style == "cartoon" and is_owl else
+    rig = ("original-science-v1" if style == "science" else
+           "original-owl-v1" if style == "cartoon" and is_owl else
            f"original-forest-{forest_kind}-v1" if style == "cartoon" and forest_kind
            else "none")
     for i, scene in enumerate(scenes, start=1):
@@ -57,9 +58,13 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
             scene_id=scene["id"], direction=scene.get("direction"),
             held_prop=carried_by_scene[i-1],
             landscape=worlds[i-1])
-        brief_sha = (forest_art_brief_sha256(kind=forest_kind, **brief_args)
-                     if rig.startswith("original-forest-")
-                     else art_brief_sha256(**brief_args))
+        if style == "science":
+            from .science_motion import art_brief_sha256 as science_hash
+            brief_sha = science_hash(**brief_args)
+        else:
+            brief_sha = (forest_art_brief_sha256(kind=forest_kind, **brief_args)
+                         if rig.startswith("original-forest-")
+                         else art_brief_sha256(**brief_args))
         if state == "ready":
             if scene.get("renderStyle") and scene["renderStyle"] != style:
                 raise ValueError("Approved artwork belongs to another style; start a new project")
@@ -72,7 +77,16 @@ def create_local_art(plan_path: Path, *, style: str = "cartoon",
                              "explicitly resolve these before re-generating")
         with tempfile.TemporaryDirectory(prefix="automate-ytb-art-") as folder:
             image = Path(folder) / "original-graphic.png"
-            if style == "cartoon" and is_owl:
+            if style == "science":
+                from .science_motion import render_character_poster as science_poster
+                science_poster(
+                    topic=data["topic"], narration=scene["narration"],
+                    scene_index=i, scene_count=len(data["scenes"]),
+                    style=style, destination=image,
+                    direction=scene.get("direction"),
+                    held_prop=carried_by_scene[i-1],
+                    landscape=worlds[i-1])
+            elif style == "cartoon" and is_owl:
                 render_character_poster(
                     topic=data["topic"], narration=scene["narration"],
                     scene_index=i, scene_count=len(data["scenes"]),
@@ -310,7 +324,7 @@ def build_preview(*, plan_path: Path, output: Path,
     result = production.render(plan_path=plan_path, output=output,
                                audio=voice_file, limit=limit,
                                resolution=resolution,
-                               fps=30 if render_profile == "high" else 24,
+                               fps=30 if style == "science" or render_profile == "high" else 24,
                                render_profile=render_profile,
                                music=soundtrack_file,
                                transition=transition,
@@ -337,7 +351,7 @@ def build_preview(*, plan_path: Path, output: Path,
             "publicationApproved": False,
         },
         "thumbnails": [str(x) for x in pictures],
-        "warnings": ["Original owl, fox, rabbit and cat use original scenic 2D animation in cartoon style; other characters and styles remain draft cards.",
+        "warnings": ["Cartoon animals use original 2D rigs. Science mode supports original schematic Earth/ocean diagrams, not verified geography or physics; other styles remain draft cards.",
                      "Narration is a provisional synthetic voice; review pronunciation and pacing.",
                      "Caption boundaries follow actual synthesized phrases in audio mode; "
                      "they are not verified word-by-word.",
@@ -351,7 +365,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="Build an original YouTube preview offline")
     p.add_argument("--plan", required=True, type=Path)
     p.add_argument("--output", required=True, type=Path)
-    p.add_argument("--style", choices=["cartoon", "cinematic", "documentary"],
+    p.add_argument("--style", choices=["cartoon", "cinematic", "documentary", "science"],
                    default="cartoon")
     p.add_argument("--language", choices=["fr", "en"], default="fr")
     p.add_argument("--voice", choices=["espeak", "kokoro", "none"], default="espeak")
