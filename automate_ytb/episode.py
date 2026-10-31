@@ -202,7 +202,8 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
             "sceneId": scene["id"],
             "spokenAudioMs": round(actual_samples * 1000 / sample_rate),
             "sceneDurationMs": round(target_samples * 1000 / sample_rate),
-            "tailPaddingMs": round((target_samples - actual_samples) * 1000 / sample_rate),
+            "tailPaddingMs": (round(target_samples * 1000 / sample_rate)
+                              - round(actual_samples * 1000 / sample_rate)),
         })
         chunks.extend(b"\x00" * (2 * (target_samples - actual_samples)))
         complete_audio.append(bytes(chunks))
