@@ -160,16 +160,16 @@ def build_motion_graphics(segments: list[dict], words: list[dict]) -> tuple[list
         color = COLORS[index]
         if finish <= begin + .35:
             raise ValueError("Insufficient voice-timed graphic cue duration")
-        title_tags = (r"{\an7\move(74,315,74,295,0,320)\fad(200,270)"
+        title_tags = (r"{\an7\move(74,222,74,205,0,320)\fad(200,270)"
                       r"\blur0.35\1c" + color + r"}")
-        sub_tags = (r"{\an7\move(78,384,78,369,0,370)\fad(220,280)"
+        sub_tags = (r"{\an7\move(78,288,78,273,0,370)\fad(220,280)"
                     r"\fs27\bord2\1c&H00FFFFFF&}")
         rows.append(_dialogue(7, begin, finish, title_tags + title))
         rows.append(_dialogue(6, begin+0.12, finish,
                               sub_tags + subtitle))
         # A lightweight horizontal rule visually ties the label to the footage.
         rows.append(_dialogue(2, begin+0.05, min(finish, begin+1.90),
-                               _vector("m 76 421 l 395 421", color,
+                               _vector("m 76 322 l 395 322", color,
                                        opacity="90", border=2, blur=1)))
         rows.extend(_animated_paths(index, begin, finish, color))
         anchors.append({"scene": index+1, "word": token,
