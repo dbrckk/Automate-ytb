@@ -18,7 +18,7 @@ from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v2-1080x1920-timed-captions"
+PORTRAIT_VERSION = "original-science-shorts-v3-1080x1920-fluid-planet"
 INK = (238, 247, 250, 255)
 
 
@@ -139,14 +139,33 @@ class PortraitScienceScene:
         # An endpoint frame may land precisely at the scene's final ms.
         return self._caption_cues[-1]["text"]
 
-    def _planet_at(self, t: float, *, size: int = 680) -> Image.Image:
-        step = int(t * 2.5)
+    def _planet_pose(self, step: int, size: int) -> Image.Image:
+        """Lazy/bounded cached image at an exact sampled yaw orientation."""
         key = step * 1000 + size
         if key not in self._globes:
             if len(self._globes) >= 6:
                 del self._globes[next(iter(self._globes))]
             self._globes[key] = _planet(size=size, yaw=(step*.027) % math.tau)
         return self._globes[key]
+
+    def _planet_at(self, t: float, *, size: int = 680) -> Image.Image:
+        """Smooth 30fps portrait globe via nearby original sampled poses.
+
+        Never reproject an entire 680px Earth sphere at each frame. Blend only
+        the two neighbouring independently projected images; this is a
+        cinematic interpolation, not an exact geometric Earth simulation.
+        """
+        if (not isinstance(t, (int, float)) or not math.isfinite(t)
+                or t < 0 or type(size) is not int or not 32 <= size <= 1080):
+            raise ValueError("Unsafe planet interpolation parameters")
+        progress = t * 2.5
+        step = int(progress)
+        fraction = progress - step
+        first = self._planet_pose(step, size)
+        if fraction < 1e-10:
+            return first
+        second = self._planet_pose(step+1, size)
+        return Image.blend(first, second, fraction)
 
     def frame(self, t: float, duration: float) -> Image.Image:
         if not isinstance(t, (float, int)) or not isinstance(duration, (float, int)):
