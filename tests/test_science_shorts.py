@@ -149,7 +149,7 @@ class ScienceShortsTests(unittest.TestCase):
                        maximum=3, minimum=22)
         with self.assertRaisesRegex(ValueError, "cannot fit safely"):
             PortraitScienceScene(
-                topic="Earth " + "W"*700,
+                topic="Earth " + "W"*170,
                 narration="The ocean moves.", scene_index=1)
         with self.assertRaisesRegex(ValueError, "cannot fit safely"):
             scene = PortraitScienceScene(
