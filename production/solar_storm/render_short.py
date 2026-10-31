@@ -12,7 +12,10 @@ import time
 
 import numpy as np
 import soundfile as sf
-from camera_motion import build_portrait_camera, camera_metadata
+if __package__:
+    from .camera_motion import build_portrait_camera, camera_metadata
+else:
+    from camera_motion import build_portrait_camera, camera_metadata
 
 HERE=Path(__file__).resolve().parent
 OUT=HERE/"out"
