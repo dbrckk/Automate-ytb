@@ -128,9 +128,11 @@ on:
 permissions:
   contents: read
 
+# Superseded PR renders should not stall the newest playable preview.
+# Main/explicit release renders are never cancelled in flight.
 concurrency:
   group: youtube-offline-preview-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
