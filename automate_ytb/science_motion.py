@@ -17,8 +17,9 @@ import subprocess
 import unicodedata
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-SCIENCE_VERSION = "science-motion-v2-continuous-lazy-globe"
+SCIENCE_VERSION = "science-motion-v3-native-1080p"
 SIZE = (1280, 720)
+FULL_HD = (1920, 1080)
 GOLD = (251, 200, 119)
 CYAN = (113, 219, 244)
 
@@ -34,6 +35,63 @@ def _font(size: int, bold: bool = False):
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+class _ScaledDraw:
+    """Draw original 1280x720 composition directly at target pixel density.
+
+    This is a coordinate adapter, NOT an enlarged bitmap. Paths, line
+    thicknesses, rounded corners and FreeType glyphs are rasterized on the
+    actual 1920x1080 output for the full-HD export.
+    """
+    def __init__(self, picture: Image.Image, factor: float):
+        self._draw = ImageDraw.Draw(picture, "RGBA")
+        self.factor = factor
+
+    def _coord(self, point):
+        if point and isinstance(point[0], (tuple, list)):
+            return [self._coord(x) for x in point]
+        return tuple(round(float(x) * self.factor) for x in point)
+
+    def _font(self, font):
+        if font is not None and hasattr(font, "font_variant"):
+            return font.font_variant(size=max(1, round(font.size * self.factor)))
+        return font
+
+    def ellipse(self, xy, **kwargs):
+        self._draw.ellipse(self._coord(xy), **self._scaled_width(kwargs))
+
+    def rectangle(self, xy, **kwargs):
+        self._draw.rectangle(self._coord(xy), **self._scaled_width(kwargs))
+
+    def polygon(self, xy, **kwargs):
+        self._draw.polygon(self._coord(xy), **self._scaled_width(kwargs))
+
+    def line(self, xy, **kwargs):
+        self._draw.line(self._coord(xy), **self._scaled_width(kwargs))
+
+    def arc(self, xy, start, end, **kwargs):
+        self._draw.arc(self._coord(xy), start, end,
+                       **self._scaled_width(kwargs))
+
+    def rounded_rectangle(self, xy, radius, **kwargs):
+        self._draw.rounded_rectangle(
+            self._coord(xy), radius=round(radius * self.factor),
+            **self._scaled_width(kwargs))
+
+    def text(self, xy, text, *, font=None, **kwargs):
+        self._draw.text(self._coord(xy), text, font=self._font(font), **kwargs)
+
+    def textbbox(self, xy, text, *, font=None, **kwargs):
+        box = self._draw.textbbox(
+            self._coord(xy), text, font=self._font(font), **kwargs)
+        return tuple(value / self.factor for value in box)
+
+    def _scaled_width(self, kwargs):
+        result = dict(kwargs)
+        if "width" in result:
+            result["width"] = max(1, round(result["width"] * self.factor))
+        return result
 
 
 def scene_mode(narration: str) -> str:
@@ -63,23 +121,33 @@ def art_brief_sha256(*, topic: str, narration: str, scene_id: str,
         data, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def _background(seed: int) -> Image.Image:
+def _background(seed: int, size: tuple[int, int] = SIZE) -> Image.Image:
+    """Create sky, stars and atmosphere directly at target resolution."""
+    if size not in (SIZE, FULL_HD):
+        raise ValueError("Unsupported original science canvas resolution")
     rng = random.Random(seed)
-    im = Image.new("RGBA", SIZE, (7, 22, 43, 255))
+    width, height = size
+    scale = width / SIZE[0]
+    im = Image.new("RGBA", size, (7, 22, 43, 255))
     draw = ImageDraw.Draw(im)
-    for y in range(720):
-        p = y / 720
-        draw.line((0, y, 1279, y),
-                  fill=(7 + int(5*p), 22 + int(9*p), 43 + int(12*p), 255))
-    for i in range(225):
-        x, y = rng.randrange(1280), rng.randrange(30, 655)
+    for y in range(height):
+        p = y / height
+        draw.line((0, y, width - 1, y),
+                  fill=(7 + int(5*p), 22 + int(9*p),
+                        43 + int(12*p), 255))
+    for _ in range(round(225 * scale * scale)):
+        x, y = rng.randrange(width), rng.randrange(
+            round(30 * scale), round(655 * scale))
         n = rng.choice((1, 1, 1, 2))
+        n = max(1, round(n * scale))
         b = rng.randrange(90, 190)
-        draw.ellipse((x,y,x+n,y+n), fill=(b//2,b,min(255,b+40),255))
-    halo = Image.new("RGBA", SIZE)
-    ImageDraw.Draw(halo).ellipse((200,15,1000,650), fill=(28,133,195,42))
-    return Image.alpha_composite(im, halo.filter(ImageFilter.GaussianBlur(105)))
-
+        draw.ellipse((x, y, x+n, y+n),
+                     fill=(b//2, b, min(255, b+40), 255))
+    halo = Image.new("RGBA", size)
+    _ScaledDraw(halo, scale).ellipse(
+        (200, 15, 1000, 650), fill=(28, 133, 195, 42))
+    return Image.alpha_composite(
+        im, halo.filter(ImageFilter.GaussianBlur(round(105 * scale))))
 
 def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
     """Approximate original land outlines, sphere projection and illumination."""
@@ -105,11 +173,17 @@ def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
                   for lon,lat in shape]
         draw.polygon(points, fill=(67+i%3*7,153+i%4*5,99+i%3*10))
     lookup = texture.load()
-    globe = Image.new("RGBA",(size+56,size+56),(0,0,0,0))
-    halo = Image.new("RGBA",globe.size)
-    ImageDraw.Draw(halo).ellipse((12,12,size+44,size+44),
-                                 fill=(46,194,239,139))
-    globe.alpha_composite(halo.filter(ImageFilter.GaussianBlur(21)))
+    scale = size / 408
+    margin = round(28 * scale)
+    globe = Image.new("RGBA", (size + 2*margin, size + 2*margin),
+                      (0, 0, 0, 0))
+    halo = Image.new("RGBA", globe.size)
+    ImageDraw.Draw(halo).ellipse(
+        (round(12*scale), round(12*scale),
+         size + round(44*scale), size + round(44*scale)),
+        fill=(46, 194, 239, 139))
+    globe.alpha_composite(
+        halo.filter(ImageFilter.GaussianBlur(round(21*scale))))
     surface=Image.new("RGBA",(size,size))
     pixels=surface.load()
     radius=size/2
@@ -135,7 +209,7 @@ def _planet(size: int = 408, yaw: float = 0.) -> Image.Image:
                          min(255,int(green*light+(cloud+ice)*115+edge*48)),
                          min(255,int(blue*light+(cloud+ice)*120+edge*80)),
                          255)
-    globe.alpha_composite(surface,(28,28))
+    globe.alpha_composite(surface, (margin, margin))
     return globe
 
 
@@ -180,7 +254,8 @@ def _caption(draw: ImageDraw.ImageDraw, text: str) -> None:
 
 class ScienceScene:
     """Original motion graphics for an authored science storyboard beat."""
-    def __init__(self, *, topic: str, narration: str, scene_index: int):
+    def __init__(self, *, topic: str, narration: str, scene_index: int,
+                 size: tuple[int, int] = SIZE):
         if not isinstance(topic,str) or not topic.strip() or len(topic)>180:
             raise ValueError("Science scene needs an authored topic")
         if not isinstance(narration,str) or not narration.strip() or len(narration)>9000:
@@ -193,6 +268,10 @@ class ScienceScene:
                 "visual style for unrelated subjects instead of showing a false planet")
         if type(scene_index) is not int or not 1<=scene_index<=1200:
             raise ValueError("Invalid original scene number")
+        if size not in (SIZE, FULL_HD):
+            raise ValueError("Unsupported original science canvas resolution")
+        self.size = size
+        self.scale = size[0] / SIZE[0]
         self.topic, self.narration = topic, narration
         self.mode=scene_mode(narration)
         self.scene_index=scene_index
@@ -206,7 +285,7 @@ class ScienceScene:
             narration,flags=re.IGNORECASE)
         seed=int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}".encode()).digest()[:8],"big")
-        self.base=_background(seed)
+        self.base=_background(seed, size=self.size)
         # Cache only the globe poses actually used in this shot. The previous
         # implementation precomputed 12 costly images even in ocean scenes
         # and then froze the globe when t exceeded 4.8 seconds.
@@ -219,22 +298,26 @@ class ScienceScene:
         if index not in self._globes:
             if len(self._globes) >= 8:
                 del self._globes[next(iter(self._globes))]
-            self._globes[index] = _planet(yaw=(0.027 * index) % math.tau)
+            self._globes[index] = _planet(
+                size=round(408 * self.scale),
+                yaw=(0.027 * index) % math.tau)
         return self._globes[index]
 
     def frame(self, t: float, duration: float) -> Image.Image:
         if not 0<=t<=duration<=3600:
             raise ValueError("Unsafe science animation clock")
         img=self.base.copy()
-        d=ImageDraw.Draw(img,"RGBA")
+        d=_ScaledDraw(img, self.scale)
         fraction=t/max(.01,duration)
         travel=fraction*fraction*(3-2*fraction)
         cx=585+int(12*math.sin(t*.42))+int(30*(travel-.5))
         cy=350+int(6*math.sin(t*.62))
         if self.mode=="orbital":
             globe=self._globe_at(t)
-            img.alpha_composite(globe,(cx-230,cy-230))
-            d=ImageDraw.Draw(img,"RGBA")
+            img.alpha_composite(
+                globe, (round((cx-230)*self.scale),
+                        round((cy-230)*self.scale)))
+            d=_ScaledDraw(img, self.scale)
             for rad in (229,249):
                 angle=int(t*18)
                 d.arc((cx-rad,cy-rad,cx+rad,cy+rad),
@@ -256,12 +339,14 @@ class ScienceScene:
                        fill=(176,221,231))
         elif self.mode=="daylight":
             globe=self._globe_at(t)
-            img.alpha_composite(globe,(187,127))
+            img.alpha_composite(
+                globe, (round(187*self.scale), round(127*self.scale)))
             dark=Image.alpha_composite(
                 globe,Image.new("RGBA",globe.size,(3,7,30,112)))
             dark.putalpha(globe.getchannel("A"))
-            img.alpha_composite(dark,(750,127))
-            d=ImageDraw.Draw(img,"RGBA")
+            img.alpha_composite(
+                dark, (round(750*self.scale), round(127*self.scale)))
+            d=_ScaledDraw(img, self.scale)
             for x,label,col in ((206,"ZONE ÉCLAIRÉE",GOLD),
                                 (770,"ZONE SOMBRE",CYAN)):
                 d.rounded_rectangle((x,76,x+252,112),12,fill=(4,16,33,235))
@@ -306,7 +391,7 @@ class ScienceScene:
                     points.append((1280,720))
                     d.polygon(points,fill=color)
                     d.line(points[1:-1],fill=(156,242,246,129),width=2)
-        d=ImageDraw.Draw(img,"RGBA")
+        d=_ScaledDraw(img, self.scale)
         for i in range(11):
             x=int((i*109+t*(i%3+1)*4)%1260)+8
             y=int((i*57+t*(i%4+1)*2)%600)+15
@@ -338,13 +423,14 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         raise ValueError("Unsupported science duration or FPS")
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFmpeg required to render science animation")
-    shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index)
+    shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index,
+                      size=(width,height))
     destination.parent.mkdir(parents=True,exist_ok=True)
     frames=max(1,round(duration*fps))
     cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
          "-f","rawvideo","-pixel_format","rgb24",
-         "-video_size","1280x720","-framerate",str(fps),"-i","pipe:0",
-         "-vf",f"scale={width}:{height}:flags=lanczos,format=yuv420p",
+         "-video_size",f"{width}x{height}","-framerate",str(fps),"-i","pipe:0",
+         "-vf","format=yuv420p",
          "-frames:v",str(frames),"-c:v","libx264","-preset","veryfast",
          "-crf","19","-an",str(destination)]
     proc=subprocess.Popen(cmd,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
