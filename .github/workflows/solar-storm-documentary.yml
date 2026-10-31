@@ -41,6 +41,8 @@ jobs:
           path: |
             production/solar_storm/out/final/Solar_Storm_Short_EN_1080x1920.mp4
             production/solar_storm/out/final/cover.jpg
+            production/solar_storm/out/final/contact_sheet.jpg
+            production/solar_storm/out/final/review_frames.json
             production/solar_storm/out/final/subtitles_en.srt
             production/solar_storm/out/final/publication.txt
             production/solar_storm/out/final/qa.json
