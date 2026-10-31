@@ -39,7 +39,7 @@ from .living_world import draw_ambient_layers, append_ambient_overlays
 from .depth_layers import draw_foreground, split_foreground, overlay_foreground
 from .scene_props import create_layers as create_prop_layers, cue_for_scene, gaze_target, append_overlays
 
-FOREST_RIG_VERSION = "forest-animals-v40-synchronized-jump-followthrough"
+FOREST_RIG_VERSION = "forest-animals-v41-phase-synced-joints"
 
 
 def character_kind(character: str) -> str | None:
