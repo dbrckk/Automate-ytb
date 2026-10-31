@@ -11,7 +11,6 @@ import subprocess
 import time
 
 import numpy as np
-import soundfile as sf
 if __package__:
     from .camera_motion import build_portrait_camera, camera_metadata
 else:
@@ -140,6 +139,7 @@ def download(url):
     raise RuntimeError(f"NASA source inaccessible: {url}")
 
 def voice():
+    import soundfile as sf
     from kokoro import KPipeline
     pipe=KPipeline(lang_code="a")
     wavs=[]
