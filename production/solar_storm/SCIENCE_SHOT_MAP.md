@@ -51,3 +51,25 @@ Do not republish the earlier 35.07-second version as the corrected scientific
 storyboard. It is visually and technically valid but contains the mismatch
 described above. Source credits (NASA SVS 13029, 14536, 20297, 14956,
 15077) must remain attached to any release.
+
+## Cinematic camera moves (original FFmpeg, no source retiming)
+
+`camera_motion.py` authors exactly thirteen deterministic camera presets.
+The renderer normalizes each input clip to 30 fps **before** scaling,
+cropping or zooming. The camera then makes a gentle optical push-in and a
+small horizontal/vertical tracking move over the **real NASA video frames**,
+without changing the image aspect ratio, clip duration or spoken pacing.
+
+- SDO solar observations: a subtle 9:16 push-in helps resolve visible detail.
+- Sun-origin CME conceptual animation: the crop follows the source's Sunward
+  focal area, not the center of Earth's magnetosphere.
+- Earth field, satellites and aurora: a restrained, centered camera respects
+  the original subjects and preserves explanatory context.
+- Per-shot `camera` metadata is stored in `production_report.json`, including
+  the exact FFmpeg filtergraph used, frame rate and focal subject.
+
+The feature is checked by a **real encoded static-source H.264 test**:
+frames sampled at two times must visibly change from the animated camera,
+while the MP4 remains 1080×1920, 30 fps and retains its correct duration.
+The original NASA videos are not modified. Motion is not a substitute for
+full phone playback and editorial examination of the final MP4.

@@ -11,6 +11,10 @@ import subprocess
 import time
 
 import numpy as np
+if __package__:
+    from .camera_motion import build_portrait_camera, camera_metadata
+else:
+    from camera_motion import build_portrait_camera, camera_metadata
 
 HERE=Path(__file__).resolve().parent
 OUT=HERE/"out"
@@ -161,17 +165,8 @@ def clip(key,index,scene,offset,length):
     source_duration=duration(source)
     seek=max(0,min(offset,source_duration-length-.1))
     dest=OUT/f"shot_{index:02}.mp4"
-    # Center-weighted vertical crop; actual 2K/4K source pixels, never stretch.
-    # A gentle vertical tracking adjustment respects compact phone composition.
-    offset_px=[0,0,0,0,0,0,0,100,0,-170,80,0,0][index%13]
-    # The CME animation places the Sun toward the left. This focal crop
-    # preserves the solar limb and ejecta in a vertical 9:16 viewport.
-    x_expr=("(in_w-out_w)*0.32+14*sin(n/80)" if key=="cme_launch"
-            else f"(in_w-out_w)/2+{offset_px}+22*sin(n/125)")
-    vf=("scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,"
-        f"crop=1080:1920:x='max(0,min(in_w-out_w,{x_expr}))':"
-        "y='max(0,min(in_h-out_h,(in_h-out_h)/2))',"
-        "setsar=1,format=yuv420p")
+    # Cinematic motion on genuine NASA source imagery without time stretching.
+    vf=build_portrait_camera(key,index)
     run(["ffmpeg","-y","-v","error","-ss",f"{seek:.3f}","-i",source,
         "-t",f"{length:.3f}","-an","-vf",vf,"-r","30",
         "-c:v","libx264","-crf","19","-preset","veryfast",
@@ -179,6 +174,7 @@ def clip(key,index,scene,offset,length):
     if abs(duration(dest)-length)>.25:
         raise RuntimeError(f"Shot time mismatch {dest}")
     return dest,{"scene":scene,"source":key,"start":seek,"duration":length,
+                 "camera":camera_metadata(key,index),
                  "visual_role":VISUAL_ROLE[key],
                  "source_type":("observation" if key.startswith("sun") or key=="aurora"
                                 else "NASA conceptual animation")}
