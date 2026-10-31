@@ -980,3 +980,7 @@ système de suivi oculaire biomécanique.
 ### Contrôle MP4 sur début, milieu et fin
 
 Le diagnostic visuel décode désormais jusqu'à 18 secondes réparties sur toute la chronologie des épisodes longs (six secondes au début, au milieu et à la fin), au lieu de ne regarder que les 18 premières secondes. Le rapport `visual-preflight.json` précise les plages examinées et détecte notamment une fin presque noire. Ce contrôle reste un **échantillonnage**, pas une certification de la totalité des images.
+
+### Mode scientifique animé (Earth/ocean, expérimental)
+
+Depuis Android, **Actions → One-click YouTube preview** : sélectionner `science`, un sujet explicitement consacré à la Terre ou aux océans, puis `1080p` et `high`. Les diagrammes originaux sont animés à 30 fps avec la voix Kokoro en option. Les pixels sont calculés à 1280×720 puis agrandis pour 1080p : ne pas confondre avec une scène native 1080p, un modèle 3D ou une simulation scientifique exacte. Voir [périmètre, limites et mode d'emploi](docs/SCIENCE_MOTION.md). Publication soumise à validation humaine.
