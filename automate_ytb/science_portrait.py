@@ -18,7 +18,8 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
-from .science_rainbow import classify as classify_rainbow, draw_rainbow, BADGES as RAINBOW_BADGES
+from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
+                              daylight_background, BADGES as RAINBOW_BADGES)
 
 PORTRAIT_SIZE = (1080, 1920)
 PORTRAIT_VERSION = "original-science-shorts-v8-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics"
@@ -194,7 +195,7 @@ class PortraitScienceScene:
             narration, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
-        self.base = _sky(seed)
+        self.base = daylight_background(seed) if is_rainbow else _sky(seed)
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
