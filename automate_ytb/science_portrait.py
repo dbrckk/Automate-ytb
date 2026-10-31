@@ -20,7 +20,7 @@ from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v6-1080x1920-lossless-text-fluid-planet-ocean-flow-topic-storyboards"
+PORTRAIT_VERSION = "original-science-shorts-v7-1080x1920-lossless-text-causal-storyboard-ribbon-high-contrast"
 INK = (238, 247, 250, 255)
 
 
@@ -287,7 +287,7 @@ class PortraitScienceScene:
         d.text((113, 488), (STORYBOARD_BADGES[self.beat] if self.beat else badges[self.mode])[0 if self.english else 1],
                font=_font(36, bold=True), fill=GOLD+(255,))
         if self.beat is not None:
-            draw_storyboard(d, self.beat, t, self.english)
+            draw_storyboard(d, self.beat, t, self.english, duration=duration)
         elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
             center_x = 540 + round(16 * math.sin(t*.32))
