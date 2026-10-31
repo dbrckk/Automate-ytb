@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v49-opt-in-science-motion"
+VERSION = "render-v50-portrait-science-shorts"
 
 
 def _sha(path: Path) -> str:
@@ -244,8 +244,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     from .encoding_profiles import (settings, video_args, aac_args,
                                     VERSION as ENCODING_VERSION)
     codec = settings(render_profile)
-    if resolution not in {"720p", "1080p"} or fps not in {24, 30}:
-        raise ValueError("Supported resolutions: 720p/1080p, FPS: 24/30")
+    if resolution not in {"720p", "1080p", "shorts"} or fps not in {24, 30}:
+        raise ValueError("Supported resolutions: 720p/1080p/shorts, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
     if transition not in {"cut", "dissolve"}:
@@ -254,12 +254,19 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
+    if resolution == "shorts" and any(
+            scene.get("renderStyle") != "science"
+            or scene.get("motionRig") != "original-science-v1"
+            or scene.get("assetProvider") != "automate-local-graphics"
+            for scene in scenes):
+        raise ValueError("Native 9:16 Shorts require approved original science scenes")
     results = audit(plan_path, limit)
     if not results["readyForPreview"]:
         raise ValueError(f"Scene assets not ready: {results['counts']}")
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFmpeg is required to render")
-    dims = (1280, 720) if resolution == "720p" else (1920, 1080)
+    dims = {"720p": (1280, 720), "1080p": (1920, 1080),
+            "shorts": (1080, 1920)}[resolution]
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     cache = output / ".clip-cache"
