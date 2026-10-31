@@ -36,6 +36,10 @@ Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement 
 
 La rotation schématique de la Terre reste active au-delà de la cinquième seconde d'un plan. Les différentes orientations sont calculées seulement lorsqu'elles sont visibles, puis conservées dans un cache mémoire borné à huit poses. Les scènes d'océan et d'atmosphère ne chargent aucune sphère terrestre inutile. Cela réduit les calculs superflus et évite le gel visuel de l'ancien moteur, sans prétendre reproduire fidèlement la vitesse réelle de rotation de la Terre.
 
+## Continuité de rotation verticale à 30 fps
+
+Dans les Shorts 1080×1920, l'orientation de la Terre ne reste plus immobile pendant 0,4 seconde entre deux calculs de projection. Chaque image peut afficher une interpolation entre **deux orientations déjà mises en cache** du globe, synchronisée au temps réel du plan. Le moteur garde un cache mémoire borné à six orientations au maximum par scène et n'exécute pas la coûteuse projection complète à chaque image. Ce fondu spatial produit une transition plus progressive, sans prétendre simuler physiquement la rotation de la planète. Les tests contrôlent les images intermédiaires, la répétabilité, la taille du cache et les paramètres invalides. Il ne concerne pas la chaîne documentaire NASA ni le moteur horizontal.
+
 ## Optimisation CPU du globe
 
 Le moteur réutilise maintenant, entre les différentes orientations de la Terre, son atlas original de continents et son halo pré-calculé par résolution. Les calculs dépendant uniquement de la latitude (échantillonnage vertical, nuages et glace polaire) sont effectués une fois par ligne plutôt que pour chaque pixel. Les images rendues conservent leur résolution réelle et les mêmes formules de couleur, sans ajouter de dépendance ni consommer de crédits de génération. Le nombre d’orientations stockées par scène reste borné. Les tests vérifient des couleurs de pixels contre les équations de référence, la stabilité des résultats et l’absence de mutation des ressources mises en cache. Aucun gain chiffré n’est affirmé sans mesure sur un environnement de production.
