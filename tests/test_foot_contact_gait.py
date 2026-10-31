@@ -16,8 +16,9 @@ class FootContactGaitTests(unittest.TestCase):
                 with self.subTest(action=action, side=side):
                     x, y = leg_position(action, side=side)
                     swing = f"max(0,-sin(t*{frequency}+{phase}))"
-                    self.assertIn(f"pow({swing},2)", x)
-                    self.assertIn(f"pow({swing},2)", y)
+                    eased = f"({swing})*({swing})*(3-2*({swing}))"
+                    self.assertIn(eased, x)
+                    self.assertIn(eased, y)
                     self.assertIn(str(reach), x)
                     self.assertIn(str(lift), y)
                     # The planted contact cannot inherit periodic body bob
