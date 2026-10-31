@@ -141,7 +141,7 @@ class SpeechTests(unittest.TestCase):
         data = json.loads(self.plan.read_text(encoding="utf8"))
         data["scenes"][0]["narration"] = original
         self.plan.write_text(json.dumps(data), encoding="utf8")
-        pcm = b"\\x00\\x20" * 4800
+        pcm = b"\x00\x20" * 4800
         calls = []
         class FixedSpeech:
             def __init__(self, *, engine, language, voice):
