@@ -194,6 +194,50 @@ class ScienceShortsTests(unittest.TestCase):
         no_planet.frame(.5, 1.0)
         self.assertFalse(no_planet._globes)
 
+    def test_fluid_globe_changes_on_every_intermediate_frame_with_bounded_cache(self):
+        self.assertIn("fluid-planet", PORTRAIT_VERSION)
+        self.assertIn("lossless-text", PORTRAIT_VERSION)
+        scene = PortraitScienceScene(
+            topic="Why the Earth rotates",
+            narration="The Earth keeps moving.", scene_index=1)
+        first = scene._planet_at(0, size=72)
+        halfway = scene._planet_at(.2, size=72)
+        second = scene._planet_at(.4, size=72)
+        self.assertEqual(len(scene._globes), 2)
+        self.assertIn((0, 72), scene._globes)
+        self.assertIn((1, 72), scene._globes)
+        self.assertEqual(
+            halfway.tobytes(), Image.blend(first, second, .5).tobytes())
+        self.assertIsNotNone(ImageChops.difference(
+            first.convert("RGB"), halfway.convert("RGB")).getbbox())
+        self.assertIsNotNone(ImageChops.difference(
+            halfway.convert("RGB"), second.convert("RGB")).getbbox())
+        self.assertEqual(
+            halfway.tobytes(), scene._planet_at(.2, size=72).tobytes())
+        other_size = scene._planet_at(0, size=73)
+        self.assertNotEqual(other_size.size, first.size)
+        self.assertIn((0, 73), scene._globes)
+        self.assertEqual(len(scene._globes), 3)
+        # The third cache entry remains legitimate when the first twelve
+        # interpolated video frames are rendered; no extra pose projection.
+        for n in range(1, 12):
+            scene._planet_at(n/30, size=72)
+        self.assertEqual(len(scene._globes), 3)
+        for second in (5, 13, 29, 42, 60):
+            scene._planet_at(second, size=72)
+            self.assertLessEqual(len(scene._globes), 6)
+
+    def test_globe_interpolation_rejects_unsafe_input(self):
+        shot = PortraitScienceScene(
+            topic="Earth in motion",
+            narration="Earth continues rotating.", scene_index=1)
+        for t in (-1, float("nan"), float("inf")):
+            with self.subTest(t=t), self.assertRaises(ValueError):
+                shot._planet_at(t, size=72)
+        for size in (0, 15, 1081, True):
+            with self.subTest(size=size), self.assertRaises(ValueError):
+                shot._planet_at(.1, size=size)
+
     def test_wrong_topics_and_unsafe_times_are_rejected(self):
         with self.assertRaises(ValueError):
             PortraitScienceScene(topic="Black hole",
