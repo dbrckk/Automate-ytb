@@ -1,0 +1,64 @@
+name: Verify full 9:16 rainbow optics Shorts release candidate
+
+# Never claim optical graphics are approved for publication based on green CI.
+# The same reusable gate used by the verified ocean Shorts renders and checks
+# the real MP4, PCM narration, subtitles, full storyboard and licensed assets.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/rainbow-science-release-candidate.yml
+      - automate_ytb/science_rainbow.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/science_motion.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rainbow-shorts-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render-and-verify:
+    name: Render and verify real free Kokoro rainbow optics 1080x1920 MP4
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "How Do Rainbows Form?"
+      original_script: >-
+        White sunlight contains many colors, although we usually see one beam.
+        Entering a raindrop, light bends, separating colors by different amounts.
+        Some of this light reflects from the back inside the drop.
+        Leaving the drop, the colors bend again and spread toward us.
+        Millions of drops send different colors toward our eyes, forming a curved rainbow.
+      character: "Original white-light and raindrop science graphics"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Verify rainbow 9:16 release QA and preserve download
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Report only after actual media QA has passed
+        run: |
+          {
+            echo '### Original rainbow optics preview PASSED technical QA'
+            echo 'Full resolution: 1080x1920, H.264 at 30fps with Kokoro.'
+            echo 'The workflow artifact includes the actual final video,'
+            echo 'narration pacing evidence, subtitles and decoded storyboard.'
+            echo 'Scientific accuracy, human listening and publishing remain'
+            echo '**pending editorial approval**.'
+          } >> "$GITHUB_STEP_SUMMARY"

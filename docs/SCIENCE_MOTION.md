@@ -4,8 +4,8 @@ Ce mode utilise des illustrations **originales**, produites localement par Pillo
 
 ## Périmètre réel
 
-- **Sujets pris en charge :** phénomènes liés à la Terre, à ses océans et à l’atmosphère, évoqués explicitement dans le **titre**. L’illustration de la sphère est schématique ; ni une carte exacte ni une simulation physique.
-- **Plans disponibles :** rotation/orbite schématique, circulation atmosphérique, vagues océaniques, éclairage jour/nuit ; ils sont sélectionnés à partir des phrases françaises ou anglaises du script.
+- **Sujets pris en charge :** phénomènes liés à la Terre, à ses océans et à l’atmosphère, ainsi que les **arcs-en-ciel en format Shorts 9:16**, évoqués explicitement dans le **titre**. L’illustration de la sphère est schématique ; ni une carte exacte ni une simulation physique.
+- **Plans disponibles :** rotation/orbite schématique, circulation atmosphérique, vagues océaniques, éclairage jour/nuit ; cinq schémas spécifiques d'optique pour la formation d'arcs-en-ciel en format vertical. Ils sont sélectionnés à partir des phrases françaises ou anglaises du script.
 - **Formats :** sortie encodée en 720p ou 1080p, toujours en 30 fps dans ce mode. Les scènes animées en 1080p sont désormais dessinées **directement à 1920×1080** : ciel, étoiles, globe calculé à 612 px, contours, annotations et typographie vectorielle. La miniature d'approbation statique reste en 1280×720 (ce n'est pas la résolution de la vidéo exportée).
 - **Inexactitudes possibles :** chiffres scientifiques, géographie, mouvements astronomiques et contenu du script doivent être revus indépendamment. L’IA ne recherche ni ne vérifie les faits en générant ces images.
 - **Licence/coûts :** pas de médias externes importés et pas de modèle graphique payant. Kokoro est facultatif et peut nécessiter un téléchargement lors de la première utilisation. Les quotas GitHub Actions habituels restent applicables.
@@ -14,7 +14,7 @@ Ce mode utilise des illustrations **originales**, produites localement par Pillo
 ## Android — prévisualisation
 
 1. Ouvrir **Actions → One-click YouTube preview → Run workflow** sur GitHub.
-2. Choisir **style = science**, un titre explicite sur la Terre ou les océans, un script original avec suffisamment de phrases et un personnage de type **Original astronomy graphics**.
+2. Choisir **style = science**, un titre explicite sur la Terre ou les océans (ou sur les arcs-en-ciel avec `resolution = shorts`), un script original avec suffisamment de phrases et un personnage de type **Original astronomy graphics**.
 3. Sélectionner **1080p** et, pour la qualité d'encodage, **render_profile = high**. Choisir **voice = kokoro** pour la synthèse neuronale si le runner dispose des ressources nécessaires.
 4. Lire la vidéo MP4 et écouter le fichier `voice-sample.mp3` de l'artefact, contrôler la lisibilité des chiffres et corriger toute erreur factuelle avant publication.
 
@@ -24,9 +24,17 @@ En ligne de commande, utiliser `python -m automate_ytb.episode --style science -
 
 Le choix **resolution = shorts** dans **Actions → One-click YouTube preview** est réservé au style `science`. Il produit une vidéo originale 1080×1920 à **30 images/seconde** : ce n'est ni le recadrage ni l'agrandissement d'une vidéo 16:9. Le moteur dispose d'une composition verticale indépendante, avec globe ou phénomènes atmosphériques et océaniques adaptés à l'écran mobile. Les titres et **sous-titres visibles phrase par phrase** sont placés dans des zones séparées, pensées pour les principales interfaces de Shorts/TikTok/Reels. Les mêmes séquences temporelles sont utilisées pour le texte incrusté dans la vidéo et le SRT : si `voice = kokoro` ou `espeak` et `caption_timing = audio`, les changements de phrase suivent les débuts de fragments de voix synthétisés. Les temps ne sont pas vérifiés mot par mot ; sans voix ou en mode `estimated`, ils sont calculés proportionnellement au texte. La revue visuelle et l'écoute sur l'application cible restent indispensables.
 
-Le poster d'approbation reste en 1280×720 : sa géométrie diffère donc volontairement du film vertical. Le contrôle final doit porter sur le **MP4 généré**, pas uniquement sur le poster. Les scripts restent originaux, les légendes complètes sont exportées en SRT/VTT, la narration Kokoro est facultative et l'export ne publie rien automatiquement. Les sujets non liés à la Terre ou aux océans ne sont pas représentés par une fausse animation.
+Le poster d'approbation reste en 1280×720 : sa géométrie diffère donc volontairement du film vertical. Le contrôle final doit porter sur le **MP4 généré**, pas uniquement sur le poster. Les scripts restent originaux, les légendes complètes sont exportées en SRT/VTT, la narration Kokoro est facultative et l'export ne publie rien automatiquement. Les sujets sans moteur explicatif pris en charge sont refusés, y compris les sujets hors Terre/océans/arcs-en-ciel. Les arcs-en-ciel ne sont actuellement rendus qu'en format Shorts 9:16, pas en sortie horizontale.
 
 Pour Android : sélectionner `style = science`, `resolution = shorts`, `render_profile = high` et, si souhaité, `voice = kokoro`. Les vérifications du pipeline et `tests/test_science_shorts.py` contrôlent la taille exacte, le mouvement entre les images, les limitations d'entrée et le vrai codec H.264.
+
+## Optique atmosphérique : vraie production originale d'arcs-en-ciel
+
+Le rendu **natif 9:16** accepte désormais un second sujet scientifique explicitement pris en charge : **« How Do Rainbows Form? »**, ou un titre équivalent contenant « rainbow » / « arc-en-ciel ». Cinq notions sont dessinées directement par Pillow à **1080×1920** : lumière solaire blanche et composantes colorées, première réfraction à l'entrée d'une **goutte sphérique**, réflexion partielle à sa face arrière, seconde réfraction à la sortie, puis arc coloré vu par un observateur. Les raies colorées portent des marqueurs qui se déplacent continûment selon l'horloge du plan à 30 images par seconde ; la composition finale comporte un fond atmosphérique de jour indépendant des cartes océaniques. Le contenu ne prétend pas réaliser un calcul de ray tracing exact ni localiser le « bout » d'un arc-en-ciel.
+
+Le moteur classe les phrases originales selon les notions optiques ; une narration vague ou non reconnue est **refusée explicitement**, plutôt que représentée avec un faux globe terrestre. Les sujets hors Terre/océans/arcs-en-ciel restent également refusés. Les cinq animations d'optique ne sont disponibles que pour `style=science` et `resolution=shorts` ; les versions horizontales non conçues pour ce sujet sont refusées avant la production coûteuse des images ou de la voix. Une véritable vignette d'approbation **16:9** est extraite de l'illustration originale 9:16, sans simuler une prise de vue sur une autre planète. Cela ne change jamais le format de la vidéo finale.
+
+Le workflow `rainbow-science-release-candidate.yml` génère automatiquement un scénario anglais original de cinq scènes, la voix naturelle Kokoro `af_heart`, la musique d'ambiance locale, le SRT/VTT, le MP4 H.264 et les planches d'inspection **directement décodées** du fichier final. Le même contrôle strict de durée PCM (30s avec tolérance de 600ms), les mêmes vérifications visuelles et sonores, la protection des crédits, et l'obligation d'une approbation humaine restent actifs. En cas d'échec, les rapports PCM sont archivés pour diagnostiquer la durée du scénario sans couper la voix ou halluciner des faits. Les nouveaux tests valident les cinq scènes, leur mouvement, la déterminisme, les sous-titres, la taille portrait, la vignette et le refus de sujets non pris en charge.
 
 ## Revue visuelle native 9:16 sur Android
 

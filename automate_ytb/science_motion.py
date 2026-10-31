@@ -424,6 +424,20 @@ def render_character_poster(*, topic: str, narration: str,
                             landscape: str | None = None) -> None:
     if style!="science":
         raise ValueError("Unsupported science visual style")
+    from .science_rainbow import supports_topic as rainbow_topic
+    if rainbow_topic(topic):
+        # The approval poster is a separate 16:9 crop of ORIGINAL 9:16
+        # artwork. Only the delivered Shorts MP4 is native full portrait.
+        # Never substitute the old Earth globe for atmospheric optics.
+        from .science_portrait import PortraitScienceScene
+        shot = PortraitScienceScene(
+            topic=topic, narration=narration, scene_index=scene_index)
+        original = shot.frame(.2, 1.0)
+        poster = original.crop((0, 690, 1080, 1298)).resize(
+            (1280, 720), Image.Resampling.LANCZOS)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        poster.save(destination, format="PNG", optimize=True)
+        return
     shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index)
     destination.parent.mkdir(parents=True,exist_ok=True)
     shot.frame(.2,1.0).save(destination,format="PNG",optimize=True)

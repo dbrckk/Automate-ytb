@@ -304,6 +304,12 @@ def build_preview(*, plan_path: Path, output: Path,
     # Create mobile deliverables before slow TTS and video encoding, so
     # invalid styles or thumbnail failures cannot waste a finished MP4.
     data = production.load_plan(plan_path)
+    if style == "science":
+        from .science_rainbow import supports_topic as rainbow_topic
+        if rainbow_topic(data["topic"]) and resolution != "shorts":
+            raise ValueError(
+                "Rainbow physics has original native 9:16 Shorts artwork only; "
+                "choose --resolution shorts instead of false landscape scenes")
     thumbs = output / "thumbnails"
     thumbs.mkdir(exist_ok=True)
     pictures = make_thumbnails(data["topic"], style, thumbs)
