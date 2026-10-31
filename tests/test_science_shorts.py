@@ -10,6 +10,10 @@ import unittest
 
 from PIL import ImageChops
 
+from automate_ytb.captions import (
+    caption_phrases, timed_cues_for_scene,
+    subtitles_for_scenes, srt_time,
+)
 from automate_ytb.science_portrait import (
     PORTRAIT_SIZE, PORTRAIT_VERSION, PortraitScienceScene,
 )
@@ -44,6 +48,79 @@ class ScienceShortsTests(unittest.TestCase):
                                     first.getpixel((20, 1555)))
                 self.assertTrue(all(0 <= v <= 255
                                     for v in first.getpixel((540, 1000))))
+
+    def test_burned_text_uses_exact_audio_derived_srt_cues(self):
+        narration = (
+            "The ocean expands toward the coast. "
+            "Winds begin to circle the planet. "
+            "New waves move across the water.")
+        phrases = caption_phrases(narration)
+        self.assertGreaterEqual(len(phrases), 2)
+        start, length = 12000, 6000
+        step = length // len(phrases)
+        markers = [
+            {"text": phrase,
+             "startMs": start + i*step,
+             "endMs": start + (i+1)*step if i+1<len(phrases)
+                       else start+length}
+            for i, phrase in enumerate(phrases)
+        ]
+        scene = {
+            "narration": narration, "startMs": start,
+            "endMs": start + length, "captionSegments": markers,
+        }
+        srt, report = subtitles_for_scenes(
+            [scene], use_audio_boundaries=True)
+        self.assertEqual(report["cueCount"], len(phrases))
+        shot = PortraitScienceScene(
+            topic="What if Earth's oceans changed?", narration=narration,
+            scene_index=3, scene_start_ms=start,
+            caption_segments=markers)
+        crops = []
+        for i, phrase in enumerate(phrases):
+            t = (markers[i]["startMs"]-start+100)/1000
+            self.assertEqual(shot.active_caption(t, length/1000), phrase)
+            stamp = srt_time(markers[i]["startMs"])
+            self.assertIn(stamp, srt)
+            if i < 2:
+                crops.append(
+                    shot.frame(t, length/1000).crop((65,1522,1015,1722)))
+        self.assertIsNotNone(ImageChops.difference(
+            crops[0], crops[1]).getbbox())
+        self.assertEqual(shot.active_caption(6, 6), phrases[-1])
+
+    def test_estimated_short_text_matches_srt_without_pretending_word_alignment(self):
+        narration = (
+            "The first wave arrives. "
+            "The second wave moves faster. "
+            "The third wave crosses the ocean.")
+        scene = {"narration": narration, "startMs": 2000, "endMs": 8000}
+        cues = timed_cues_for_scene(scene)
+        srt, report = subtitles_for_scenes([scene])
+        self.assertEqual(report["method"], "estimated-proportional-phrases")
+        self.assertFalse(report["wordLevelAligned"])
+        self.assertGreaterEqual(len(cues), 2)
+        shot = PortraitScienceScene(
+            topic="Earth ocean currents", narration=narration,
+            scene_index=4, scene_start_ms=2000)
+        for cue in cues:
+            local_time = (cue["startMs"]-2000+.1)/1000
+            self.assertEqual(
+                shot.active_caption(local_time, 6), cue["text"])
+            self.assertIn(
+                srt_time(cue["startMs"])+" --> "+srt_time(cue["endMs"]),
+                srt)
+        invalid = PortraitScienceScene(
+            topic="Earth ocean currents", narration=narration,
+            scene_index=4, scene_start_ms=2000,
+            caption_segments=[{"text": "wrong", "startMs":2000,
+                               "endMs":8000}])
+        with self.assertRaises(ValueError):
+            invalid.active_caption(0, 6)
+        with self.assertRaises(ValueError):
+            PortraitScienceScene(
+                topic="Earth ocean currents", narration=narration,
+                scene_index=4, scene_start_ms=True)
 
     def test_portrait_globe_is_demand_loaded_and_cache_is_bounded(self):
         scene = PortraitScienceScene(topic="Why Earth rotates",
