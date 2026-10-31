@@ -8,6 +8,9 @@ on:
     branches: [main]
     paths:
       - .github/workflows/science-shorts-release-candidate.yml
+      - automate_ytb/science_portrait.py
+      - automate_ytb/science_storyboards.py
+      - automate_ytb/science_motion.py
 
 # Rendering and QA must be part of THIS run. A fire-and-forget dispatch can
 # report green despite a subsequent Kokoro, FFmpeg, or media-QA failure.
