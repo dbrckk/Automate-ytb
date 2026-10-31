@@ -40,6 +40,10 @@ Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement 
 
 La rotation schématique de la Terre reste active au-delà de la cinquième seconde d'un plan. Les différentes orientations sont calculées seulement lorsqu'elles sont visibles, puis conservées dans un cache mémoire borné à huit poses. Les scènes d'océan et d'atmosphère ne chargent aucune sphère terrestre inutile. Cela réduit les calculs superflus et évite le gel visuel de l'ancien moteur, sans prétendre reproduire fidèlement la vitesse réelle de rotation de la Terre.
 
+## Rotation continue pour les Shorts (9:16)
+
+Les plans verticaux animés interpolent maintenant les deux orientations calculées les plus proches du globe à chaque image (30 fps). Cela limite les saccades de la carte terrestre visibles auparavant toutes les 0,4 seconde, sans exécuter la coûteuse projection complète de la sphère à chaque nouvelle image. Le cache conserve au maximum six poses, avec des clés distinctes selon l'orientation et la résolution. Cette interpolation visuelle ne constitue pas une simulation physique ; une revue du film exporté demeure indispensable. Le rendu horizontal et les vidéos documentaires NASA restent inchangés.
+
 ## Optimisation CPU du globe
 
 Le moteur réutilise maintenant, entre les différentes orientations de la Terre, son atlas original de continents et son halo pré-calculé par résolution. Les calculs dépendant uniquement de la latitude (échantillonnage vertical, nuages et glace polaire) sont effectués une fois par ligne plutôt que pour chaque pixel. Les images rendues conservent leur résolution réelle et les mêmes formules de couleur, sans ajouter de dépendance ni consommer de crédits de génération. Le nombre d’orientations stockées par scène reste borné. Les tests vérifient des couleurs de pixels contre les équations de référence, la stabilité des résultats et l’absence de mutation des ressources mises en cache. Aucun gain chiffré n’est affirmé sans mesure sur un environnement de production.
