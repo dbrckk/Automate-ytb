@@ -9,15 +9,16 @@ import subprocess
 import tempfile
 import unittest
 
-from PIL import ImageChops
+from PIL import Image, ImageChops
 
 from automate_ytb.science_motion import (
-    SCIENCE_VERSION, ScienceScene, scene_mode, art_brief_sha256)
+    SCIENCE_VERSION, ScienceScene, scene_mode, art_brief_sha256,
+    render_motion_clip, FULL_HD)
 
 
 class ScienceMotionTests(unittest.TestCase):
     def test_story_controls_distinct_original_modes_and_real_motion(self):
-        self.assertIn("science-motion-v2", SCIENCE_VERSION)
+        self.assertIn("science-motion-v3", SCIENCE_VERSION)
         cues = {
             "La planète continue sa rotation.": "orbital",
             "L'air et le vent continuent leur déplacement.": "atmosphere",
@@ -73,6 +74,50 @@ class ScienceMotionTests(unittest.TestCase):
                 self.assertEqual(scene._globes, {})
                 self.assertEqual(scene.frame(.4, 1).size, (1280, 720))
                 self.assertEqual(scene._globes, {})
+
+    def test_full_hd_is_drawn_directly_not_enlarged_from_hd(self):
+        # Native coordinates, line thickness, text and planet diameter are
+        # rasterized at 1920x1080, without enlarging pre-rendered 720p pixels.
+        kwargs = dict(
+            topic="Why Earth rotates",
+            narration="The Earth spins under the bright stars.",
+            scene_index=2)
+        hd = ScienceScene(**kwargs)
+        high = ScienceScene(**kwargs, size=FULL_HD)
+        hd_image = hd.frame(.4, 1)
+        high_image = high.frame(.4, 1)
+        self.assertEqual(hd_image.size, (1280, 720))
+        self.assertEqual(high_image.size, (1920, 1080))
+        self.assertEqual(high.base.size, FULL_HD)
+        self.assertEqual(high._globe_at(.4).size,
+                         (round(408*1.5)+2*round(28*1.5),)*2)
+        resized = hd_image.resize(FULL_HD, Image.Resampling.LANCZOS)
+        self.assertIsNotNone(
+            ImageChops.difference(high_image, resized).getbbox())
+        self.assertEqual(high.frame(.4, 1).tobytes(), high_image.tobytes())
+        with self.assertRaises(ValueError):
+            ScienceScene(**kwargs, size=(1024, 768))
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
+                         "Native full-HD requires actual FFmpeg")
+    def test_full_hd_encoder_receives_1920_source_frames(self):
+        with tempfile.TemporaryDirectory() as temp:
+            mp4 = Path(temp) / "science1080.mp4"
+            render_motion_clip(
+                topic="Why Earth rotates",
+                narration="The Earth moves.", scene_index=1, scene_count=1,
+                style="science", duration=.25, width=1920, height=1080,
+                fps=24, destination=mp4)
+            self.assertGreater(mp4.stat().st_size, 2000)
+            detail = subprocess.run(
+                ["ffprobe", "-v", "error", "-select_streams", "v:0",
+                 "-show_entries", "stream=codec_name,width,height",
+                 "-of", "json", str(mp4)], check=True,
+                capture_output=True, text=True, timeout=40)
+            stream=json.loads(detail.stdout)["streams"][0]
+            self.assertEqual((stream["width"], stream["height"]),
+                             (1920, 1080))
+            self.assertEqual(stream["codec_name"], "h264")
 
     def test_art_fingerprint_is_bound_to_the_authored_scene(self):
         common=dict(topic="Why Earth rotates",narration="The Earth spins.",
