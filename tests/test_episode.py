@@ -49,6 +49,16 @@ class OfflineEpisodeTests(unittest.TestCase):
     def test_science_thumbnails_exist_before_expensive_render(self):
         # The previous release candidate rendered an entire video before
         # KeyError('science') caused the thumbnails step to fail.
+        science = plan(
+            topic="Earth and ocean currents",
+            script="The Sun warms tropical seas. "
+                   "Winds push water toward distant coasts. "
+                   "Earth's rotation bends these moving currents. "
+                   "Dense polar water sinks into the deep sea. "
+                   "Ocean circulation redistributes heat around the planet.",
+            duration=30, shot_seconds=6,
+            character="Original Earth and ocean science graphics")
+        self.plan.write_text(json.dumps(science), encoding="utf-8")
         output = self.root / "preflight"
         with patch("automate_ytb.episode.production.render",
                    side_effect=RuntimeError("encoder not started")):
