@@ -42,7 +42,14 @@ def timeline(shots: list[dict], video_duration: float) -> tuple[list[dict], list
             raise ValueError(f"Invalid shot metadata for shot {idx}")
         start, end = current, current + float(length)
         segments.append({"start": start, "end": end})
-        labels.append(f"SHOT {idx:02d} · {source} · {start+length/2:.1f}s")
+        # The contact-sheet renderer limits display labels to 35 characters.
+        # Keep full original source names in shot_review.json, but shorten only
+        # the visual tile label; e.g. "original_connection" must not abort the
+        # entire finished movie after successful encoding and narration.
+        prefix = f"SHOT {idx:02d} · "
+        suffix = f" · {start+length/2:.1f}s"
+        available = 35 - len(prefix) - len(suffix)
+        labels.append(prefix + source[:available] + suffix)
         current = end
         last_scene = scene
 
