@@ -80,7 +80,7 @@ class ScienceNarrationPacingTests(unittest.TestCase):
 
                 def audio(self, phrase):
                     # Actual signed 16-bit, non-silent PCM, no cloud model.
-                    return b"\x5c\x5cx00\x5c\x5cx20" * 4800, 24000
+                    return b"\x00\x20" * 4800, 24000
 
             wav = root / "narration.wav"
             with patch("automate_ytb.episode.SpeechEngine", DeterministicSpeech):
