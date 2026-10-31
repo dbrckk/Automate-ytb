@@ -6,6 +6,7 @@ Narration is editorial material, not independently fact-checked physics.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 import math
 from pathlib import Path
 import random
@@ -18,39 +19,70 @@ from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v2-1080x1920-timed-captions"
+PORTRAIT_VERSION = "original-science-shorts-v3-1080x1920-lossless-text"
 INK = (238, 247, 250, 255)
 
 
-def _lines(draw: ImageDraw.ImageDraw, content: str, *,
-           size: int, width: int, maximum: int) -> list[str]:
-    """Width-aware text layout, with deterministic ellipsis for long phrases."""
-    words = content.strip().split()
-    font = _font(size, bold=True)
-    rows: list[str] = []
-    line = ""
-    for word in words:
-        next_line = (line + " " + word).strip()
-        if line and draw.textbbox((0, 0), next_line, font=font)[2] > width:
-            rows.append(line)
-            line = word
-        else:
-            line = next_line
-    if line:
-        rows.append(line)
-    if len(rows) > maximum:
-        rows = rows[:maximum]
-        rows[-1] = rows[-1].rstrip(" .…")
-        while rows[-1] and draw.textbbox(
-                (0, 0), rows[-1] + "…", font=font)[2] > width:
-            rows[-1] = rows[-1][:-1].rstrip()
-        rows[-1] += "…"
-    # Extremely long unbroken words may otherwise extend beyond frame edge.
-    for i, line in enumerate(rows):
-        while line and draw.textbbox((0, 0), line, font=font)[2] > width:
-            line = line[:-1]
-        rows[i] = line
-    return rows
+@lru_cache(maxsize=512)
+def _fit_lines(content: str, *, size: int, width: int,
+               maximum: int, minimum: int) -> tuple[tuple[str, ...], int]:
+    """Fit *every* authored glyph in a mobile-safe area without truncation.
+
+    The SRT continues to contain the exact source phrase. Reducing text size
+    and wrapping oversized words are preferable to silently omitting facts.
+    Unreadable input fails the render instead of fabricating an ellipsis.
+    """
+    if not 1 <= minimum <= size <= 80 or not 1 <= maximum <= 4 or width <= 0:
+        raise ValueError("Unsafe portrait text layout dimensions")
+    words = content.split()
+    if not words:
+        return (), size
+    probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+    for font_size in range(size, minimum - 1, -1):
+        font = _font(font_size, bold=True)
+        lines: list[str] = []
+        row = ""
+        for word in words:
+            if probe.textbbox((0, 0), word, font=font)[2] > width:
+                # Preserve the full spelling of long URLs/technical terms:
+                # split into visual runs without dropping any characters.
+                if row:
+                    lines.append(row)
+                    row = ""
+                chunk = ""
+                for char in word:
+                    candidate = chunk + char
+                    if chunk and probe.textbbox(
+                            (0, 0), candidate, font=font)[2] > width:
+                        lines.append(chunk)
+                        chunk = char
+                    else:
+                        chunk = candidate
+                row = chunk
+            else:
+                candidate = (row + " " + word).strip()
+                if row and probe.textbbox(
+                        (0, 0), candidate, font=font)[2] > width:
+                    lines.append(row)
+                    row = word
+                else:
+                    row = candidate
+            if len(lines) >= maximum:
+                break
+        if row:
+            lines.append(row)
+        if len(lines) <= maximum and all(
+                probe.textbbox((0, 0), line, font=font)[2] <= width
+                for line in lines):
+            # Prohibit clipping even when the input contains unusually wide
+            # Unicode glyphs: every source codepoint must be displayed.
+            original = "".join(words)
+            actual = "".join(line.replace(" ", "") for line in lines)
+            if actual == original:
+                return tuple(lines), font_size
+    raise ValueError(
+        "Original portrait text cannot fit safely; shorten the title "
+        "or split the narration into smaller authored phrases")
 
 
 def _sky(seed: int) -> Image.Image:
@@ -107,6 +139,8 @@ class PortraitScienceScene:
         self.caption_segments = caption_segments
         self._caption_duration_ms: int | None = None
         self._caption_cues: list[dict] = []
+        self._title_layout = _fit_lines(
+            self.topic, size=47, width=860, maximum=2, minimum=22)
 
     def active_caption(self, t: float, duration: float) -> str:
         """Return the exact phrase selected by the same timing as the SRT.
@@ -159,10 +193,10 @@ class PortraitScienceScene:
         # captions above the lower controls. Never crop original content.
         d.rounded_rectangle((55, 190, 1025, 407), radius=34,
                             fill=(7, 20, 41, 232), outline=CYAN+(125,), width=3)
-        title = _lines(d, self.topic, size=47, width=860, maximum=2)
+        title, title_size = self._title_layout
         for i, row in enumerate(title):
-            d.text((104, 234 + 68*i), row, font=_font(47, bold=True),
-                   fill=INK)
+            d.text((104, 234 + 68*i), row,
+                   font=_font(title_size, bold=True), fill=INK)
         badges = {
             "orbital": ("EARTH IN MOTION", "LA TERRE EN MOUVEMENT"),
             "daylight": ("DAY AND NIGHT", "JOUR ET NUIT"),
@@ -250,10 +284,10 @@ class PortraitScienceScene:
         d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
                             fill=(5, 17, 37, 240),
                             outline=(84, 165, 190, 150), width=2)
-        summary = _lines(
-            d, self.active_caption(t, duration),
-            size=31, width=842, maximum=3)
+        summary, summary_size = _fit_lines(
+            self.active_caption(t, duration),
+            size=31, width=842, maximum=3, minimum=22)
         for i, line in enumerate(summary):
-            d.text((111, 1551 + 46*i), line, font=_font(31, True),
-                   fill=INK)
+            d.text((111, 1551 + 46*i), line,
+                   font=_font(summary_size, True), fill=INK)
         return picture.convert("RGB")
