@@ -70,6 +70,14 @@ L'action **Verify full 9:16 science Shorts release candidate** appelle directeme
 
 Depuis Android, ouvrir **Actions → Verify full 9:16 science Shorts release candidate → Run workflow**. Si l'exécution est verte, télécharger son artefact et vérifier la **présence effective de `preview.mp4` et `qa-summary.json`**. La configuration de référence vise 30 secondes, Kokoro anglais `af_heart`, musique originale, synchronisation audio des phrases et profil `high`. Le workflow conserve les limites de temps et quotas habituels des runners GitHub ; il ne consomme pas de crédits d'API de génération. La validation technique n'atteste pas la précision scientifique, le naturel subjectif de la voix, l'originalité artistique ni l'autorisation de publier.
 
+## Garde-fou sur les silences de narration — mesure PCM
+
+Pour les vidéos scientifiques natives `shorts` complètes avec Kokoro et sous-titres calculés sur l'audio, la production mesure **la quantité exacte de silence numérique ajoutée en fin de chaque scène** après synthèse. Elle enregistre `narration-pacing.json` dans l'artefact GitHub, même lorsque le contrôle échoue avant l'encodage. Une scène dépassant 1 500 ms de remplissage, ou plus de 20 % de remplissage sur la vidéo sélectionnée, entraîne un échec explicite : le script original doit être étoffé avec des faits vérifiables, ou la durée demandée adaptée. Les autres types de vidéo conservent un diagnostic consultatif afin de préserver la compatibilité.
+
+Ces chiffres proviennent des durées des échantillons PCM, pas d'un calcul de mots par minute. Le contrôle ne coupe pas la voix, n'accélère pas le modèle, ne fabrique pas de texte scientifique et ne remplace pas une écoute humaine. Les pauses naturelles intérieures à une prise ne sont pas classées comme du remplissage. Le rapport indique scène par scène l'audio produit, la durée retenue et le silence ajouté. Une voix techniquement complète n'est pas nécessairement naturelle.
+
+Le premier export complet de 30 secondes comptait environ 44 mots et 13,6 secondes de remplissage silencieux ; la recette de référence utilise désormais cinq phrases originales plus informatives. Sa durée et sa fluidité définitives doivent être validées sur le véritable export Kokoro après intégration.
+
 ## Vérifications de sortie
 
 Les régressions `tests/test_science_motion.py` couvrent les quatre modes visuels, les images successives distinctes, l’empreinte des ressources de la narration et un vrai H.264 à 30 fps. La CI doit réussir l'ensemble de la chaîne avant fusion, et une revue humaine doit contrôler le film complet. Des animations multisciences généralisables, une direction artistique native 1080p et l'alignement mot à mot fiable restent des objectifs futurs.
