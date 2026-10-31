@@ -20,6 +20,14 @@ Ce mode utilise des illustrations **originales**, produites localement par Pillo
 
 En ligne de commande, utiliser `python -m automate_ytb.episode --style science --render-profile high --resolution 1080p --voice kokoro --plan scene-plan.json --output out` après avoir généré un plan avec `python -m automate_ytb.scene_plan`.
 
+## Shorts 9:16 (1080×1920 natif)
+
+Le choix **resolution = shorts** dans **Actions → One-click YouTube preview** est réservé au style `science`. Il produit une vidéo originale 1080×1920 à **30 images/seconde** : ce n'est ni le recadrage ni l'agrandissement d'une vidéo 16:9. Le moteur dispose d'une composition verticale indépendante, avec globe ou phénomènes atmosphériques et océaniques adaptés à l'écran mobile. Les titres et résumés sont placés dans une zone centrale protégée des principales interfaces de Shorts/TikTok/Reels, mais le rendu reste soumis à une revue visuelle sur l'application cible.
+
+Le poster d'approbation reste en 1280×720 : sa géométrie diffère donc volontairement du film vertical. Le contrôle final doit porter sur le **MP4 généré**, pas uniquement sur le poster. Les scripts restent originaux, les légendes complètes sont exportées en SRT/VTT, la narration Kokoro est facultative et l'export ne publie rien automatiquement. Les sujets non liés à la Terre ou aux océans ne sont pas représentés par une fausse animation.
+
+Pour Android : sélectionner `style = science`, `resolution = shorts`, `render_profile = high` et, si souhaité, `voice = kokoro`. Les vérifications du pipeline et `tests/test_science_shorts.py` contrôlent la taille exacte, le mouvement entre les images, les limitations d'entrée et le vrai codec H.264.
+
 ## Rendu 1080p natif
 
 Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement les images originales à cette résolution avant encodage H.264. Contrairement à l'ancienne version, le rendu n'agrandit plus une image 720p en fin de processus. Il conserve la même composition graphique, avec des épaisseurs de trait, rayons, glyphes et éclairages adaptés. L'option 720p reste inchangée et moins coûteuse en calcul. Les images de présentation/validation sont toujours générées en 720p ; cette différence est volontaire et documentée.

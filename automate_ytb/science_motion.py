@@ -17,7 +17,7 @@ import subprocess
 import unicodedata
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-SCIENCE_VERSION = "science-motion-v3-native-1080p"
+SCIENCE_VERSION = "science-motion-v4-portrait-shorts"
 SIZE = (1280, 720)
 FULL_HD = (1920, 1080)
 GOLD = (251, 200, 119)
@@ -417,14 +417,19 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        scene_count: int, style: str, duration: float,
                        width: int, height: int, fps: int, destination: Path,
                        direction: dict | None = None, **_unused) -> None:
-    if style!="science" or (width,height) not in ((1280,720),(1920,1080)):
+    if style!="science" or (width,height) not in ((1280,720),(1920,1080),(1080,1920)):
         raise ValueError("Unsupported science style or resolution")
     if fps not in (24,30) or not .1<=duration<=180:
         raise ValueError("Unsupported science duration or FPS")
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFmpeg required to render science animation")
-    shot=ScienceScene(topic=topic,narration=narration,scene_index=scene_index,
-                      size=(width,height))
+    if (width, height) == (1080, 1920):
+        from .science_portrait import PortraitScienceScene
+        shot = PortraitScienceScene(topic=topic, narration=narration,
+                                    scene_index=scene_index)
+    else:
+        shot = ScienceScene(topic=topic,narration=narration,scene_index=scene_index,
+                            size=(width,height))
     destination.parent.mkdir(parents=True,exist_ok=True)
     frames=max(1,round(duration*fps))
     cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
