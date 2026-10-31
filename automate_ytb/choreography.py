@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v8-continuous-jump-loop"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v9-continuous-jump-eased-paws"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -135,7 +135,9 @@ def leg_position(action: str, *, side: str, body_x: int = 180,
         # Crucially these coordinates exclude the oscillating parent body:
         # feet no longer slide vertically or horizontally with torso sway.
         swing = f"max(0,-sin(t*{frequency}+{phase}))"
-        progress = f"pow({swing},2)"
+        # Smoothstep of the positive swing: planted paw stays world-locked,
+        # while toe-off, apex and touchdown ease to zero speed.
+        progress = f"({swing})*({swing})*(3-2*({swing}))"
         x = f"{body_x}+{LEG_ANCHORS[side]}+{reach}*({progress})"
         y = f"{body_y}+335-{lift}*({progress})"
         return x, y

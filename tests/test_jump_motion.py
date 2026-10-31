@@ -5,7 +5,7 @@ from automate_ytb.choreography import CHOREOGRAPHY_VERSION,body_position,leg_pos
 
 class JumpMotionTests(unittest.TestCase):
     def test_jump_is_phased_and_reproducible(self):
-        self.assertIn("v8",CHOREOGRAPHY_VERSION)
+        self.assertIn("v9", CHOREOGRAPHY_VERSION)
         x,y=body_position("jump",x=180,y=184)
         self.assertIn("mod(t,1.75)",y)
         self.assertIn("0.18",y)

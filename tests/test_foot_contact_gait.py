@@ -8,7 +8,7 @@ from automate_ytb.joint_motion import joint_angle, JOINT_VERSION
 
 class FootContactGaitTests(unittest.TestCase):
     def test_paws_are_world_locked_during_contact_and_alternate(self):
-        self.assertIn("v8", CHOREOGRAPHY_VERSION)
+        self.assertIn("v9", CHOREOGRAPHY_VERSION)
         self.assertIn("v4", JOINT_VERSION)
         for action in ("walk", "run"):
             reach, lift, frequency = LEG_MOTION[action]
@@ -16,8 +16,9 @@ class FootContactGaitTests(unittest.TestCase):
                 with self.subTest(action=action, side=side):
                     x, y = leg_position(action, side=side)
                     swing = f"max(0,-sin(t*{frequency}+{phase}))"
-                    self.assertIn(f"pow({swing},2)", x)
-                    self.assertIn(f"pow({swing},2)", y)
+                    eased = f"({swing})*({swing})*(3-2*({swing}))"
+                    self.assertIn(eased, x)
+                    self.assertIn(eased, y)
                     self.assertIn(str(reach), x)
                     self.assertIn(str(lift), y)
                     # The planted contact cannot inherit periodic body bob
