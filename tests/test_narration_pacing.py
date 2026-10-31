@@ -84,6 +84,53 @@ class ScienceNarrationPacingTests(unittest.TestCase):
                 inspect(rows, strict=True, requested_duration_ms=requested)
         self.assertIsNone(inspect(rows, strict=True)["durationDriftMs"])
 
+    def test_strict_duration_failure_happens_before_video_encoding(self):
+        from automate_ytb.episode import build_preview
+        script = " ".join((
+            "Sunlight heats the tropics.",
+            "Global winds force surface water.",
+            "The Coriolis effect curves currents.",
+            "Dense salty water sinks near poles.",
+            "Ocean circulation moves heat worldwide.",
+        ))
+        rows = [
+            {"sceneId": f"scene-{index:03d}",
+             "spokenAudioMs": spoken, "sceneDurationMs": length,
+             "tailPaddingMs": 350}
+            for index, (spoken, length) in enumerate(
+                ((5870, 6220), (6270, 6620), (5870, 6220),
+                 (5910, 6260), (5885, 6235)), start=1)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "plan.json"
+            source.write_text(json.dumps(plan(
+                topic="Why do ocean currents move?", script=script,
+                duration=30, shot_seconds=6,
+                character="Original Earth and ocean science graphics",
+            )), encoding="utf-8")
+            with (patch("automate_ytb.episode.make_thumbnails",
+                        return_value=[]),
+                  patch("automate_ytb.episode.create_local_art",
+                        return_value={}),
+                  patch("automate_ytb.episode._narrate_scenes",
+                        return_value={"measuredScenePacing": rows}),
+                  patch("automate_ytb.episode.production.render") as render):
+                with self.assertRaisesRegex(ValueError, "requested duration"):
+                    build_preview(
+                        plan_path=source, output=root / "render",
+                        style="science", voice="kokoro", resolution="shorts",
+                        caption_timing="audio",
+                    )
+                render.assert_not_called()
+            pacing_file = root / "render" / "narration-pacing.json"
+            self.assertTrue(pacing_file.is_file())
+            result = json.loads(pacing_file.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["durationDriftMs"], 1555)
+            self.assertFalse(result["publicationApproved"])
+            self.assertFalse((root / "render" / "preview.mp4").exists())
+
     def test_malformed_claims_of_pcm_padding_are_rejected(self):
         bad = {"sceneId": "scene-001", "spokenAudioMs": 4000,
                "sceneDurationMs": 6000, "tailPaddingMs": 1500}
