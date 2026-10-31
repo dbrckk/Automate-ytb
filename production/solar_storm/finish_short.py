@@ -17,6 +17,7 @@ sys.path.insert(0,str(HERE.parent/"titan"))
 from word_align import align_narration
 from review_frames import create_contact_sheet
 from review_shots import review_encoded_shots
+from review_motion import inspect_original_motion
 from motion_graphics import apply_motion_graphics
 
 OUT=HERE/"out"
@@ -194,12 +195,19 @@ def main():
         raise RuntimeError("Missing original full-frame science animations")
     (DONE/"shot_review.json").write_text(
         json.dumps(shot_review,indent=2),encoding="utf-8")
+    # Never call moving educational clips successful on the strength of
+    # their cover frames. Decode actual temporal change in the final MP4.
+    original_motion=inspect_original_motion(
+        dest, report["shot_plan"], length)
+    (DONE/"original_motion_review.json").write_text(
+        json.dumps(original_motion,indent=2),encoding="utf-8")
     verified=sum(w["recognized"] for w in words)/len(words)
     qa={"status":"passed","video":dest.name,"duration":length,
         "shot_count":report["shot_count"],"caption_groups":caption_groups,
         "speech_recognition_fraction":round(verified,3),
         "visual_review":review,"shot_review":shot_review,
         "motion_graphics":motion,
+         "original_motion_review":original_motion,
         "editorial_approved":False,
         "inferred_words":sum(not w["recognized"] for w in words),
         "caption_source":"actual Kokoro WAV via faster-whisper",
@@ -211,6 +219,7 @@ def main():
                   "six actual decoded scene frames and Android contact sheet",
                   "all encoded NASA and original animation shots visually sampled",
                    "five original frame-by-frame science sequences verified",
+                   "original science movement measured on final decoded MP4",
                   "six voice-synced animated educational graphic cues"]}
     (DONE/"qa.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (DONE/"publication.txt").write_text((OUT/"publication.txt").read_text(),encoding="utf-8")
