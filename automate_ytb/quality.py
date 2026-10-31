@@ -173,10 +173,10 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         if video_streams:
             dimensions = (video_streams[0].get("width"), video_streams[0].get("height"))
             metrics["resolution"] = list(dimensions)
-            if dimensions not in ((1280, 720), (1920, 1080)):
+            if dimensions not in ((1280, 720), (1920, 1080), (1080, 1920)):
                 errors.append("Unexpected video resolution")
             selected_resolution = rendered.get("resolution")
-            expected_dimensions = {"720p": (1280, 720), "1080p": (1920, 1080)}.get(selected_resolution)
+            expected_dimensions = {"720p": (1280, 720), "1080p": (1920, 1080), "shorts": (1080, 1920)}.get(selected_resolution)
             if expected_dimensions is None or dimensions != expected_dimensions:
                 errors.append("Encoded video resolution differs from export report")
             try:
