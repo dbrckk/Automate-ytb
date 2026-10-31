@@ -21,6 +21,7 @@ LABELS = {
     "inertia": ("MOMENTUM CONTINUES", "L'INERTIE CONTINUE"),
     "wind": ("AIR KEEPS MOVING", "L'AIR CONTINUE"),
     "ocean": ("OCEANS REACT", "RÉACTION DES OCÉANS"),
+    "poles": ("OCEANS SHIFT POLEWARD", "LES OCÉANS VERS LES PÔLES"),
     "day": ("A VERY LONG DAY", "UN JOUR TRÈS LONG"),
     "astronaut": ("WHAT HAPPENS NEXT?", "ET ENSUITE ?"),
 }
@@ -46,7 +47,9 @@ def classify(topic: str, narration: str) -> str | None:
         return None
     if re.search(r"\b(astronauts?|space suit|combinaison|survivors?|survival|survive|survived|safety|advice|conseil)\b", words):
         return "astronaut"
-    if re.search(r"\b(oceans?|sea|seas|waves?|tsunami|flood|poles?|eaux?|vagues?|marees?)\b", words):
+    if re.search(r"\\b(poles?|polar|poleward|equatorial bulge|geoid|polaire|poles?|bourrelet|redistribut)\\b", words):
+        return "poles"
+    if re.search(r"\\b(oceans?|sea|seas|waves?|tsunami|flood|eaux?|vagues?|marees?)\\b", words):
         return "ocean"
     if re.search(r"\b(air|winds?|atmosphere|vents?|tempete|storm)\b", words):
         return "wind"
@@ -129,7 +132,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
         raise ValueError("Invalid Earth cinematic animation frame")
     d = ImageDraw.Draw(picture, "RGBA")
     u = t/duration
-    _star_motion(d,t, .45 if beat == "day" else 1.)
+    _star_motion(d,t, .45 if beat in ("day", "poles") else 1.)
     if beat == "stop":
         cx,cy = _globe(picture,globe_at,t,duration,stopped=True)
         d = ImageDraw.Draw(picture,"RGBA")
@@ -199,8 +202,48 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
             y=1293 - 300*surge +(j*83)%170
             d.ellipse((x,y,x+3+j%4,y+3+j%4),
                       fill=(221,250,251,150))
+    elif beat == "poles":
+        cx,cy=_globe(picture,globe_at,t,duration,stopped=True,diameter=600)
+        d=ImageDraw.Draw(picture, "RGBA")
+        # A deliberately schematic cross-section: arrows and water bands
+        # converge toward two polar ends. Not a hydrodynamic prediction.
+        for side in (-1,1):
+            pole_y=cy+side*304
+            d.arc((cx-317,cy-317,cx+317,cy+317),
+                  (186 if side < 0 else 8),
+                  (353 if side < 0 else 173),
+                  fill=CYAN,width=7)
+            for i in range(8):
+                phase=(u*.88+i*.13)%1.
+                theta=(1-phase)*math.pi*.40
+                py=cy+side*(42+252*_ease(phase))
+                px=cx+round((170+55*math.sin(i*1.75))*math.sin(theta))
+                r=5+(i%3)
+                d.ellipse((px-r,py-r,px+r,py+r),
+                          fill=(135,235,253,220))
+                d.ellipse((2*cx-px-r,py-r,2*cx-px+r,py+r),
+                          fill=(135,235,253,220))
+            tip_y=pole_y-side*47
+            for offset in (-137,137):
+                a_y=cy+side*106
+                d.line((cx+offset,a_y,cx+offset*.35,tip_y),
+                       fill=(172,240,248,180),width=5)
+                d.polygon([(cx+offset*.35,tip_y),
+                           (cx+offset*.35-13,tip_y-side*24),
+                           (cx+offset*.35+13,tip_y-side*24)],fill=GOLD)
+        for j in range(22):
+            wave=(t*.31+j*.101)%1
+            theta=(j%2)*math.pi
+            y=cy+(-1 if j%2 else 1)*(80+wave*222)
+            x=cx+round(300*math.sin(j*.33))*.42
+            d.ellipse((x-3,y-3,x+3,y+3),fill=CYAN)
+        d.text((175,1407),
+               "LONG-TERM REDISTRIBUTION" if english else "DÉPLACEMENT À LONG TERME",
+               font=_font(29,True),fill=WHITE)
     elif beat == "day":
-        cx,cy=_globe(picture,globe_at,t,duration,diameter=560)
+        # After a stopped rotation, preserve the fixed orientation: orbital
+        # illumination can change, but the globe must not keep spinning.
+        cx,cy=_globe(picture,globe_at,t,duration,stopped=True,diameter=560)
         d=ImageDraw.Draw(picture,"RGBA")
         r=280
         d.pieslice((cx-r,cy-r,cx+r,cy+r),270,90,
