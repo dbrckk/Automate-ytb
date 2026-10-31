@@ -44,6 +44,46 @@ class ScienceNarrationPacingTests(unittest.TestCase):
         self.assertFalse(report["errors"])
         self.assertFalse(report["publicationApproved"])
 
+    def test_real_pcm_duration_overshoot_blocks_strict_30s_export(self):
+        # 31.555s was a real, otherwise clean reference export. A media
+        # quality gate used to accept it as a requested 30-second Short.
+        rows = [
+            {"sceneId": f"scene-{i+1:03d}",
+             "spokenAudioMs": spoken,
+             "sceneDurationMs": length,
+             "tailPaddingMs": 350}
+            for i, (spoken, length) in enumerate(
+                ((5870, 6220), (6270, 6620), (5870, 6220),
+                 (5910, 6260), (5885, 6235)))
+        ]
+        report = inspect(rows, strict=True, requested_duration_ms=30000)
+        self.assertEqual(report["durationDriftMs"], 1555)
+        self.assertEqual(report["requestedDurationMs"], 30000)
+        self.assertEqual(report["maxAllowedDurationDriftMs"], 600)
+        self.assertEqual(report["status"], "failed")
+        self.assertTrue(any("requested duration" in e
+                            for e in report["errors"]))
+        self.assertEqual(
+            inspect(rows, strict=False, requested_duration_ms=30000)["status"],
+            "review-recommended")
+        self.assertFalse(report["publicationApproved"])
+
+    def test_nominal_30s_native_shorts_duration_tolerance(self):
+        rows = [
+            {"sceneId": f"scene-{i+1:03d}", "spokenAudioMs": 5660,
+             "sceneDurationMs": 6010, "tailPaddingMs": 350}
+            for i in range(5)
+        ]
+        passing = inspect(rows, strict=True, requested_duration_ms=30000)
+        self.assertEqual(passing["status"], "passed")
+        self.assertEqual(passing["durationDriftMs"], 50)
+        self.assertFalse(passing["errors"])
+        for requested in (0, -1, True, 30.0, float("nan"), "30000",
+                          3600001):
+            with self.subTest(requested=requested), self.assertRaises(ValueError):
+                inspect(rows, strict=True, requested_duration_ms=requested)
+        self.assertIsNone(inspect(rows, strict=True)["durationDriftMs"])
+
     def test_malformed_claims_of_pcm_padding_are_rejected(self):
         bad = {"sceneId": "scene-001", "spokenAudioMs": 4000,
                "sceneDurationMs": 6000, "tailPaddingMs": 1500}
