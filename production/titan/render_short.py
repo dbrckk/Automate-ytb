@@ -43,10 +43,10 @@ SCENES = [
 # Fractions sum to 1 for each scene; cuts remain inside its spoken sentence.
 SHOT_PLAN = {
     0: [("time", 12.0, 1.0)],                       # Titan landscape hook
-    1: [("intro", 28.0, 0.58), ("time", 23.0, 0.42)], # Saturn, then Titan sky
+    1: [("intro", 28.0, 0.58), ("rain", 0.8, 0.42)], # Saturn, then Titan sky
     2: [("lake", 0.5, 0.62), ("lake", 6.4, 0.38)],    # Two views of the lake
     3: [("time", 1.0, 0.43), ("rain", 3.5, 0.57)],   # Clouds, then rainfall
-    4: [("rain", 0.8, 0.61), ("time", 27.0, 0.39)],  # Cold precipitation / terrain
+    4: [("rain", 0.8, 0.61), ("time", 3.5, 0.39)],  # Cold precipitation / terrain
     5: [("chemistry", 1.1, 0.60), ("chemistry", 18.0, 0.40)],
 }
 VOICE = "af_heart"
