@@ -67,6 +67,27 @@ class TopicStoryboardTests(unittest.TestCase):
         shot.frame(.2, 1.)
         self.assertTrue(shot._globes)
 
+    def test_phone_subtitles_use_large_legible_type_without_overflow(self):
+        from PIL import ImageDraw
+        from automate_ytb.science_motion import _font
+        for beat, narration in self.examples:
+            with self.subTest(beat=beat):
+                scene = PortraitScienceScene(
+                    topic=self.topic, narration=narration, scene_index=1)
+                preview = scene.frame(.25, 1.0)
+                self.assertEqual(preview.size, PORTRAIT_SIZE)
+                active = scene.active_caption(.25, 1.0)
+                lines, fontsize = scene._caption_layouts[active]
+                # 40px native type displays at roughly 13px on a 360px phone.
+                self.assertGreaterEqual(fontsize, 38)
+                self.assertLessEqual(len(lines), 3)
+                self.assertLessEqual(1551 + 46*(len(lines)-1) + fontsize, 1722)
+                probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+                for line in lines:
+                    self.assertLessEqual(
+                        probe.textbbox((0, 0), line,
+                                       font=_font(fontsize, True))[2], 842)
+
     def test_storyboard_rejects_invalid_animation_arguments(self):
         canvas = Image.new("RGBA", PORTRAIT_SIZE)
         from PIL import ImageDraw
