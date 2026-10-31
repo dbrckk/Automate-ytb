@@ -10,6 +10,8 @@ import json
 from pathlib import Path
 import sys
 
+from PIL import Image
+
 from .production import _write_json, _sha
 
 MAX_REPORT_BYTES = 2_000_000
@@ -23,6 +25,66 @@ def _load(path: Path) -> dict:
     if not isinstance(data, dict):
         raise ValueError("Quality report must be a JSON object")
     return data
+
+
+def _contact_sheet_errors(visual: dict, stream: dict, source: Path) -> list[str]:
+    """Check the actual mobile-review JPEGs and their SHA256 bindings.
+
+    Schema v3 links contact-sheet dimensions and orientation to the encoded
+    MP4, and every JPEG to its generation-time hash. Older reports retain
+    the legacy validation contract.
+    """
+    errors: list[str] = []
+    try:
+        w, h = stream.get("width"), stream.get("height")
+        if (type(w) is not int or type(h) is not int
+                or not 240 <= w <= 8192 or not 240 <= h <= 8192):
+            return ["Media dimensions missing from visual review evidence"]
+        portrait = h > w
+        expected_orientation = "portrait" if portrait else "landscape"
+        expected_size = [360, 640] if portrait else [640, 360]
+        per_page = 4 if portrait else 8
+        count = visual.get("sampledSceneCount")
+        if type(count) is not int or not 1 <= count <= 24:
+            return ["Invalid visual review sample count"]
+        count_pages = (count + per_page - 1) // per_page
+        pages = visual.get("pages")
+        hashes = visual.get("pageSha256")
+        if not isinstance(pages, list) or not isinstance(hashes, dict):
+            return ["Visual review missing contact-sheet JPEG manifests"]
+        expected_pages = [
+            f"storyboard-{n:02d}.jpg" for n in range(1, count_pages + 1)]
+        if pages != expected_pages or set(hashes) != set(expected_pages):
+            return ["Visual review contact-sheet page list is incomplete or invalid"]
+        if (visual.get("videoOrientation") != expected_orientation
+                or visual.get("decodedReviewFrameSize") != expected_size
+                or visual.get("contactSheetPreservesFrame") is not portrait
+                or visual.get("contactSheetScenesPerPage") != per_page):
+            errors.append("Visual review aspect ratio is inconsistent with MP4")
+        for name in expected_pages:
+            page = source.parent / name
+            digest = hashes[name]
+            if (not isinstance(digest, str) or len(digest) != 64
+                    or any(c not in "0123456789abcdef" for c in digest)):
+                errors.append(f"Visual review JPEG checksum invalid: {name}")
+                continue
+            if not page.is_file() or not 1024 <= page.stat().st_size <= 8_000_000:
+                errors.append(f"Visual review contact sheet missing or invalid: {name}")
+                continue
+            if _sha(page) != digest:
+                errors.append(f"Visual review contact sheet checksum mismatch: {name}")
+                continue
+            try:
+                with Image.open(page) as picture:
+                    if picture.format != "JPEG" or picture.size != (1120, 2030):
+                        errors.append(f"Visual review contact sheet dimensions invalid: {name}")
+                    else:
+                        picture.load()
+            except (OSError, ValueError):
+                errors.append(f"Visual review contact sheet unreadable: {name}")
+    except (OSError, TypeError, ValueError, KeyError):
+        errors.append("Visual review contact sheets could not be verified")
+    return errors
 
 
 def consolidate(*, structural_report: Path, media_report: Path,
@@ -88,6 +150,8 @@ def consolidate(*, structural_report: Path, media_report: Path,
             problems.append("Unexpected visual publication approval flag")
         if visual.get("videoSha256") != video_hash:
             problems.append("Visual review does not describe the current video")
+        if visual.get("schemaVersion", 1) >= 3:
+            problems.extend(_contact_sheet_errors(visual, stream, visual_report))
         if not isinstance(visual.get("sampledSceneCount"), int) or visual.get("sampledSceneCount", 0) < 1:
             problems.append("Visual review did not verify any frames")
     # Structural gate hashes the MP4 independently.
@@ -127,6 +191,13 @@ def consolidate(*, structural_report: Path, media_report: Path,
             "nearBlackVisualSamples": visual.get("nearBlackSceneCount") if visual is not None else None,
             "visualMotionPairs": visual.get("motionPairsCompared") if visual is not None else None,
             "frozenAnimatedScenes": visual.get("frozenAnimatedSceneCount") if visual is not None else None,
+            "reviewOrientation": visual.get("videoOrientation") if visual is not None else None,
+            "contactSheetsVerified": (
+                not any("contact sheet" in x.lower() or "contact-sheet" in x.lower()
+                        or "aspect ratio" in x.lower() or "visual review" in x.lower()
+                        for x in problems)
+                if visual is not None and visual.get("schemaVersion", 1) >= 3
+                else None),
             "narrationExactRepeatCount": (
                 story.get("exactRepeatCount") if story is not None else None),
             "narrationNearRepeatNeighborCount": (
