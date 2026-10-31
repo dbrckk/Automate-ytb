@@ -16,7 +16,7 @@ from automate_ytb.animated_owl import render_motion_clip as owl_clip
 
 class JointMotionTests(unittest.TestCase):
     def test_bounded_angles_for_every_original_action(self):
-        self.assertIn("v4", JOINT_VERSION)
+        self.assertIn("v5", JOINT_VERSION)
         self.assertEqual(set(ACTIONS), set(AMPLITUDES["wing"]))
         for part, sides in (("wing", ("left", "right")),
                             ("leg", ("left", "right")),
@@ -31,7 +31,7 @@ class JointMotionTests(unittest.TestCase):
                     self.assertEqual(
                         expr.count("sin("),
                         1 if part == "leg" and action in {"walk", "run"}
-                        else 3 if action == "jump" else 2)
+                        else 1 if action == "jump" else 2)
                     self.assertNotIn(";", expr)
                     self.assertNotIn("\n", expr)
         self.assertNotEqual(joint_angle("run", part="leg", side="left"),
