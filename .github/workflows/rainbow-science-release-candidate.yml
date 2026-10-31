@@ -27,11 +27,11 @@ jobs:
     with:
       topic: "How Do Rainbows Form?"
       original_script: >-
-        White sunlight contains many colors, although we usually see one beam.
-        Entering a raindrop, light bends, separating colors by different amounts.
-        Some of this light reflects from the back inside the drop.
-        Leaving the drop, the colors bend again and spread toward us.
-        Millions of drops send different colors toward our eyes, forming a curved rainbow.
+        White sunlight contains many different colors of light, although our eyes usually see one bright beam.
+        Entering a round raindrop, light bends in water, separating colors by slightly different amounts.
+        Some of the entering light reflects internally at the curved back surface of each water droplet.
+        Leaving the round drop, these reflected rays bend again as each color spreads outward toward the observer.
+        Millions of drops send different sunlight colors toward our eyes, together forming the curved rainbow.
       character: "Original white-light and raindrop science graphics"
       style: science
       language: en
