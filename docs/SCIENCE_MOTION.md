@@ -28,6 +28,10 @@ Le poster d'approbation reste en 1280×720 : sa géométrie diffère donc volont
 
 Pour Android : sélectionner `style = science`, `resolution = shorts`, `render_profile = high` et, si souhaité, `voice = kokoro`. Les vérifications du pipeline et `tests/test_science_shorts.py` contrôlent la taille exacte, le mouvement entre les images, les limitations d'entrée et le vrai codec H.264.
 
+## Typographie mobile sans perte de texte
+
+Les titres et les sous-titres incrustés en mode `shorts` sont désormais mis en lignes en tenant compte de leur largeur réelle : le moteur adapte la taille des glyphes dans les limites de lisibilité, répartit aussi les termes techniques trop longs et évite les points de suspension qui supprimaient parfois des mots. Tous les textes des phrases sont contrôlés avant l'encodage des images. Un titre ou un fragment incompatible avec la zone réservée provoque une erreur explicite : il doit être raccourci ou découpé dans le script, sans supprimer silencieusement du contenu. Le SRT exporté conserve son contenu intégral. Les vidéos précédemment mises en cache sont invalidées pour le rendu portrait. Cette sécurité typographique ne remplace pas l'inspection du film sur téléphone.
+
 ## Rendu 1080p natif
 
 Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement les images originales à cette résolution avant encodage H.264. Contrairement à l'ancienne version, le rendu n'agrandit plus une image 720p en fin de processus. Il conserve la même composition graphique, avec des épaisseurs de trait, rayons, glyphes et éclairages adaptés. L'option 720p reste inchangée et moins coûteuse en calcul. Les images de présentation/validation sont toujours générées en 720p ; cette différence est volontaire et documentée.

@@ -8,14 +8,14 @@ import subprocess
 import tempfile
 import unittest
 
-from PIL import ImageChops
+from PIL import Image, ImageDraw, ImageChops
 
 from automate_ytb.captions import (
     caption_phrases, timed_cues_for_scene,
     subtitles_for_scenes, srt_time,
 )
 from automate_ytb.science_portrait import (
-    PORTRAIT_SIZE, PORTRAIT_VERSION, PortraitScienceScene,
+    PORTRAIT_SIZE, PORTRAIT_VERSION, PortraitScienceScene, _fit_lines,
 )
 from automate_ytb.scene_plan import plan
 from automate_ytb.episode import create_local_art, build_preview
@@ -121,6 +121,60 @@ class ScienceShortsTests(unittest.TestCase):
             PortraitScienceScene(
                 topic="Earth ocean currents", narration=narration,
                 scene_index=4, scene_start_ms=True)
+
+    def test_original_mobile_text_never_loses_words_or_characters(self):
+        self.assertIn("lossless-text", PORTRAIT_VERSION)
+        # Long natural language, including technical identifiers, must be
+        # displayed completely rather than silently shortened with ellipses.
+        title = "What if the Earth and its oceans changed direction unexpectedly?"
+        rows, font_size = _fit_lines(
+            title, size=47, width=860, maximum=2, minimum=22)
+        self.assertGreaterEqual(font_size, 22)
+        self.assertLessEqual(len(rows), 2)
+        self.assertEqual(
+            "".join(rows).replace(" ", ""),
+            "".join(title.split()))
+        technical = "AtmosphericSpectroscopyMeasurements" * 2
+        rows, font_size = _fit_lines(
+            technical, size=31, width=360, maximum=3, minimum=22)
+        self.assertGreaterEqual(font_size, 22)
+        self.assertEqual("".join(rows).replace(" ", ""), technical)
+        # The layout is cached but its output is deterministic.
+        self.assertEqual((rows, font_size), _fit_lines(
+            technical, size=31, width=360, maximum=3, minimum=22))
+
+    def test_unreadable_text_rejected_without_silent_truncation(self):
+        with self.assertRaisesRegex(ValueError, "cannot fit safely"):
+            _fit_lines("W"*700, size=31, width=842,
+                       maximum=3, minimum=22)
+        with self.assertRaisesRegex(ValueError, "cannot fit safely"):
+            PortraitScienceScene(
+                topic="Earth " + "W"*170,
+                narration="The ocean moves.", scene_index=1)
+        with self.assertRaisesRegex(ValueError, "cannot fit safely"):
+            scene = PortraitScienceScene(
+                topic="The Earth changes", narration="W"*700,
+                scene_index=1)
+            scene.active_caption(0, 1)
+
+    def test_portrait_text_layout_matches_actual_mobile_safe_band(self):
+        scene = PortraitScienceScene(
+            topic="Why Earth's oceans are moving in very different directions",
+            narration="The ocean slowly moves across the entire planet.",
+            scene_index=1)
+        frame = scene.frame(.1, 1)
+        self.assertEqual(frame.size, PORTRAIT_SIZE)
+        for rows, font_size, maximum_width in (
+                (*scene._title_layout, 860),
+                (*scene._caption_layouts[scene.active_caption(.1,1)], 842)):
+            self.assertLessEqual(len(rows), 3)
+            probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
+            from automate_ytb.science_motion import _font
+            for row in rows:
+                self.assertLessEqual(
+                    probe.textbbox((0, 0), row,
+                                   font=_font(font_size, True))[2],
+                    maximum_width)
 
     def test_portrait_globe_is_demand_loaded_and_cache_is_bounded(self):
         scene = PortraitScienceScene(topic="Why Earth rotates",
