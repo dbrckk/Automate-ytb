@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from automate_ytb.episode import build_preview, create_local_art
 from automate_ytb.production import audit, load_plan
@@ -44,6 +45,30 @@ class OfflineEpisodeTests(unittest.TestCase):
         file.write_bytes(b"tampered-image")
         with self.assertRaisesRegex(ValueError, "modified or unreviewed"):
             create_local_art(self.plan, limit=1)
+
+    def test_science_thumbnails_exist_before_expensive_render(self):
+        # The previous release candidate rendered an entire video before
+        # KeyError('science') caused the thumbnails step to fail.
+        science = plan(
+            topic="Earth and ocean currents",
+            script="The Sun warms tropical seas. "
+                   "Winds push water toward distant coasts. "
+                   "Earth's rotation bends these moving currents. "
+                   "Dense polar water sinks into the deep sea. "
+                   "Ocean circulation redistributes heat around the planet.",
+            duration=30, shot_seconds=6,
+            character="Original Earth and ocean science graphics")
+        self.plan.write_text(json.dumps(science), encoding="utf-8")
+        output = self.root / "preflight"
+        with patch("automate_ytb.episode.production.render",
+                   side_effect=RuntimeError("encoder not started")):
+            with self.assertRaisesRegex(RuntimeError, "encoder not started"):
+                build_preview(
+                    plan_path=self.plan, output=output, style="science",
+                    resolution="shorts", voice="none", limit=1)
+        thumbs = sorted((output / "thumbnails").glob("thumbnail-*.png"))
+        self.assertEqual(len(thumbs), 3)
+        self.assertFalse((output / "preview.mp4").exists())
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "FFmpeg required for integration render")

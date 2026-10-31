@@ -5,8 +5,10 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
+from PIL import Image
+
 from automate_ytb.studio import (
-    build, draft_scenes, distribute_duration, load_brief, slugify,
+    build, draft_scenes, distribute_duration, load_brief, make_thumbnails, slugify,
     video_id_from_reference, _srt_seconds,
 )
 from automate_ytb.youtube import discover_niches
@@ -74,6 +76,28 @@ class ProductionTests(unittest.TestCase):
             yt = json.loads((root / "youtube-metadata.json").read_text())
             self.assertTrue(yt["manualPublishRequired"])
             self.assertEqual(yt["visibilityRecommended"], "private")
+
+    def test_all_one_click_styles_export_three_decodable_thumbnails(self):
+        # Regression: a successful science render used to crash here with
+        # KeyError("science"), discarding its costly MP4 production.
+        with TemporaryDirectory() as td:
+            for style in ("cartoon", "cinematic", "documentary", "science"):
+                with self.subTest(style=style):
+                    folder = Path(td) / style
+                    folder.mkdir()
+                    files = make_thumbnails(
+                        "Why Do Ocean Currents Move?", style, folder)
+                    self.assertEqual(len(files), 3)
+                    self.assertEqual(len({file.name for file in files}), 3)
+                    for path in files:
+                        self.assertTrue(path.is_file())
+                        with Image.open(path) as frame:
+                            self.assertEqual(frame.format, "PNG")
+                            self.assertEqual(frame.size, (1280, 720))
+                            frame.load()
+                    if style == "science":
+                        with Image.open(files[0]) as first:
+                            self.assertEqual(first.getpixel((0, 0)), (9, 28, 56))
 
     def test_research_requires_key_and_no_revenue_claims(self):
         with patch.dict("os.environ", {"YOUTUBE_API_KEY": ""}):
