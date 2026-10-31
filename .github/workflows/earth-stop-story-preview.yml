@@ -7,12 +7,18 @@ on:
       - ".github/workflows/earth-stop-story-preview.yml"
       - "automate_ytb/science_earth_stop.py"
       - "automate_ytb/science_portrait.py"
+      - "automate_ytb/earth_kinetic_fx.py"
+      - "automate_ytb/review_board.py"
+      - "scripts/render_earth_animation_preview.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/earth-stop-story-preview.yml"
       - "automate_ytb/science_earth_stop.py"
       - "automate_ytb/science_portrait.py"
+      - "automate_ytb/earth_kinetic_fx.py"
+      - "automate_ytb/review_board.py"
+      - "scripts/render_earth_animation_preview.py"
 
 permissions:
   contents: read
@@ -44,3 +50,27 @@ jobs:
       shot_seconds: 6
       resolution: shorts
       render_profile: high
+
+  fast-visual-review:
+    name: Encode seven 30fps original Earth animations and inspect real H264
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free offline visual renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install -e .
+      - name: Encode original causal animations and verify decoded movement
+        run: python scripts/render_earth_animation_preview.py
+      - name: Archive actual playable movie and visual quality evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: earth-stop-seven-animated-scene-preview
+          path: outputs/earth-motion-visual-qa/
+          if-no-files-found: error
+          retention-days: 14
