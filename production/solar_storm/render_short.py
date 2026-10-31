@@ -13,8 +13,10 @@ import time
 import numpy as np
 if __package__:
     from .camera_motion import build_portrait_camera, camera_metadata
+    from .science_vfx import INSERTS, render_insert
 else:
     from camera_motion import build_portrait_camera, camera_metadata
+    from science_vfx import INSERTS, render_insert
 
 HERE=Path(__file__).resolve().parent
 OUT=HERE/"out"
@@ -161,6 +163,29 @@ def voice():
     return timing,len(final)/sr
 
 def clip(key,index,scene,offset,length):
+    # Render actual moving explanatory scenes as full shots, not decorative
+    # foreground overlays on still images or NASA video.
+    if index in INSERTS:
+        kind, expected_source = INSERTS[index]
+        if key != expected_source:
+            raise ValueError(
+                f"Science animation/shot mismatch at {index}: {key}")
+        dest = OUT/f"shot_{index:02}.mp4"
+        animation = render_insert(kind, length, dest)
+        if abs(duration(dest)-length)>.25:
+            raise RuntimeError(f"Original animated shot time mismatch {dest}")
+        return dest, {
+            "scene": scene, "source": f"original_{kind}",
+            "duration": length, "start": 0.0,
+            "visual_role": f"original_animated_{kind}",
+            "source_type": "original schematic animation, not NASA footage",
+            "original_science_animation": animation,
+            "camera": {
+                "engine": animation["engine"],
+                "motion_type": "real per-frame illustrated scene animation",
+                "time_stretched": False, "focal_subject": kind,
+            },
+        }
     source=CACHE/Path(MEDIA[key]).name
     source_duration=duration(source)
     seek=max(0,min(offset,source_duration-length-.1))
@@ -207,17 +232,24 @@ def main():
          "-b:a","192k","-ar","48000","-af","highpass=f=70,lowpass=f=10500",
          "-t",f"{total:.3f}","-movflags","+faststart",out])
     run(["ffmpeg","-v","error","-i",out,"-f","null","-"])
+    animated=sum("original_science_animation" in shot for shot in report)
+    if animated!=len(INSERTS):
+        raise RuntimeError("Original animated science insert coverage incomplete")
     qa={"title":"The Sun Can Hit Earth With a Solar Storm",
-        "video":out.name,"language":"en","source":"NASA SVS",
+        "video":out.name,"language":"en",
+         "source":"NASA SVS + original illustrated science animations",
+         "original_animated_shots":animated,
+         "nasa_source_shots":len(report)-animated,
         "voice":VOICE,"voice_speeds":VOICE_SPEEDS,"duration":duration(out),
         "shot_count":len(clips),"shot_plan":report,"segments":segments,
         "references":list(MEDIA.values()),
-        "note":"SDO false-color observations, NASA conceptual CME launch and magnetosphere animations, and independent aurora footage; not one historical storm"}
+        "note":"SDO false-color solar observations, NASA space/aurora footage and four original per-frame animated schematic explanations; never one historical storm"}
     (OUT/"production_report.json").write_text(json.dumps(qa,indent=2),encoding="utf-8")
     (OUT/"publication.txt").write_text(
         "Title: Can a Storm on the Sun Reach Earth?\n"
-        "Description: Watch NASA observations of the Sun, visualizations of "
-        "Earth's magnetic shield, and aurora footage. Solar flares and "
+        "Description: NASA solar observations and aurora footage combined with "
+        "original animated explanatory sequences for plasma, Earth's magnetic "
+        "field, orbital technology and Sun/Earth connections. Solar flares and "
         "coronal mass ejections are distinct phenomena. Clips illustrate "
         "the physics; they do not show one continuous historical storm. "
         "Credits: NASA Goddard Space Flight Center/SDO, NASA GSFC Conceptual "
