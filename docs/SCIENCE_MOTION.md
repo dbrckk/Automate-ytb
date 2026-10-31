@@ -6,7 +6,7 @@ Ce mode utilise des illustrations **originales**, produites localement par Pillo
 
 - **Sujets pris en charge :** phénomènes liés à la Terre, à ses océans et à l’atmosphère, évoqués explicitement dans le **titre**. L’illustration de la sphère est schématique ; ni une carte exacte ni une simulation physique.
 - **Plans disponibles :** rotation/orbite schématique, circulation atmosphérique, vagues océaniques, éclairage jour/nuit ; ils sont sélectionnés à partir des phrases françaises ou anglaises du script.
-- **Formats :** sortie encodée en 720p ou 1080p, toujours en 30 fps dans ce mode. Les illustrations de base sont tracées à 1280×720 ; la sortie 1080p est agrandie, **ce n’est pas de l’art natif 1080p**.
+- **Formats :** sortie encodée en 720p ou 1080p, toujours en 30 fps dans ce mode. Les scènes animées en 1080p sont désormais dessinées **directement à 1920×1080** : ciel, étoiles, globe calculé à 612 px, contours, annotations et typographie vectorielle. La miniature d'approbation statique reste en 1280×720 (ce n'est pas la résolution de la vidéo exportée).
 - **Inexactitudes possibles :** chiffres scientifiques, géographie, mouvements astronomiques et contenu du script doivent être revus indépendamment. L’IA ne recherche ni ne vérifie les faits en générant ces images.
 - **Licence/coûts :** pas de médias externes importés et pas de modèle graphique payant. Kokoro est facultatif et peut nécessiter un téléchargement lors de la première utilisation. Les quotas GitHub Actions habituels restent applicables.
 - **Publication :** aucune mise en ligne automatique ni approbation éditoriale implicite.
@@ -19,6 +19,10 @@ Ce mode utilise des illustrations **originales**, produites localement par Pillo
 4. Lire la vidéo MP4 et écouter le fichier `voice-sample.mp3` de l'artefact, contrôler la lisibilité des chiffres et corriger toute erreur factuelle avant publication.
 
 En ligne de commande, utiliser `python -m automate_ytb.episode --style science --render-profile high --resolution 1080p --voice kokoro --plan scene-plan.json --output out` après avoir généré un plan avec `python -m automate_ytb.scene_plan`.
+
+## Rendu 1080p natif
+
+Le choix `resolution=1080p` alloue un canevas 1920×1080 et calcule directement les images originales à cette résolution avant encodage H.264. Contrairement à l'ancienne version, le rendu n'agrandit plus une image 720p en fin de processus. Il conserve la même composition graphique, avec des épaisseurs de trait, rayons, glyphes et éclairages adaptés. L'option 720p reste inchangée et moins coûteuse en calcul. Les images de présentation/validation sont toujours générées en 720p ; cette différence est volontaire et documentée.
 
 ## Continuité et coût de rendu
 
