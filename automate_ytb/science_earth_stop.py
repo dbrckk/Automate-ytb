@@ -15,6 +15,7 @@ from typing import Callable
 from PIL import Image, ImageDraw
 
 from .science_motion import _font
+from .earth_kinetic_fx import draw_foreground
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -84,10 +85,12 @@ def _globe(picture: Image.Image, globe_at: Callable, t: float, duration: float,
            *, stopped: bool = False, frozen: bool = False,
            diameter: int = 620):
     u = t / duration
-    # Animated orientation integrates a slowing angular velocity, ending at
-    # zero for an instantaneous-stop *visual analogy*, not a dynamics model.
-    spin = (0.0 if frozen else
-            5*duration*(u - .5*u*u) if stopped else t*4)
+    # Use the same orientation at the end of deceleration and throughout
+    # every later beat. The previous code incorrectly jumped back to yaw 0.
+    # All angles are illustrative and not a geophysical simulation.
+    final_pose = 15.0
+    spin = (final_pose if frozen else
+            final_pose*(2*u-u*u) if stopped else t*4)
     planet = globe_at(spin, size=diameter)
     cx = 540 + round(20*math.sin(t*.35))
     cy = 1017 + round(14*math.sin(t*.54))
@@ -287,6 +290,10 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
                    fill=(228,239,248,255),width=39)
             d.rounded_rectangle((footx-31,footy-17,footx+31,footy+23),
                                 radius=12,fill=(91,151,189,255))
+    # Story-specific foreground motions depend on the same continuous clock.
+    # They materially interact with the shown subject rather than merely
+    # panning a generic still image behind subtitles.
+    draw_foreground(picture, beat, t, duration)
     # Non-physical schematic warning stays clear of narration captions.
     d=ImageDraw.Draw(picture,"RGBA")
     notice="SCHEMATIC • NOT TO SCALE" if english else "SCHÉMA • PAS À L'ÉCHELLE"
