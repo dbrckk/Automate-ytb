@@ -6,6 +6,7 @@ on:
       - ".github/workflows/titan-documentary.yml"
       - "production/titan/render_short.py"
       - "production/titan/finish_short.py"
+      - "production/titan/word_align.py"
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,7 @@ jobs:
       - name: Install open-source natural voice synthesizer
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[speech]" soundfile requests
+          python -m pip install -e ".[speech]" soundfile requests "faster-whisper>=1.1,<1.4"
       - name: Render documentary and run output decode verification
         run: python production/titan/render_short.py
       - name: Burn animated English subtitles, add factual overlays, mix ambience, decode test
@@ -36,6 +37,7 @@ jobs:
           python production/titan/finish_short.py \
             --input production/titan/out/Titan_NASA_Kokoro_EN_1080x1920.mp4 \
             --report production/titan/out/production_report.json \
+            --voice production/titan/out/narration.wav \
             --outdir production/titan/out/enhanced
       - name: Upload completed production and QA report
         uses: actions/upload-artifact@v4
@@ -53,5 +55,6 @@ jobs:
             production/titan/out/enhanced/subtitles_final.srt
             production/titan/out/enhanced/captions.ass
             production/titan/out/enhanced/qa_enhanced.json
+            production/titan/out/enhanced/word_timestamps.json
           if-no-files-found: error
           retention-days: 14
