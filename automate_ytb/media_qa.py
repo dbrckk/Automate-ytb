@@ -146,7 +146,7 @@ def assess(*, video: Path, captions: Path | None = None,
             raise ValueError("Invalid expected duration")
         if abs(media["durationSeconds"] - expected_duration) > 0.85:
             problems.append("Actual duration differs from requested timeline")
-    if (media["width"], media["height"]) not in {(1280, 720), (1920, 1080)}:
+    if (media["width"], media["height"]) not in {(1280, 720), (1920, 1080), (1080, 1920)}:
         warnings.append("Unexpected video resolution or aspect ratio")
     if media["videoCodec"] != "h264":
         warnings.append("Video codec is not H.264")
