@@ -87,16 +87,24 @@ def classify(topic: str, narration: str) -> str | None:
     if not supports_topic(topic):
         return None
     text = _plain(narration)
-    if re.search(r"\b(reflect\w*|reflection|reflech\w*|reflexion)\b", text):
-        return "reflection"
+    # Explicit phase verbs outrank incidental past-tense words: a ray can
+    # be "reflected" yet be currently LEAVING the drop.
     if re.search(r"\b(leav\w*|exit\w*|emerg\w*|second|sort\w*|ressort\w*)\b", text):
         return "emergence"
-    if re.search(r"\b(million\w*|observer|eyes?|arc|yeux|observat\w*)\b", text):
-        return "arc"
+    if re.search(r"\b(reflect\w*|reflection|reflech\w*|reflexion)\b", text):
+        return "reflection"
     if re.search(r"\b(enter\w*|refract\w*|bend\w*|bends|entre\w*|penetre\w*)\b", text):
         return "refraction"
+    # A million droplets or an explicit rainbow/observer identifies the
+    # final observed arc, even when the sentence also mentions sunlight.
+    if re.search(r"\b(million\w*|rainbows?|arcs?|observer|observat\w*)\b", text):
+        return "arc"
+    # A sentence about WHITE sunlight can mention our EYES without being
+    # a scene about the rainbow arc. Eyes alone are the weakest clue.
     if re.search(r"\b(sun\w*|white|color\w*|light|soleil|blanc\w*|couleur\w*|lumiere)\b", text):
         return "sunlight"
+    if re.search(r"\b(eyes?|yeux)\b", text):
+        return "arc"
     return None
 
 
