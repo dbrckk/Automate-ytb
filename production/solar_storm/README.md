@@ -85,6 +85,27 @@ caption safe area clear. Final artistic quality and positioning require
 viewing the actual MP4 on a phone, including audio, before public approval.
 No paid AI animation or image API is needed.
 
+### Véritables séquences pédagogiques animées
+
+Le moteur `science_vfx.py` fabrique de nouveaux **clips H.264 en mouvement
+réel**, plutôt que d'animer de simples images fixes en arrière-plan. Cinq
+inserts de la vidéo Solar Storm combinent des éléments indépendants :
+boucles coronales dynamiques, expansion et déplacement du plasma, compression
+du champ magnétique terrestre, satellite en orbite avec ses liaisons
+intermittentes, puis propagation d'un signal conceptuel Soleil–Terre.
+
+Les clips sont dessinés dans Pillow et calculés **image par image à 30 i/s**
+sans générateur vidéo payant. Ils sont ensuite encodés, mélangés aux huit
+plans NASA conservés, accompagnés de la voix Kokoro et des vrais sous-titres
+alignés sur l'audio. Ils respectent la durée des plans originaux et sont
+explicitement qualifiés de **schémas non à l'échelle**, pas de simulations
+scientifiques physiques.
+
+La présence de cinq animations et l'attribution exacte NASA/original sont
+vérifiées dans `production_report.json` et `qa.json`. Le contrôleur vérifie
+aussi des images H.264 réellement encodées et leur différence temporelle.
+Le contrôle humain du montage final reste nécessaire avant publication.
+
 ### Retrait des anciens doublons dans le master vidéo
 
 La revue visuelle des **13 plans effectivement décodés** du rendu H.264 fusionnant

@@ -1,4 +1,4 @@
-"""Shot-by-shot review of the actual final NASA Solar Storm H.264 MP4.
+"""Shot-by-shot review of actual NASA footage plus original animations.
 
 Shot durations come from the existing encoded production report, not a synthetic
 storyboard. This complements the six narration-scene review.
@@ -72,10 +72,13 @@ def review_encoded_shots(video: Path, shots: list[dict], duration: float,
         frame["shot"] = idx+1
         frame["narration_scene"] = shot["scene"]+1
         frame["source"] = shot["source"]
+        frame["source_type"] = shot.get("source_type", "unknown")
+        frame["is_original_animation"] = bool(
+            shot.get("original_science_animation"))
         frame.pop("scene", None)
     reviewed["coverage"] = "every encoded shot midpoint"
     reviewed["editorial_approved"] = False
     reviewed["note"] = (
         "Shot frames are decoded from final MP4; this is a review aid, "
-        "not proof of correct NASA footage selection or artistic approval.")
+        "not proof of scientific accuracy, source rights or artistic approval.")
     return reviewed
