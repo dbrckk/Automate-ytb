@@ -15,6 +15,7 @@ import sys
 
 from .production import _write_json, load_plan
 from .caption_guard import audit_caption_text
+from .captions import timed_cues_for_scene
 
 CUE = re.compile(
     r"(?m)^(?P<n>\d+)\s*\n"
@@ -57,6 +58,34 @@ def _picture_decodes(path: Path, second: float) -> bool:
          "-i", str(path), "-frames:v", "1", "-f", "image2pipe",
          "-c:v", "png", "-"], capture_output=True, timeout=75, check=False)
     return done.returncode == 0 and done.stdout.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def _verify_caption_timeline(matches: list[re.Match], scenes: list[dict],
+                             method: str | None) -> list[str]:
+    """Verify exported SRT times against the exact storyboard/speech schedule.
+
+    Structural monotonicity alone does not catch a tampered intermediate cue
+    boundary when both adjacent cues are moved by the same offset. The
+    authoritative timing derives from the same shared logic as MP4 overlays.
+    """
+    if method not in ("audio-derived-synthesized-phrases",
+                      "estimated-proportional-phrases"):
+        return ["Unknown or missing caption alignment method"]
+    use_audio = method == "audio-derived-synthesized-phrases"
+    expected = []
+    try:
+        for scene in scenes:
+            expected.extend(timed_cues_for_scene(
+                scene, use_audio_boundaries=use_audio))
+    except (ValueError, TypeError, KeyError):
+        return ["Invalid caption timing metadata in the approved scene plan"]
+    if len(matches) != len(expected):
+        return ["Exported SRT cue count does not match storyboard phrase count"]
+    for index, (match, cue) in enumerate(zip(matches, expected), start=1):
+        if (_stamp(match["a"]) != cue["startMs"]
+                or _stamp(match["b"]) != cue["endMs"]):
+            return [f"Subtitle timeline differs from authored narration at cue {index}"]
+    return []
 
 
 def check(*, plan: Path, output: Path, expected_voice: str,
@@ -254,6 +283,12 @@ def check(*, plan: Path, output: Path, expected_voice: str,
             previous = end
         if matches and abs(previous - round(planned_duration*1000)) > 10:
             errors.append("Subtitles do not cover the end of the planned timeline")
+        caption_method = rendered.get("captionCueAlignment")
+        metrics["subtitleTimelineMethod"] = caption_method
+        timing_errors = _verify_caption_timeline(
+            matches, data["scenes"][:count], caption_method)
+        metrics["subtitleTimelineMatchesPlan"] = not timing_errors
+        errors.extend(timing_errors)
         if decode_frames and duration > 0:
             samples = (0.1, max(0.1, duration - 0.7))
             for second in samples:
