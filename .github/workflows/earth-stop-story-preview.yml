@@ -1,0 +1,40 @@
+name: Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/earth-stop-story-preview.yml"
+      - "automate_ytb/science_earth_stop.py"
+      - "automate_ytb/science_portrait.py"
+
+permissions:
+  contents: read
+
+jobs:
+  earth-stop-story:
+    name: Narrated causal animation, native 1080x1920
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "What If Earth Suddenly Stopped Spinning?"
+      original_script: >-
+        What if Earth suddenly stopped spinning? The planet's rotation would vanish instantly.
+        At the equator, the ground moves east at roughly seventeen hundred kilometers per hour. Inertia matters.
+        The atmosphere would keep moving at first. Powerful winds would sweep across the land.
+        The oceans would keep moving too, sending destructive waves toward many coasts.
+        With Earth's rotation gone but its orbit continuing, the cycle of day and night would change dramatically.
+        Even astronauts would struggle to survive. These scenes illustrate the ideas, not a physical simulation.
+      character: "Original explanatory moving Earth, buildings, oceans and astronaut"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 36
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
