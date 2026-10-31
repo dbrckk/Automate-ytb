@@ -67,19 +67,19 @@ class VoiceTimedMotionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "captions.ass"
             original = (
-                "[Script Info]\\nPlayResX: 1080\\nPlayResY: 1920\\n"
-                "[V4+ Styles]\\nStyle: Context,DejaVu Sans,39\\n"
-                "[Events]\\n"
+                "[Script Info]\nPlayResX: 1080\nPlayResY: 1920\n"
+                "[V4+ Styles]\nStyle: Context,DejaVu Sans,39\n"
+                "[Events]\n"
                 "Format: Layer, Start, End, Style, Name, MarginL, MarginR, "
-                "MarginV, Effect, Text\\n"
+                "MarginV, Effect, Text\n"
                 "Dialogue: 1,0:00:18.35,0:00:21.40,Context,,0,0,0,,"
-                "EARTH'S MAGNETIC SHIELD\\n"
+                "EARTH'S MAGNETIC SHIELD\n"
                 "Dialogue: 4,0:00:18.50,0:00:19.50,Voice,,0,0,0,,"
-                "our magnetic field\\n"
+                "our magnetic field\n"
                 "Dialogue: 1,0:00:05.23,0:00:09.22,Context,,0,0,0,,"
-                "EXTREME ULTRAVIOLET - NASA / SDO\\n"
+                "EXTREME ULTRAVIOLET - NASA / SDO\n"
                 "Dialogue: 1,0:00:25.00,0:00:27.00,Context,,0,0,0,,"
-                "AURORAS - SPACE WEATHER\\n"
+                "AURORAS - SPACE WEATHER\n"
             )
             path.write_text(original, encoding="utf-8")
             report = apply_motion_graphics(
