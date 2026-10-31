@@ -6,13 +6,19 @@ from automate_ytb.director import ACTIONS
 
 class OrganicAnimationTests(unittest.TestCase):
     def test_all_actions_have_repeatable_secondary_sway(self):
-        self.assertIn("v9", CHOREOGRAPHY_VERSION)
+        self.assertIn("v10", CHOREOGRAPHY_VERSION)
         for action in ACTIONS:
             a=secondary_position(action,base=357,side="tail")
             self.assertEqual(a,secondary_position(action,base=357,side="tail"))
-            self.assertEqual(a.count("sin("),2)
             self.assertNotIn(";",a)
-            self.assertIn("0.35",a)
+            if action == "jump":
+                # Jump follows the known flight and landing phases, not
+                # unrelated sinusoids that jump at a repeating boundary.
+                self.assertIn("mod(t,1.75)", a)
+                self.assertIn("1.39", a)
+            else:
+                self.assertEqual(a.count("sin("),2)
+                self.assertIn("0.35",a)
         self.assertNotEqual(secondary_position("run",base=357,side="tail"),
                             secondary_position("rest",base=357,side="tail"))
 
