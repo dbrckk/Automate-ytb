@@ -24,6 +24,7 @@ PALETTES = {
     "cinematic": ((14, 24, 46), (49, 89, 121), (244, 187, 104)),
     "cartoon": ((37, 41, 96), (96, 60, 151), (253, 201, 85)),
     "documentary": ((15, 42, 46), (30, 98, 98), (143, 226, 198)),
+    "science": ((9, 27, 48), (19, 73, 105), (111, 225, 242)),
 }
 FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
