@@ -32,7 +32,7 @@ MEDIA = {
 }
 SCENES = [
     ("time", "What if you stood beside an ocean on another world?", 12.0),
-    ("intro", "This is Titan, Saturn's largest moon, beneath a thick orange sky.", 28.0),
+    ("intro", "Beyond Saturn's rings lies Titan, its largest moon, beneath a thick orange sky.", 28.0),
     ("lake", "Its vast lakes are filled with liquid methane and ethane, not water.", 0.5),
     ("time", "Methane evaporates, forms clouds, and sometimes falls back as rain.", 1.0),
     ("rain", "At minus one hundred and seventy nine degrees Celsius, water is frozen solid.", 0.8),
