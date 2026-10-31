@@ -18,9 +18,10 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
+from .science_rainbow import classify as classify_rainbow, draw_rainbow, BADGES as RAINBOW_BADGES
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v7-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-ribbon-high-contrast"
+PORTRAIT_VERSION = "original-science-shorts-v8-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics"
 INK = (238, 247, 250, 255)
 
 
@@ -171,16 +172,25 @@ class PortraitScienceScene:
             raise ValueError("Science Shorts require authored narration")
         folded = unicodedata.normalize("NFKD", topic.casefold())
         folded = "".join(c for c in folded if not unicodedata.combining(c))
-        if not re.search(r"\b(earth|terre|oceans?|oceanique)\b", folded):
-            raise ValueError("Science Shorts support Earth/ocean topics only")
+        is_earth = bool(re.search(r"\b(earth|terre|oceans?|oceanique)\b", folded))
+        is_rainbow = bool(re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b", folded))
+        if not (is_earth or is_rainbow):
+            raise ValueError("Science Shorts support Earth/ocean or authored rainbow topics only")
         if type(scene_index) is not int or not 1 <= scene_index <= 1200:
             raise ValueError("Invalid science scene index")
         self.topic, self.narration, self.scene_index = topic, narration, scene_index
         self.mode = scene_mode(narration)
         self.beat = classify_storyboard(topic, narration)
+        self.rainbow_beat = classify_rainbow(topic, narration)
+        if is_rainbow and self.rainbow_beat is None:
+            raise ValueError(
+                "Rainbow Shorts need authored narration on sunlight, refraction, "
+                "internal reflection, emerging light or the observed arc")
         self.english = bool(re.search(
             r"\b(the|what|earth|would|could|ocean|oceans|wind|winds|"
-            r"because|sunlight|waters|heats|currents|sinks|gyres|climate)\b",
+            r"because|sunlight|waters|heats|currents|sinks|gyres|climate|"
+            r"sun|white|colors|light|raindrop|rainbow|reflects|"
+            r"entering|refracts|leaving|millions|observer|arc)\b",
             narration, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
@@ -284,9 +294,15 @@ class PortraitScienceScene:
         }
         d.rounded_rectangle((80, 477, 750, 537), radius=22,
                             fill=(12, 47, 72, 234))
-        d.text((113, 488), (STORYBOARD_BADGES[self.beat] if self.beat else badges[self.mode])[0 if self.english else 1],
+        science_badge = (
+            RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
+            else STORYBOARD_BADGES[self.beat] if self.beat
+            else badges[self.mode])
+        d.text((113, 488), science_badge[0 if self.english else 1],
                font=_font(36, bold=True), fill=GOLD+(255,))
-        if self.beat is not None:
+        if self.rainbow_beat is not None:
+            draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
+        elif self.beat is not None:
             draw_storyboard(d, self.beat, t, self.english, duration=duration)
         elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
