@@ -25,16 +25,18 @@ ENGINE = "original-science-motion-studio-v1"
 # Zero-based indices of EXISTING shots; a deliberate narrative edit, not an
 # extra still laid on the NASA videos. Every insert occupies real scene time.
 INSERTS = {
+    1: ("flare", "sun304"),
     5: ("cme", "cme_launch"),
     7: ("shield", "magnetosphere"),
     9: ("satellite", "satellite"),
     12: ("connection", "sun171"),
 }
 COLORS = {
-    "cme": (255, 149, 79), "shield": (79, 195, 250),
+    "flare": (255, 190, 102), "cme": (255, 149, 79), "shield": (79, 195, 250),
     "satellite": (255, 181, 105), "connection": (106, 214, 253),
 }
 STEPS = {
+    "flare": ("A STORM BEGINS", "Magnetic energy is released in the solar atmosphere"),
     "cme": ("SOLAR EJECTION", "A cloud of charged plasma expands from the Sun"),
     "shield": ("MAGNETIC RESPONSE", "The solar wind disturbs Earth's magnetic field"),
     "satellite": ("SPACE WEATHER", "Charged particles can disrupt orbital systems"),
@@ -170,6 +172,37 @@ def _particles(draw: ImageDraw.ImageDraw, t: float, *, start: int, end: int,
         y=y_mid + math.sin(idx*1.82 + p*math.tau)*wave
         rr=2+(idx%3)
         _dot(draw,x,y,rr,(*color[:3],200))
+
+
+def _flare(im,t,duration):
+    # Coronal loop expansion: an authored depiction, not a reproduction of
+    # NASA SDO wavelengths or a claim of one observed historical event.
+    p=t/duration
+    _orb_at(im,"sun",275,570,155)
+    paths=[]
+    for idx in range(9):
+        tilt=(idx-4)*32
+        top=318+27*math.sin(t*1.25+idx*.65)
+        start=(161+idx*26,525+8*math.sin(idx))
+        end=(180+idx*23,529)
+        pts=_curve((start,(96+tilt,top),(440-tilt,top-35),end))
+        col=(255,120+idx*11,72+idx*5,150)
+        paths.append((pts,col,2 if idx%3 else 4))
+    _glow(im,paths)
+    d=ImageDraw.Draw(im)
+    for idx in range(36):
+        a=idx*.49
+        angle=-math.pi*.9+idx/36*math.pi*.84
+        dist=155+12*math.sin(t*1.65+a)+28*((idx*.57+t*.38)%1)
+        x=275+dist*math.cos(angle)
+        y=570+dist*math.sin(angle)
+        _dot(d,x,y,2+(idx%4),(255,181,105,220))
+    for k in range(4):
+        pulse=(t*.35 + k*.25)%1
+        rr=35+175*pulse
+        d.arc((275-rr,570-rr,275+rr,570+rr),205,325,
+              fill=(255,226,159,max(60,220-round(170*pulse))),width=3)
+    _text(d,(48,744),"CORONAL LOOPS",size=17,fill=(255,184,122),bold=True)
 
 
 def _cme(im,t,duration):
@@ -314,12 +347,17 @@ def render_frame(kind: str, t: float, duration: float) -> Image.Image:
     _text(d,(47,282),title,size=17,bold=True,fill=(233,246,255))
     _text(d,(40,320),subtitle,size=12,fill=(173,204,226))
     # A real evolving time indicator, not a static ornamental loop.
-    d.rounded_rectangle((40,805,500,812),radius=3,fill=(29,70,102))
-    d.rounded_rectangle((40,805,40+round(460*(t/duration)),812),
-                        radius=3,fill=COLORS[kind])
-    _text(d,(40,829),"ORIGINAL SCIENCE ANIMATION  /  SCHEMATIC · NOT TO SCALE",
+    # The bottom-centered narration captions end above ~1720 final pixels.
+    # Keep motion-progress below their protected zone.
+    d.rounded_rectangle((40,863,500,870),radius=3,fill=(29,70,102))
+    if t > 0:
+        d.rounded_rectangle((40,863,40+round(460*(t/duration)),870),
+                            radius=3,fill=COLORS[kind])
+    _text(d,(40,882),"ORIGINAL SCIENCE MOTION  ·  SCHEMATIC / NOT TO SCALE",
           size=10,fill=(134,167,192))
-    if kind=="cme":
+    if kind=="flare":
+        _flare(image,t,duration)
+    elif kind=="cme":
         _cme(image,t,duration)
     elif kind=="shield":
         _shield(image,t,duration)
