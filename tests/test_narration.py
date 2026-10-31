@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 import wave
 
-from automate_ytb.narration import SpeechEngine, SAMPLE_RATE_KOKORO, _segment_pause_ms
+from automate_ytb.narration import SpeechEngine, SAMPLE_RATE_KOKORO, DEFAULT_VOICES, VOICE_CHOICES, _segment_pause_ms
 from automate_ytb.episode import _narrate_scenes
 from automate_ytb.production import load_plan
 from automate_ytb.scene_plan import plan
@@ -62,6 +62,58 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(len(instances), 1)
             voice.audio("Une seconde phrase.")
             self.assertEqual(len(instances), 1)
+
+    def test_every_one_click_speaker_is_usable_with_the_proper_language(self):
+        import numpy as np
+
+        class LocalKokoroPipeline:
+            def __init__(self, *, lang_code, repo_id=None):
+                self.lang_code = lang_code
+            def __call__(self, text, *, voice, speed):
+                calls.append((self.lang_code, voice, speed))
+                yield types.SimpleNamespace(
+                    graphemes=text,
+                    audio=np.array([0.1, -0.1, 0.2, -0.2], dtype="float32"))
+
+        choices = {
+            "fr": ("ff_siwis",),
+            "en": ("af_heart", "af_bella", "am_michael"),
+        }
+        self.assertEqual({k: tuple(sorted(v)) for k,v in VOICE_CHOICES.items()},
+                         {k: tuple(sorted(v)) for k,v in choices.items()})
+        self.assertEqual(DEFAULT_VOICES, {"fr": "ff_siwis", "en": "af_heart"})
+        calls = []
+        module = types.ModuleType("kokoro")
+        module.KPipeline = LocalKokoroPipeline
+        with patch.dict(sys.modules, {"kokoro": module}):
+            for language, supported in choices.items():
+                for speaker in supported:
+                    with self.subTest(language=language, speaker=speaker):
+                        engine = SpeechEngine(
+                            engine="kokoro", language=language, voice=speaker)
+                        audio, rate = engine.audio("Original narration.")
+                        self.assertTrue(audio)
+                        self.assertEqual(rate, SAMPLE_RATE_KOKORO)
+                        self.assertEqual(calls[-1][:2],
+                                         ("f" if language == "fr" else "a", speaker))
+                incompatible = "af_bella" if language == "fr" else "ff_siwis"
+                with self.assertRaisesRegex(ValueError, "combination"):
+                    SpeechEngine(engine="kokoro", language=language,
+                                 voice=incompatible)
+
+    def test_android_workflow_exposes_only_supported_voices_and_rejects_invalid_ones(self):
+        workflow = (Path(__file__).resolve().parents[1] /
+                    ".github/workflows/one-click-preview.yml").read_text(
+                        encoding="utf-8")
+        self.assertIn("voice_name:", workflow)
+        self.assertIn("options: [auto, af_heart, af_bella, am_michael, ff_siwis]",
+                      workflow)
+        self.assertIn("default: auto", workflow)
+        self.assertIn("YT_VOICE_NAME: ${{ inputs.voice_name }}", workflow)
+        self.assertIn("case \"$YT_LANGUAGE:$YT_VOICE_NAME\" in", workflow)
+        self.assertIn("en:af_heart|en:af_bella|en:am_michael|fr:ff_siwis)", workflow)
+        self.assertIn('VOICE_ARGS=(--voice-name "$YT_VOICE_NAME")', workflow)
+        self.assertIn('"${VOICE_ARGS[@]}"', workflow)
 
     def test_segment_pause_is_driven_by_punctuation_not_chunk_boundaries(self):
         self.assertEqual(_segment_pause_ms("Une phrase continue"), 0)

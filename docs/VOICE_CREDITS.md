@@ -30,3 +30,12 @@ voix dédiée dans son catalogue officiel.
 modifient le **débit de génération natif**, pas l'identité du locuteur.
 Des pauses ponctuées sont ajoutées uniquement entre phrases et
 incluses dans les repères audio des sous-titres.
+
+**Locuteurs proposés par le formulaire Android :** `auto` (voix par défaut
+selon la langue), `af_heart` et `af_bella` (anglais, voix féminines),
+`am_michael` (anglais, voix masculine) et `ff_siwis` (français).
+La validation des langues interdit toute sélection incompatible. Le même
+modèle Kokoro local est utilisé et aucun crédit API n'est ajouté.
+Les crédits de chaque voix et les conditions de ses sources vocales doivent
+être vérifiés dans la version du catalogue Kokoro effectivement distribuée ;
+la prise en charge technique n'est pas une approbation commerciale automatique.

@@ -34,9 +34,14 @@ on:
         default: kokoro
       voice_style:
         type: choice
-        description: "Kokoro speaking style (French: ff_siwis, English: af_heart)"
+        description: "Speaking pace and energy, independent of speaker"
         options: [natural, gentle, lively]
         default: natural
+      voice_name:
+        type: choice
+        description: "Optional Kokoro speaker: auto selects the validated voice for language"
+        options: [auto, af_heart, af_bella, am_michael, ff_siwis]
+        default: auto
       soundtrack:
         type: choice
         description: "Procedural original background music (no copyrighted samples)"
@@ -133,6 +138,7 @@ jobs:
           YT_LANGUAGE: ${{ inputs.language }}
           YT_VOICE: ${{ inputs.voice }}
           YT_VOICE_STYLE: ${{ inputs.voice_style }}
+          YT_VOICE_NAME: ${{ inputs.voice_name }}
           YT_SOUNDTRACK: ${{ inputs.soundtrack }}
           YT_CAPTION_TIMING: ${{ inputs.caption_timing }}
           YT_TRANSITION: ${{ inputs.transition }}
@@ -142,6 +148,20 @@ jobs:
           VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
           if [ "$YT_STYLE" = "science" ]; then
             VISUAL_BRIEF="Original schematic animated Earth and ocean science infographic, clear labels and locally generated diagrams; no third-party pictures"
+          fi
+          VOICE_ARGS=()
+          if [ "$YT_VOICE_NAME" != "auto" ]; then
+            if [ "$YT_VOICE" != "kokoro" ]; then
+              echo "Explicit speaker selection requires voice=kokoro" >&2
+              exit 2
+            fi
+            case "$YT_LANGUAGE:$YT_VOICE_NAME" in
+              en:af_heart|en:af_bella|en:am_michael|fr:ff_siwis)
+                VOICE_ARGS=(--voice-name "$YT_VOICE_NAME") ;;
+              *)
+                echo "Unsupported voice/language combination" >&2
+                exit 2 ;;
+            esac
           fi
           python -m automate_ytb.scene_plan \
             --topic "$YT_TOPIC" --script build/script.txt \
@@ -153,7 +173,8 @@ jobs:
           python -m automate_ytb.episode \
             --plan build/scene-plan.json --output build/video \
             --style "$YT_STYLE" --language "$YT_LANGUAGE" \
-            --voice "$YT_VOICE" --voice-style "$YT_VOICE_STYLE" --resolution "$YT_RESOLUTION" \
+            --voice "$YT_VOICE" --voice-style "$YT_VOICE_STYLE" "${VOICE_ARGS[@]}" \
+            --resolution "$YT_RESOLUTION" \
             --soundtrack "$YT_SOUNDTRACK" \
             --caption-timing "$YT_CAPTION_TIMING" \
             --transition "$YT_TRANSITION" \
