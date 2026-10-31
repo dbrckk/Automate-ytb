@@ -13,6 +13,23 @@ from automate_ytb.youtube import discover_niches
 
 
 class ProductionTests(unittest.TestCase):
+    def test_every_episode_style_exports_real_thumbnails(self):
+        from PIL import Image
+        from automate_ytb.studio import make_thumbnails
+
+        # The native Shorts render may finish before the thumbnails step;
+        # a missing palette must never invalidate an otherwise valid MP4.
+        for style in ("cartoon", "cinematic", "documentary", "science"):
+            with self.subTest(style=style), TemporaryDirectory() as td:
+                files = make_thumbnails("Why Do Ocean Currents Move?", style, Path(td))
+                self.assertEqual(len(files), 3)
+                for image_path in files:
+                    self.assertTrue(image_path.is_file())
+                    with Image.open(image_path) as image:
+                        self.assertEqual(image.format, "PNG")
+                        self.assertEqual(image.size, (1280, 720))
+                        image.verify()
+
     def test_reference_urls(self):
         self.assertEqual(video_id_from_reference(
             "https://www.youtube.com/watch?v=ABCDEFGHIjk"), "ABCDEFGHIjk")
