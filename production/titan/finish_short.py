@@ -64,10 +64,10 @@ def captions(segments):
 def escape(text):
     return text.replace("\\","\\\\").replace("{",r"\{").replace("}",r"\}")
 
-def write_subtitles(segments,folder):
-    # Bottom margin 315px avoids TikTok/Reels UI; no numbering, no information slides.
+def write_subtitles(segments, words, folder):
+    """Burn short English groups with word-level highlighting from the spoken WAV."""
     head="""[Script Info]
-Title: Titan cinematic English narration
+Title: Titan — English narration, acoustically aligned
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
@@ -76,18 +76,52 @@ WrapStyle: 2
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Narration,DejaVu Sans,59,&H00FFFFFF,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,0,0,1,5,1,2,66,66,315,1
+Style: Narration,DejaVu Sans,62,&H00FFFFFF,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,0,0,1,5,1,2,65,65,315,1
 Style: Key,DejaVu Sans,41,&H00F4EFE4,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,1,0,1,3,0,7,65,65,380,1
 Style: Value,DejaVu Sans,83,&H00FFFFFF,&H00FFFFFF,&HA8111820,&H99000000,-1,0,0,0,100,100,-1,0,1,3,1,7,65,65,425,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
-    events=captions(segments)
-    rows=[];srt=[]
-    for i,(a,b,t) in enumerate(events):
-        rows.append(f"Dialogue: 5,{stamp(a)},{stamp(b)},Narration,,0,0,0,,{{\\fad(90,90)}}{escape(t)}")
-        srt.extend([str(i+1),f"{stamp_srt(a)} --> {stamp_srt(b)}",t,""])
+    # Keep contextual groups legible even on 5-inch phones; never a slide/card.
+    groups=[]
+    current=[]
+    for w in words:
+        if current and (len(current)>=4 or len(" ".join(x["word"] for x in current+[w]))>28):
+            groups.append(current)
+            current=[]
+        current.append(w)
+    if current:
+        groups.append(current)
+
+    ass_rows=[]
+    srt=[]
+    for n,group in enumerate(groups,1):
+        first=float(group[0]["start"])
+        last=float(group[-1]["end"])
+        if n<len(groups):
+            last=min(last + .07, float(groups[n][0]["start"]))
+        srt.extend([str(n),f"{stamp_srt(first)} --> {stamp_srt(last)}",
+                    " ".join(x["word"] for x in group),""])
+        for i,active in enumerate(group):
+            a=float(active["start"])
+            b=float(group[i+1]["start"]) if i+1<len(group) else last
+            if b <= a + .02:
+                b=min(last,a+.07)
+            if b <= a:
+                continue
+            tokens=[]
+            for j,w in enumerate(group):
+                token=escape(w["word"])
+                if i==j:
+                    tokens.append(r"{\1c&H0085DEFF&}"+token+r"{\1c&H00FFFFFF&}")
+                else:
+                    tokens.append(token)
+            ass_rows.append(
+                f"Dialogue: 5,{stamp(a)},{stamp(b)},Narration,,0,0,0,,"
+                + " ".join(tokens)
+            )
+
     (folder/"subtitles_final.srt").write_text("\n".join(srt),encoding="utf-8")
     overlays=[
         (1,.15,.45,"Key","TITAN  /  SATURN'S LARGEST MOON",375),
@@ -99,9 +133,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         start=segments[i]["start"]+enter
         end=segments[i]["end"]-leave
         if end>start+.35:
-            rows.append(f"Dialogue: 1,{stamp(start)},{stamp(end)},{style},,0,0,0,,{{\\an7\\pos(74,{y})\\fad(240,250)}}{escape(content)}")
-    (folder/"captions.ass").write_text(head+"\n".join(rows)+"\n",encoding="utf-8")
-    return len(events)
+            ass_rows.append(
+                f"Dialogue: 1,{stamp(start)},{stamp(end)},{style},,0,0,0,,"
+                f"{{\\an7\\pos(74,{y})\\fad(240,250)}}{escape(content)}"
+            )
+    (folder/"captions.ass").write_text(head+"\n".join(ass_rows)+"\n",encoding="utf-8")
+    return len(groups)
 
 def soundbed(segments,total,path):
     rate=SAMPLE_RATE
@@ -133,13 +170,15 @@ def soundbed(segments,total,path):
                             audio*(1-.025*np.sin(2*np.pi*.06*t))]).astype(np.float32)
     sf.write(path,np.clip(stereo,-.3,.3),rate,subtype="PCM_16")
 
-def render(source,report,folder):
+def render(source, report, voice, folder):
     folder.mkdir(parents=True,exist_ok=True)
     segs=json.loads(report.read_text(encoding="utf-8"))["segments"]
     length=duration(source)
     if len(segs)!=6 or abs(length-segs[-1]["end"])>1.3:
         raise ValueError("Rendered video and Kokoro segment timing mismatch")
-    count=write_subtitles(segs,folder)
+    from word_align import align_narration
+    words, scene_coverage = align_narration(voice, segs, folder, model_name="base.en")
+    count=write_subtitles(segs,words,folder)
     soundbed(segs,length,folder/"ambience.wav")
     output=folder/"Titan_Documentary_Enhanced_EN.mp4"
     af="[0:a]volume=1.0[n];[1:a]volume=0.75[b];[n][b]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=9[a]"
@@ -156,7 +195,9 @@ def render(source,report,folder):
     qa={"file":output.name,"duration":duration(output),"subtitles_burned":True,
         "caption_groups":count,"narration":"Kokoro af_heart","image_source":"NASA 4K",
         "animated_callouts":["Titan","methane lakes","rain cycle","temperature"],
-        "verified":"full ffmpeg decode","caveat":"illustrative animations, not actual Titan footage"}
+        "verified":"full ffmpeg decode + narration word timing", "alignment_scenes":scene_coverage,
+        "verified_word_fraction":round(sum(w["recognized"] for w in words)/len(words),3),
+        "caveat":"illustrative animations, not actual Titan footage"}
     (folder/"qa_enhanced.json").write_text(json.dumps(qa,indent=2))
     print("ENHANCED_OK",json.dumps(qa),flush=True)
 
@@ -164,6 +205,7 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--input",required=True,type=Path)
     parser.add_argument("--report",required=True,type=Path)
+    parser.add_argument("--voice",required=True,type=Path)
     parser.add_argument("--outdir",required=True,type=Path)
     args=parser.parse_args()
-    render(args.input,args.report,args.outdir)
+    render(args.input,args.report,args.voice,args.outdir)
