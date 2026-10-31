@@ -6,6 +6,8 @@ the trusted fixed joint_motion module, never user-authored expressions.
 from __future__ import annotations
 
 import math
+import shutil
+import subprocess
 import unittest
 
 from automate_ytb.joint_motion import (
@@ -69,6 +71,26 @@ class PhaseSynchronizedJumpJointsTests(unittest.TestCase):
                     non_jump = joint_angle(action, part=part, side=side)
                     self.assertNotIn("mod(t,1.75)", non_jump)
                 self.assertLessEqual(AMPLITUDES[part]["jump"], .25)
+
+
+    @unittest.skipUnless(shutil.which("ffmpeg"), "Real FFmpeg required")
+    def test_actual_ffmpeg_parses_full_joint_filter_for_both_sides(self):
+        # Exercise FFmpeg's real expression parser as well as Python's
+        # numerical checks; no paid service or video output is required.
+        for part, side in (("wing", "left"), ("ear", "right"), ("tail", "tail")):
+            with self.subTest(part=part, side=side):
+                expression = joint_angle("jump", part=part, side=side)
+                cmd = [
+                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                    "-f", "lavfi", "-i", "color=c=white:s=64x64:r=24:d=1.9",
+                    "-vf", f"rotate=angle='{expression}':ow=iw:oh=ih",
+                    "-frames:v", "45", "-f", "null", "-",
+                ]
+                result = subprocess.run(
+                    cmd, capture_output=True, check=False, timeout=30)
+                self.assertEqual(
+                    result.returncode, 0,
+                    result.stderr.decode("utf-8", "replace")[-600:])
 
 
 if __name__ == "__main__":
