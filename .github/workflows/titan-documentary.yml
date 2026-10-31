@@ -1,0 +1,44 @@
+name: Produce Titan documentary (NASA footage + Kokoro)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/titan-documentary.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install OS audio and video dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg espeak-ng libsndfile1
+      - name: Install open-source natural voice synthesizer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[speech]" soundfile requests
+      - name: Render documentary and run output decode verification
+        run: python production/titan/render_short.py
+      - name: Upload completed production and QA report
+        uses: actions/upload-artifact@v4
+        with:
+          name: titan-nasa-kokoro-english
+          path: |
+            production/titan/out/Titan_NASA_Kokoro_EN_1080x1920.mp4
+            production/titan/out/narration.wav
+            production/titan/out/subtitles.srt
+            production/titan/out/cover.jpg
+            production/titan/out/publication.txt
+            production/titan/out/production_report.json
+          if-no-files-found: error
+          retention-days: 14
