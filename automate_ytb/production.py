@@ -349,6 +349,9 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "portraitTypographyVersion": ("shorts-lossless-fit-v1"
                                           if science_art and resolution == "shorts"
                                           else None),
+            "portraitMotionVersion": ("shorts-30fps-blended-earth-v1"
+                                      if science_art and resolution == "shorts"
+                                      else None),
             "voiceActivityVersion": MOUTH_VERSION if uses_motion_rig else None,
             "voiceActivity": (voice_activity_by_scene[scene_index]
                               if uses_motion_rig else None),
