@@ -179,7 +179,8 @@ class PortraitScienceScene:
         self.mode = scene_mode(narration)
         self.beat = classify_storyboard(topic, narration)
         self.english = bool(re.search(
-            r"\b(the|what|earth|would|could|ocean|wind|because)\b",
+            r"\b(the|what|earth|would|could|ocean|oceans|wind|winds|"
+            r"because|sunlight|waters|heats|currents|sinks|gyres|climate)\b",
             narration, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
