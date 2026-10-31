@@ -115,6 +115,65 @@ class SpeechTests(unittest.TestCase):
         self.assertIn('VOICE_ARGS=(--voice-name "$YT_VOICE_NAME")', workflow)
         self.assertIn('"${VOICE_ARGS[@]}"', workflow)
 
+    def test_kokoro_punctuation_pauses_do_not_stop_mid_sentence(self):
+        from automate_ytb.voice_pacing import natural_pause_ms, VERSION
+        self.assertIn("no-artificial-mid-sentence-pauses", VERSION)
+        for part in ("The ocean current flows", "without a final period",
+                     "une phrase continue", "warm water"):
+            self.assertEqual(natural_pause_ms(part, neural=True), 0)
+            self.assertEqual(natural_pause_ms(part, neural=False), 80)
+        self.assertEqual(natural_pause_ms("Ready.", neural=True), 190)
+        self.assertEqual(natural_pause_ms("Really?", neural=True), 190)
+        self.assertEqual(natural_pause_ms("And then...", neural=True), 290)
+        self.assertEqual(natural_pause_ms("Perhaps,", neural=True), 105)
+        self.assertEqual(natural_pause_ms("Therefore:", neural=True), 160)
+        with self.assertRaises(ValueError):
+            natural_pause_ms(" ", neural=True)
+
+    def test_real_caption_phrase_break_does_not_create_digital_silence(self):
+        from automate_ytb.captions import caption_phrases
+        original = (
+            "The ocean gently carries warm water across a wide basin "
+            "and gradually turns northward before reaching colder regions.")
+        phrases = caption_phrases(original)
+        self.assertGreaterEqual(len(phrases), 2)
+        self.assertFalse(phrases[0].endswith((".", "!", "?", ":", ";", ",")))
+        data = json.loads(self.plan.read_text(encoding="utf8"))
+        data["scenes"][0]["narration"] = original
+        self.plan.write_text(json.dumps(data), encoding="utf8")
+        pcm = b"\\x00\\x20" * 4800
+        calls = []
+        class FixedSpeech:
+            def __init__(self, *, engine, language, voice):
+                self.engine, self.language = engine, language
+                self.voice = voice or "af_heart"
+                self.speed = 1.0
+            def audio(self, text):
+                calls.append(text)
+                return pcm, 24000
+        with patch("automate_ytb.episode.SpeechEngine", FixedSpeech):
+            result = _narrate_scenes(
+                self.plan, self.root / "continuous.wav", "en", 1,
+                engine="kokoro", caption_timing="audio")
+        self.assertEqual(calls, phrases)
+        self.assertEqual(result["delivery"]["insertedBetweenPhraseSilenceMs"], 0)
+        self.assertEqual(result["captionTiming"], "audio-derived-synthesized-phrases")
+        self.assertFalse(result["wordAlignment"])
+        updated = load_plan(self.plan)
+        boundaries = updated["scenes"][0]["captionSegments"]
+        self.assertEqual(len(boundaries), len(phrases))
+        self.assertEqual(boundaries[0]["endMs"] -
+                         boundaries[0]["startMs"], 200)
+        with wave.open(str(self.root / "continuous.wav"), "rb") as audio:
+            sound = audio.readframes(audio.getnframes())
+        # Both adjacent fragments contain their actual PCM, with neither
+        # the former 95ms digital silence nor an invented word alignment.
+        import struct
+        offset = boundaries[0]["endMs"] * 48
+        around = sound[offset - 200:offset + 200]
+        self.assertTrue(any(value for value in struct.unpack(
+            "<" + "h"*(len(around)//2), around)))
+
     def test_segment_pause_is_driven_by_punctuation_not_chunk_boundaries(self):
         self.assertEqual(_segment_pause_ms("Une phrase continue"), 0)
         self.assertEqual(_segment_pause_ms("Un mot, "), 30)
