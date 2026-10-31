@@ -138,11 +138,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             )
 
     (folder/"subtitles_final.srt").write_text("\n".join(srt),encoding="utf-8")
+    # Only visual context that actually helps explain what the viewer sees.
     overlays=[
-        (1,.15,.45,"Key","SATURN  /  HOME TO TITAN",375),
-        (2,.45,.38,"Key","LAKES OF METHANE + ETHANE",365),
-        (3,.55,.55,"Key","EVAPORATION → CLOUDS → RAIN",380),
-        (4,.42,.45,"Value","−179°C",385),
+        (1,.15,.45,"Key","SATURN  /  TITAN",375),
+        (2,.65,.38,"Key","METHANE + ETHANE LAKES",365),
+        (2,1.55,.70,"Value","−179°C",440),
+        (3,.45,.42,"Key","METHANE CLOUD CIRCULATION",380),
+        (4,.65,.50,"Key","LIQUID METHANE RAIN",380),
     ]
     for i,enter,leave,style,content,y in overlays:
         start=segments[i]["start"]+enter
@@ -173,7 +175,7 @@ def soundbed(segments,total,path):
         rain=np.convolve(noise,np.full(8,1/8),mode="same")
     low/=max(np.std(low),.01)
     rain/=max(np.std(rain),.01)
-    seg=segments[3]
+    seg=segments[4]
     ramp=np.clip((t-seg["start"])/.55,0,1)*np.clip((seg["end"]-t)/.55,0,1)
     audio=pad+.0034*low+.0105*rain*ramp
     for seg in segments[1:]:
@@ -214,7 +216,7 @@ def render(source, report, voice, folder):
         "-frames:v","1",folder/"cover_enhanced.jpg")
     qa={"file":output.name,"duration":duration(output),"subtitles_burned":True,
         "caption_groups":count,"narration":"Kokoro af_heart","image_source":"NASA 4K",
-        "animated_callouts":["Titan","methane lakes","rain cycle","temperature"],
+        "animated_callouts":["Saturn/Titan","methane lakes","temperature","cloud circulation","methane rain"],
         "verified":"full ffmpeg decode + narration word timing", "alignment_scenes":scene_coverage,
         "verified_word_fraction":round(sum(w["recognized"] for w in words)/len(words),3),
         "caveat":"illustrative animations, not actual Titan footage"}
