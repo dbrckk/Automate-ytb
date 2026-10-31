@@ -285,6 +285,7 @@ jobs:
             build/script.txt
             build/video/preview.mp4
             build/video/narration.wav
+            build/video/narration-pacing.json
             build/video/voice-sample.mp3
             build/video/VOICE_CREDITS.md
             build/video/background-original.wav
