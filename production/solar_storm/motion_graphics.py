@@ -204,7 +204,7 @@ def apply_motion_graphics(captions_path: Path,
     # Retire ONLY Context dialogue rows, never acoustic Voice subtitles,
     # timestamp rows, SRT captions, styles or source attribution metadata.
     legacy_context = re.compile(
-        r"^Dialogue: [0-9]+,[^,\\n]+,[^,\\n]+,Context,")
+        r"^Dialogue: [0-9]+,[^,\n]+,[^,\n]+,Context,")
     original_lines = content.splitlines(keepends=True)
     cleaned = [line for line in original_lines
                if not legacy_context.match(line)]
