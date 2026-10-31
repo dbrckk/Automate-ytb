@@ -20,6 +20,7 @@ WHITE = (232, 248, 250, 255)
 NAVY = (10, 38, 63, 242)
 WARM = (252, 128, 75, 235)
 COLD = (81, 167, 246, 225)
+DARK_TEXT = (3, 17, 28, 255)  # WCAG contrast >7:1 over warm and cool cards
 
 BEATS = ("solar", "wind", "coriolis", "sinking", "heat")
 BADGES = {
@@ -204,10 +205,10 @@ def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         d.rounded_rectangle((x, 860, x+220, 1130), radius=36,
                             fill=(hue[0], hue[1], hue[2], 60),
                             outline=hue, width=5)
-        # A hue-colored caption on the same hue-colored filled card is invisible
-        # in the final H.264 export. Use neutral text and retain the warm/cold
-        # color as the meaningful background encoding.
-        _label(d, (x+38, 982), text, color=WHITE, size=42)
+        # A hue-colored caption on the matching colored background vanished in
+        # the encoded MP4. White here is only ~2.3:1 contrast; navy ink
+        # exceeds 7:1 on both orange and blue reservoir fills.
+        _label(d, (x+38, 982), text, color=DARK_TEXT, size=42)
     for lane in range(4):
         y = 1175+lane*55
         points = [(150+x, round(y+25*math.sin(x/83+t*.35+lane)))
