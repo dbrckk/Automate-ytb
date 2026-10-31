@@ -80,6 +80,12 @@ Le premier export complet de 30 secondes comptait environ 44 mots et 13,6 second
 
 ## Vérifications de sortie
 
+## Durée cible mesurée sur la vraie narration Kokoro
+
+Le moteur vérifie maintenant **deux** critères indépendants avant l'encodage coûteux d'un Short scientifique entièrement narré : la quantité de silence PCM ajoutée à chaque scène et **l'écart entre la durée originale demandée et la durée obtenue après la synthèse Kokoro**. La source de vérité est l'audio PCM assemblé, et non une estimation du nombre de mots. Le rapport `narration-pacing.json` inclut `requestedDurationMs`, `totalSceneDurationMs`, `durationDriftMs` et le seuil maximal de **600 ms** pour les Shorts stricts. Un dépassement empêche que le workflow de publication technique affiche un statut vert, même si l'encodage H.264 serait valide.
+
+L'ancien Short de référence réclamait 30 secondes mais durait **31,555 secondes dans son plan PCM** (31,599 secondes dans le conteneur MP4), soit un dépassement de 1,555 seconde. Il est désormais rejeté avant la création d'un autre MP4. Le scénario exemple a été légèrement raccourci sans supprimer de mécanisme scientifique ; seul un nouveau rendu du vrai moteur peut confirmer sa durée. Le code ne tronque jamais les phrases, ne change pas automatiquement la vitesse Kokoro, et ne fabrique pas d'informations supplémentaires. Les options sont de réécrire le scénario original ou de choisir consciemment une autre durée. Les rendus non stricts continuent de produire un avertissement diagnostique au lieu d'échouer.
+
 ## Lisibilité native sur téléphone
 
 Le contrôle de la première vidéo encodée avec les cinq nouveaux schémas a révélé des libellés internes trop petits dans un aperçu mobile, malgré une exportation 1080×1920 correcte. Les textes principaux des schémas ont donc été agrandis (environ 34 à 44 px natifs selon leur rôle), le titre de concept passe de 30 à 36 px, et les sous-titres visent 40 px au lieu de 31 px. Les cas de sous-titres exceptionnellement longs conservent l'adaptation existante sans coupure des mots. La grille conserve les zones sûres, et la mention **« schématique, non à l'échelle »** remplace la formule plus ambiguë « science illustrée ». Les tests vérifient la largeur réelle des glyphes, trois lignes maximum et l'absence de débordement de la zone de sous-titres sur les cinq phrases de référence.

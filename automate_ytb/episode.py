@@ -321,14 +321,15 @@ def build_preview(*, plan_path: Path, output: Path,
                   and voice == "kokoro" and caption_timing == "audio"
                   and limit is None)
         pacing = inspect_narration_pacing(
-            details["measuredScenePacing"], strict=strict)
+            details["measuredScenePacing"], strict=strict,
+            requested_duration_ms=round(data["targetDurationSeconds"] * 1000))
         production._write_json(output / "narration-pacing.json", pacing)
         if pacing["status"] == "failed":
             raise ValueError(
-                "Narration is too short for the requested science Short: "
-                f"{pacing['totalTailPaddingMs']} ms of digital tail silence. "
-                "Expand the original narration for sparse scenes or revise "
-                "the requested duration; see narration-pacing.json.")
+                "Science Short narration misses the requested duration or "
+                "contains excessive scene silence. Adjust the authored script "
+                "or the requested duration without cutting/accelerating speech; "
+                "see narration-pacing.json for measured PCM evidence.")
     # Short stand-alone listening sample for a quick Android audition,
     # without clipping or changing the full soundtrack or narration.
     voice_sample = None
