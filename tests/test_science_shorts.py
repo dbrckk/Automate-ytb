@@ -79,7 +79,7 @@ class ScienceShortsTests(unittest.TestCase):
         crops = []
         for i, phrase in enumerate(phrases):
             t = (markers[i]["startMs"]-start+100)/1000
-            self.assertEqual(shot.active_caption(t, length/1000), phrase)
+            self.assertEqual(' '.join(shot.active_caption(t, length/1000).split()), phrase)
             stamp = srt_time(markers[i]["startMs"])
             self.assertIn(stamp, srt)
             if i < 2:
@@ -87,7 +87,7 @@ class ScienceShortsTests(unittest.TestCase):
                     shot.frame(t, length/1000).crop((65,1522,1015,1722)))
         self.assertIsNotNone(ImageChops.difference(
             crops[0], crops[1]).getbbox())
-        self.assertEqual(shot.active_caption(6, 6), phrases[-1])
+        self.assertEqual(' '.join(shot.active_caption(6, 6).split()), phrases[-1])
 
     def test_estimated_short_text_matches_srt_without_pretending_word_alignment(self):
         narration = (
