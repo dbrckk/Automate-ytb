@@ -5,7 +5,7 @@ from automate_ytb.choreography import CHOREOGRAPHY_VERSION,leg_position
 
 class PlantedFootGaitTests(unittest.TestCase):
     def test_walk_and_run_have_distinct_foot_phase_and_planted_stance(self):
-        self.assertIn("v9", CHOREOGRAPHY_VERSION)
+        self.assertIn("v10", CHOREOGRAPHY_VERSION)
         for action in ("walk","run"):
             left=leg_position(action,side="left")
             right=leg_position(action,side="right")

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .director import ACTIONS
 
-CHOREOGRAPHY_VERSION = "authored-action-choreography-v9-continuous-jump-eased-paws"
+CHOREOGRAPHY_VERSION = "authored-action-choreography-v10-synchronized-jump-followthrough"
 
 # Horizontal travel (px), horizontal Hz, vertical displacement (px),
 # vertical oscillator Hz and animation kind.
@@ -84,6 +84,26 @@ def secondary_position(action: str, *, base: int, side: str) -> str:
         "fly": 8.0, "talk": 2.0, "surprise": 6.6, "rest": 0.9,
     }[action]
     sign = "-" if side == "right" else "+"
+    if action == "jump":
+        # Share the body's exact 1.75s crouch, flight and landing timings.
+        # Zero-valued smoothstep windows make the secondary sprite periodic
+        # with zero boundary velocity, unlike unbounded sine oscillations.
+        phase = "mod(t,1.75)"
+        smooth = lambda v: f"(({v})*({v})*(3-2*({v})))"
+        normalized = lambda start, width: (
+            f"min(1,max(0,(({phase})-{start})/{width}))")
+        prep = smooth(normalized("0", "0.18"))
+        rise = smooth(normalized("0.18", "0.57"))
+        fall = smooth(normalized("0.75", "0.64"))
+        recover = smooth(normalized("1.39", "0.36"))
+        airborne = f"({rise}-{fall})"
+        anticipation = f"({prep}-{rise})"
+        recovery_pulse = f"({recover})*(1-({recover}))"
+        opposite = "+" if side == "right" else "-"
+        return (f"{base}{sign}{amplitude}*({airborne})"
+                f"{opposite}{amplitude * 0.22:.2f}*({anticipation})"
+                f"{sign}{amplitude * 0.20:.2f}*({recovery_pulse})"
+                f"*sin(18*max(0,({phase})-1.39))")
     # Two frequencies create gentle organic follow-through, without noise,
     # unbounded motion or non-deterministic video output.
     follow = max(1, round(amplitude * 0.13, 2))
