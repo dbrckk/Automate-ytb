@@ -43,12 +43,12 @@ SCENES = [
 # Multiple active camera angles use actual NASA animation frames (not still zooms).
 # Fractions sum to 1 for each scene; cuts remain inside its spoken sentence.
 SHOT_PLAN = {
-    0: [("time", 12.0, 0.63), ("rain", 2.3, 0.37)],            # Lake + precipitation hook
+    0: [("rain", 4.0, 0.58), ("time", 1.0, 0.42)],            # Lake + precipitation hook
     1: [("intro", 28.0, 0.57), ("rain", 0.8, 0.43)],           # Saturn then Titan surface
     2: [("lake", 0.5, 0.55), ("lake", 6.2, 0.45)],            # High-resolution liquid lakes
     3: [("cloud_model", 2.5, 0.56), ("cloud_model", 16.2, 0.44)], # Real NASA atmosphere model
     4: [("rain", 4.0, 0.58), ("time", 7.0, 0.42)],             # Actual methane rain animation
-    5: [("chemistry", 1.4, 0.52), ("time", 14.0, 0.48)],      # Chemistry and closing surface
+    5: [("chemistry", 1.4, 0.52), ("rain", 3.2, 0.48)],      # Chemistry and closing surface
 }
 VOICE = "af_heart"
 VOICE_SPEEDS = [1.04, 0.98, 0.94, 1.02, 1.00, 0.95]
