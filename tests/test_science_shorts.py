@@ -188,15 +188,19 @@ class ScienceShortsTests(unittest.TestCase):
         frame2 = flow(2/30)
         self.assertEqual(frame0.size, (995, 540))
         self.assertEqual(frame1.tobytes(), flow(1/30).tobytes())
-        self.assertIsNotNone(ImageChops.difference(frame0, frame1).getbbox())
-        self.assertIsNotNone(ImageChops.difference(frame1, frame2).getbbox())
+        # Pillow RGBA getbbox may ignore color differences when the alpha
+        # difference is zero. Compare the actual RGB pixels explicitly.
+        self.assertIsNotNone(ImageChops.difference(
+            frame0.convert("RGB"), frame1.convert("RGB")).getbbox())
+        self.assertIsNotNone(ImageChops.difference(
+            frame1.convert("RGB"), frame2.convert("RGB")).getbbox())
         # Different flow streams have independent animated particles and
         # displaced loop elements, not a static pictorial background.
         for y in (1033, 1197, 1361):
             row = frame1.crop((20, y-930-25, 970, y-930+25))
             background = Image.new("RGBA", row.size, (8, 28, 49, 255))
             self.assertIsNotNone(ImageChops.difference(
-                row, background).getbbox())
+                row.convert("RGB"), background.convert("RGB")).getbbox())
 
     def test_ocean_scene_remains_native_portrait_with_safe_overlay_bands(self):
         scene = PortraitScienceScene(
