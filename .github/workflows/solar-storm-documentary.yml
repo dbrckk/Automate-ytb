@@ -44,6 +44,7 @@ jobs:
             production/solar_storm/out/final/contact_sheet.jpg
             production/solar_storm/out/final/shot_contact_sheet.jpg
             production/solar_storm/out/final/shot_review.json
+            production/solar_storm/out/final/original_motion_review.json
             production/solar_storm/out/final/motion_graphics.json
             production/solar_storm/out/final/review_frames.json
             production/solar_storm/out/final/subtitles_en.srt
