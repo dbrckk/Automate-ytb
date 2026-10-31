@@ -52,7 +52,7 @@ def create_contact_sheet(video: Path, segments: list[dict], output: Path,
         raise ValueError("Need an encoded video and a valid review timeline")
     if labels is not None and (len(labels) != len(segments) or
             any(not isinstance(label, str) or not 1 <= len(label) <= 35 or
-                "\\n" in label or "\\r" in label for label in labels)):
+                "\n" in label or "\r" in label for label in labels)):
         raise ValueError("Invalid review frame labels")
     entries: list[dict] = []
     signatures: list[int] = []
