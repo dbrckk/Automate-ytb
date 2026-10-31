@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import sys
 
-from PIL import Image, ImageChops, ImageDraw, ImageOps, ImageStat, UnidentifiedImageError
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
 
 from .media_qa import probe_media
 from .production import _sha, _write_json, load_plan
@@ -38,6 +38,13 @@ ANIMATED_RIGS = frozenset({
     "original-science-v1",
 })
 FRAME_BYTES_MAX = 8_000_000
+# Advisory only. A deliberately minimalist portrait design is valid, so
+# central-only sharpness must never turn a technically sound MP4 into a fail.
+# These thresholds were checked against the supplied 360x640 banded example
+# and an original 1080x1920 science-animation preview.
+VERTICAL_BAND_MIN_CENTER_DETAIL = 2.5
+VERTICAL_BAND_MAX_OUTER_DETAIL = 0.9
+VERTICAL_BAND_DETAIL_RATIO = 6.0
 
 
 def _selection(scene_count: int, max_samples: int) -> list[int]:
@@ -92,6 +99,38 @@ def _motion_metrics(first: Image.Image, second: Image.Image) -> dict:
         "meanAbsoluteLumaChange": round(ImageStat.Stat(difference).mean[0], 3),
         "changedPixelFraction": round(sum(histogram[4:]) / total, 4),
         "method": "two-decoded-frames-grayscale-96x54",
+    }
+
+
+def _portrait_band_metrics(image: Image.Image) -> dict:
+    """Flag a sharply letterboxed strip surrounded by low-detail filler.
+
+    An authentic vertical composition should use the available canvas;
+    merely blurring an unrelated 16:9 image behind a center strip often
+    leaves negligible edge detail at both top and bottom. This is an
+    *editorial warning*, not proof of a defective image. Works on sampled
+    decoded MP4 RGB frames without network, OpenCV or learned models.
+    """
+    if image.width >= image.height:
+        raise ValueError("Portrait composition QA requires a vertical frame")
+    gray = ImageOps.grayscale(image.resize((180, 320)))
+    high_frequency = ImageChops.difference(
+        gray, gray.filter(ImageFilter.GaussianBlur(1.8)))
+    def energy(y0: int, y1: int) -> float:
+        return float(ImageStat.Stat(
+            high_frequency.crop((0, y0, 180, y1))).mean[0])
+    top, center, bottom = energy(10, 90), energy(100, 220), energy(230, 310)
+    suspect = (
+        center >= VERTICAL_BAND_MIN_CENTER_DETAIL
+        and max(top, bottom) <= VERTICAL_BAND_MAX_OUTER_DETAIL
+        and center / max(.03, (top+bottom)/2) >= VERTICAL_BAND_DETAIL_RATIO
+    )
+    return {
+        "topDetail": round(top, 3),
+        "centerDetail": round(center, 3),
+        "bottomDetail": round(bottom, 3),
+        "suspectedBandedComposition": bool(suspect),
+        "method": "decoded-grayscale-high-frequency-180x320-three-bands",
     }
 
 
@@ -187,6 +226,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
     entries, errors, warnings = [], [], []
     frozen_animated = 0
     motion_compared = 0
+    suspect_banded = 0
     previous_image = None
     duplicates = 0
     for idx in indices:
@@ -201,6 +241,9 @@ def generate(*, plan: Path, video: Path, destination: Path,
             errors.append(f"Unable to decode middle of scene {idx+1}")
             continue
         metrics = _metrics(image)
+        composition = _portrait_band_metrics(image) if portrait else None
+        if composition and composition["suspectedBandedComposition"]:
+            suspect_banded += 1
         # Sample again towards the end of the *same* scene. An unchanged
         # frame within an animated rig is more diagnostic than two neighboring
         # static compositions looking similar across a scene cut.
@@ -245,6 +288,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "sceneIndex": idx+1, "second": second,
             "narration": scene["narration"],
             "frame": image, "metrics": metrics,
+            "portraitComposition": composition,
             "lateTimeSeconds": late_second,
             "lateMetrics": late_metrics, "motion": scene_motion,
             "animatedRig": is_animated, "frozen": frozen,
@@ -258,6 +302,10 @@ def generate(*, plan: Path, video: Path, destination: Path,
         for x in entries)
     if len(entries) >= 3 and dark_count > len(entries) // 2:
         errors.append("Most sampled scenes appear almost completely black")
+    if portrait and len(entries) >= 3 and suspect_banded >= (len(entries)+1)//2:
+        warnings.append(
+            "Possible blurred-fill horizontal strip in portrait video: "
+            "inspect top/bottom detail and reframe original action in 9:16")
     if len(entries) >= 4 and duplicates >= len(entries)-1:
         warnings.append("Sampled scenes are visually identical; check scene transitions")
     destination = destination.resolve()
@@ -289,6 +337,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
         "nearDuplicateNeighborCount": duplicates,
         "motionPairsCompared": motion_compared,
         "frozenAnimatedSceneCount": frozen_animated,
+        "suspectedBandedPortraitSceneCount": suspect_banded,
         "pages": pages,
         # SHA of the actual JPEG artifacts, not just the source MP4: QA
         # can detect missing, stale, edited or substituted contact sheets.
@@ -300,6 +349,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "animatedRigExpected": x["animatedRig"],
             "frozenMotionDetected": x["frozen"],
             "motion": x["motion"],
+            "portraitComposition": x["portraitComposition"],
             "laterNearBlackFraction": (
                 x["lateMetrics"]["nearBlackFraction"]
                 if x["lateMetrics"] is not None else None),
@@ -310,6 +360,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "At most 24 scenes sampled twice; this cannot detect every bad frame.",
             "Still or very subtle motion can resemble a frozen animation at sample times.",
             "Dark scenes and repeated compositions may be artistically intentional.",
+            "Banded sharpness may be intentional; this heuristic only requests visual review.",
             "No fact-checking, copyright assessment or automatic approval to publish.",
         ],
     }
