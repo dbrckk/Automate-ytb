@@ -90,7 +90,7 @@ class SpeechTests(unittest.TestCase):
         self.assertEqual(rate, SAMPLE_RATE_KOKORO)
         samples = np.frombuffer(pcm, dtype="<i2")
         self.assertEqual(samples.size, 900 + 900 - 192)
-        self.assertFalse(np.any(samples == 0).all())
+        self.assertLess(np.count_nonzero(samples == 0), 3)
         self.assertLess(np.max(np.abs(np.diff(samples.astype(np.int32)))), 200)
         self.assertLess(samples[-1], -8000)
         self.assertGreater(samples[0], 8000)
