@@ -290,6 +290,9 @@ def generate(*, plan: Path, video: Path, destination: Path,
         "motionPairsCompared": motion_compared,
         "frozenAnimatedSceneCount": frozen_animated,
         "pages": pages,
+        # SHA of the actual JPEG artifacts, not just the source MP4: QA
+        # can detect missing, stale, edited or substituted contact sheets.
+        "pageSha256": {name: _sha(destination / name) for name in pages},
         "frames": [{
             "sceneIndex": x["sceneIndex"],
             "timeSeconds": round(x["second"], 3),
