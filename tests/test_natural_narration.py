@@ -25,7 +25,7 @@ class NaturalNarrationTests(unittest.TestCase):
         self.assertEqual(speaking_speed(style="natural"), .94)
         self.assertLess(speaking_speed(style="gentle"), .94)
         self.assertGreater(speaking_speed(style="lively"), 1)
-        self.assertIn("v1", VERSION)
+        self.assertRegex(VERSION, r"^kokoro-phrasing-v[1-9][0-9]*(?:-|$)")
         for payload in ("high;amovie=/secret", "fastest", "", None):
             with self.subTest(value=payload):
                 with self.assertRaises(ValueError):
