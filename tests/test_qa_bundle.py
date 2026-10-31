@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 import tempfile
+
+from PIL import Image
+from automate_ytb.production import _sha
 import unittest
 
 from automate_ytb.qa_bundle import consolidate
@@ -136,6 +139,92 @@ class QualityBundleTests(unittest.TestCase):
         self.assertFalse(reviewed()["technicalPreviewReady"])
         visual["frozenAnimatedSceneCount"] = 0
         self.assertTrue(reviewed()["technicalPreviewReady"])
+
+    def test_schema3_requires_existing_verified_contact_sheet_and_correct_orientation(self):
+        report_path = self.root / "visual-review.json"
+        original = json.loads(self.media.read_text(encoding="utf8"))
+        original["media"]["width"], original["media"]["height"] = 1080, 1920
+        self.media.write_text(json.dumps(original), encoding="utf8")
+        jpeg = self.root / "storyboard-01.jpg"
+        Image.new("RGB", (1120, 2030), (12, 34, 59)).save(
+            jpeg, "JPEG", quality=85)
+        visual = {
+            "schemaVersion": 3, "status": "sampled",
+            "technicalVisualCheckPassed": True,
+            "publicationApproved": False,
+            "sampledSceneCount": 3, "motionPairsCompared": 3,
+            "frozenAnimatedSceneCount": 0, "nearBlackSceneCount": 0,
+            "videoSha256": _sha(self.video),
+            "videoOrientation": "portrait",
+            "decodedReviewFrameSize": [360, 640],
+            "contactSheetPreservesFrame": True,
+            "contactSheetScenesPerPage": 4,
+            "pages": ["storyboard-01.jpg"],
+            "pageSha256": {"storyboard-01.jpg": _sha(jpeg)},
+            "errors": [], "warnings": [],
+        }
+        def check():
+            report_path.write_text(json.dumps(visual), encoding="utf8")
+            return consolidate(
+                structural_report=self.structural, media_report=self.media,
+                video=self.video, srt=self.srt, vtt=self.vtt,
+                output=self.output, visual_report=report_path)
+        good = check()
+        self.assertTrue(good["technicalPreviewReady"], good["errors"])
+        self.assertTrue(good["checks"]["contactSheetsVerified"])
+        self.assertEqual(good["checks"]["reviewOrientation"], "portrait")
+
+        visual["videoOrientation"] = "landscape"
+        self.assertFalse(check()["technicalPreviewReady"])
+        visual["videoOrientation"] = "portrait"
+        visual["decodedReviewFrameSize"] = [640, 360]
+        self.assertFalse(check()["technicalPreviewReady"])
+        visual["decodedReviewFrameSize"] = [360, 640]
+        visual["contactSheetScenesPerPage"] = 8
+        self.assertFalse(check()["technicalPreviewReady"])
+        visual["contactSheetScenesPerPage"] = 4
+        visual["pages"] = ["../../elsewhere.jpg"]
+        self.assertFalse(check()["technicalPreviewReady"])
+        visual["pages"] = ["storyboard-01.jpg"]
+        jpeg.unlink()
+        self.assertFalse(check()["technicalPreviewReady"])
+
+    def test_schema3_rejects_forged_or_unreadable_contact_sheet_jpeg(self):
+        report_path = self.root / "visual-review.json"
+        jpeg = self.root / "storyboard-01.jpg"
+        Image.new("RGB", (1120, 2030), (8, 25, 42)).save(
+            jpeg, "JPEG", quality=84)
+        data = {
+            "schemaVersion": 3, "status": "sampled",
+            "technicalVisualCheckPassed": True, "publicationApproved": False,
+            "sampledSceneCount": 4, "motionPairsCompared": 4,
+            "frozenAnimatedSceneCount": 0, "nearBlackSceneCount": 0,
+            "videoSha256": _sha(self.video), "videoOrientation": "landscape",
+            "decodedReviewFrameSize": [640, 360],
+            "contactSheetPreservesFrame": False,
+            "contactSheetScenesPerPage": 8, "pages": ["storyboard-01.jpg"],
+            "pageSha256": {"storyboard-01.jpg": _sha(jpeg)},
+            "errors": [], "warnings": [],
+        }
+        def verify():
+            report_path.write_text(json.dumps(data), encoding="utf8")
+            return consolidate(
+                structural_report=self.structural, media_report=self.media,
+                video=self.video, srt=self.srt, vtt=self.vtt,
+                output=self.output, visual_report=report_path)
+        self.assertTrue(verify()["technicalPreviewReady"])
+        jpeg.write_bytes(jpeg.read_bytes() + b"tampered")
+        self.assertFalse(verify()["technicalPreviewReady"])
+        data["pageSha256"]["storyboard-01.jpg"] = _sha(jpeg)
+        self.assertTrue(verify()["technicalPreviewReady"])
+        # An internally consistent checksum is not enough if the file
+        # is not the expected JPEG dimensions or cannot be decoded.
+        Image.new("RGB", (900, 1400), "black").save(jpeg, "JPEG")
+        data["pageSha256"]["storyboard-01.jpg"] = _sha(jpeg)
+        self.assertFalse(verify()["technicalPreviewReady"])
+        jpeg.write_bytes(b"x" * 2048)
+        data["pageSha256"]["storyboard-01.jpg"] = _sha(jpeg)
+        self.assertFalse(verify()["technicalPreviewReady"])
 
     def test_story_preflight_warnings_propagate_without_false_auto_approval(self):
         from automate_ytb.production import _sha

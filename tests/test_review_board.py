@@ -60,6 +60,8 @@ class ReviewBoardTests(unittest.TestCase):
             self.assertEqual(image.size, (1120, 2030))
         persisted = json.loads((self.folder/"board"/"visual-review.json").read_text())
         self.assertEqual(persisted["schemaVersion"], 3)
+        self.assertEqual(len(persisted["pageSha256"]), 1)
+        self.assertEqual(len(persisted["pageSha256"]["storyboard-01.jpg"]), 64)
         self.assertEqual(persisted["videoOrientation"], "landscape")
         self.assertEqual(persisted["decodedReviewFrameSize"], [640, 360])
         self.assertEqual(persisted["contactSheetScenesPerPage"], 8)
@@ -88,6 +90,9 @@ class ReviewBoardTests(unittest.TestCase):
         self.assertEqual(reviewed["pages"],
                          ["storyboard-01.jpg", "storyboard-02.jpg"])
         self.assertEqual(reviewed["sampledSceneCount"], 5)
+        self.assertEqual(len(reviewed["pageSha256"]), 2)
+        self.assertTrue(all(len(digest) == 64
+                            for digest in reviewed["pageSha256"].values()))
         self.assertEqual(reviewed["motionPairsCompared"], 5)
         self.assertTrue(all(
             item["motion"]["changedPixelFraction"] > 0.01
