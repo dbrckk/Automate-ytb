@@ -38,6 +38,25 @@ class MediaQualityTests(unittest.TestCase):
                 generate_vtt(p,Path(tmp)/"out.vtt")
 
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
+                         "FFmpeg and FFprobe required")
+    def test_actual_native_1080x1920_h264_short_has_no_false_ratio_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            video = Path(tmp) / "portrait.mp4"
+            subprocess.run(
+                ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                 "-y", "-f", "lavfi",
+                 "-i", "color=c=navy:s=1080x1920:r=2:d=0.5",
+                 "-frames:v", "1", "-an", "-c:v", "libx264",
+                 "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(video)],
+                check=True, capture_output=True, text=True, timeout=30)
+            report = assess(video=video)
+            self.assertEqual((report["media"]["width"], report["media"]["height"]),
+                             (1080, 1920))
+            self.assertEqual(report["status"], "pass", report["warnings"])
+            self.assertEqual(report["warnings"], [])
+            self.assertFalse(report["publicationApproved"])
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
                          "FFmpeg required")
     def test_real_render_passes_mp4_qa_and_exports_webvtt(self):
         with tempfile.TemporaryDirectory() as tmp:
