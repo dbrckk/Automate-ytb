@@ -32,6 +32,8 @@ jobs:
           assert q["shot_count"]>=10, q
           print("Validated original QA:",q["shot_count"],"shots")
           PY
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
           ffprobe -v error -show_entries format=duration,size \
             -of default=noprint_wrappers=1 \
             "$RUNNER_TEMP/solar/final/Solar_Storm_Short_EN_1080x1920.mp4"
