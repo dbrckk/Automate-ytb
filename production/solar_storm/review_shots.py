@@ -9,7 +9,10 @@ import math
 from pathlib import Path
 import re
 
-from .review_frames import create_contact_sheet
+if __package__:
+    from .review_frames import create_contact_sheet
+else:
+    from review_frames import create_contact_sheet
 
 
 def timeline(shots: list[dict], video_duration: float) -> tuple[list[dict], list[str]]:
@@ -32,7 +35,8 @@ def timeline(shots: list[dict], video_duration: float) -> tuple[list[dict], list
         if (isinstance(length, bool) or not isinstance(length, (int, float)) or
                 not math.isfinite(length) or not 0.80 <= length <= 25 or
                 type(scene) is not int or not 0 <= scene < 12 or
-                scene < last_scene or scene > last_scene + 1 and last_scene >= 0 or
+                scene < last_scene or (last_scene == -1 and scene != 0) or
+                (last_scene >= 0 and scene > last_scene + 1) or
                 not isinstance(source, str) or
                 not re.fullmatch(r"[a-z0-9_-]{1,24}", source)):
             raise ValueError(f"Invalid shot metadata for shot {idx}")
@@ -41,6 +45,9 @@ def timeline(shots: list[dict], video_duration: float) -> tuple[list[dict], list
         labels.append(f"SHOT {idx:02d} · {source} · {start+length/2:.1f}s")
         current = end
         last_scene = scene
+
+    if last_scene != 5:
+        raise ValueError("Solar Storm shot report must include all six narrated scenes")
 
     # Concat stream-copy and AAC round frame boundaries; tolerate subsecond
     # accumulated rounding but never trust a wildly wrong report timeline.
