@@ -26,7 +26,7 @@ MEDIA={
     "sun304":"https://svs.gsfc.nasa.gov/vis/a010000/a014500/a014536/20240222_XFlare_304A_2048p30.webm",
     "cme":"https://svs.gsfc.nasa.gov/vis/a020000/a020200/a020297/H_0219_VC_Animation_Earth_Only.mp4",
     "satellite":"https://svs.gsfc.nasa.gov/vis/a010000/a014900/a014956/14956_SatelliteImpact01_4K_YouTube.mp4",
-    "radio":"https://svs.gsfc.nasa.gov/vis/a010000/a014900/a014956/14956_RadioSignals_4K_YouTube.mp4",
+    "satellite2":"https://svs.gsfc.nasa.gov/vis/a010000/a014900/a014956/14956_SatelliteImpact02_4K_YouTube.mp4",
     "aurora":"https://svs.gsfc.nasa.gov/vis/a010000/a015000/a015077/15077_AuroraTimelapse_4K_YouTube.mp4",
 }
 
@@ -45,7 +45,7 @@ SHOT_PLAN=[
     [("sun171",8.0,.52),("sun131",17.0,.48)],
     [("sun304",24.0,.49),("cme",3.0,.51)],
     [("cme",5.5,.60),("cme",12.0,.40)],
-    [("aurora",9.0,.35),("satellite",2.0,.34),("radio",2.0,.31)],
+    [("aurora",9.0,.35),("satellite",2.0,.34),("satellite2",3.0,.31)],
     [("aurora",21.0,.56),("sun171",24.0,.44)],
 ]
 VOICE="am_michael"
