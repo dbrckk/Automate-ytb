@@ -293,8 +293,11 @@ class PortraitScienceScene:
         d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
                             fill=(5, 17, 37, 240),
                             outline=(84, 165, 190, 150), width=2)
-        summary, summary_size = self._caption_layouts[
-            self.active_caption(t, duration)]
+        # Resolve the active phrase first: this lazily validates and fills
+        # _caption_layouts. Evaluating the dict before active_caption() would
+        # hold a stale empty reference on the first video frame.
+        active_text = self.active_caption(t, duration)
+        summary, summary_size = self._caption_layouts[active_text]
         for i, line in enumerate(summary):
             d.text((111, 1551 + 46*i), line,
                    font=_font(summary_size, True), fill=INK)
