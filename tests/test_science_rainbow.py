@@ -55,6 +55,10 @@ class RainbowScienceTests(unittest.TestCase):
                 self.assertEqual(shot.rainbow_beat, beat)
                 self.assertIsNone(shot.beat)
                 self.assertTrue(shot.english)
+                # Daytime optics must never reuse the dark starfield plate.
+                sky = shot.base.getpixel((12, 110))
+                self.assertGreater(sky[1], 40)
+                self.assertGreater(sky[2], 95)
                 initial = shot.frame(.1, 6.0)
                 following = shot.frame(.15, 6.0)
                 self.assertEqual(initial.size, PORTRAIT_SIZE)
@@ -88,7 +92,7 @@ class RainbowScienceTests(unittest.TestCase):
     def test_unsupported_optical_narration_must_fail_instead_of_faking_physics(self):
         with self.assertRaisesRegex(ValueError, "Rainbow Shorts need authored narration"):
             PortraitScienceScene(
-                topic=self.topic, narration="Magic makes colorful surprises!",
+                topic=self.topic, narration="Magic makes surprises happen!",
                 scene_index=1)
         with self.assertRaises(ValueError):
             PortraitScienceScene(
