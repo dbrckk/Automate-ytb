@@ -41,6 +41,14 @@ def _plain(value: str) -> str:
     return "".join(ch for ch in folded if not unicodedata.combining(ch))
 
 
+def supports_topic(topic: str) -> bool:
+    """Only visibly supported rainbows, not arbitrary sky/space questions."""
+    if not isinstance(topic, str):
+        raise ValueError("Rainbow science requires an authored topic")
+    return bool(re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b",
+                          _plain(topic)))
+
+
 def classify(topic: str, narration: str) -> str | None:
     """Select a known optical concept by narration semantics, not scene index.
 
@@ -49,7 +57,7 @@ def classify(topic: str, narration: str) -> str | None:
     """
     if not isinstance(topic, str) or not isinstance(narration, str):
         raise ValueError("Rainbow science requires authored text")
-    if not re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b", _plain(topic)):
+    if not supports_topic(topic):
         return None
     text = _plain(narration)
     if re.search(r"\b(reflect\w*|reflection|reflech\w*|reflexion)\b", text):
