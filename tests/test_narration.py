@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 import wave
 
-from automate_ytb.narration import SpeechEngine, SAMPLE_RATE_KOKORO
+from automate_ytb.narration import SpeechEngine, SAMPLE_RATE_KOKORO, _segment_pause_ms
 from automate_ytb.episode import _narrate_scenes
 from automate_ytb.production import load_plan
 from automate_ytb.scene_plan import plan
@@ -56,10 +56,63 @@ class SpeechTests(unittest.TestCase):
             self.assertEqual(rate, SAMPLE_RATE_KOKORO)
             self.assertEqual(instances[0].lang_code, "f")
             self.assertEqual(instances[0].last_voice, "ff_siwis")
-            self.assertEqual(len(pcm) // 2, 3 + 2400 + 2)
+            # Sentence punctuation receives 70ms, not a fixed 100ms for
+            # every arbitrary model chunk.
+            self.assertEqual(len(pcm) // 2, 3 + 1680 + 2)
             self.assertEqual(len(instances), 1)
             voice.audio("Une seconde phrase.")
             self.assertEqual(len(instances), 1)
+
+    def test_segment_pause_is_driven_by_punctuation_not_chunk_boundaries(self):
+        self.assertEqual(_segment_pause_ms("Une phrase continue"), 0)
+        self.assertEqual(_segment_pause_ms("Un mot, "), 30)
+        self.assertEqual(_segment_pause_ms("La fin. "), 70)
+        self.assertEqual(_segment_pause_ms("Pourquoi ?"), 70)
+        self.assertEqual(_segment_pause_ms(None), 0)
+
+    def test_unpunctuated_kokoro_chunks_crossfade_without_audible_silence(self):
+        import numpy as np
+        class FakePipeline:
+            def __init__(self, **kwargs):
+                pass
+            def __call__(self, text, **kwargs):
+                yield types.SimpleNamespace(
+                    graphemes="La voix ne s'arrête pas",
+                    audio=np.full(900, 0.25, dtype="float32"))
+                yield types.SimpleNamespace(
+                    graphemes="au milieu de la phrase.",
+                    audio=np.full(900, -0.25, dtype="float32"))
+        kokoro = types.ModuleType("kokoro")
+        kokoro.KPipeline = FakePipeline
+        with patch.dict(sys.modules, {"kokoro": kokoro}):
+            pcm, rate = SpeechEngine(engine="kokoro", language="fr").audio(
+                "La voix ne s'arrête pas au milieu de la phrase.")
+        self.assertEqual(rate, SAMPLE_RATE_KOKORO)
+        samples = np.frombuffer(pcm, dtype="<i2")
+        self.assertEqual(samples.size, 900 + 900 - 192)
+        self.assertLess(np.count_nonzero(samples == 0), 3)
+        self.assertLess(np.max(np.abs(np.diff(samples.astype(np.int32)))), 200)
+        self.assertLess(samples[-1], -8000)
+        self.assertGreater(samples[0], 8000)
+
+    def test_comma_keeps_short_pause_for_prosody(self):
+        import numpy as np
+        class FakePipeline:
+            def __init__(self, **kwargs):
+                pass
+            def __call__(self, text, **kwargs):
+                yield ("Bonjour,", "phonemes", np.full(500, 0.25, dtype="float32"))
+                yield ("comment allez-vous?", "phonemes",
+                       np.full(600, 0.3, dtype="float32"))
+        kokoro = types.ModuleType("kokoro")
+        kokoro.KPipeline = FakePipeline
+        with patch.dict(sys.modules, {"kokoro": kokoro}):
+            pcm, rate = SpeechEngine(engine="kokoro", language="fr").audio(
+                "Bonjour, comment allez-vous?")
+        signal = np.frombuffer(pcm, dtype="<i2")
+        self.assertEqual(rate, SAMPLE_RATE_KOKORO)
+        self.assertEqual(signal.size, 500 + 720 + 600)
+        self.assertTrue(np.all(signal[500:1220] == 0))
 
     def test_kokoro_refuses_invalid_or_empty_audio(self):
         import numpy as np

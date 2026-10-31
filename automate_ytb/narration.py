@@ -16,6 +16,23 @@ VOICE_CHOICES = {"fr": frozenset({"ff_siwis"}),
 SAMPLE_RATE_KOKORO = 24000
 
 
+def _segment_pause_ms(graphemes: str | None) -> int:
+    """Extra silence after an explicitly punctuated Kokoro segment.
+
+    The model already renders many phrase pauses. Unpunctuated segments
+    represent chunk boundaries, not sentence breaks, and must not acquire
+    an artificial 100 ms stop.
+    """
+    if not isinstance(graphemes, str):
+        return 0
+    ending = graphemes.rstrip()
+    if ending.endswith((".", "!", "?", "…", "。", "！", "？")):
+        return 70
+    if ending.endswith((",", ";", ":", "，", "；", "：")):
+        return 30
+    return 0
+
+
 class SpeechEngine:
     def __init__(self, *, engine: str, language: str, voice: str | None = None):
         if engine not in ("espeak", "kokoro"):
@@ -70,14 +87,15 @@ class SpeechEngine:
                 or not 0.82 <= self.speed <= 1.12):
             raise ValueError("Unsupported natural narration speaking rate")
         segments = []
+        segment_texts = []
         for generated in self._pipeline(text, voice=self.voice, speed=self.speed):
-            # Kokoro 0.9.4 returns a KPipeline.Result carrying .audio.
-            # Older versions also documented (graphemes, phonemes, audio)
-            # tuples; accepting both keeps existing user projects readable.
+            # Kokoro 0.9.4 returns KPipeline.Result.audio/graphemes.
+            # Older versions documented (graphemes, phonemes, audio) tuples.
             if hasattr(generated, "audio"):
                 sound = generated.audio
+                chunk_text = getattr(generated, "graphemes", None)
             elif isinstance(generated, (tuple, list)) and len(generated) >= 3:
-                sound = generated[2]
+                chunk_text, _, sound = generated[:3]
             else:
                 raise RuntimeError("Kokoro returned an unsupported audio segment")
             if hasattr(sound, "detach"):
@@ -87,18 +105,35 @@ class SpeechEngine:
                 continue
             if not np.isfinite(samples).all():
                 raise RuntimeError("Kokoro returned non-finite audio samples")
-            if samples.size > 24000 * 600:
+            if samples.size > SAMPLE_RATE_KOKORO * 600:
                 raise RuntimeError("Kokoro audio segment is unexpectedly long")
             segments.append(samples)
+            segment_texts.append(chunk_text)
         if not segments:
             raise RuntimeError("Kokoro did not synthesize any audio")
-        # Add a small inter-segment breath. Each scene gets final silent padding
-        # from the episode timeline composer; nothing gets cut to fit the video.
-        separator = np.zeros(2400, dtype=np.float32)
-        together = np.concatenate(
-            [piece for i, audio in enumerate(segments)
-             for piece in ((separator, audio) if i else (audio,))]
-        )
+
+        # Avoid 100 ms dead air between arbitrary model chunks. Unpunctuated
+        # chunks receive a short linear crossfade, suppressing discontinuity
+        # clicks. Preserve a modest pause only at actual punctuation.
+        together = segments[0].copy()
+        for index, next_audio in enumerate(segments[1:], start=1):
+            pause_ms = _segment_pause_ms(segment_texts[index - 1])
+            if pause_ms:
+                silence = np.zeros(
+                    round(SAMPLE_RATE_KOKORO * pause_ms / 1000),
+                    dtype=np.float32)
+                together = np.concatenate((together, silence, next_audio))
+                continue
+            overlap = min(192, together.size // 2, next_audio.size // 2)
+            if overlap >= 8:
+                weights = np.linspace(0, 1, overlap + 2,
+                                      dtype=np.float32)[1:-1]
+                together[-overlap:] = (
+                    together[-overlap:] * (1 - weights)
+                    + next_audio[:overlap] * weights)
+                together = np.concatenate((together, next_audio[overlap:]))
+            else:
+                together = np.concatenate((together, next_audio))
         pcm = (np.clip(together, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
         if not pcm:
             raise RuntimeError("Kokoro output is empty")
