@@ -40,3 +40,13 @@ Do **not** distribute the raw NASA/Kokoro base as the final short: use `enhanced
 2. A shot-by-shot inspector to choose crop focal points rather than fixed center framing; maintain 3D continuity and avoid black, empty frames.
 3. Replace minimal atmospheric sound design with a professionally mastered original score when the proper licensed assets are available.
 4. Add only evidence-backed visualization layers (methane rain, freeze temperature or rings), not decorative HUD elements.
+
+## Documentary shot direction — October 31 revision
+
+The renderer defines `SHOT_PLAN`: six factual narration scenes are now edited into **11 separate shots**. This is an edit of moving NASA animation frames, not a slideshow or crop of still images. The cut fractions remain inside each sentence and cover its complete spoken duration. Source offsets avoid long periods of empty sky, and all source shots use FFmpeg at 1080×1920 / 30 fps.
+
+The first run of this plan exposed two pale-blue sky shots unsuitable for the described orange Titan atmosphere. Those source selections were explicitly corrected before delivery. Editorial QA should still reject misleading color/planet depictions and verify NASA sources are visualizations, not surface photography.
+
+The subtitle compositor now **starts new groups at scene boundaries** and terminates groups at sentence punctuation so captions cannot show words from the next spoken scene. Mobile readability uses a larger outlined sans-serif face with a bottom safety margin, while the acoustic aligner still distinguishes directly recognized words from interpolated numerical expressions.
+
+This upgrade intentionally does **not** claim photorealism or a cinematic-grade human narrator. The next major quality task should be to curate more diverse professionally animated source material with verified physics and stronger storytelling, rather than apply more filters.
