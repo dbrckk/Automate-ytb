@@ -62,7 +62,8 @@ on:
         description: "Average shot length in seconds (3-20)"
       resolution:
         type: choice
-        options: [720p, 1080p]
+        description: "720p or 1080p landscape, shorts = original 1080x1920 science portrait (9:16)"
+        options: [720p, 1080p, shorts]
         default: 720p
       render_profile:
         type: choice
