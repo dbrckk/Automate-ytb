@@ -25,11 +25,11 @@ jobs:
     with:
       topic: "Why Do Ocean Currents Move?"
       original_script: >-
-        The Sun warms tropical oceans more strongly than polar seas.
-        Winds push surface water into large currents.
-        Earth's rotation bends the paths of moving water.
-        Cold salty water can sink and travel through the deep ocean.
-        These movements help redistribute heat around the planet.
+        Sunlight warms tropical seas more than polar waters, creating large differences in ocean temperature.
+        Global winds push surface water, driving currents that travel thousands of kilometers across ocean basins.
+        Earth's rotation bends these moving currents through the Coriolis effect, helping form rotating ocean gyres.
+        In polar regions, cold salty water grows dense and sinks, feeding the deep ocean circulation.
+        Together, these connected currents move heat around Earth and influence weather, climate, and marine life.
       character: "Original animated Earth and ocean science graphics"
       style: science
       language: en
