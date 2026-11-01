@@ -45,8 +45,8 @@ jobs:
       soundtrack: ambient
       transition: dissolve
       caption_timing: audio
-      duration_seconds: 35
-      shot_seconds: 7
+      duration_seconds: 36
+      shot_seconds: 7.2
       resolution: shorts
       render_profile: high
 
