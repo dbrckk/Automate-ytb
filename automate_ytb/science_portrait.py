@@ -20,12 +20,15 @@ from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
                               daylight_background, BADGES as RAINBOW_BADGES)
+from .science_lightning import (classify as classify_lightning, draw_lightning,
+                                supports_topic as supports_lightning,
+                                storm_background, BADGES as LIGHTNING_BADGES)
 
 from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v9-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
+PORTRAIT_VERSION = "original-science-shorts-v10-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
 INK = (238, 247, 250, 255)
 
 
@@ -178,15 +181,21 @@ class PortraitScienceScene:
         folded = "".join(c for c in folded if not unicodedata.combining(c))
         is_earth = bool(re.search(r"\b(earth|terre|oceans?|oceanique)\b", folded))
         is_rainbow = bool(re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b", folded))
-        if not (is_earth or is_rainbow):
-            raise ValueError("Science Shorts support Earth/ocean or authored rainbow topics only")
+        is_lightning = supports_lightning(topic)
+        if not (is_earth or is_rainbow or is_lightning):
+            raise ValueError("Science Shorts require a supported Earth/ocean, rainbow or lightning topic")
         if type(scene_index) is not int or not 1 <= scene_index <= 1200:
             raise ValueError("Invalid science scene index")
         self.topic, self.narration, self.scene_index = topic, narration, scene_index
         self.mode = scene_mode(narration)
         self.beat = classify_storyboard(topic, narration)
         self.rainbow_beat = classify_rainbow(topic, narration)
+        self.lightning_beat = classify_lightning(topic, narration)
         self.earth_stop_beat = classify_earth_stop(topic, narration)
+        if is_lightning and self.lightning_beat is None:
+            raise ValueError(
+                "Lightning Shorts require authored charge, leader, upward "
+                "connection, return stroke or thunder narration")
         if is_rainbow and self.rainbow_beat is None:
             raise ValueError(
                 "Rainbow Shorts need authored narration on sunlight, refraction, "
@@ -195,11 +204,16 @@ class PortraitScienceScene:
             r"\b(the|what|earth|would|could|ocean|oceans|wind|winds|"
             r"because|sunlight|waters|heats|currents|sinks|gyres|climate|"
             r"sun|white|colors|light|raindrop|rainbow|reflects|"
+            r"lightning|electric|charge|thunder|cloud|storm|leader|"
             r"entering|refracts|leaving|millions|observer|arc)\b",
-            narration, flags=re.IGNORECASE))
+            narration, flags=re.IGNORECASE)) or bool(
+                is_lightning and re.search(
+                    r"\b(how|why|lightning|thunderstorm|thunderstorms)\b",
+                    topic, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
-        self.base = daylight_background(seed) if is_rainbow else _sky(seed)
+        self.base = (storm_background() if is_lightning else
+                     daylight_background(seed) if is_rainbow else _sky(seed))
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
@@ -285,30 +299,60 @@ class PortraitScienceScene:
         d = ImageDraw.Draw(picture, "RGBA")
         # Explicit mobile-safe composition: keep title below top UI and
         # captions above the lower controls. Never crop original content.
-        d.rounded_rectangle((55, 190, 1025, 407), radius=34,
-                            fill=(7, 20, 41, 232), outline=CYAN+(125,), width=3)
         title, title_size = self._title_layout
-        for i, row in enumerate(title):
-            d.text((104, 234 + 68*i), row,
-                   font=_font(title_size, bold=True), fill=INK)
         badges = {
             "orbital": ("EARTH IN MOTION", "LA TERRE EN MOUVEMENT"),
             "daylight": ("DAY AND NIGHT", "JOUR ET NUIT"),
             "ocean": ("OCEAN CURRENTS", "MOUVEMENTS DES OCÉANS"),
             "atmosphere": ("ATMOSPHERE", "ATMOSPHÈRE"),
         }
-        d.rounded_rectangle((80, 477, 750, 537), radius=22,
-                            fill=(12, 47, 72, 234))
         science_badge = (
             EARTH_STOP_LABELS[self.earth_stop_beat] if self.earth_stop_beat
+            else LIGHTNING_BADGES[self.lightning_beat] if self.lightning_beat
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
-        d.text((113, 488), science_badge[0 if self.english else 1],
-               font=_font(36, bold=True), fill=GOLD+(255,))
+        if self.lightning_beat is not None:
+            # Cinematic compact editorial typography, actual compositing:
+            # a translucent overlay must blend, not overwrite RGBA alpha.
+            overlay = Image.new("RGBA", picture.size)
+            ui = ImageDraw.Draw(overlay)
+            ui.rounded_rectangle((61, 169, 1019, 317), radius=24,
+                                 fill=(5, 17, 35, 147),
+                                 outline=(121, 185, 214, 91), width=2)
+            for i, row in enumerate(title):
+                ui.text((94, 194 + 55*i), row,
+                        font=_font(title_size, bold=True), fill=INK)
+            ui.rounded_rectangle((78, 358, 736, 412), radius=17,
+                                 fill=(13, 46, 71, 119))
+            ui.text((103, 366), science_badge[0 if self.english else 1],
+                    font=_font(31, bold=True), fill=GOLD+(255,))
+            # A subtle stage progress rule, not a static 2D title card.
+            beat_number = list(LIGHTNING_BADGES).index(self.lightning_beat)
+            ui.line((81, 440, 991, 440),
+                    fill=(128, 177, 199, 65), width=3)
+            ui.line((81, 440, 81 + 910*(beat_number+1)//5, 440),
+                    fill=(143, 225, 248, 166), width=4)
+            picture.alpha_composite(overlay)
+            d = ImageDraw.Draw(picture, "RGBA")
+        else:
+            d.rounded_rectangle((55, 190, 1025, 407), radius=34,
+                                fill=(7, 20, 41, 232),
+                                outline=CYAN+(125,), width=3)
+            for i, row in enumerate(title):
+                d.text((104, 234 + 68*i), row,
+                       font=_font(title_size, bold=True), fill=INK)
+            d.rounded_rectangle((80, 477, 750, 537), radius=22,
+                                fill=(12, 47, 72, 234))
+            d.text((113, 488), science_badge[0 if self.english else 1],
+                   font=_font(36, bold=True), fill=GOLD+(255,))
         if self.earth_stop_beat is not None:
             draw_earth_stop(picture, self.earth_stop_beat, t, duration,
                             self.english, self._planet_at)
+            d = ImageDraw.Draw(picture, "RGBA")
+        elif self.lightning_beat is not None:
+            draw_lightning(picture, self.lightning_beat, t, duration,
+                           self.english)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
@@ -389,15 +433,24 @@ class PortraitScienceScene:
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
         # Compact subtitle excerpt in a dedicated lower-middle safe band.
-        d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
-                            fill=(5, 17, 37, 240),
-                            outline=(84, 165, 190, 150), width=2)
-        # Resolve the active phrase first: this lazily validates and fills
-        # _caption_layouts. Evaluating the dict before active_caption() would
-        # hold a stale empty reference on the first video frame.
+        # Resolve speech-synthesized cues before drawing, not guessed timing.
         active_text = self.active_caption(t, duration)
         summary, summary_size = self._caption_layouts[active_text]
-        for i, line in enumerate(summary):
-            d.text((111, 1551 + 46*i), line,
-                   font=_font(summary_size, True), fill=INK)
+        if self.lightning_beat is not None:
+            captions = Image.new("RGBA", picture.size)
+            cd = ImageDraw.Draw(captions)
+            cd.rounded_rectangle((65, 1523, 1015, 1698), radius=24,
+                                 fill=(4, 14, 30, 171),
+                                 outline=(110, 187, 218, 83), width=2)
+            for i, line in enumerate(summary):
+                cd.text((108, 1547 + 46*i), line,
+                        font=_font(summary_size, True), fill=INK)
+            picture.alpha_composite(captions)
+        else:
+            d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
+                                fill=(5, 17, 37, 240),
+                                outline=(84, 165, 190, 150), width=2)
+            for i, line in enumerate(summary):
+                d.text((111, 1551 + 46*i), line,
+                       font=_font(summary_size, True), fill=INK)
         return picture.convert("RGB")

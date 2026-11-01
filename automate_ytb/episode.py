@@ -306,9 +306,10 @@ def build_preview(*, plan_path: Path, output: Path,
     data = production.load_plan(plan_path)
     if style == "science":
         from .science_rainbow import supports_topic as rainbow_topic
-        if rainbow_topic(data["topic"]) and resolution != "shorts":
+        from .science_lightning import supports_topic as lightning_topic
+        if (rainbow_topic(data["topic"]) or lightning_topic(data["topic"])) and resolution != "shorts":
             raise ValueError(
-                "Rainbow physics has original native 9:16 Shorts artwork only; "
+                "Rainbow and lightning physics have original native 9:16 Shorts artwork only; "
                 "choose --resolution shorts instead of false landscape scenes")
     thumbs = output / "thumbnails"
     thumbs.mkdir(exist_ok=True)

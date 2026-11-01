@@ -1,0 +1,66 @@
+name: Verify original lightning-storm science Shorts
+
+# Independent science episode, never substitutes Earth-stop frames.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/lightning-science-release-candidate.yml"
+      - "automate_ytb/science_lightning.py"
+      - "automate_ytb/science_lightning_fx.py"
+      - "automate_ytb/science_portrait.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/lightning-science-release-candidate.yml"
+      - "automate_ytb/science_lightning.py"
+      - "automate_ytb/science_lightning_fx.py"
+      - "automate_ytb/science_portrait.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: original-lightning-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render-and-verify:
+    name: Original English lightning science with Kokoro and five actions
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "How Does Lightning Form?"
+      original_script: >-
+        Inside thunderclouds, colliding ice crystals and water droplets separate positive and negative electrical charges.
+        As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.
+        Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.
+        A powerful return stroke races upward along the connected channel, producing the brilliant flash we call lightning.
+        The lightning channel superheats surrounding air, causing rapid expansion and a pressure wave that we hear as thunder.
+      character: "Original authored animated storm-cloud charges, stepped leader, upward streamer, return stroke and pressure wave, no globe or repeated planet footage"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 36
+      shot_seconds: 7.2
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm original lightning MP4 and natural English narration
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          {
+            echo '### ORIGINAL lightning-science episode — technical QA passed'
+            echo 'Five distinct authored scenes: collisions and charge separation, descending leader, upward attachment, return stroke, thunder shockwave.'
+            echo 'Native 1080x1920 H264 30fps; English Kokoro af_heart voice; music; audio-aligned subtitles.'
+            echo 'Retrieve the playable MP4 from **automate-ytb-free-preview** in this run.'
+            echo 'Scientific and editorial review, including timing of visible actions, remains necessary before YouTube release.'
+          } >> "$GITHUB_STEP_SUMMARY"
