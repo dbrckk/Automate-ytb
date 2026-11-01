@@ -22,6 +22,7 @@ from .earth_story_actions import draw_story_actions
 from .science_city3d import draw_city_mesh
 from .science_people3d import draw_wind_actors3d
 from .science_vehicle3d import draw_vehicle3d
+from .science_astronaut3d import draw_astronaut3d
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -270,31 +271,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
         _arrow(d,280,1411,round(440*(1-.38*u)),GOLD)
         d.line((540,1017,540+360*math.cos(a),1017+360*math.sin(a)),
                fill=GOLD,width=7)
-    else:
-        # Fully articulated, weightless astronaut instead of a static icon.
-        cx=540+round(72*math.sin(t*.65))
-        cy=1050+round(65*math.sin(t*.9))
-        d.ellipse((cx-103,cy-182,cx+103,cy+23),fill=(232,245,254,235))
-        d.ellipse((cx-80,cy-157,cx+80,cy-31),fill=(34,112,162,242))
-        d.ellipse((cx-55,cy-132,cx-8,cy-111),fill=(200,248,255,180))
-        d.rounded_rectangle((cx-95,cy-5,cx+95,cy+199),radius=40,
-                            fill=(222,230,237,255),
-                            outline=CYAN,width=5)
-        d.rounded_rectangle((cx-52,cy+32,cx+52,cy+102),radius=18,
-                            fill=(35,111,149,255))
-        for side in (-1,1):
-            angle=math.sin(t*1.7+side)*.6
-            hx=cx+side*(155+27*math.sin(angle))
-            hy=cy+42+53*math.cos(angle)
-            d.line((cx+side*74,cy+42,hx,hy),
-                   fill=(235,239,250,255),width=32)
-            d.ellipse((hx-23,hy-23,hx+23,hy+23),fill=GOLD)
-            footx=cx+side*(60+31*math.sin(t*1.4+side))
-            footy=cy+294+29*math.sin(t*1.2+side)
-            d.line((cx+side*46,cy+170,footx,footy),
-                   fill=(228,239,248,255),width=39)
-            d.rounded_rectangle((footx-31,footy-17,footx+31,footy+23),
-                                radius=12,fill=(91,151,189,255))
+    else:  # astronaut — world-space projected 3D and its own cinematic camera
+        draw_astronaut3d(picture, t, duration)
     # Story-specific foreground motions depend on the same continuous clock.
     # They materially interact with the shown subject rather than merely
     # panning a generic still image behind subtitles.
