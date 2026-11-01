@@ -10,6 +10,7 @@ on:
       - "automate_ytb/earth_kinetic_fx.py"
       - "automate_ytb/earth_cinematic_depth.py"
       - "automate_ytb/earth_story_actions.py"
+      - "automate_ytb/science_city3d.py"
       - "automate_ytb/review_board.py"
       - "scripts/render_earth_animation_preview.py"
   push:
