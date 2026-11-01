@@ -203,8 +203,9 @@ def _helmet(draw,camera,center):
             depth=tuple(sum(p[k] for p in quad)/4 for k in range(3))
             # Amber sunlight scatters across one edge of the deep-blue glass.
             amber=max(0.,min(1.,(.5+(xx/.40)*.60)))
-            base=(round(19+55*amber),round(65+38*amber),
-                  round(128-29*amber))
+            # Dark navy glass, still readable on a mobile display.
+            base=(round(37+58*amber),round(103+34*amber),
+                  round(168-20*amber))
             _face(draw,camera,quad,
                   _lit(base,normal,camera,depth,"glass"))
     # All highlight strips are actual spatial curves on the visor, not
