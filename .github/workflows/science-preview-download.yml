@@ -45,8 +45,10 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event_name == 'workflow_run' && github.event.workflow_run.id || '41254950653' }}
-      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)' && 'earth-stop' || 'rainbow-optics' }}
+      # The first main push seeded the rainbow preview. Seed Earth next;
+      # subsequent source workflow completions are mapped independently.
+      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event_name == 'workflow_run' && github.event.workflow_run.id || '41286036076' }}
+      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install free video decoding tools
