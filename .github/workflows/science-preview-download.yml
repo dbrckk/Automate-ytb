@@ -67,7 +67,8 @@ jobs:
             .status == "completed" and .conclusion == "success" and
             .head_branch == "main" and .head_repository.full_name == $repo and
             ((.name == "Verify full 9:16 rainbow optics Shorts release candidate" and $slug == "rainbow-optics") or
-             (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop") or\n             (.name == "Verify original lightning-storm science Shorts" and $slug == "lightning-storm"))
+             (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop") or
+             (.name == "Verify original lightning-storm science Shorts" and $slug == "lightning-storm"))
           ' source-run.json >/dev/null
       - name: Download real release-gated video, subtitle and QA evidence
         run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name automate-ytb-free-preview --dir incoming
