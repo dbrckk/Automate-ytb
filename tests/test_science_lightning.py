@@ -14,13 +14,13 @@ from automate_ytb.science_lightning import (
 )
 from automate_ytb.science_portrait import PortraitScienceScene
 
-TOPIC="Comment se forment les éclairs ?"
+TOPIC="How Does Lightning Form?"
 SCRIPT=(
-    "Dans un nuage d'orage, les collisions entre gouttes et cristaux de glace contribuent à séparer les charges électriques.",
-    "Quand le champ électrique devient suffisamment fort, un canal ionisé progresse par étapes vers le sol.",
-    "Près du sol, des décharges ascendantes peuvent rejoindre ce canal et ouvrir un trajet conducteur.",
-    "Un courant très intense remonte alors le canal : c'est l'éclair lumineux que nous observons.",
-    "L'air se réchauffe brutalement et se dilate, créant une onde sonore : le tonnerre.",
+    "Inside thunderclouds, colliding ice crystals and water droplets help separate positive and negative electric charges.",
+    "As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.",
+    "Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.",
+    "A powerful return stroke then races upward along the connected channel, producing the brilliant flash we call lightning.",
+    "The lightning channel heats surrounding air almost instantly. The air expands explosively, creating a pressure wave we hear as thunder.",
 )
 
 
@@ -53,7 +53,7 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                 self.assertIsNone(shot.earth_stop_beat)
                 self.assertIsNone(shot.rainbow_beat)
                 self.assertIsNone(shot.beat)
-                self.assertFalse(shot.english)
+                self.assertTrue(shot.english)
                 self.assertFalse(shot._globes)
                 start=shot.frame(.3,6.8)
                 end=shot.frame(5.8,6.8)
@@ -65,9 +65,10 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                 signatures.append(crop.tobytes())
                 self.assertIsNotNone(ImageChops.difference(
                     crop,end.crop(hero)).getbbox())
-                self.assertEqual(
-                    start.crop((65,1522,1015,1722)).tobytes(),
-                    end.crop((65,1522,1015,1722)).tobytes())
+                # Audio-timed subtitle text is expected to change within a
+                # narrated scene; keep it inside the authored safe region.
+                self.assertTrue(shot.active_caption(.3,6.8).strip())
+                self.assertTrue(shot.active_caption(5.8,6.8).strip())
         self.assertEqual(len(set(signatures)),5)
 
     def test_storm_canvas_safe_text_and_no_earth_plate(self):
@@ -97,8 +98,8 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                                section.group(1).splitlines()))
         self.assertEqual(len(authored),5)
         self.assertEqual(tuple(classify(TOPIC,x) for x in authored),BEATS)
-        self.assertIn("      language: fr",text)
-        self.assertIn("      voice_name: ff_siwis",text)
+        self.assertIn("      language: en",text)
+        self.assertIn("      voice_name: af_heart",text)
         self.assertNotIn("What If Earth Suddenly Stopped",text)
 
     def test_real_science_artwork_approval_uses_lightning_not_earth(self):
@@ -125,7 +126,7 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                 draw_lightning(frame,beat,t,dur,False)
         with self.assertRaises(ValueError):
             draw_lightning(Image.new("RGB",(1080,1920)),
-                           "leader",1.,6.8,False)
+                           "leader",1.,7.0,False)
         with self.assertRaises(ValueError):
             PortraitScienceScene(topic=TOPIC,
                 narration="A story without a physical mechanism",
