@@ -206,7 +206,10 @@ class PortraitScienceScene:
             r"sun|white|colors|light|raindrop|rainbow|reflects|"
             r"lightning|electric|charge|thunder|cloud|storm|leader|"
             r"entering|refracts|leaving|millions|observer|arc)\b",
-            narration, flags=re.IGNORECASE))
+            narration, flags=re.IGNORECASE)) or bool(
+                is_lightning and re.search(
+                    r"\b(how|why|lightning|thunderstorm|thunderstorms)\b",
+                    topic, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
         self.base = (storm_background() if is_lightning else
