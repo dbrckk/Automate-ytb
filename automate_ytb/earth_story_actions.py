@@ -187,11 +187,9 @@ def _person(d: ImageDraw.ImageDraw, x: float, ground: float,
 
 
 def _wind(d: ImageDraw.ImageDraw, state: dict, t: float):
-    lean = state["lean"]
-    _person(d,244,1305,lean,t,(78,187,201,255),
-            holding_umbrella=True)
-    _person(d,779,1297,lean*.78,t+1.2,(226,123,98,248),
-            holding_umbrella=False)
+    # Articulated people and umbrella are rendered by science_people3d,
+    # through the same world-space camera as the 3D buildings. Only the
+    # wind-driven roadside props and loose airborne debris remain here.
     # Roadside sign twists and bends with the same gust as the people.
     topx=976+state["gust"]*.35
     d.line((969,1306,topx,1148),fill=(129,173,196,230),width=13)
