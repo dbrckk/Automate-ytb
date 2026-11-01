@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw
 
 from .science_city3d import Camera3D, SCENE_TOP, SCENE_BOTTOM
 from .science_materials import shade_surface
+from .science_eva_shapes import render_torso, render_boot
 
 CANVAS = (1080, 1920)
 LIGHT = (.29, .67, -.69)
@@ -294,18 +295,11 @@ def draw_astronaut3d(picture: Image.Image, t: float, duration: float) -> None:
         upper=(hip[0]+sign*.33,hip[1]-.08,hip[2])
         _tube(d,camera,upper,knee,.19,SUIT)
         _tube(d,camera,knee,foot,.17,(201,220,236))
-        _box(d,camera,(foot[0],foot[1],foot[2]-.10),
-             (.23,.16,.36),(112,155,189),"ceramic")
+        render_boot(d,camera,(foot[0],foot[1],foot[2]-.10))
         _box(d,camera,knee,(.18,.15,.19),(77,158,188))
-    _box(d,camera,center,(.55,.68,.41),SUIT,"ceramic")
-    # Detailed chest panel and four independent suit light markers.
-    _box(d,camera,(center[0],center[1]+.15,center[2]-.438),
-         (.36,.26,.035),(53,102,137),"glass")
-    for i in range(4):
-        x=center[0]-.23+i*.16
-        _box(d,camera,(x,center[1]+.19,center[2]-.483),
-             (.043,.044,.018),GOLD if i%2 else TRIM,
-             "gold" if i%2 else "alloy")
+    # Rounded original shoulder-tapered surface with camera-registered
+    # curved instrument panel and real material illumination.
+    render_torso(d,camera,center)
     for side in (-1,1):
         shoulder=pose["shoulder_l"] if side<0 else pose["shoulder_r"]
         elbow=pose["elbow_l"] if side<0 else pose["elbow_r"]
