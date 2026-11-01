@@ -7,12 +7,14 @@ on:
     paths:
       - ".github/workflows/lightning-science-release-candidate.yml"
       - "automate_ytb/science_lightning.py"
+      - "automate_ytb/science_lightning_fx.py"
       - "automate_ytb/science_portrait.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/lightning-science-release-candidate.yml"
       - "automate_ytb/science_lightning.py"
+      - "automate_ytb/science_lightning_fx.py"
       - "automate_ytb/science_portrait.py"
 
 permissions:
@@ -33,7 +35,7 @@ jobs:
         As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.
         Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.
         A powerful return stroke then races upward along the connected channel, producing the brilliant flash we call lightning.
-        The lightning channel heats surrounding air almost instantly. The air expands explosively, creating a pressure wave we hear as thunder.
+        The lightning channel heats surrounding air almost instantly, making it expand explosively and sending out the pressure wave we hear as thunder.
       character: "Original authored animated storm-cloud charges, stepped leader, upward streamer, return stroke and pressure wave, no globe or repeated planet footage"
       style: science
       language: en
