@@ -274,8 +274,15 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     # Original layered animated storm environment. Clouds, wet ground and
     # near/far rain have distinct depth speeds, not a flat background image.
     paint_environment(layer,t,beat,duration)
-    d=ImageDraw.Draw(layer,"RGBA")
-    paint_terrain(d,t)
+    terrain=Image.new("RGBA",(1080,STAGE_HEIGHT))
+    td=ImageDraw.Draw(terrain,"RGBA")
+    paint_terrain(td,t)
+    layer.alpha_composite(terrain)
+    # Actions must be blended on a separate transparent overlay. Drawing a
+    # low-alpha glow directly onto opaque RGBA would overwrite its alpha,
+    # darkening cloud faces and producing opaque-looking flat artifacts.
+    actions=Image.new("RGBA",(1080,STAGE_HEIGHT))
+    d=ImageDraw.Draw(actions,"RGBA")
     if beat=="charge":
         _charges(d,t,english)
     elif beat=="leader":
@@ -286,6 +293,7 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         _return(d,t,duration,english)
     else:
         _thunder(d,t,duration,english)
+    layer.alpha_composite(actions)
     bloom_electric_channel(layer,beat,t,duration,PATH)
     paint_foreground_weather(layer,t,beat)
     picture.alpha_composite(layer,(0,STAGE_TOP))
