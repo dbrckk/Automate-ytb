@@ -12,6 +12,7 @@ import math
 from PIL import Image, ImageDraw
 
 from .science_city3d import Camera3D, SCENE_TOP, SCENE_BOTTOM
+from .science_materials import shade_surface
 
 CANVAS = (1080, 1920)
 LIGHT = (.29, .67, -.69)
@@ -85,13 +86,12 @@ def _line(draw, camera, points, fill, width=3):
         draw.line(projected,fill=fill,width=width,joint="curve")
 
 
-def _lit(rgb,normal,ambient=.45):
-    light=max(0.,sum(a*b for a,b in zip(_unit(normal),_unit(LIGHT))))
-    fac=ambient+.52*light
-    return tuple(min(255,round(c*fac)) for c in rgb)+(255,)
+def _lit(rgb,normal,camera,point,material="fabric"):
+    """Camera-dependent shade with real 3D normal and surface position."""
+    return shade_surface(rgb,normal,point,camera.eye,material)
 
 
-def _box(draw,camera,center,extent,rgb):
+def _box(draw,camera,center,extent,rgb,material="alloy"):
     x,y,z=center
     w,h,d=extent
     vertices=[
@@ -112,10 +112,12 @@ def _box(draw,camera,center,extent,rgb):
             continue
         ranked.append((sum(p[2] for p in depths)/4,pts,normal))
     for _,pts,normal in sorted(ranked,reverse=True,key=lambda x:x[0]):
-        _face(draw,camera,pts,_lit(rgb,normal))
+        _face(draw,camera,pts,_lit(rgb,normal,camera,
+                                 tuple(sum(p[k] for p in pts)/4
+                                       for k in range(3)),material))
 
 
-def _tube(draw,camera,start,end,radius,rgb):
+def _tube(draw,camera,start,end,radius,rgb,material="fabric"):
     axis=tuple(end[i]-start[i] for i in range(3))
     direction=_unit(axis)
     if abs(direction[1])>.95:
@@ -145,7 +147,9 @@ def _tube(draw,camera,start,end,radius,rgb):
             continue
         faces.append((sum(p[2] for p in samples)/4,points,normal))
     for _,points,normal in sorted(faces,reverse=True,key=lambda x:x[0]):
-        _face(draw,camera,points,_lit(rgb,normal))
+        _face(draw,camera,points,_lit(rgb,normal,camera,
+                         tuple(sum(p[k] for p in points)/4
+                               for k in range(3)),material))
 
 
 def _helmet(draw,camera,center):
@@ -174,26 +178,49 @@ def _helmet(draw,camera,center):
             normal=( (cx-x)/.51,(cy-y)/.55,(cz-z)/.49 )
             surfaces.append((sum(q[2] for q in projections)/4,points,normal))
     for _,poly,normal in sorted(surfaces,key=lambda x:x[0],reverse=True):
-        _face(draw,camera,poly,_lit((220,235,243),normal,ambient=.50))
-    # Curved multi-facet gold/blue glass facing the real perspective camera.
-    for k in range(8):
-        xx=-.38+k*.095
-        xa=xx
-        xb=xx+.095
-        za=z-.47+.16*(abs(xa)/.45)**2
-        zb=z-.47+.16*(abs(xb)/.45)**2
-        _face(draw,camera,[
-            (x+xa,y+.24,za),(x+xb,y+.24,zb),
-            (x+xb,y-.27,zb),(x+xa,y-.27,za)],
-            (23+3*k,95+8*k,137+6*k,255))
-    # Glass bevel and projected reflected sunlight, attached to helmet.
-    _line(draw,camera,[(x-.39,y+.25,z-.32),
-                      (x-.19,y+.33,z-.45),(x+.25,y+.31,z-.41)],
-          (238,250,249,255),5)
-    _line(draw,camera,[(x-.23,y+.17,z-.51),(x+.09,y+.20,z-.54)],
-          (168,234,250,255),4)
-    _line(draw,camera,[(x-.4,y-.28,z-.32),(x+.40,y-.28,z-.32)],
-          (254,202,118,255),6)
+        _face(draw,camera,poly,_lit((222,234,241),normal,camera,
+                         tuple(sum(p[k] for p in poly)/4
+                               for k in range(3)),"ceramic"))
+    # Curved visor: 12x6 true world-space quads. Per-facet normal, view
+    # vector and roughness/metallic glazing change with the moving camera.
+    # The visor surface remains in front of the ceramic shell at every edge.
+    nx,ny=12,6
+    def visor(xf,yf):
+        xx=-.385+.77*xf
+        yy=.24-.51*yf
+        zz=z-.505+.18*(xx/.40)**2+.060*((yy+.015)/.275)**2
+        return (x+xx,y+yy,zz)
+    for j in range(ny):
+        for i in range(nx):
+            x0,x1=i/nx,(i+1)/nx
+            y0,y1=j/ny,(j+1)/ny
+            quad=(visor(x0,y0),visor(x1,y0),
+                  visor(x1,y1),visor(x0,y1))
+            xx=-.385+.77*(i+.5)/nx
+            yy=.24-.51*(j+.5)/ny
+            normal=(-.36*(xx/.40**2),
+                    -.12*((yy+.015)/.275**2),-1.)
+            depth=tuple(sum(p[k] for p in quad)/4 for k in range(3))
+            # Amber sunlight scatters across one edge of the deep-blue glass.
+            amber=max(0.,min(1.,(.5+(xx/.40)*.60)))
+            base=(round(19+55*amber),round(65+38*amber),
+                  round(128-29*amber))
+            _face(draw,camera,quad,
+                  _lit(base,normal,camera,depth,"glass"))
+    # All highlight strips are actual spatial curves on the visor, not
+    # screen-space sticker strokes: parallax and glints track helmet motion.
+    _line(draw,camera,[visor(i/20,.12+.06*math.sin(i*.12))
+                       for i in range(4,16)],
+          (200,243,249,255),4)
+    _line(draw,camera,[visor(i/20,.24) for i in range(5,10)],
+          (110,209,248,255),3)
+    _line(draw,camera,[visor(i/22,.83) for i in range(3,20)],
+          (249,205,128,255),4)
+    # A ring attaches around the neck at its real depth under the helmet.
+    _line(draw,camera,[
+        (x+.43*math.cos(k*math.tau/28),y-.39,
+         z+.40*math.sin(k*math.tau/28))
+        for k in range(29)],(219,183,120,255),4)
 
 
 def _satellite(draw,camera,t):
@@ -205,7 +232,7 @@ def _satellite(draw,camera,t):
               (-3.22+side*.95,2.95,8.1),.045,(190,211,215))
         center_x=-3.22+side*1.34
         _box(draw,camera,(center_x,2.96,8.1),
-             (.44,.73,.055),(60,123,168))
+             (.44,.73,.055),(60,123,168),"solar")
         for j in range(1,5):
             y=2.96-.73+j*.29
             _line(draw,camera,[(center_x-.43,y,8.035),
@@ -258,7 +285,7 @@ def draw_astronaut3d(picture: Image.Image, t: float, duration: float) -> None:
     hip=pose["hip"]
     center=pose["torso"]
     _box(d,camera,(center[0],center[1],center[2]+.46),
-         (.46,.67,.30),(114,153,175))
+         (.46,.67,.30),(114,153,175),"alloy")
     # Back leg armor and joints, then volumetric torso and forward arms.
     for sign in (-1,1):
         knee=pose["knee_l"] if sign<0 else pose["knee_r"]
@@ -267,24 +294,25 @@ def draw_astronaut3d(picture: Image.Image, t: float, duration: float) -> None:
         _tube(d,camera,upper,knee,.19,SUIT)
         _tube(d,camera,knee,foot,.17,(201,220,236))
         _box(d,camera,(foot[0],foot[1],foot[2]-.10),
-             (.23,.16,.36),(112,155,189))
+             (.23,.16,.36),(112,155,189),"ceramic")
         _box(d,camera,knee,(.18,.15,.19),(77,158,188))
-    _box(d,camera,center,(.55,.68,.41),SUIT)
+    _box(d,camera,center,(.55,.68,.41),SUIT,"ceramic")
     # Detailed chest panel and four independent suit light markers.
     _box(d,camera,(center[0],center[1]+.15,center[2]-.438),
-         (.36,.26,.035),(53,102,137))
+         (.36,.26,.035),(53,102,137),"glass")
     for i in range(4):
         x=center[0]-.23+i*.16
         _box(d,camera,(x,center[1]+.19,center[2]-.483),
-             (.043,.044,.018),GOLD if i%2 else TRIM)
+             (.043,.044,.018),GOLD if i%2 else TRIM,
+             "gold" if i%2 else "alloy")
     for side in (-1,1):
         shoulder=pose["shoulder_l"] if side<0 else pose["shoulder_r"]
         elbow=pose["elbow_l"] if side<0 else pose["elbow_r"]
         hand=pose["hand_l"] if side<0 else pose["hand_r"]
         _tube(d,camera,shoulder,elbow,.17,(207,225,238))
-        _box(d,camera,elbow,(.16,.16,.17),(74,156,189))
+        _box(d,camera,elbow,(.16,.16,.17),(74,156,189),"alloy")
         _tube(d,camera,elbow,hand,.15,(209,224,235))
-        _box(d,camera,hand,(.17,.14,.17),(228,193,139))
+        _box(d,camera,hand,(.17,.14,.17),(228,193,139),"gold")
     _tube(d,camera,(center[0],center[1]+.61,center[2]),
           (pose["head"][0],pose["head"][1]-.41,pose["head"][2]),
           .26,(91,151,180))
