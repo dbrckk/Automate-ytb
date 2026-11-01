@@ -425,7 +425,8 @@ def render_character_poster(*, topic: str, narration: str,
     if style!="science":
         raise ValueError("Unsupported science visual style")
     from .science_rainbow import supports_topic as rainbow_topic
-    if rainbow_topic(topic):
+    from .science_lightning import supports_topic as lightning_topic
+    if rainbow_topic(topic) or lightning_topic(topic):
         # The approval poster is a separate 16:9 crop of ORIGINAL 9:16
         # artwork. Only the delivered Shorts MP4 is native full portrait.
         # Never substitute the old Earth globe for atmospheric optics.
