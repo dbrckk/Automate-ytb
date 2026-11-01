@@ -164,8 +164,6 @@ def _charges(d,t,english):
         vy=(t*(23+k%4*9)+k*19)%128
         d.line((x,y+vy,x-8,y+vy+21),
                fill=(170,226,243,135),width=3)
-    _label(d,160,610,"ICE + WATER COLLISIONS" if english else
-           "COLLISIONS GLACE · EAU",color=WHITE)
     _label(d,225,695,"+  +  +     −  −  −",color=GOLD,size=38)
 
 
@@ -185,8 +183,6 @@ def _leader(d,t,duration,english):
             _trail(d,branch,(141,210,251,183),3)
     x,y=coords[-1]
     d.ellipse((x-13,y-13,x+13,y+13),fill=(243,250,255,240))
-    _label(d,148,688,"A FAINT CHANNEL MOVES DOWN" if english else
-           "LE CANAL PROGRESSE VERS LE SOL",size=29)
 
 
 def _connection(d,t,duration,english):
@@ -209,8 +205,6 @@ def _connection(d,t,duration,english):
         for r in (16,29):
             d.ellipse((x-r,y-r,x+r,y+r),
                       outline=(253,211,121,195),width=3)
-    _label(d,110,540,"UPWARD PATHS MAY JOIN" if english else
-           "DES DÉCHARGES MONTENT DU SOL",size=29)
 
 
 def _return(d,t,duration,english):
@@ -233,8 +227,6 @@ def _return(d,t,duration,english):
             x,y=PATH[i*4]
             r=3+(i%3)
             d.ellipse((x-r,y-r,x+r,y+r),fill=(255,248,222,191))
-    _label(d,147,634,"CURRENT RUSHES UPWARD" if english else
-           "LE COURANT REMONTE LE CANAL",color=GOLD,size=29)
 
 
 def _thunder(d,t,duration,english):
@@ -258,8 +250,6 @@ def _thunder(d,t,duration,english):
         x=100+i*94
         y=700+12*math.sin(i+progress*10)
         d.line((x,y,x+44,y),fill=(116,204,230,130),width=3)
-    _label(d,157,555,"AIR EXPANDS: SOUND TRAVELS" if english else
-           "L'AIR SE DILATE · LE SON SE PROPAGE",size=27)
 
 
 def draw_lightning(picture: Image.Image, beat: str, t: float,
