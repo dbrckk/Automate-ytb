@@ -20,12 +20,15 @@ from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
                               daylight_background, BADGES as RAINBOW_BADGES)
+from .science_lightning import (classify as classify_lightning, draw_lightning,
+                                supports_topic as supports_lightning,
+                                storm_background, BADGES as LIGHTNING_BADGES)
 
 from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v9-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
+PORTRAIT_VERSION = "original-science-shorts-v10-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
 INK = (238, 247, 250, 255)
 
 
@@ -178,15 +181,21 @@ class PortraitScienceScene:
         folded = "".join(c for c in folded if not unicodedata.combining(c))
         is_earth = bool(re.search(r"\b(earth|terre|oceans?|oceanique)\b", folded))
         is_rainbow = bool(re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b", folded))
-        if not (is_earth or is_rainbow):
-            raise ValueError("Science Shorts support Earth/ocean or authored rainbow topics only")
+        is_lightning = supports_lightning(topic)
+        if not (is_earth or is_rainbow or is_lightning):
+            raise ValueError("Science Shorts require a supported Earth/ocean, rainbow or lightning topic")
         if type(scene_index) is not int or not 1 <= scene_index <= 1200:
             raise ValueError("Invalid science scene index")
         self.topic, self.narration, self.scene_index = topic, narration, scene_index
         self.mode = scene_mode(narration)
         self.beat = classify_storyboard(topic, narration)
         self.rainbow_beat = classify_rainbow(topic, narration)
+        self.lightning_beat = classify_lightning(topic, narration)
         self.earth_stop_beat = classify_earth_stop(topic, narration)
+        if is_lightning and self.lightning_beat is None:
+            raise ValueError(
+                "Lightning Shorts require authored charge, leader, upward "
+                "connection, return stroke or thunder narration")
         if is_rainbow and self.rainbow_beat is None:
             raise ValueError(
                 "Rainbow Shorts need authored narration on sunlight, refraction, "
@@ -195,11 +204,13 @@ class PortraitScienceScene:
             r"\b(the|what|earth|would|could|ocean|oceans|wind|winds|"
             r"because|sunlight|waters|heats|currents|sinks|gyres|climate|"
             r"sun|white|colors|light|raindrop|rainbow|reflects|"
+            r"lightning|electric|charge|thunder|cloud|storm|leader|"
             r"entering|refracts|leaving|millions|observer|arc)\b",
             narration, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
-        self.base = daylight_background(seed) if is_rainbow else _sky(seed)
+        self.base = (storm_background() if is_lightning else
+                     daylight_background(seed) if is_rainbow else _sky(seed))
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
@@ -301,6 +312,7 @@ class PortraitScienceScene:
                             fill=(12, 47, 72, 234))
         science_badge = (
             EARTH_STOP_LABELS[self.earth_stop_beat] if self.earth_stop_beat
+            else LIGHTNING_BADGES[self.lightning_beat] if self.lightning_beat
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
@@ -309,6 +321,10 @@ class PortraitScienceScene:
         if self.earth_stop_beat is not None:
             draw_earth_stop(picture, self.earth_stop_beat, t, duration,
                             self.english, self._planet_at)
+            d = ImageDraw.Draw(picture, "RGBA")
+        elif self.lightning_beat is not None:
+            draw_lightning(picture, self.lightning_beat, t, duration,
+                           self.english)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
