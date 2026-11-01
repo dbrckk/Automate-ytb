@@ -14,6 +14,10 @@ import unicodedata
 
 from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font
+from .science_lightning_fx import (
+    paint_environment, paint_terrain, bloom_electric_channel,
+    paint_foreground_weather,
+)
 
 BEATS=("charge","leader","connection","return","thunder")
 BADGES={
@@ -267,9 +271,11 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
             or type(english) is not bool):
         raise ValueError("Invalid lightning science frame")
     layer=Image.new("RGBA",(1080,STAGE_HEIGHT))
-    _clouds(layer,t)
+    # Original layered animated storm environment. Clouds, wet ground and
+    # near/far rain have distinct depth speeds, not a flat background image.
+    paint_environment(layer,t,beat,duration)
     d=ImageDraw.Draw(layer,"RGBA")
-    _ground(d)
+    paint_terrain(d,t)
     if beat=="charge":
         _charges(d,t,english)
     elif beat=="leader":
@@ -280,4 +286,6 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         _return(d,t,duration,english)
     else:
         _thunder(d,t,duration,english)
+    bloom_electric_channel(layer,beat,t,duration,PATH)
+    paint_foreground_weather(layer,t,beat)
     picture.alpha_composite(layer,(0,STAGE_TOP))
