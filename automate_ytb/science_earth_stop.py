@@ -19,6 +19,7 @@ from .earth_kinetic_fx import draw_foreground
 from .earth_cinematic_depth import draw_depth_behind, draw_depth_above
 from .earth_story_actions import draw_story_actions
 from .science_city3d import draw_city_mesh
+from .science_vehicle3d import draw_vehicle3d
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -138,21 +139,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
     elif beat == "inertia":
         draw_city_mesh(picture, beat, t, duration)
         d = ImageDraw.Draw(picture, "RGBA")
-        dx = 160 + 570*_ease(u)
-        yy = 1264 - 18*math.sin(t*5)
-        # Moving object has relative motion to a moving city, not a zoom.
-        d.rounded_rectangle((dx-81,yy-47,dx+85,yy+4),radius=13,
-                            fill=(227, 154, 91, 248))
-        d.polygon([(dx-39,yy-47),(dx-7,yy-77),(dx+48,yy-77),
-                   (dx+77,yy-47)],fill=(107,206,227,248))
-        for offset in (-46,48):
-            d.ellipse((dx+offset-17,yy-7,dx+offset+17,yy+27),
-                      fill=(13,22,35,255))
-        for j in range(11):
-            x=dx-120-j*45*(.5+u)
-            y=yy-35+j%3*15
-            d.line((x,y,x-35-j*3,y),
-                   fill=(248,207,151,160),width=4)
+        draw_vehicle3d(picture,t,duration)
+        d = ImageDraw.Draw(picture,"RGBA")
         _arrow(d,166,735,round(500*_ease(u)),GOLD)
     elif beat == "wind":
         draw_city_mesh(picture, beat, t, duration)
