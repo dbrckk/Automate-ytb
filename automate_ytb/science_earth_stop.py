@@ -18,6 +18,7 @@ from .science_motion import _font
 from .earth_kinetic_fx import draw_foreground
 from .earth_cinematic_depth import draw_depth_behind, draw_depth_above
 from .earth_story_actions import draw_story_actions
+from .science_city3d import draw_city_mesh
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -100,28 +101,6 @@ def _globe(picture: Image.Image, globe_at: Callable, t: float, duration: float,
     return cx, cy
 
 
-def _city(d: ImageDraw.ImageDraw, t: float, *, wind: bool = False):
-    # Layer-specific translation supplies a continuous background/foreground
-    # parallax without distorting the buildings themselves.
-    for layer in range(2):
-        shift = (t*(28 if layer else 10)) % 180
-        floor = 1198 if layer == 0 else 1310
-        color = (24, 58, 91, 210) if layer == 0 else (35, 95, 130, 243)
-        for j in range(-2, 10):
-            x = j*160 - shift
-            h = 112 + ((j*53+layer*117) % 174)
-            d.rectangle((x, floor-h, x+95+(j%3)*13, floor), fill=color)
-            for wy in range(int(floor-h+25), int(floor-15), 36):
-                for wx in range(int(x+15), int(x+82), 29):
-                    d.rectangle((wx,wy,wx+8,wy+13),
-                                fill=(173, 213, 224, 85))
-    d.rectangle((0, 1310, 1080, 1450), fill=(15, 44, 66, 255))
-    for i in range(9):
-        x = (i*158 - t*210) % 1250 - 120
-        d.rounded_rectangle((x,1381,x+75,1389),radius=3,
-                            fill=(196, 235, 231, 125))
-
-
 def _arrow(d: ImageDraw.ImageDraw, x, y, dx, color=GOLD, width: int = 8):
     d.line((x,y,x+dx,y),fill=color,width=width)
     s=1 if dx>=0 else -1
@@ -157,7 +136,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
             d.ellipse((x-4,y-4,x+4,y+4),fill=GOLD)
         _arrow(d,216,1433,round(600*(1-_ease(u))),GOLD)
     elif beat == "inertia":
-        _city(d,t)
+        draw_city_mesh(picture, beat, t, duration)
+        d = ImageDraw.Draw(picture, "RGBA")
         dx = 160 + 570*_ease(u)
         yy = 1264 - 18*math.sin(t*5)
         # Moving object has relative motion to a moving city, not a zoom.
@@ -175,7 +155,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
                    fill=(248,207,151,160),width=4)
         _arrow(d,166,735,round(500*_ease(u)),GOLD)
     elif beat == "wind":
-        _city(d,t,wind=True)
+        draw_city_mesh(picture, beat, t, duration)
+        d = ImageDraw.Draw(picture, "RGBA")
         for j in range(7):
             x=(t*(148+j*28)+j*311)%1580-440
             y=717+j*77
@@ -192,7 +173,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
             y=930+j%9*33
             d.line((x,y,x+39,y-4),fill=(231,239,238,120),width=3)
     elif beat == "ocean":
-        _city(d,t*.14)
+        draw_city_mesh(picture, beat, t, duration)
+        d = ImageDraw.Draw(picture, "RGBA")
         surge=_ease(u)
         for layer in range(3):
             base=1435-layer*52 - (385-layer*70)*surge
