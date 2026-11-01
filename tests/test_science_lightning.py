@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+import tempfile
+import re
 from PIL import Image, ImageChops
 
 from automate_ytb.scene_plan import beats
@@ -81,6 +84,35 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                                  base.crop((0,0,1080,STAGE_TOP)).tobytes())
                 self.assertEqual(frame.crop((0,STAGE_BOTTOM,1080,1920)).tobytes(),
                                  base.crop((0,STAGE_BOTTOM,1080,1920)).tobytes())
+
+    def test_real_production_script_has_five_authored_original_mechanisms(self):
+        workflow=(Path(__file__).resolve().parents[1]/".github"/
+                  "workflows"/"lightning-science-release-candidate.yml")
+        text=workflow.read_text(encoding="utf-8")
+        section=re.search(
+            r"(?m)^      original_script: >-\n((?:^        .+\n){5})",
+            text)
+        self.assertIsNotNone(section, "Lightning workflow needs five scripts")
+        authored=beats(" ".join(s.strip() for s in
+                               section.group(1).splitlines()))
+        self.assertEqual(len(authored),5)
+        self.assertEqual(tuple(classify(TOPIC,x) for x in authored),BEATS)
+        self.assertIn("      language: fr",text)
+        self.assertIn("      voice_name: ff_siwis",text)
+        self.assertNotIn("What If Earth Suddenly Stopped",text)
+
+    def test_real_science_artwork_approval_uses_lightning_not_earth(self):
+        from automate_ytb.science_motion import render_character_poster
+        with tempfile.TemporaryDirectory() as temp:
+            target=Path(temp)/"storm.png"
+            render_character_poster(
+                topic=TOPIC,narration=SCRIPT[1],scene_index=2,
+                scene_count=5,style="science",destination=target)
+            self.assertTrue(target.is_file())
+            with Image.open(target) as image:
+                self.assertEqual(image.size,(1280,720))
+                self.assertEqual(image.format,"PNG")
+                self.assertIsNotNone(image.getbbox())
 
     def test_reject_unsupported_scene_and_bad_clock(self):
         frame=storm_background().copy()
