@@ -16,11 +16,11 @@ from automate_ytb.science_portrait import PortraitScienceScene
 
 TOPIC="How Does Lightning Form?"
 SCRIPT=(
-    "Inside thunderclouds, colliding ice crystals and water droplets help separate positive and negative electric charges.",
+    "Inside thunderclouds, colliding ice crystals and water droplets separate positive and negative electrical charges.",
     "As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.",
     "Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.",
-    "A powerful return stroke then races upward along the connected channel, producing the brilliant flash we call lightning.",
-    "The lightning channel heats surrounding air almost instantly, making it expand explosively and sending out the pressure wave we hear as thunder.",
+    "A powerful return stroke races upward along the connected channel, producing the brilliant flash we call lightning.",
+    "The lightning channel superheats surrounding air, causing rapid expansion and a pressure wave that we hear as thunder.",
 )
 
 
