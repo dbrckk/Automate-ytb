@@ -296,28 +296,53 @@ class PortraitScienceScene:
         d = ImageDraw.Draw(picture, "RGBA")
         # Explicit mobile-safe composition: keep title below top UI and
         # captions above the lower controls. Never crop original content.
-        d.rounded_rectangle((55, 190, 1025, 407), radius=34,
-                            fill=(7, 20, 41, 232), outline=CYAN+(125,), width=3)
         title, title_size = self._title_layout
-        for i, row in enumerate(title):
-            d.text((104, 234 + 68*i), row,
-                   font=_font(title_size, bold=True), fill=INK)
         badges = {
             "orbital": ("EARTH IN MOTION", "LA TERRE EN MOUVEMENT"),
             "daylight": ("DAY AND NIGHT", "JOUR ET NUIT"),
             "ocean": ("OCEAN CURRENTS", "MOUVEMENTS DES OCÉANS"),
             "atmosphere": ("ATMOSPHERE", "ATMOSPHÈRE"),
         }
-        d.rounded_rectangle((80, 477, 750, 537), radius=22,
-                            fill=(12, 47, 72, 234))
         science_badge = (
             EARTH_STOP_LABELS[self.earth_stop_beat] if self.earth_stop_beat
             else LIGHTNING_BADGES[self.lightning_beat] if self.lightning_beat
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
-        d.text((113, 488), science_badge[0 if self.english else 1],
-               font=_font(36, bold=True), fill=GOLD+(255,))
+        if self.lightning_beat is not None:
+            # Cinematic compact editorial typography, actual compositing:
+            # a translucent overlay must blend, not overwrite RGBA alpha.
+            overlay = Image.new("RGBA", picture.size)
+            ui = ImageDraw.Draw(overlay)
+            ui.rounded_rectangle((61, 169, 1019, 317), radius=24,
+                                 fill=(5, 17, 35, 147),
+                                 outline=(121, 185, 214, 91), width=2)
+            for i, row in enumerate(title):
+                ui.text((94, 194 + 55*i), row,
+                        font=_font(title_size, bold=True), fill=INK)
+            ui.rounded_rectangle((78, 358, 736, 412), radius=17,
+                                 fill=(13, 46, 71, 119))
+            ui.text((103, 366), science_badge[0 if self.english else 1],
+                    font=_font(31, bold=True), fill=GOLD+(255,))
+            # A subtle stage progress rule, not a static 2D title card.
+            beat_number = list(LIGHTNING_BADGES).index(self.lightning_beat)
+            ui.line((81, 440, 991, 440),
+                    fill=(128, 177, 199, 65), width=3)
+            ui.line((81, 440, 81 + 910*(beat_number+1)//5, 440),
+                    fill=(143, 225, 248, 166), width=4)
+            picture.alpha_composite(overlay)
+            d = ImageDraw.Draw(picture, "RGBA")
+        else:
+            d.rounded_rectangle((55, 190, 1025, 407), radius=34,
+                                fill=(7, 20, 41, 232),
+                                outline=CYAN+(125,), width=3)
+            for i, row in enumerate(title):
+                d.text((104, 234 + 68*i), row,
+                       font=_font(title_size, bold=True), fill=INK)
+            d.rounded_rectangle((80, 477, 750, 537), radius=22,
+                                fill=(12, 47, 72, 234))
+            d.text((113, 488), science_badge[0 if self.english else 1],
+                   font=_font(36, bold=True), fill=GOLD+(255,))
         if self.earth_stop_beat is not None:
             draw_earth_stop(picture, self.earth_stop_beat, t, duration,
                             self.english, self._planet_at)
@@ -405,15 +430,24 @@ class PortraitScienceScene:
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
         # Compact subtitle excerpt in a dedicated lower-middle safe band.
-        d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
-                            fill=(5, 17, 37, 240),
-                            outline=(84, 165, 190, 150), width=2)
-        # Resolve the active phrase first: this lazily validates and fills
-        # _caption_layouts. Evaluating the dict before active_caption() would
-        # hold a stale empty reference on the first video frame.
+        # Resolve speech-synthesized cues before drawing, not guessed timing.
         active_text = self.active_caption(t, duration)
         summary, summary_size = self._caption_layouts[active_text]
-        for i, line in enumerate(summary):
-            d.text((111, 1551 + 46*i), line,
-                   font=_font(summary_size, True), fill=INK)
+        if self.lightning_beat is not None:
+            captions = Image.new("RGBA", picture.size)
+            cd = ImageDraw.Draw(captions)
+            cd.rounded_rectangle((65, 1523, 1015, 1698), radius=24,
+                                 fill=(4, 14, 30, 171),
+                                 outline=(110, 187, 218, 83), width=2)
+            for i, line in enumerate(summary):
+                cd.text((108, 1547 + 46*i), line,
+                        font=_font(summary_size, True), fill=INK)
+            picture.alpha_composite(captions)
+        else:
+            d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
+                                fill=(5, 17, 37, 240),
+                                outline=(84, 165, 190, 150), width=2)
+            for i, line in enumerate(summary):
+                d.text((111, 1551 + 46*i), line,
+                       font=_font(summary_size, True), fill=INK)
         return picture.convert("RGB")
