@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 from .science_motion import _font
 from .earth_kinetic_fx import draw_foreground
 from .earth_cinematic_depth import draw_depth_behind, draw_depth_above
+from .earth_story_actions import draw_story_actions
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -296,6 +297,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
     # They materially interact with the shown subject rather than merely
     # panning a generic still image behind subtitles.
     draw_foreground(picture, beat, t, duration)
+    draw_story_actions(picture, beat, t, duration)
     draw_depth_above(picture, beat, t, duration)
     # Non-physical schematic warning stays clear of narration captions.
     d=ImageDraw.Draw(picture,"RGBA")
