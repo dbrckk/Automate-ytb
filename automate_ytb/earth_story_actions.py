@@ -70,17 +70,8 @@ def action_state(beat: str, t: float, duration: float) -> dict:
 def _inertia(d: ImageDraw.ImageDraw, state: dict, t: float):
     cx = state["car_x"]
     yy = 1264 - 18*math.sin(t*5)
-    # The wheel spokes rotate around the moving axle; not a decorative
-    # spinning ring pinned to the background.
-    for offset in (-46, 48):
-        x, y = cx + offset, yy + 10
-        d.ellipse((x-16,y-16,x+16,y+16),
-                  fill=(18, 35, 57, 252),outline=(162, 203, 214, 240),width=3)
-        for k in range(5):
-            theta = t*11.4 + k*math.tau/5
-            d.line((x,y,x+12*math.cos(theta),y+12*math.sin(theta)),
-                   fill=SUN,width=3)
-        d.ellipse((x-4,y-4,x+4,y+4),fill=(207,234,237,245))
+    # Car and rolling spokes now live in the same projected 3D geometry as
+    # the road; this 2D foreground pass only handles the roadside impact.
     # A physical contact event: the standing cone stays still until the
     # car's front approaches it; it then flies, tumbles and lands.
     phase = state["cone_flight"]
