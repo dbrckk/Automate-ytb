@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 
 from .science_motion import _font
 from .earth_kinetic_fx import draw_foreground
+from .earth_cinematic_depth import draw_depth_behind, draw_depth_above
 
 LABELS = {
     "stop": ("ROTATION STOPS", "ARRÊT DE LA ROTATION"),
@@ -137,6 +138,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
         raise ValueError("Invalid Earth cinematic animation frame")
     d = ImageDraw.Draw(picture, "RGBA")
     u = t/duration
+    draw_depth_behind(picture, beat, t, duration)
     _star_motion(d,t, .45 if beat in ("day", "poles") else 1.)
     if beat == "stop":
         cx,cy = _globe(picture,globe_at,t,duration,stopped=True)
@@ -294,6 +296,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
     # They materially interact with the shown subject rather than merely
     # panning a generic still image behind subtitles.
     draw_foreground(picture, beat, t, duration)
+    draw_depth_above(picture, beat, t, duration)
     # Non-physical schematic warning stays clear of narration captions.
     d=ImageDraw.Draw(picture,"RGBA")
     notice="SCHEMATIC • NOT TO SCALE" if english else "SCHÉMA • PAS À L'ÉCHELLE"
