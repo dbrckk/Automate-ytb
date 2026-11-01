@@ -64,7 +64,11 @@ def draw_depth_behind(picture: Image.Image, beat: str,
         drift=round(44*math.sin(t*.35))
         picture.alpha_composite(_soft_light(850,(65,152,207)),
                                 (110+drift,655))
-        d=ImageDraw.Draw(picture,"RGBA")
+        # Pillow's RGBA draw writes low-alpha values directly; drawing mist
+        # onto the opaque source therefore produces solid turquoise bars once
+        # the final video is converted to RGB. Composite a separate overlay.
+        atmosphere=Image.new("RGBA",picture.size)
+        d=ImageDraw.Draw(atmosphere)
         for layer in range(3):
             y=1052+layer*85
             speed=(5,10,19)[layer]
@@ -91,13 +95,17 @@ def draw_depth_behind(picture: Image.Image, beat: str,
                 y=773+j*79
                 d.polygon(((x,y),(x+220,y-18),(x+190,y+10),(x-20,y+35)),
                           fill=(126,222,240,28+j%3*8))
+        picture.alpha_composite(atmosphere)
 
 
 def draw_depth_above(picture: Image.Image, beat: str,
                      t: float, duration: float) -> None:
     """Focal highlights, material reflections and projected light cues."""
     _validate(picture,beat,t,duration)
-    d=ImageDraw.Draw(picture,"RGBA")
+    # Material light streaks and glints must blend with existing objects,
+    # not overwrite them with low-alpha tinted pixels.
+    highlights=Image.new("RGBA",picture.size)
+    d=ImageDraw.Draw(highlights)
     p=t/duration
     if beat in {"inertia","wind","ocean"}:
         # Perspective pavement lines: distant narrow marks, wider near marks.
@@ -173,3 +181,5 @@ def draw_depth_above(picture: Image.Image, beat: str,
             for rad in (105,149,191):
                 d.arc((x-rad,805-rad,x+rad,805+rad),
                       280,65,fill=(255,208,119,68),width=3)
+
+    picture.alpha_composite(highlights)
