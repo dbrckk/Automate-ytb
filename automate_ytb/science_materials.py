@@ -77,7 +77,9 @@ def shade_surface(
     clearcoat=(ndh**max(30.,gloss_power*1.40))*m.coating*.24
     grazing=(1.-ndv)**5
     edge=(1.-ndv)**2 *m.rim
-    diffuse=(.40+.53*ndl+.045*max(0.,n[1]))*(1.-.55*m.metallic)
+    # Preserve visible suit/panel albedo in a dark science scene: polished
+    # materials should gain a highlight, not become near-black silhouettes.
+    diffuse=(.58+.45*ndl+.05*max(0.,n[1]))*(1.-.23*m.metallic)
     shaded=[]
     for i,c in enumerate(base_rgb):
         f0=.045*(1.-m.metallic)+(c/255.)*m.metallic
