@@ -10,9 +10,10 @@ from __future__ import annotations
 import math
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Callable
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
 from .earth_kinetic_fx import draw_foreground
@@ -86,6 +87,40 @@ def _star_motion(d: ImageDraw.ImageDraw, t: float, speed: float = 1.):
                   fill=(162, 225, 253, 90+i%4*23))
 
 
+
+@lru_cache(maxsize=4)
+def _storm_cloud_sprite(kind: int) -> Image.Image:
+    """Cached original soft storm cloud; no flat opaque cyan ellipses.
+
+    The alpha mask is blurred before compositing. Tiny color variation in the
+    cloud lobes provides depth while keeping the city and gust visible below.
+    """
+    if type(kind) is not int or not 0 <= kind < 4:
+        raise ValueError("Unsafe cloud style")
+    plate=Image.new("RGBA",(298,128))
+    d=ImageDraw.Draw(plate)
+    for k,(cx,cy,rx,ry) in enumerate(
+        ((53,75,51,21),(112,64,73,31),(174,70,78,33),(245,82,51,22))):
+        shift=(kind*13+k*7)%17
+        d.ellipse((cx-rx,cy-ry-shift//3,cx+rx,cy+ry-shift//3),
+                  fill=(125+kind*7,167+kind*6,193+kind*5,42+k*5))
+    # Add small wisps to avoid four identical round, featureless sheets.
+    for k in range(7):
+        x=19+k*37
+        y=70+10*math.sin(k*1.4+kind)
+        d.ellipse((x-24,y-9,x+45,y+10),
+                  fill=(173,205,218,21+k%3*4))
+    return plate.filter(ImageFilter.GaussianBlur(13))
+
+
+def _storm_clouds(picture: Image.Image, t: float) -> None:
+    """Move cloud masses at independently paced 2.5D atmospheric depths."""
+    for i,(x,y) in enumerate(((65,685),(296,768),(506,816),(731,716))):
+        dx=round(18*math.sin(t*(.18+i*.07)+i))
+        dy=round(8*math.sin(t*(.24+i*.08)+i*1.13))
+        picture.alpha_composite(_storm_cloud_sprite(i),(x+dx,y+dy))
+
+
 def _globe(picture: Image.Image, globe_at: Callable, t: float, duration: float,
            *, stopped: bool = False, frozen: bool = False,
            diameter: int = 620):
@@ -152,11 +187,7 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
             d.arc((x,y-48,x+340,y+72),184,345,
                   fill=(130+j*3,217,250,174),width=6)
             _arrow(d,x+225,y+15,67,CYAN,4)
-        for j in range(4):
-            cx=(j*380+t*(89+j*17))%1670-370
-            cy=792+j%2*130
-            d.ellipse((cx,cy,cx+300,cy+93),
-                      fill=(115,160,191,110))
+        _storm_clouds(picture,t)
         for j in range(30):
             x=(j*163+t*(280+j%6*39))%1300-105
             y=930+j%9*33
