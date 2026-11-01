@@ -191,12 +191,14 @@ def bloom_electric_channel(stage: Image.Image,beat:str,t:float,
               fill=(105,165,226,round(46*intensity)))
     stage.alpha_composite(veil.filter(ImageFilter.GaussianBlur(112)))
     if beat=="return" and intensity>.3:
-        d=ImageDraw.Draw(stage,"RGBA")
+        reflections=Image.new("RGBA",SIZE)
+        d=ImageDraw.Draw(reflections)
         for j in range(15):
             y=824+j*7
             x=400+j%4*53
             d.line((x,y,x+130-j%3*19,y),
                    fill=(155,223,249,round(82*intensity)),width=3)
+        stage.alpha_composite(reflections)
 
 
 def paint_foreground_weather(stage: Image.Image,t:float,beat:str) -> None:
