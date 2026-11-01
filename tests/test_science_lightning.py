@@ -20,7 +20,7 @@ SCRIPT=(
     "As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.",
     "Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.",
     "A powerful return stroke then races upward along the connected channel, producing the brilliant flash we call lightning.",
-    "The lightning channel heats surrounding air almost instantly. The air expands explosively, creating a pressure wave we hear as thunder.",
+    "The lightning channel heats surrounding air almost instantly, making it expand explosively and sending out the pressure wave we hear as thunder.",
 )
 
 
@@ -65,10 +65,11 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
                 signatures.append(crop.tobytes())
                 self.assertIsNotNone(ImageChops.difference(
                     crop,end.crop(hero)).getbbox())
-                # Audio-timed subtitle text is expected to change within a
-                # narrated scene; keep it inside the authored safe region.
+                # Captions are allowed to change with narration; demanding
+                # a frozen caption crop incorrectly fails real speech cues.
                 self.assertTrue(shot.active_caption(.3,6.8).strip())
                 self.assertTrue(shot.active_caption(5.8,6.8).strip())
+                self.assertEqual(start.size,end.size)
         self.assertEqual(len(set(signatures)),5)
 
     def test_storm_canvas_safe_text_and_no_earth_plate(self):
