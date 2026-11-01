@@ -1,0 +1,94 @@
+name: Stable direct MP4 downloads for science previews
+
+# GitHub Actions artifacts expire and are difficult to use on Android.
+# Technical review previews receive stable GitHub Release asset URLs,
+# conspicuously marked UNREVIEWED. No YouTube publishing occurs.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/science-preview-download.yml"
+      - "scripts/prepare_science_preview_delivery.py"
+  workflow_run:
+    workflows:
+      - "Verify full 9:16 rainbow optics Shorts release candidate"
+      - "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)"
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful main-branch science workflow run to make downloadable"
+        required: true
+        type: string
+      slug:
+        description: "Known original science topic"
+        required: true
+        type: choice
+        options: [rainbow-optics, earth-stop]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: science-stable-preview-${{ github.event_name }}-${{ github.event.workflow_run.id || inputs.source_run_id || 'rainbow-seed' }}
+  cancel-in-progress: false
+
+jobs:
+  release-unreviewed-preview:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_branch == 'main' &&
+           github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event_name == 'workflow_run' && github.event.workflow_run.id || '41254950653' }}
+      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)' && 'earth-stop' || 'rainbow-optics' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free video decoding tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Verify source run is a successful trusted main-branch science render
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]{4,15}$ ]]
+          [[ "$PREVIEW_SLUG" == "rainbow-optics" || "$PREVIEW_SLUG" == "earth-stop" ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source-run.json
+          jq -e --arg repo "$GITHUB_REPOSITORY" --arg slug "$PREVIEW_SLUG" '
+            .status == "completed" and .conclusion == "success" and
+            .head_branch == "main" and .head_repository.full_name == $repo and
+            ((.name == "Verify full 9:16 rainbow optics Shorts release candidate" and $slug == "rainbow-optics") or
+             (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop"))
+          ' source-run.json >/dev/null
+      - name: Download real release-gated video, subtitle and QA evidence
+        run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name automate-ytb-free-preview --dir incoming
+      - name: Verify sha, H264/AAC decoding and technical QA before distributing
+        run: |
+          python scripts/prepare_science_preview_delivery.py \
+            --artifact incoming --output delivered \
+            --slug "$PREVIEW_SLUG" --run-id "$SOURCE_RUN_ID"
+      - name: Attach preview to stable GitHub pre-release, never to YouTube
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="science-preview-${PREVIEW_SLUG}-${SOURCE_RUN_ID}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              "delivered/${PREVIEW_SLUG}.mp4" \
+              "delivered/${PREVIEW_SLUG}.srt" \
+              "delivered/${PREVIEW_SLUG}-manifest.json" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "UNREVIEWED science preview • ${PREVIEW_SLUG}" \
+              --notes "Full 1080 × 1920 H.264/AAC preview rendered by Automate-ytb. Source Actions run: ${SOURCE_RUN_ID}. The soundtrack and audio-timed subtitles are included. Automated technical checks passed. Scientific accuracy, pronunciation, accessibility and editorial quality have NOT been human-approved. This preview is NOT published to YouTube." \
+              --prerelease --latest=false
+          fi
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${PREVIEW_SLUG}.mp4"
+          echo "### Stable direct Android/PC MP4 download" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Original media is unchanged, SHA verified; editorial review still required." >> "$GITHUB_STEP_SUMMARY"
