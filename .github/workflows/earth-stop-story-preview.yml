@@ -13,6 +13,7 @@ on:
       - "automate_ytb/science_city3d.py"
       - "automate_ytb/science_people3d.py"
       - "automate_ytb/science_vehicle3d.py"
+      - "automate_ytb/science_astronaut3d.py"
       - "automate_ytb/review_board.py"
       - "scripts/render_earth_animation_preview.py"
   push:
@@ -22,6 +23,7 @@ on:
       - "automate_ytb/science_earth_stop.py"
       - "automate_ytb/science_portrait.py"
       - "automate_ytb/earth_kinetic_fx.py"
+      - "automate_ytb/science_astronaut3d.py"
       - "automate_ytb/earth_cinematic_depth.py"
       - "automate_ytb/review_board.py"
       - "scripts/render_earth_animation_preview.py"
