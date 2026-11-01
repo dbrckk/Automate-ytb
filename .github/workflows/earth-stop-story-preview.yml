@@ -1,0 +1,76 @@
+name: Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/earth-stop-story-preview.yml"
+      - "automate_ytb/science_earth_stop.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/earth_kinetic_fx.py"
+      - "automate_ytb/review_board.py"
+      - "scripts/render_earth_animation_preview.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/earth-stop-story-preview.yml"
+      - "automate_ytb/science_earth_stop.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/earth_kinetic_fx.py"
+      - "automate_ytb/review_board.py"
+      - "scripts/render_earth_animation_preview.py"
+
+permissions:
+  contents: read
+
+jobs:
+  earth-stop-story:
+    name: Narrated causal animation, native 1080x1920
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "What If Earth Suddenly Stopped Spinning?"
+      original_script: >-
+        What if Earth suddenly stopped spinning without warning, and its familiar rotation vanished beneath our feet in just one moment?
+        At the equator, the surface travels east at seventeen hundred kilometers per hour; inertia would send objects onward.
+        The atmosphere would keep moving at first, driving immense winds and hurling debris through exposed cities.
+        The oceans would keep moving too, producing destructive coastal waves, dangerous flooding and widespread devastation.
+        Over longer periods, Earth's changing shape could slowly redistribute ocean water toward the poles.
+        Day and night would follow a radically different cycle, with long periods of sunlight and darkness.
+        Even astronauts and ground survivors would face enormous dangers in this hypothetical, rapidly transformed world.
+      character: "Original explanatory moving Earth, buildings, oceans and astronaut"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 51
+      shot_seconds: 7.3
+      resolution: shorts
+      render_profile: high
+
+  fast-visual-review:
+    name: Encode seven 30fps original Earth animations and inspect real H264
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free offline visual renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install -e .
+      - name: Encode original causal animations and verify decoded movement
+        run: python scripts/render_earth_animation_preview.py
+      - name: Archive actual playable movie and visual quality evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: earth-stop-seven-animated-scene-preview
+          path: outputs/earth-motion-visual-qa/
+          if-no-files-found: error
+          retention-days: 14

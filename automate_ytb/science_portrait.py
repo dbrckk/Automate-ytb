@@ -21,8 +21,11 @@ from .science_storyboards import classify as classify_storyboard, draw_storyboar
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
                               daylight_background, BADGES as RAINBOW_BADGES)
 
+from .science_earth_stop import (classify as classify_earth_stop,
+                                 draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
+
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v8-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics"
+PORTRAIT_VERSION = "original-science-shorts-v9-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
 INK = (238, 247, 250, 255)
 
 
@@ -183,6 +186,7 @@ class PortraitScienceScene:
         self.mode = scene_mode(narration)
         self.beat = classify_storyboard(topic, narration)
         self.rainbow_beat = classify_rainbow(topic, narration)
+        self.earth_stop_beat = classify_earth_stop(topic, narration)
         if is_rainbow and self.rainbow_beat is None:
             raise ValueError(
                 "Rainbow Shorts need authored narration on sunlight, refraction, "
@@ -296,12 +300,17 @@ class PortraitScienceScene:
         d.rounded_rectangle((80, 477, 750, 537), radius=22,
                             fill=(12, 47, 72, 234))
         science_badge = (
-            RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
+            EARTH_STOP_LABELS[self.earth_stop_beat] if self.earth_stop_beat
+            else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
         d.text((113, 488), science_badge[0 if self.english else 1],
                font=_font(36, bold=True), fill=GOLD+(255,))
-        if self.rainbow_beat is not None:
+        if self.earth_stop_beat is not None:
+            draw_earth_stop(picture, self.earth_stop_beat, t, duration,
+                            self.english, self._planet_at)
+            d = ImageDraw.Draw(picture, "RGBA")
+        elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
         elif self.beat is not None:
             draw_storyboard(d, self.beat, t, self.english, duration=duration)
