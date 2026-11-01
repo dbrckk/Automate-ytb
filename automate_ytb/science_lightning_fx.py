@@ -11,7 +11,7 @@ from functools import lru_cache
 import math
 import random
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
 SIZE=(1080,930)
 WHITE=(229,246,255,255)
@@ -70,7 +70,23 @@ def cloud_volume(depth: int, variant: int) -> Image.Image:
         rr=round(width*.12)
         md.ellipse((x-rr,y-31,x+rr,y+20),
                    fill=(133,194,220,28+depth*8))
-    return Image.alpha_composite(luminance,mist.filter(ImageFilter.GaussianBlur(23)))
+    volume=Image.alpha_composite(
+        luminance,mist.filter(ImageFilter.GaussianBlur(23)))
+    # Hard rectangular cloud-sprite edges were visible in the encoded film.
+    # Feather all four boundaries to zero, with organic opacity variation,
+    # preserving actual soft cloud contours as parallax layers overlap.
+    feather=Image.new("L",(width,height))
+    pixels=feather.load()
+    for yy in range(height):
+        fy=min(1.,yy/52.,(height-1-yy)/68.)
+        for xx in range(width):
+            fx=min(1.,xx/67.,(width-1-xx)/76.)
+            uneven=.82+.18*math.sin(xx*.047+math.sin(yy*.033)*2.)
+            pixels[xx,yy]=max(0,min(255,round(
+                255*max(0,min(fx,fy))**1.4*uneven)))
+    volume.putalpha(ImageChops.multiply(
+        volume.getchannel("A"),feather))
+    return volume
 
 
 @lru_cache(maxsize=1)
