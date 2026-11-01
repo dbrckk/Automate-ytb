@@ -123,36 +123,16 @@ def draw_foreground(picture: Image.Image, beat: str, t: float,
             d.ellipse((x-r,yy-r,x+r,yy+r),fill=(186,239,253,178))
 
     elif beat=="astronaut":
-        cx=540+round(72*math.sin(t*.65))
-        cy=1050+round(65*math.sin(t*.9))
-        # Articulated astronaut remains visible; animated tether, harness
-        # and multiple thruster puffs show environmental interaction.
-        d.rounded_rectangle((cx-114,cy+27,cx-92,cy+161),
-                            radius=11,fill=(101,153,183,242))
-        d.ellipse((cx-134,cy+70,cx-108,cy+102),
-                  fill=(255,185,106,230))
-        cable=[]
-        for k in range(43):
-            a=k/42
-            cable.append((cx-118-(445*a),
-                          cy+81-520*a+48*math.sin(a*math.pi*3+t*.85)))
-        d.line(cable,fill=(68,143,199,224),width=10,joint="curve")
-        d.line(cable,fill=(216,235,243,220),width=3,joint="curve")
-        for k in range(14):
-            phase=(k*.211+t*.37)%1
-            x=cx-118-445*phase
-            y=cy+81-520*phase+48*math.sin(phase*math.pi*3+t*.85)
-            d.ellipse((x-4,y-4,x+4,y+4),fill=ORANGE)
-        for sign in (-1,1):
-            bootx=cx+sign*(60+31*math.sin(t*1.4+sign))
-            booty=cy+294+29*math.sin(t*1.2+sign)
-            for k in range(4):
-                phase=(t*1.05+k*.37)%1
-                rr=6+phase*19
-                d.ellipse((bootx-rr,booty+22+phase*55-rr,
-                           bootx+rr,booty+22+phase*55+rr),
-                          outline=(110,220,250,round(145*(1-phase))),
-                          width=3)
+        # The tether, backpack, space suit and thrusters now exist in true
+        # projected 3D geometry in science_astronaut3d. The foreground layer
+        # retains only small independent depth cues: no duplicate 2D rig.
+        for k in range(17):
+            phase=(t*(.18+.04*(k%4))+k*.157)%1
+            x=69+(k*187)%935 + 13*math.sin(t*.31+k)
+            y=679+(k*97)%681-39*phase
+            r=2+(k%3)
+            d.ellipse((x-r,y-r,x+r,y+r),
+                      fill=(160,215,250,round(150*(1-phase))))
 
     elif beat=="stop":
         # Dissipating circular shock ring, small independent orbit fragments.
