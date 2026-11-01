@@ -63,7 +63,7 @@ def draw_depth_behind(picture: Image.Image, beat: str,
         # near and distant ridges move at different camera/parallax speeds.
         drift=round(44*math.sin(t*.35))
         picture.alpha_composite(_soft_light(850,(65,152,207)),
-                                (200+drift,655))
+                                (110+drift,655))
         d=ImageDraw.Draw(picture,"RGBA")
         for layer in range(3):
             y=1052+layer*85
