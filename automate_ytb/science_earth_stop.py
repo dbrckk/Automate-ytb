@@ -19,6 +19,7 @@ from .earth_kinetic_fx import draw_foreground
 from .earth_cinematic_depth import draw_depth_behind, draw_depth_above
 from .earth_story_actions import draw_story_actions
 from .science_city3d import draw_city_mesh
+from .science_people3d import draw_wind_actors3d
 from .science_vehicle3d import draw_vehicle3d
 
 LABELS = {
@@ -268,6 +269,8 @@ def draw(picture: Image.Image, beat: str, t: float, duration: float,
     # panning a generic still image behind subtitles.
     draw_foreground(picture, beat, t, duration)
     draw_story_actions(picture, beat, t, duration)
+    if beat == "wind":
+        draw_wind_actors3d(picture, t, duration)
     draw_depth_above(picture, beat, t, duration)
     # Non-physical schematic warning stays clear of narration captions.
     d=ImageDraw.Draw(picture,"RGBA")
