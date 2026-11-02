@@ -153,6 +153,16 @@ def paint_terrain(draw: ImageDraw.ImageDraw,t: float) -> None:
         for yy in (804-h+12,804-h+29):
             draw.line((x+5,yy,x+16,yy),
                       fill=(108,148,156,105),width=2)
+    # A persistent grounded radio mast appears in every beat, not just
+    # the connection scene. Its tip matches the shared channel geometry.
+    draw.line(((658,811),(700,695),(742,811)),
+              fill=(115,155,172,255),width=6,joint="curve")
+    draw.line((681,756,720,756),fill=(151,185,196,240),width=4)
+    draw.line((668,787,731,787),fill=(151,185,196,240),width=4)
+    draw.line((682,756,728,787),fill=(112,152,169,200),width=3)
+    draw.line((717,756,673,787),fill=(112,152,169,200),width=3)
+    draw.line((700,695,700,755),fill=(196,217,224,255),width=5)
+    draw.ellipse((695,688,705,698),fill=(248,113,104,245))
     for k in range(18):
         x=(k*83+18)%1100
         y=832+k%4*21

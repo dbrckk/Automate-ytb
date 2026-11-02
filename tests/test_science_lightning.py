@@ -9,7 +9,8 @@ from PIL import Image, ImageChops
 
 from automate_ytb.scene_plan import beats
 from automate_ytb.science_lightning import (
-    BEATS, BADGES, PATH, classify, supports_topic, draw_lightning,
+    BEATS, BADGES, PATH, LEADER_CHANNEL, UPWARD_STREAMER,
+    CONNECTED_CHANNEL, TOWER_TOP, classify, supports_topic, draw_lightning,
     storm_background, STAGE_TOP, STAGE_BOTTOM,
 )
 from automate_ytb.science_portrait import PortraitScienceScene
@@ -42,6 +43,18 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
         for bad in ((None,SCRIPT[0]),(TOPIC,None)):
             with self.assertRaises(ValueError):
                 classify(*bad)
+
+    def test_discharge_has_one_geometrically_connected_path(self):
+        # No teleporting bolt below the tower in the return shot.
+        self.assertEqual(UPWARD_STREAMER[0], TOWER_TOP)
+        self.assertEqual(UPWARD_STREAMER[-1], LEADER_CHANNEL[-1])
+        self.assertEqual(CONNECTED_CHANNEL[0], TOWER_TOP)
+        self.assertEqual(CONNECTED_CHANNEL[len(UPWARD_STREAMER)-1],
+                         LEADER_CHANNEL[-1])
+        self.assertEqual(CONNECTED_CHANNEL[-1], LEADER_CHANNEL[0])
+        self.assertEqual(len(LEADER_CHANNEL), 41)
+        self.assertEqual(len(set(CONNECTED_CHANNEL)),
+                         len(CONNECTED_CHANNEL))
 
     def test_new_episode_has_no_globe_and_five_distinct_frames(self):
         signatures=[]

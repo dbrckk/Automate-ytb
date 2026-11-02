@@ -120,6 +120,13 @@ def _leader_path():
     return tuple(nodes)
 
 PATH=_leader_path()
+# One continuous, shared conductive channel across the three causal beats.
+# The leader ends at the streamer contact, not underneath the ground.
+CONTACT_INDEX=40
+TOWER_TOP=(700,695)
+LEADER_CHANNEL=PATH[:CONTACT_INDEX+1]
+UPWARD_STREAMER=(TOWER_TOP,(684,668),(658,640),LEADER_CHANNEL[-1])
+CONNECTED_CHANNEL=UPWARD_STREAMER[:-1]+tuple(reversed(LEADER_CHANNEL))
 
 
 def _trail(d,coords,color,width):
@@ -169,39 +176,44 @@ def _charges(d,t,english):
 
 def _leader(d,t,duration,english):
     f=min(1.,max(0.,t/duration))
-    n=max(2,round(2+54*(f*f*(3-2*f))))
-    coords=PATH[:n]
-    _trail(d,PATH,(106,161,200,35),4)
-    _trail(d,coords,(96,192,247,110),12)
+    n=max(2,round(2+(len(LEADER_CHANNEL)-2)*(f*f*(3-2*f))))
+    coords=LEADER_CHANNEL[:n]
+    _trail(d,coords,(96,192,247,110),13)
     _trail(d,coords,(192,237,255,225),4)
-    for j in (9,20,30,41,49):
+    # Side channels only grow after the leader reaches their junction.
+    # Alternating left/right branch growth makes the descent readable.
+    for j in (6,13,22,30,36):
         if n>j+1:
-            x,y=PATH[j]
-            k=min(1.,(n-j)/10)
-            branch=((x,y),(x+round(37*k),y+round(24*k)),
-                    (x+round(53*k),y+round(49*k)))
-            _trail(d,branch,(141,210,251,183),3)
+            x,y=LEADER_CHANNEL[j]
+            k=min(1.,(n-j)/9)
+            side=-1 if j%2 else 1
+            branch=((x,y),(x+round(side*37*k),y+round(24*k)),
+                    (x+round(side*58*k),y+round(51*k)))
+            _trail(d,branch,(110,194,246,98),8)
+            _trail(d,branch,(173,224,255,208),3)
     x,y=coords[-1]
     d.ellipse((x-13,y-13,x+13,y+13),fill=(243,250,255,240))
 
 
 def _connection(d,t,duration,english):
     t0=min(1.,max(0.,t/duration))
-    lead=PATH[:41]
+    lead=LEADER_CHANNEL
     _trail(d,lead,(129,210,247,155),8)
     _trail(d,lead,(208,239,255,230),3)
-    # Grounded radio tower provides a reproducible clear start location.
-    tip=PATH[40]
-    tower_x,tower_y=700,770
-    d.polygon([(677,812),(700,770),(725,812)],fill=(114,167,185,245))
-    d.line((700,769,700,695),fill=(192,217,226,245),width=8)
-    start=(700,695)
-    points=(start,(start[0]-25,666),(start[0]-41,639),tip)
-    n=max(2,round(2+2*t0))
-    _trail(d,points[:n],(123,223,253,98),12)
-    _trail(d,points[:n],WHITE,4)
-    if n==4:
-        x,y=tip
+    # Nearby candidate streamers grow and fade without falsely connecting.
+    for i,origin in enumerate(((292,798),(921,791))):
+        reach=max(0.,min(1.,t0*1.45-i*.16))
+        top=(origin[0]+(21 if i==0 else -18)*reach,
+             origin[1]-(87+i*15)*reach)
+        _trail(d,(origin,top),(149,221,255,round(130*(1-.5*t0))),4)
+        d.ellipse((top[0]-4,top[1]-4,top[0]+4,top[1]+4),
+                  fill=(212,241,255,round(165*(1-.6*t0))))
+    # This exact path is also used for the return stroke, ground-up.
+    n=max(2,round(2+(len(UPWARD_STREAMER)-2)*t0))
+    _trail(d,UPWARD_STREAMER[:n],(123,223,253,98),12)
+    _trail(d,UPWARD_STREAMER[:n],WHITE,4)
+    if n==len(UPWARD_STREAMER):
+        x,y=LEADER_CHANNEL[-1]
         for r in (16,29):
             d.ellipse((x-r,y-r,x+r,y+r),
                       outline=(253,211,121,195),width=3)
@@ -211,20 +223,20 @@ def _return(d,t,duration,english):
     # Return stroke brightens the connected channel upward; distinct from
     # the downward, faint stepped leader (not a replay of the same effect).
     p=min(1.,max(0.,t/duration))
-    rev=PATH[::-1]
-    active=rev[:max(2,round(2+55*min(1.,p*1.5)))]
+    active=CONNECTED_CHANNEL[:max(
+        2,round(2+(len(CONNECTED_CHANNEL)-2)*min(1.,p*1.5)))]
     for width,alpha,color in (
         (38,38,(145,216,255)),(22,94,(156,226,255)),
         (12,190,(207,238,255)),(5,255,(255,255,255))):
         _trail(d,active,(*color,alpha),width)
     if p<.40:
         radius=round(52+95*p)
-        x,y=PATH[-1]
+        x,y=TOWER_TOP
         d.ellipse((x-radius,y-radius,x+radius,y+radius),
                   outline=(251,218,154,round(215*(1-p))),width=9)
     if p>.58:
         for i in range(12):
-            x,y=PATH[i*4]
+            x,y=LEADER_CHANNEL[min(i*4,len(LEADER_CHANNEL)-1)]
             r=3+(i%3)
             d.ellipse((x-r,y-r,x+r,y+r),fill=(255,248,222,191))
 
@@ -232,8 +244,9 @@ def _return(d,t,duration,english):
 def _thunder(d,t,duration,english):
     progress=min(1.,max(0.,t/duration))
     # Dimming hot channel with independently advancing pressure waves.
-    _trail(d,PATH,(134,197,244,round(145*(1-progress)+25)),7)
-    center=(621,670)
+    _trail(d,CONNECTED_CHANNEL,
+           (134,197,244,round(145*(1-progress)+25)),7)
+    center=LEADER_CHANNEL[-1]
     for i in range(6):
         p=(progress*1.1-i*.16)
         if p<0 or p>1:
@@ -284,6 +297,9 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     else:
         _thunder(d,t,duration,english)
     layer.alpha_composite(actions)
-    bloom_electric_channel(layer,beat,t,duration,PATH)
+    bloom_electric_channel(
+        layer,beat,t,duration,
+        CONNECTED_CHANNEL if beat in ("return","thunder")
+        else LEADER_CHANNEL)
     paint_foreground_weather(layer,t,beat)
     picture.alpha_composite(layer,(0,STAGE_TOP))
