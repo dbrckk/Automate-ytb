@@ -14,6 +14,7 @@ from automate_ytb.science_lightning import (
     storm_background, STAGE_TOP, STAGE_BOTTOM,
 )
 from automate_ytb.science_portrait import PortraitScienceScene
+from automate_ytb.cinematic_stage import camera_pose, camera_frame, CAMERA_VERSION
 
 TOPIC="How Does Lightning Form?"
 SCRIPT=(
@@ -55,6 +56,28 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
         self.assertEqual(len(LEADER_CHANNEL), 41)
         self.assertEqual(len(set(CONNECTED_CHANNEL)),
                          len(CONNECTED_CHANNEL))
+
+    def test_camera_stage_larger_and_uniform_with_safe_crop(self):
+        self.assertIn("stage-camera", CAMERA_VERSION)
+        source=Image.new("RGBA",(1080,930),(14,36,66,255))
+        self.assertGreater(STAGE_BOTTOM-STAGE_TOP, 930)
+        for beat in BEATS:
+            start=camera_frame(source,beat,0,7)
+            end=camera_frame(source,beat,7,7)
+            self.assertEqual(start.size,(1080,1380))
+            self.assertEqual(start.getchannel("A").getextrema(),(255,255))
+            self.assertEqual(end.getchannel("A").getextrema(),(255,255))
+            for second in (0,1/30,2/30,3,6.9):
+                zoom,x,y=camera_pose(beat,second,7)
+                self.assertGreaterEqual(zoom, 1.50)
+                self.assertGreaterEqual(x-540/zoom,-.0001)
+                self.assertLessEqual(x+540/zoom,1080.0001)
+                self.assertGreaterEqual(y-690/zoom,-.0001)
+                self.assertLessEqual(y+690/zoom,930.0001)
+        with self.assertRaises(ValueError):
+            camera_pose("invalid",0,7)
+        with self.assertRaises(ValueError):
+            camera_frame(Image.new("RGB",(1080,930)),"charge",0,7)
 
     def test_new_episode_has_no_globe_and_five_distinct_frames(self):
         signatures=[]

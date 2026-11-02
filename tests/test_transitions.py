@@ -80,6 +80,43 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(second[1].read_bytes(), original)
         self.assertEqual(report2, report)
 
+    def test_science_dissolve_blends_action_without_ghost_captions(self):
+        # Encode actual 9:16 clips with distinct headline/caption colours.
+        def make(color: str, label: str, name: str):
+            path = self.root / name
+            subprocess.run(
+                ["ffmpeg", "-nostdin", "-v", "error", "-f", "lavfi",
+                 "-i", f"color=c={color}:s=1080x1920:r=24:d=0.5",
+                 "-vf", f"drawbox=x=0:y=0:w=iw:h=500:color={label}:t=fill,"
+                        f"drawbox=x=0:y=1500:w=iw:h=420:color={label}:t=fill",
+                 "-c:v", "libx264", "-preset", "ultrafast",
+                 "-pix_fmt", "yuv420p", "-y", str(path)],
+                capture_output=True, check=True, timeout=90)
+            return path
+        old = make("red", "yellow", "old-science.mp4")
+        new = make("blue", "white", "new-science.mp4")
+        output, report = transition_clips(
+            [old, new], cache=self.root/"science-cache", fps=24,
+            durations=[.5,.5], mode="dissolve",
+            preserve_science_ui=True)
+        self.assertEqual(report["count"], 1)
+        self.assertAlmostEqual(_duration(output[1]),.5,delta=.06)
+        frame = subprocess.run(
+            ["ffmpeg","-nostdin","-v","error","-ss","0.04",
+             "-i",str(output[1]),"-frames:v","1","-f",
+             "image2pipe","-vcodec","png","-"],
+            check=True, capture_output=True, timeout=90)
+        with Image.open(io.BytesIO(frame.stdout)) as img:
+            rgb=img.convert("RGB")
+            top,stage,bottom=(rgb.getpixel((540,y))
+                              for y in (200, 950, 1700))
+        self.assertGreater(min(top), 225, top)
+        self.assertGreater(min(bottom), 225, bottom)
+        self.assertGreater(stage[0],stage[2]+40,stage)
+        with self.assertRaises(ValueError):
+            transition_clips([old],cache=self.root,fps=24,
+                             durations=[.5],preserve_science_ui="unsafe")
+
     def test_cut_keeps_original_clips_and_rejects_invalid_inputs(self):
         red = self._solid_clip("red", "red.mp4", 1.0)
         blue = self._solid_clip("blue", "blue.mp4", 1.0)
