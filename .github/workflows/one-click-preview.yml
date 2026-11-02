@@ -56,12 +56,12 @@ on:
         description: "Original episode topic"
         type: string
         required: true
-        default: "Le voyage de la petite chouette violette"
+        default: "The Purple Owl and the Fireflies"
       original_script:
         description: "Original script: at least one sentence per scene (5 for default 30 sec)"
         type: string
         required: true
-        default: "Une petite chouette violette découvre une lumière mystérieuse. Elle se promène doucement dans son jardin. Un papillon lumineux apparaît près des fleurs. Ensemble, ils découvrent un nouveau chemin dans la forêt. Au matin, la chouette revient chez elle avec un grand sourire."
+        default: "A curious purple owl notices a mysterious light. She follows it through a quiet garden. A glowing firefly dances among the flowers. Together they discover a hidden forest path. At dawn, the owl returns home with a wonderful new story."
       character:
         description: "Your own recurring character (saved in scene prompts)"
         type: string
@@ -75,7 +75,7 @@ on:
       language:
         type: choice
         options: [fr, en]
-        default: fr
+        default: en
       voice:
         type: choice
         description: "Natural Kokoro neural voice (recommended), eSpeak draft, or silent"
@@ -131,7 +131,7 @@ permissions:
 # Superseded PR renders should not stall the newest playable preview.
 # Main/explicit release renders are never cancelled in flight.
 concurrency:
-  group: youtube-offline-preview-${{ github.ref }}
+  group: youtube-offline-preview-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

@@ -13,6 +13,7 @@ on:
     workflows:
       - "Verify full 9:16 rainbow optics Shorts release candidate"
       - "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)"
+      - "Verify original lightning-storm science Shorts"
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -24,7 +25,7 @@ on:
         description: "Known original science topic"
         required: true
         type: choice
-        options: [rainbow-optics, earth-stop]
+        options: [rainbow-optics, earth-stop, lightning-storm]
 
 permissions:
   contents: write
@@ -48,7 +49,7 @@ jobs:
       # The first main push seeded the rainbow preview. Seed Earth next;
       # subsequent source workflow completions are mapped independently.
       SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event_name == 'workflow_run' && github.event.workflow_run.id || '41286036076' }}
-      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
+      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original lightning-storm science Shorts' && 'lightning-storm' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install free video decoding tools
@@ -60,13 +61,14 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$SOURCE_RUN_ID" =~ ^[0-9]{4,15}$ ]]
-          [[ "$PREVIEW_SLUG" == "rainbow-optics" || "$PREVIEW_SLUG" == "earth-stop" ]]
+          [[ "$PREVIEW_SLUG" == "rainbow-optics" || "$PREVIEW_SLUG" == "earth-stop" || "$PREVIEW_SLUG" == "lightning-storm" ]]
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source-run.json
           jq -e --arg repo "$GITHUB_REPOSITORY" --arg slug "$PREVIEW_SLUG" '
             .status == "completed" and .conclusion == "success" and
             .head_branch == "main" and .head_repository.full_name == $repo and
             ((.name == "Verify full 9:16 rainbow optics Shorts release candidate" and $slug == "rainbow-optics") or
-             (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop"))
+             (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop") or
+             (.name == "Verify original lightning-storm science Shorts" and $slug == "lightning-storm"))
           ' source-run.json >/dev/null
       - name: Download real release-gated video, subtitle and QA evidence
         run: gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name automate-ytb-free-preview --dir incoming
