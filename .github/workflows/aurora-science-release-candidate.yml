@@ -1,0 +1,51 @@
+name: Verify original aurora-dance science Shorts
+
+on:
+  push:
+    branches: [main, feat/original-aurora-science-20261102]
+    paths:
+      - .github/workflows/aurora-science-release-candidate.yml
+      - automate_ytb/science_aurora.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/science_motion.py
+      - automate_ytb/episode.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-verify:
+    name: Render five original aurora science scenes with free English Kokoro
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Do Northern Lights Dance?"
+      original_script: >-
+        The Sun releases a stream of charged particles called the solar wind.
+        Earth's magnetic field guides some of them toward the northern and southern polar skies.
+        High above us, those particles collide with oxygen and nitrogen in the atmosphere.
+        Excited gases release their energy as colored light, often green, sometimes red or violet.
+        These glowing regions stretch into rippling curtains: the northern lights dancing across the sky.
+      character: "Original solar wind, magnetic field and aurora physics graphics"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm original aurora MP4, English voice and QA
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm successful media QA before delivering the actual artifact
+        run: |
+          echo 'Original CPU-only aurora science MP4 passed inherited full QA.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'This is an UNREVIEWED video, not a YouTube upload.' >> "$GITHUB_STEP_SUMMARY"
