@@ -14,16 +14,19 @@ import tempfile
 from .encoding_profiles import video_args
 
 
-VERSION = "hold-frame-dissolve-v1"
+VERSION = "hold-frame-dissolve-v2-science-ui-mask"
 DISSOLVE_SECONDS = 0.32
 
 
 def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                      durations: list[float], mode: str = "dissolve",
-                     render_profile: str = "preview"
+                     render_profile: str = "preview",
+                     preserve_science_ui: bool = False
                      ) -> tuple[list[Path], dict]:
     """Create resumable, original, visually transitioned *silent* scene clips."""
     video_args(render_profile)
+    if type(preserve_science_ui) is not bool:
+        raise ValueError("Invalid science UI preservation flag")
     if mode not in {"dissolve", "cut"}:
         raise ValueError("Unknown scene transition; use dissolve or cut")
     if fps not in {24, 30}:
@@ -47,7 +50,7 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                     durations[i] * 0.35)
         # Never depend on a mutable clip name alone; production scene clips
         # contain approved image hashes, timing, direction and render version.
-        source = f"{VERSION}|{previous.name}|{current.name}|{fps}|{blend:.6f}|{render_profile}"
+        source = f"{VERSION}|{previous.name}|{current.name}|{fps}|{blend:.6f}|{render_profile}|{preserve_science_ui}"
         key = hashlib.sha256(source.encode()).hexdigest()[:20]
         dest = cache / f"scene-{i+1:03d}-dissolve-{key}.mp4"
         if not dest.is_file() or not dest.stat().st_size:
@@ -60,9 +63,23 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
                           "-y", "-sseof", "-0.12", "-i", str(previous),
                           "-frames:v", "1", str(still)])
-                    # Overlay the previous last frame at full opacity and
-                    # dissolve it to transparent, revealing current frames.
-                    # The incoming stream defines the unmodified duration.
+                    # Burned-in captions and titles should never be overlaid
+                    # from the outgoing scene on top of the next scene's UI.
+                    # Apply a feathered stage-only matte to its final frame.
+                    if preserve_science_ui:
+                        from PIL import Image, ImageDraw, ImageFilter
+                        with Image.open(still) as source_frame:
+                            old_frame = source_frame.convert("RGBA")
+                        width, height = old_frame.size
+                        if (width, height) != (1080, 1920):
+                            raise ValueError("Science UI masking needs 1080x1920")
+                        alpha = Image.new("L", (width, height))
+                        pen = ImageDraw.Draw(alpha)
+                        pen.rectangle((0, 530, width, 1440), fill=255)
+                        old_frame.putalpha(
+                            alpha.filter(ImageFilter.GaussianBlur(35)))
+                        old_frame.save(still)
+                    # The incoming stream retains the original duration.
                     graph = (
                         "[1:v]format=rgba,"
                         f"fade=t=out:st=0:d={blend:.3f}:alpha=1[previous];"
