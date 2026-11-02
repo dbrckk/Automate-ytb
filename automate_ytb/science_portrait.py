@@ -28,7 +28,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v10-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-animated"
+PORTRAIT_VERSION = "original-science-shorts-v11-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-cinematic-lightning"
 INK = (238, 247, 250, 255)
 
 
@@ -313,28 +313,8 @@ class PortraitScienceScene:
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
         if self.lightning_beat is not None:
-            # Cinematic compact editorial typography, actual compositing:
-            # a translucent overlay must blend, not overwrite RGBA alpha.
-            overlay = Image.new("RGBA", picture.size)
-            ui = ImageDraw.Draw(overlay)
-            ui.rounded_rectangle((61, 169, 1019, 317), radius=24,
-                                 fill=(5, 17, 35, 147),
-                                 outline=(121, 185, 214, 91), width=2)
-            for i, row in enumerate(title):
-                ui.text((94, 194 + 55*i), row,
-                        font=_font(title_size, bold=True), fill=INK)
-            ui.rounded_rectangle((78, 358, 736, 412), radius=17,
-                                 fill=(13, 46, 71, 119))
-            ui.text((103, 366), science_badge[0 if self.english else 1],
-                    font=_font(31, bold=True), fill=GOLD+(255,))
-            # A subtle stage progress rule, not a static 2D title card.
-            beat_number = list(LIGHTNING_BADGES).index(self.lightning_beat)
-            ui.line((81, 440, 991, 440),
-                    fill=(128, 177, 199, 65), width=3)
-            ui.line((81, 440, 81 + 910*(beat_number+1)//5, 440),
-                    fill=(143, 225, 248, 166), width=4)
-            picture.alpha_composite(overlay)
-            d = ImageDraw.Draw(picture, "RGBA")
+            # Render the stable editorial interface after scene animation.
+            pass
         else:
             d.rounded_rectangle((55, 190, 1025, 407), radius=34,
                                 fill=(7, 20, 41, 232),
@@ -432,6 +412,26 @@ class PortraitScienceScene:
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
+        if self.lightning_beat is not None:
+            # UI is composited after the cinematographic camera, so the
+            # moving image cannot overwrite or displace readable typography.
+            header = Image.new("RGBA", picture.size)
+            ui = ImageDraw.Draw(header)
+            ui.rounded_rectangle((61, 109, 1019, 243), radius=25,
+                                 fill=(4, 15, 30, 163),
+                                 outline=(121, 185, 214, 92), width=2)
+            for i, row in enumerate(title):
+                ui.text((91, 130 + 51*i), row,
+                        font=_font(title_size, bold=True), fill=INK)
+            ui.rounded_rectangle((70, 265, 793, 319), radius=18,
+                                 fill=(10, 38, 58, 156))
+            ui.text((99, 273), science_badge[0 if self.english else 1],
+                    font=_font(31, bold=True), fill=GOLD+(255,))
+            beat_number = list(LIGHTNING_BADGES).index(self.lightning_beat)
+            ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)
+            ui.line((75, 327, 75 + 930*(beat_number+1)//5, 327),
+                    fill=(143, 225, 248, 204), width=4)
+            picture.alpha_composite(header)
         # Compact subtitle excerpt in a dedicated lower-middle safe band.
         # Resolve speech-synthesized cues before drawing, not guessed timing.
         active_text = self.active_caption(t, duration)
@@ -439,11 +439,11 @@ class PortraitScienceScene:
         if self.lightning_beat is not None:
             captions = Image.new("RGBA", picture.size)
             cd = ImageDraw.Draw(captions)
-            cd.rounded_rectangle((65, 1523, 1015, 1698), radius=24,
-                                 fill=(4, 14, 30, 171),
-                                 outline=(110, 187, 218, 83), width=2)
+            cd.rounded_rectangle((65, 1586, 1015, 1782), radius=24,
+                                 fill=(4, 14, 30, 211),
+                                 outline=(110, 187, 218, 94), width=2)
             for i, line in enumerate(summary):
-                cd.text((108, 1547 + 46*i), line,
+                cd.text((108, 1619 + 47*i), line,
                         font=_font(summary_size, True), fill=INK)
             picture.alpha_composite(captions)
         else:

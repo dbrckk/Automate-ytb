@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v49-opt-in-science-motion"
+VERSION = "render-v50-science-cinema-overlay-safe"
 
 
 def _sha(path: Path) -> str:
@@ -349,7 +349,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "portraitTypographyVersion": ("shorts-lossless-fit-v1"
                                           if science_art and resolution == "shorts"
                                           else None),
-            "portraitMotionVersion": ("shorts-30fps-blended-earth-v1"
+            "portraitMotionVersion": ("shorts-30fps-science-cinema-v2"
                                       if science_art and resolution == "shorts"
                                       else None),
             "portraitOceanVersion": ("shorts-ocean-currents-eddy-v1"
@@ -449,7 +449,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     edited_clips, transitions_report = transition_clips(
         clips, cache=cache, fps=fps,
         durations=[(s["endMs"] - s["startMs"]) / 1000 for s in scenes],
-        mode=transition, render_profile=render_profile)
+        mode=transition, render_profile=render_profile,
+        preserve_science_ui=(resolution == "shorts"))
     concat = output / "clips.ffconcat"
     concat.write_text("ffconcat version 1.0\n" +
                       "".join(f"file {_quoted(c)}\n" for c in edited_clips), encoding="utf-8")

@@ -14,6 +14,7 @@ import unicodedata
 
 from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font
+from .cinematic_stage import camera_frame
 from .science_lightning_fx import (
     paint_environment, paint_terrain, bloom_electric_channel,
     paint_foreground_weather,
@@ -31,9 +32,10 @@ BASE=(7,19,39,255)
 CYAN=(133,223,255,255)
 GOLD=(255,207,111,255)
 WHITE=(238,248,255,255)
-STAGE_TOP=566
-STAGE_BOTTOM=1496
+STAGE_TOP=330
+STAGE_BOTTOM=1710
 STAGE_HEIGHT=STAGE_BOTTOM-STAGE_TOP
+SOURCE_HEIGHT=930
 
 
 def _plain(value: str) -> str:
@@ -273,18 +275,18 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
             or duration<=0 or duration>180 or not 0<=t<=duration
             or type(english) is not bool):
         raise ValueError("Invalid lightning science frame")
-    layer=Image.new("RGBA",(1080,STAGE_HEIGHT))
+    layer=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     # Original layered animated storm environment. Clouds, wet ground and
     # near/far rain have distinct depth speeds, not a flat background image.
     paint_environment(layer,t,beat,duration)
-    terrain=Image.new("RGBA",(1080,STAGE_HEIGHT))
+    terrain=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     td=ImageDraw.Draw(terrain,"RGBA")
     paint_terrain(td,t)
     layer.alpha_composite(terrain)
     # Actions must be blended on a separate transparent overlay. Drawing a
     # low-alpha glow directly onto opaque RGBA would overwrite its alpha,
     # darkening cloud faces and producing opaque-looking flat artifacts.
-    actions=Image.new("RGBA",(1080,STAGE_HEIGHT))
+    actions=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     d=ImageDraw.Draw(actions,"RGBA")
     if beat=="charge":
         _charges(d,t,english)
@@ -302,4 +304,4 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         CONNECTED_CHANNEL if beat in ("return","thunder")
         else LEADER_CHANNEL)
     paint_foreground_weather(layer,t,beat)
-    picture.alpha_composite(layer,(0,STAGE_TOP))
+    picture.alpha_composite(camera_frame(layer,beat,t,duration), (0,STAGE_TOP))
