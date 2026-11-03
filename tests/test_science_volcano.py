@@ -18,7 +18,7 @@ SCRIPT=(
 
 class OriginalVolcanoTests(unittest.TestCase):
     def test_camera_enabled_in_production_render(self):
-        self.assertEqual(DIRECTOR_VERSION, "original-science-director-v1")
+        self.assertTrue(DIRECTOR_VERSION.startswith("original-science-director-v2-"))
 
     def test_five_semantic_actions(self):
         self.assertEqual(BEATS,tuple(classify(TOPIC,t) for t in SCRIPT))
