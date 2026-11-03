@@ -1,7 +1,7 @@
 """Cinematic science camera is continuous, crop-safe, content preserving."""
 import unittest
 from PIL import Image, ImageChops
-from automate_ytb.science_stage_director import FRAME_SIZE, SHOTS, VERSION, pose, reframe
+from automate_ytb.science_stage_director import FRAME_SIZE, SHOTS, VERSION, ACTION_CUES, action_envelope, pose, reframe
 
 
 class ScienceDirectorTests(unittest.TestCase):
@@ -68,3 +68,31 @@ class ScienceDirectorTests(unittest.TestCase):
             reframe(Image.new("RGB",FRAME_SIZE),"volcano","magma",0,7)
         with self.assertRaises(ValueError):
             reframe(Image.new("RGBA",(1080,930)),"volcano","magma",0,7)
+
+    def test_event_emphasis_is_localized_and_has_no_scene_boundary_jump(self):
+        self.assertEqual(set(SHOTS),set(ACTION_CUES))
+        for topic, beats in SHOTS.items():
+            self.assertEqual(set(beats),set(ACTION_CUES[topic]))
+            for beat in beats:
+                with self.subTest(topic=topic,beat=beat):
+                    center, push, _, _, width = ACTION_CUES[topic][beat]
+                    self.assertGreater(action_envelope(topic,beat,center),.99)
+                    self.assertEqual(action_envelope(topic,beat,0),0)
+                    self.assertEqual(action_envelope(topic,beat,1),0)
+                    self.assertEqual(action_envelope(topic,beat,max(0,center-width)),0)
+                    self.assertEqual(action_envelope(topic,beat,min(1,center+width)),0)
+                    start,end=pose(topic,beat,0,7),pose(topic,beat,7,7)
+                    self.assertAlmostEqual(start[0],beats[beat][0])
+                    self.assertAlmostEqual(end[0],beats[beat][1])
+                    # The camera must be visibly distinct from simple smoothstep.
+                    middle=pose(topic,beat,center*7,7)[0]
+                    q=center
+                    baseline=beats[beat][0]+(beats[beat][1]-beats[beat][0])*q*q*(3-2*q)
+                    self.assertGreater(middle-baseline,push*.95)
+
+    def test_invalid_event_envelopes_fail(self):
+        for value in (-1,1.1,float("nan"),float("inf")):
+            with self.assertRaises(ValueError):
+                action_envelope("volcano","eruption",value)
+        with self.assertRaises(ValueError):
+            action_envelope("unknown","eruption",.5)
