@@ -55,6 +55,35 @@ class ScienceDirectorTests(unittest.TestCase):
             self.assertGreater(sun_left,10)
             self.assertLess(earth_right,1078)
 
+
+    def test_event_directed_camera_has_smooth_monotone_timing(self):
+        from automate_ytb.science_stage_director import event_progress, EVENT_PROGRESS
+        for topic, beats in EVENT_PROGRESS.items():
+            for beat, knots in beats.items():
+                with self.subTest(topic=topic,beat=beat):
+                    self.assertEqual(event_progress(topic,beat,0),0)
+                    self.assertEqual(event_progress(topic,beat,1),1)
+                    self.assertTrue(all(knots[i][0]<knots[i+1][0]
+                                        and knots[i][1]<knots[i+1][1]
+                                        for i in range(len(knots)-1)))
+                    samples=[event_progress(topic,beat,i/600) for i in range(601)]
+                    self.assertTrue(all(0<=v<=1 for v in samples))
+                    self.assertTrue(all(b>=a for a,b in zip(samples,samples[1:])))
+                    self.assertLess(max(b-a for a,b in zip(samples,samples[1:])),.009)
+                    # No position snap at any authored action transition.
+                    for x,_ in knots[1:-1]:
+                        left=event_progress(topic,beat,x-.00001)
+                        right=event_progress(topic,beat,x+.00001)
+                        self.assertLess(right-left,.0001)
+
+    def test_invalid_event_clocks_rejected(self):
+        from automate_ytb.science_stage_director import event_progress
+        for fraction in (-.01,1.01,float("nan"),float("inf")):
+            with self.assertRaises(ValueError):
+                event_progress("volcano","eruption",fraction)
+        with self.assertRaises(ValueError):
+            event_progress("rainbow","arc",.5)
+
     def test_invalid_camera_inputs_fail_explicitly(self):
         stage=Image.new("RGBA",FRAME_SIZE)
         for topic,beat,t,dur in (
