@@ -149,23 +149,15 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
           python -m pip install -e .
-      - name: Cache open Kokoro voice assets
-        if: ${{ inputs.voice == 'kokoro' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface/hub
-          key: kokoro-82m-voice-${{ runner.os }}-v1
-      - name: Install optional Kokoro natural speech model runner
-        if: ${{ inputs.voice == 'kokoro' }}
-        run: |
-          # CPU-only PyTorch avoids large CUDA-only libraries on GitHub Actions.
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
-          python -m pip install -e '.[speech]'
-      - name: Prepare original script safely
+      - name: Prepare original script and validate authored science scene actions
         env:
           YT_SCRIPT: ${{ inputs.original_script }}
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_CHARACTER: ${{ inputs.character }}
           YT_SECONDS: ${{ inputs.duration_seconds }}
           YT_SHOT: ${{ inputs.shot_seconds }}
+          YT_STYLE: ${{ inputs.style }}
+          YT_RESOLUTION: ${{ inputs.resolution }}
         run: |
           mkdir -p build
           python - <<'PY'
@@ -179,6 +171,30 @@ jobs:
               raise SystemExit("Maximum 150 scenes per run")
           Path("build/script.txt").write_text(os.environ["YT_SCRIPT"], encoding="utf-8")
           PY
+          VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
+          if [ "$YT_STYLE" = "science" ]; then
+            VISUAL_BRIEF="Original schematic animated Earth and ocean science infographic, clear labels and locally generated diagrams; no third-party pictures"
+          fi
+          python -m automate_ytb.scene_plan \
+            --topic "$YT_TOPIC" --script build/script.txt \
+            --character "$YT_CHARACTER" --duration "$YT_SECONDS" \
+            --style "$VISUAL_BRIEF" \
+            --shot-seconds "$YT_SHOT" --output build/scene-plan.json
+          python -m automate_ytb.science_preflight \
+            --plan build/scene-plan.json --style "$YT_STYLE" \
+            --resolution "$YT_RESOLUTION" --output build/scene-preflight.json
+      - name: Cache open Kokoro voice assets
+        if: ${{ inputs.voice == 'kokoro' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install optional Kokoro natural speech model runner
+        if: ${{ inputs.voice == 'kokoro' }}
+        run: |
+          # CPU-only PyTorch avoids large CUDA-only libraries on GitHub Actions.
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install -e '.[speech]'
       - name: Plan scenes, graphics and narration
         env:
           YT_TOPIC: ${{ inputs.topic }}
@@ -196,10 +212,6 @@ jobs:
           YT_RESOLUTION: ${{ inputs.resolution }}
           YT_RENDER_PROFILE: ${{ inputs.render_profile }}
         run: |
-          VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
-          if [ "$YT_STYLE" = "science" ]; then
-            VISUAL_BRIEF="Original schematic animated Earth and ocean science infographic, clear labels and locally generated diagrams; no third-party pictures"
-          fi
           VOICE_ARGS=()
           if [ "$YT_VOICE_NAME" != "auto" ]; then
             if [ "$YT_VOICE" != "kokoro" ]; then
@@ -214,11 +226,8 @@ jobs:
                 exit 2 ;;
             esac
           fi
-          python -m automate_ytb.scene_plan \
-            --topic "$YT_TOPIC" --script build/script.txt \
-            --character "$YT_CHARACTER" --duration "$YT_SECONDS" \
-            --style "$VISUAL_BRIEF" \
-            --shot-seconds "$YT_SHOT" --output build/scene-plan.json
+          # Scene plan and domain semantics were checked before heavy Kokoro downloads.
+          # Keep the exact checked plan; no second scene split is allowed.
           python -m automate_ytb.production prepare \
             --plan build/scene-plan.json --output build/image-prompts.jsonl
           python -m automate_ytb.episode \
@@ -283,6 +292,7 @@ jobs:
           name: automate-ytb-free-preview
           path: |
             build/scene-plan.json
+            build/scene-preflight.json
             build/image-prompts.jsonl
             build/script.txt
             build/video/preview.mp4
