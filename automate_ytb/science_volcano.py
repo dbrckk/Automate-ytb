@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
 from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
+from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 
 SIZE=(1080,1380)
 TOP=330
@@ -182,6 +183,7 @@ def _underground(stage:Image.Image,beat:str,t:float,duration:float)->None:
 def _explosion(stage:Image.Image,t:float,duration:float)->None:
     d=ImageDraw.Draw(stage,"RGBA")
     p=min(1.0,t/duration*2)
+    illuminate_rock(stage,[(540,345,320,.78+.22*math.sin(t*3.8)**2)])
     _glow(stage,[(540,345,190+45*math.sin(t*2)**2)])
     # Billowing smoke is layered with independently drifting ash particles.
     smoke=Image.new("RGBA",(270,345))
@@ -261,6 +263,11 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
                             p[1]+(q[1]-p[1])*u))
         if len(visible)<2:
             continue
+        # Moving incandescent lava illuminates only actual 3D rock faces.
+        sources=[(*visible[j],88,.71)
+                 for j in range(0,len(visible),max(1,len(visible)//5))]
+        sources.append((*visible[-1],164,1.0))
+        illuminate_rock(stage,sources)
         # Light into the ground before painting sharp layered lava contours.
         leading=visible[-1]
         lights=[(*leading,67)]
