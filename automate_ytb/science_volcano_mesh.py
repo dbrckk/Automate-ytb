@@ -42,7 +42,8 @@ def height_at(radius: float, azimuth: float) -> float:
     if radius < 65:
         height = 685 - 105 * (1 - radius / 65) ** 2
     else:
-        u = (radius - 65) / 465
+        # Radius 520 is the final foothill: elevation must reach the ground.
+        u = (radius - 65) / 455
         height = 685 * max(0, 1 - u ** .89)
     # Erosion fades to zero at the base; mountain must meet the ground.
     erosion = ((max(0, radius - 70) / 465) ** .69
