@@ -16,6 +16,7 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
+from .science_audio_cues import audio_event_fraction
 from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
@@ -238,6 +239,15 @@ class PortraitScienceScene:
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
+        # Reuse PCM-derived *phrase* boundaries for the physical camera beat.
+        # No word timing is invented; scenes lacking a cue keep authored timing.
+        domain=("volcano" if self.volcano_beat is not None else
+                "aurora" if self.aurora_beat is not None else None)
+        action=(self.volcano_beat if domain=="volcano" else
+                self.aurora_beat if domain=="aurora" else None)
+        self._narrated_event_fraction=(
+            audio_event_fraction(domain,action,caption_segments,scene_start_ms)
+            if domain is not None else None)
         self._caption_duration_ms: int | None = None
         self._caption_cues: list[dict] = []
         self._caption_layouts: dict[str, tuple[tuple[str, ...], int]] = {}
@@ -360,11 +370,13 @@ class PortraitScienceScene:
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.aurora_beat is not None:
             draw_aurora(picture, self.aurora_beat, t, duration,
-                        self.english)
+                        self.english,
+                        event_progress=self._narrated_event_fraction)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.volcano_beat is not None:
             draw_volcano(picture, self.volcano_beat, t, duration,
-                         self.english)
+                         self.english,
+                         event_progress=self._narrated_event_fraction)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)

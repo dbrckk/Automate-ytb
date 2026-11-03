@@ -349,7 +349,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "portraitTypographyVersion": ("shorts-lossless-fit-v1"
                                           if science_art and resolution == "shorts"
                                           else None),
-            "portraitMotionVersion": ("shorts-30fps-science-cinema-v8-convective-magma-cutaway"
+            "portraitMotionVersion": ("shorts-30fps-science-cinema-v9-english-phrase-camera-sync"
                                       if science_art and resolution == "shorts"
                                       else None),
             "portraitOceanVersion": ("shorts-ocean-currents-eddy-v1"

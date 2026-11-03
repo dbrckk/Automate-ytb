@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/aurora-science-release-candidate.yml
       - automate_ytb/science_aurora.py
+      - automate_ytb/science_audio_cues.py
       - automate_ytb/science_stage_director.py
       - automate_ytb/production.py
       - automate_ytb/science_portrait.py
