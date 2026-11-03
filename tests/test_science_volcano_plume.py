@@ -62,6 +62,6 @@ class VolcanicAshTests(unittest.TestCase):
             draw_ash(Image.new("RGB",SIZE),1,6.8)
         with self.assertRaises(ValueError):
             draw_ejecta(Image.new("RGBA",(320,200)),1,6.8)
-        for args in ((0,0,3),(30,0,3),(12,6,3),(12,1,6)):
+        for args in ((0,0,3),(39,0,3),(12,6,3),(12,1,6)):
             with self.assertRaises(ValueError):
                 _billow(*args)
