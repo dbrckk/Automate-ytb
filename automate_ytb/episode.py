@@ -308,10 +308,11 @@ def build_preview(*, plan_path: Path, output: Path,
         from .science_rainbow import supports_topic as rainbow_topic
         from .science_lightning import supports_topic as lightning_topic
         from .science_aurora import supports_topic as aurora_topic
+        from .science_volcano import supports_topic as volcano_topic
         if (rainbow_topic(data["topic"]) or lightning_topic(data["topic"])
-                or aurora_topic(data["topic"])) and resolution != "shorts":
+                or aurora_topic(data["topic"]) or volcano_topic(data["topic"])) and resolution != "shorts":
             raise ValueError(
-                "Rainbow, lightning and aurora have original native 9:16 Shorts artwork only; "
+                "Rainbow, lightning, aurora and volcano have original native 9:16 Shorts artwork only; "
                 "choose --resolution shorts instead of false landscape scenes")
     thumbs = output / "thumbnails"
     thumbs.mkdir(exist_ok=True)

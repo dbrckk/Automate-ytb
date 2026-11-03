@@ -27,12 +27,16 @@ from .science_aurora import (classify as classify_aurora, draw_aurora,
                             supports_topic as supports_aurora,
                             portrait_background as aurora_background,
                             BADGES as AURORA_BADGES)
+from .science_volcano import (classify as classify_volcano, draw_volcano,
+                              supports_topic as supports_volcano,
+                              portrait_background as volcano_background,
+                              BADGES as VOLCANO_BADGES)
 
 from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v12-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-cinematic-lightning-original-aurora"
+PORTRAIT_VERSION = "original-science-shorts-v13-1080x1920-lossless-text-fluid-planet-ocean-flow-causal-storyboard-rainbow-optics-earth-stop-cinematic-lightning-aurora-volcano"
 INK = (238, 247, 250, 255)
 
 
@@ -187,8 +191,9 @@ class PortraitScienceScene:
         is_rainbow = bool(re.search(r"\b(rainbows?|arcs?[- ]en[- ]ciel)\b", folded))
         is_lightning = supports_lightning(topic)
         is_aurora = supports_aurora(topic)
-        if not (is_earth or is_rainbow or is_lightning or is_aurora):
-            raise ValueError("Science Shorts require a supported Earth/ocean, rainbow, lightning or aurora topic")
+        is_volcano = supports_volcano(topic)
+        if not (is_earth or is_rainbow or is_lightning or is_aurora or is_volcano):
+            raise ValueError("Science Shorts require a supported Earth/ocean, rainbow, lightning, aurora or volcano topic")
         if type(scene_index) is not int or not 1 <= scene_index <= 1200:
             raise ValueError("Invalid science scene index")
         self.topic, self.narration, self.scene_index = topic, narration, scene_index
@@ -197,6 +202,7 @@ class PortraitScienceScene:
         self.rainbow_beat = classify_rainbow(topic, narration)
         self.lightning_beat = classify_lightning(topic, narration)
         self.aurora_beat = classify_aurora(topic, narration)
+        self.volcano_beat = classify_volcano(topic, narration)
         self.earth_stop_beat = classify_earth_stop(topic, narration)
         if is_lightning and self.lightning_beat is None:
             raise ValueError(
@@ -204,6 +210,8 @@ class PortraitScienceScene:
                 "connection, return stroke or thunder narration")
         if is_aurora and self.aurora_beat is None:
             raise ValueError("Aurora Shorts need authored solar wind, magnetic field, collisions, emission or curtains")
+        if is_volcano and self.volcano_beat is None:
+            raise ValueError("Volcano Shorts need authored magma, pressure, ascent, eruption or lava")
         if is_rainbow and self.rainbow_beat is None:
             raise ValueError(
                 "Rainbow Shorts need authored narration on sunlight, refraction, "
@@ -215,6 +223,7 @@ class PortraitScienceScene:
             r"lightning|electric|charge|thunder|cloud|storm|leader|"
             r"sun|solar|magnetic|field|particles|nitrogen|oxygen|aurora|"
             r"northern|southern|curtains|glowing|"
+            r"volcano|volcanic|magma|lava|pressure|gas|rocks|ash|erupt|cracks|"
             r"entering|refracts|leaving|millions|observer|arc)\b",
             narration, flags=re.IGNORECASE)) or bool(
                 is_lightning and re.search(
@@ -224,6 +233,7 @@ class PortraitScienceScene:
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
         self.base = (storm_background() if is_lightning else
                      aurora_background() if is_aurora else
+                     volcano_background() if is_volcano else
                      daylight_background(seed) if is_rainbow else _sky(seed))
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
@@ -321,10 +331,12 @@ class PortraitScienceScene:
             EARTH_STOP_LABELS[self.earth_stop_beat] if self.earth_stop_beat
             else LIGHTNING_BADGES[self.lightning_beat] if self.lightning_beat
             else AURORA_BADGES[self.aurora_beat] if self.aurora_beat
+            else VOLCANO_BADGES[self.volcano_beat] if self.volcano_beat
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
-        if self.lightning_beat is not None or self.aurora_beat is not None:
+        if (self.lightning_beat is not None or self.aurora_beat is not None
+                or self.volcano_beat is not None):
             # Render the stable editorial interface after scene animation.
             pass
         else:
@@ -349,6 +361,10 @@ class PortraitScienceScene:
         elif self.aurora_beat is not None:
             draw_aurora(picture, self.aurora_beat, t, duration,
                         self.english)
+            d = ImageDraw.Draw(picture, "RGBA")
+        elif self.volcano_beat is not None:
+            draw_volcano(picture, self.volcano_beat, t, duration,
+                         self.english)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
@@ -428,7 +444,8 @@ class PortraitScienceScene:
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
-        if self.lightning_beat is not None or self.aurora_beat is not None:
+        if (self.lightning_beat is not None or self.aurora_beat is not None
+                or self.volcano_beat is not None):
             # UI is composited after the cinematographic camera, so the
             # moving image cannot overwrite or displace readable typography.
             header = Image.new("RGBA", picture.size)
@@ -445,7 +462,9 @@ class PortraitScienceScene:
                     font=_font(31, bold=True), fill=GOLD+(255,))
             beat_number = (list(LIGHTNING_BADGES).index(self.lightning_beat)
                            if self.lightning_beat is not None else
-                           list(AURORA_BADGES).index(self.aurora_beat))
+                           list(AURORA_BADGES).index(self.aurora_beat)
+                           if self.aurora_beat is not None else
+                           list(VOLCANO_BADGES).index(self.volcano_beat))
             ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)
             ui.line((75, 327, 75 + 930*(beat_number+1)//5, 327),
                     fill=(143, 225, 248, 204), width=4)
@@ -454,7 +473,8 @@ class PortraitScienceScene:
         # Resolve speech-synthesized cues before drawing, not guessed timing.
         active_text = self.active_caption(t, duration)
         summary, summary_size = self._caption_layouts[active_text]
-        if self.lightning_beat is not None or self.aurora_beat is not None:
+        if (self.lightning_beat is not None or self.aurora_beat is not None
+                or self.volcano_beat is not None):
             captions = Image.new("RGBA", picture.size)
             cd = ImageDraw.Draw(captions)
             cd.rounded_rectangle((65, 1586, 1015, 1782), radius=24,
