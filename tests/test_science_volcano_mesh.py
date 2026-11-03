@@ -38,6 +38,7 @@ class ShadedVolcanoTests(unittest.TestCase):
         self.assertEqual(stage.mode, "RGBA")
         self.assertEqual(stage.size, SIZE)
         self.assertEqual(stage.getpixel((2, 200))[3], 0)
+        self.assertEqual(stage.getpixel((540, 1180))[3], 0)
         self.assertGreater(stage.getpixel((540, 620))[3], 100)
         shades = {stage.getpixel((x, y))[:3] for x in range(380, 701, 35)
                   for y in range(580, 850, 38)

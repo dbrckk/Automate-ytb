@@ -20,3 +20,12 @@ with decoded storyboard. Review the new decoded frames alongside baseline
 release \`science-preview-volcano-eruption-41658232278\` for visual judgment.
 Do not claim the studio-grade Blender milestone is complete until its
 full 3D-material backend renders an actual complete movie.
+
+## Terrain-to-ground seam repair
+
+Decoded preliminary MP4 review exposed floating triangle facets under the
+rock shell in the eruption/lava shots. The cached mesh now fades to zero alpha
+between source y=865 and y=1100; the mountain foundation stops at the
+foothills, and a separate rugged near ridge occludes the missing underside.
+This is a visual correction derived from the actual encoded video, not a
+claim that a full Blender/PBR upgrade has been completed.

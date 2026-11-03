@@ -17,7 +17,7 @@ import math
 from PIL import Image, ImageChops, ImageDraw
 
 SIZE = (1080, 1380)
-TERRAIN_VERSION = "volcano-geometric-heightfield-v1"
+TERRAIN_VERSION = "volcano-geometric-heightfield-v2-ground-blend"
 RINGS = (0, 17, 33, 48, 65, 80, 96, 114, 133, 154, 179,
          206, 236, 268, 302, 338, 376, 414, 449, 480, 520)
 SEGMENTS = 72
@@ -137,5 +137,17 @@ def shaded_terrain() -> Image.Image:
     # This eliminates stray geometry at the outer corners of the 9:16 frame.
     mask = Image.new("L", SIZE)
     ImageDraw.Draw(mask).polygon(CONE_OUTLINE, fill=255)
-    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+    # The generated mesh is an open exterior shell. Its lower-facing
+    # triangles are not an infinite vertical cliff: blend them into the
+    # darker foothill terrain, avoiding floating facets at the frame bottom.
+    fade = Image.new("L", SIZE, 255)
+    fd = ImageDraw.Draw(fade)
+    for y in range(865, 1100):
+        fraction = (y - 865) / 235
+        smooth = fraction * fraction * (3 - 2 * fraction)
+        fd.line((0, y, SIZE[0] - 1, y),
+                fill=round(255 * (1 - smooth)))
+    fd.rectangle((0, 1100, SIZE[0], SIZE[1]), fill=0)
+    layer.putalpha(ImageChops.multiply(
+        ImageChops.multiply(layer.getchannel("A"), mask), fade))
     return layer

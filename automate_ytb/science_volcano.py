@@ -89,9 +89,24 @@ def _base(section: bool) -> Image.Image:
               fill=(25,44,61,255))
     # Properly projected 3D terrain, computed once. The dark solid core
     # remains behind it to keep underground/cutaway shots watertight.
-    d.polygon(CONE_OUTLINE, fill=(27, 29, 39, 255))
+    # The mountain merges into the established distant rocky foothills.
+    # Do not extrude a flat opaque cone all the way to the bottom of frame.
+    foundation = (*CONE_OUTLINE[:13], (1080, 1080), (0, 1080))
+    d.polygon(foundation, fill=(28, 31, 41, 255))
     frame.alpha_composite(shaded_terrain())
     d = ImageDraw.Draw(frame)
+    if not section:
+        # This foreground occlusion conceals the open 3D shell's lower rim,
+        # preserving rock depth and leaving the erupting summit exposed.
+        d.polygon([(0, 1054), (122, 1017), (247, 1056),
+                   (371, 1029), (491, 1051), (622, 1016),
+                   (750, 1058), (870, 1032), (993, 1059),
+                   (1080, 1038), (1080, 1380), (0, 1380)],
+                  fill=(17, 25, 37, 255))
+        d.line([(0, 1054), (122, 1017), (247, 1056),
+                (371, 1029), (491, 1051), (622, 1016),
+                (750, 1058), (870, 1032), (993, 1059),
+                (1080, 1038)], fill=(75, 68, 66, 106), width=2)
     # Dark inner crater and an irregular illuminated rock rim.
     d.ellipse((507, 335, 569, 355), fill=(19, 17, 22, 255))
     d.arc((500, 331, 576, 366), 185, 350,
