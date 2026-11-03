@@ -14,6 +14,7 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
+from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 
 SIZE=(1080,1380)
 TOP=330
@@ -86,46 +87,30 @@ def _base(section: bool) -> Image.Image:
     d.polygon([(0,945),(170,862),(335,913),(513,820),
                (689,898),(842,825),(1080,934),(1080,1380),(0,1380)],
               fill=(25,44,61,255))
-    # Original symmetrical volcano silhouette with fractured rocky surfaces.
-    cone=[(0,988),(127,914),(228,797),(337,621),(448,463),
-          (502,347),(522,334),(558,334),(589,419),
-          (697,594),(805,769),(940,915),(1080,988),
-          (1080,1380),(0,1380)]
-    d.polygon(cone,fill=(42,42,50,255))
-    # Lithologic facets make the silhouette sculptural rather than one flat
-    # triangle. Separate cool shadow and warm rim planes suggest real relief.
-    d.polygon([(518,348),(485,421),(414,560),(341,683),
-               (239,806),(141,905),(300,824),(445,752),(510,527)],
-              fill=(71,64,62,225))
-    d.polygon([(559,350),(606,436),(699,595),(798,757),
-               (945,916),(834,809),(707,735),(605,560)],
-              fill=(24,31,42,239))
-    d.polygon([(516,374),(454,540),(397,650),(496,601),
-               (535,447)],fill=(89,76,69,128))
-    d.polygon([(568,372),(647,529),(745,692),(676,664),
-               (592,530)],fill=(15,20,32,155))
-    # Deterministic cracked rock seams with unequal shade and scale.
-    rock_rng=random.Random(9347)
-    for idx in range(180):
-        x=rock_rng.randrange(195,888)
-        top=round(348+abs(x-540)*1.53)
-        if top>=863:
-            continue
-        y=rock_rng.randrange(top+8,920)
-        span=rock_rng.randrange(8,47)
-        direction=-1 if x<540 else 1
-        d.line([(x,y),(x+direction*span,y+span*.44)],
-               fill=(97,83,76,96+idx%4*13),width=1+idx%3)
-        if idx%5==0:
-            d.line([(x+direction*span,y+span*.44),
-                    (x+direction*(span+12),y+span*.77)],
-                   fill=(22,25,34,130),width=2)
-    d.line([(495,361),(515,336),(561,336),(586,401)],
-           fill=(120,106,94,255),width=8,joint="curve")
-    for j in range(45):
-        x=100+j*21
-        y=840-415*max(0,1-abs(x-540)/430)
-        d.line((x,y,x+22,y+14),fill=(77+j%3*9,73,74,125),width=2)
+    # Properly projected 3D terrain, computed once. The dark solid core
+    # remains behind it to keep underground/cutaway shots watertight.
+    # The mountain merges into the established distant rocky foothills.
+    # Do not extrude a flat opaque cone all the way to the bottom of frame.
+    foundation = (*CONE_OUTLINE[:13], (1080, 1080), (0, 1080))
+    d.polygon(foundation, fill=(28, 31, 41, 255))
+    frame.alpha_composite(shaded_terrain())
+    d = ImageDraw.Draw(frame)
+    if not section:
+        # This foreground occlusion conceals the open 3D shell's lower rim,
+        # preserving rock depth and leaving the erupting summit exposed.
+        d.polygon([(0, 1054), (122, 1017), (247, 1056),
+                   (371, 1029), (491, 1051), (622, 1016),
+                   (750, 1058), (870, 1032), (993, 1059),
+                   (1080, 1038), (1080, 1380), (0, 1380)],
+                  fill=(17, 25, 37, 255))
+        d.line([(0, 1054), (122, 1017), (247, 1056),
+                (371, 1029), (491, 1051), (622, 1016),
+                (750, 1058), (870, 1032), (993, 1059),
+                (1080, 1038)], fill=(75, 68, 66, 106), width=2)
+    # Dark inner crater and an irregular illuminated rock rim.
+    d.ellipse((507, 335, 569, 355), fill=(19, 17, 22, 255))
+    d.arc((500, 331, 576, 366), 185, 350,
+          fill=(143, 108, 92, 234), width=5)
     if section:
         d.polygon([(0,823),(170,844),(342,818),(501,843),
                    (700,813),(870,831),(1080,804),
