@@ -38,7 +38,10 @@ class ScienceDirectorTests(unittest.TestCase):
         self.assertEqual(first.size,FRAME_SIZE)
         self.assertEqual(first.getchannel("A").getextrema(),(255,255))
         self.assertEqual(first.tobytes(),again.tobytes())
-        self.assertIsNotNone(ImageChops.difference(first,last).getbbox())
+        # Alpha remains 255: compare RGB, otherwise Pillow's getbbox() on
+        # an RGBA difference incorrectly reports None (zero alpha difference).
+        self.assertIsNotNone(ImageChops.difference(
+            first.convert("RGB"),last.convert("RGB")).getbbox())
         self.assertEqual(first.getpixel((0,0))[3],255)
 
     def test_invalid_camera_inputs_fail_explicitly(self):
