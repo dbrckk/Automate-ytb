@@ -6,6 +6,7 @@ from automate_ytb.science_aurora import (
     BEATS, BADGES, classify, supports_topic, draw_aurora, STAGE_SIZE,
 )
 from automate_ytb.science_portrait import PortraitScienceScene
+from automate_ytb.science_stage_director import VERSION as DIRECTOR_VERSION
 
 TOPIC="Why Do Northern Lights Dance?"
 LINES=(
@@ -18,6 +19,9 @@ LINES=(
 
 
 class OriginalAuroraTests(unittest.TestCase):
+    def test_shared_cinematic_director_enabled(self):
+        self.assertEqual(DIRECTOR_VERSION, "original-science-director-v1")
+
     def test_five_semantically_mapped_shots(self):
         self.assertEqual(len(BEATS),5)
         self.assertEqual(set(BEATS),set(BADGES))

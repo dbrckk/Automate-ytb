@@ -13,6 +13,8 @@ import unicodedata
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
+
 SIZE=(1080,1380)
 TOP=330
 BEATS=("magma","pressure","ascent","eruption","lava")
@@ -254,4 +256,5 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
         _explosion(stage,t,duration)
     else:
         _lava(stage,t,duration)
-    picture.alpha_composite(stage,(0,TOP))
+    # Camera movement follows the narrated geological event; UI remains fixed.
+    picture.alpha_composite(reframe(stage, "volcano", beat, t, duration), (0,TOP))

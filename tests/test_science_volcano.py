@@ -5,6 +5,7 @@ from automate_ytb.science_volcano import (
     BEATS,BADGES,SIZE,TOP,classify,supports_topic,draw_volcano
 )
 from automate_ytb.science_portrait import PortraitScienceScene
+from automate_ytb.science_stage_director import VERSION as DIRECTOR_VERSION
 
 TOPIC="How Do Volcanoes Erupt?"
 SCRIPT=(
@@ -16,6 +17,9 @@ SCRIPT=(
 )
 
 class OriginalVolcanoTests(unittest.TestCase):
+    def test_camera_enabled_in_production_render(self):
+        self.assertEqual(DIRECTOR_VERSION, "original-science-director-v1")
+
     def test_five_semantic_actions(self):
         self.assertEqual(BEATS,tuple(classify(TOPIC,t) for t in SCRIPT))
         self.assertEqual(len(BEATS),len(BADGES))

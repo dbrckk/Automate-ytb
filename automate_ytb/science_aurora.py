@@ -14,6 +14,8 @@ import unicodedata
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
+
 BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 BADGES = {
     "solar_wind": ("SOLAR WIND", "VENT SOLAIRE"),
@@ -266,4 +268,5 @@ def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
         _molecules(stage,t,photons=True)
     else:
         _curtains(stage,t,duration)
-    picture.alpha_composite(stage,(0,STAGE_TOP))
+    picture.alpha_composite(reframe(stage, "aurora", beat, t, duration),
+                            (0,STAGE_TOP))
