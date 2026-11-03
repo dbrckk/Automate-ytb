@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
 from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
+from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 
 SIZE=(1080,1380)
 TOP=330
@@ -181,46 +182,19 @@ def _underground(stage:Image.Image,beat:str,t:float,duration:float)->None:
 
 
 def _explosion(stage:Image.Image,t:float,duration:float)->None:
+    """Crater-origin glowing vent, continuously turbulent ash and tephra."""
+    illuminate_rock(stage,[(540,345,330,.78+.22*math.sin(t*3.8)**2)])
+    _glow(stage,[(540,345,182+34*math.sin(t*2.2)**2)])
+    # Billows rise from the same summit as the red-hot vent, gradually
+    # evolving into a drifting column; distant soft layers underlay ejecta.
+    draw_ash(stage,t,duration)
     d=ImageDraw.Draw(stage,"RGBA")
-    p=min(1.0,t/duration*2)
-    illuminate_rock(stage,[(540,345,320,.78+.22*math.sin(t*3.8)**2)])
-    _glow(stage,[(540,345,190+45*math.sin(t*2)**2)])
-    # Billowing smoke is layered with independently drifting ash particles.
-    smoke=Image.new("RGBA",(270,345))
-    sd=ImageDraw.Draw(smoke)
-    for i in range(36):
-        progress=(t*.11+i*.077)%1
-        x=135+math.sin(i*1.83+t*.45)*(16+progress*72)
-        y=94-progress*78
-        radius=(19+progress*31)*p
-        if radius>1:
-            sd.ellipse((x-radius,y-radius*.64,x+radius,y+radius*.64),
-                       fill=(110+i%4*6,98+i%3*7,93+i%5*6,
-                             round(84*(1-progress))))
-    stage.alpha_composite(smoke.filter(
-        ImageFilter.GaussianBlur(9)).resize(SIZE,
-                                            Image.Resampling.BILINEAR))
-    d=ImageDraw.Draw(stage,"RGBA")
-    d.polygon([(492,366),(525,300),(540,203),(555,303),(593,366)],
-              fill=(255,102,27,247))
-    d.line((540,353,540,206),fill=(255,233,141,239),width=13)
-    for i in range(74):
-        f=(t*(.20+i%4*.025)+i*.127)%1
-        dx=(-1 if i%2 else 1)*(85+i%11*39)
-        x=540+dx*f
-        y=355-340*math.sin(f*math.pi)*(0.56+i%5*.13)
-        rr=2+i%5*2
-        d.line((x-5,y+13,x,y),fill=(255,78,24,149),width=2)
-        d.ellipse((x-rr,y-rr,x+rr,y+rr),
-                  fill=(255,173+i%3*16,58,232))
-    for i in range(34):
-        f=(t*.22+i*.103)%1
-        x=540+math.sin(i*1.44+t*.3)*(80+f*210)
-        y=345-f*340
-        rr=7+i%4*8
-        d.ellipse((x-rr,y-rr*.75,x+rr,y+rr*.75),
-                  fill=(124,107,99,round(122*(1-f))))
-
+    jet=91+23*math.sin(t*4.2)**2
+    # Smooth central throat, brighter toward the white-hot core.
+    d.line((540,354,541,354-jet),fill=(119,38,29,217),width=43)
+    d.line((540,354,541,354-jet),fill=(244,83,25,234),width=24)
+    d.line((540,347,541,354-jet),fill=(255,221,112,235),width=9)
+    draw_ejecta(stage,t,duration)
 
 def _lava(stage:Image.Image,t:float,duration:float)->None:
     """Advancing, rock-guided meandering molten rivers with animated hot cores.
