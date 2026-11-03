@@ -9,6 +9,7 @@ on:
       - automate_ytb/science_volcano_mesh.py
       - automate_ytb/science_volcano_lighting.py
       - automate_ytb/science_volcano_plume.py
+      - automate_ytb/science_volcano_magma.py
       - automate_ytb/science_stage_director.py
       - automate_ytb/production.py
       - automate_ytb/science_portrait.py
