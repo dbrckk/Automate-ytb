@@ -62,9 +62,13 @@ def action_envelope(topic: str, beat: str, progress: float) -> float:
             or not math.isfinite(progress) or not 0 <= progress <= 1):
         raise ValueError("Unsupported action cue or progress")
     center, _, _, _, width = ACTION_CUES[topic][beat]
-    d = abs(progress-center)/width
-    if d >= 1:
+    # The impulse must vanish at BOTH scene boundaries. Clipping its
+    # support also avoids floating-point residuals at nominal endpoints.
+    support=min(width,center,1-center)
+    distance=abs(progress-center)
+    if distance>=support-1e-12:
         return 0.
+    d=distance/support
     # Squared smoothstep gives a soft anticipation and lingering decay.
     x = 1-d
     return (x*x*(3-2*x))**2
