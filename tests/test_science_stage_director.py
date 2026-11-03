@@ -96,3 +96,21 @@ class ScienceDirectorTests(unittest.TestCase):
                 action_envelope("volcano","eruption",value)
         with self.assertRaises(ValueError):
             action_envelope("unknown","eruption",.5)
+
+    def test_synced_camera_follows_measured_phrase_position(self):
+        domain, beat="volcano","eruption"
+        center=.68
+        t=center*7
+        with_audio=pose(domain,beat,t,7,event_progress=center)
+        without=pose(domain,beat,t,7)
+        self.assertNotEqual(with_audio,without)
+        self.assertAlmostEqual(
+            action_envelope(domain,beat,center,event_progress=center),1)
+        self.assertLess(
+            action_envelope(domain,beat,.1,event_progress=center),.001)
+        for bad in (-.2,1.1,float("inf"),float("nan"),"0.5"):
+            with self.assertRaises(ValueError):
+                pose(domain,beat,2,7,event_progress=bad)
+        # Time-locked change must preserve the same first/last poses.
+        self.assertEqual(pose(domain,beat,0,7),pose(domain,beat,0,7,event_progress=center))
+        self.assertEqual(pose(domain,beat,7,7),pose(domain,beat,7,7,event_progress=center))

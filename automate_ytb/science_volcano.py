@@ -248,7 +248,7 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
                   fill=(255,155+i%3*17,66,108))
 
 def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
-                 english:bool)->None:
+                 english:bool, *, event_progress:float|None=None)->None:
     if (picture.mode!="RGBA" or picture.size!=(1080,1920)
             or beat not in BEATS or type(english) is not bool
             or type(t) not in (int,float) or type(duration) not in (int,float)
@@ -263,4 +263,5 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
     else:
         _lava(stage,t,duration)
     # Camera movement follows the narrated geological event; UI remains fixed.
-    picture.alpha_composite(reframe(stage, "volcano", beat, t, duration), (0,TOP))
+    picture.alpha_composite(reframe(stage, "volcano", beat, t, duration,
+                                    event_progress=event_progress), (0,TOP))

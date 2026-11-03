@@ -246,7 +246,7 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
 
 
 def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
-                english:bool) -> None:
+                english:bool, *, event_progress:float|None=None) -> None:
     if (picture.mode!="RGBA" or picture.size!=(1080,1920)
             or beat not in BEATS or type(english) is not bool
             or type(t) not in (int,float) or type(duration) not in (int,float)
@@ -268,5 +268,6 @@ def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
         _molecules(stage,t,photons=True)
     else:
         _curtains(stage,t,duration)
-    picture.alpha_composite(reframe(stage, "aurora", beat, t, duration),
+    picture.alpha_composite(reframe(stage, "aurora", beat, t, duration,
+                                    event_progress=event_progress),
                             (0,STAGE_TOP))

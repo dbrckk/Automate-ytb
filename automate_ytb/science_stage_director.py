@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-VERSION = "original-science-director-v2-event-cued-camera"
+VERSION = "original-science-director-v3-synth-phrase-synchronized-camera"
 FRAME_SIZE = (1080, 1380)
 
 # Shot-dependent pacing and focal height. In underground scenes the camera
@@ -55,13 +55,21 @@ ACTION_CUES = {
 }
 
 
-def action_envelope(topic: str, beat: str, progress: float) -> float:
+def action_envelope(topic: str, beat: str, progress: float, *,
+                    event_progress: float | None = None) -> float:
     """C1-continuous compact emphasis, zero at both scene boundaries."""
     if (topic not in ACTION_CUES or beat not in ACTION_CUES[topic]
             or type(progress) not in (int, float)
             or not math.isfinite(progress) or not 0 <= progress <= 1):
         raise ValueError("Unsupported action cue or progress")
     center, _, _, _, width = ACTION_CUES[topic][beat]
+    if event_progress is not None:
+        if (type(event_progress) not in (int,float)
+                or not math.isfinite(event_progress)
+                or not 0<=event_progress<=1):
+            raise ValueError("Invalid speech-driven action position")
+        # The camera pulse must vanish at the first and last frame.
+        center=max(width,min(1-width,event_progress))
     # The impulse must vanish at BOTH scene boundaries. Clipping its
     # support also avoids floating-point residuals at nominal endpoints.
     support=min(width,center,1-center)
@@ -75,7 +83,8 @@ def action_envelope(topic: str, beat: str, progress: float) -> float:
 
 
 def pose(topic: str, beat: str, t: float,
-         duration: float) -> tuple[float, float, float]:
+         duration: float, *, event_progress: float | None = None
+         ) -> tuple[float, float, float]:
     """Continuous normalized camera pose; crop stays inside authored art."""
     if (topic not in SHOTS or beat not in SHOTS.get(topic, ())
             or type(t) not in (float, int)
@@ -95,7 +104,7 @@ def pose(topic: str, beat: str, t: float,
     # collision, photon emission) gives each shot a small transient emphasis.
     # The pulse vanishes at shot boundaries: no transition jump.
     _,push,offset_x,offset_y,_=ACTION_CUES[topic][beat]
-    reaction=action_envelope(topic,beat,q)
+    reaction=action_envelope(topic,beat,q,event_progress=event_progress)
     zoom+=push*reaction
     cx+=offset_x*reaction
     cy+=offset_y*reaction
@@ -108,11 +117,12 @@ def pose(topic: str, beat: str, t: float,
 
 
 def reframe(stage: Image.Image, topic: str, beat: str,
-            t: float, duration: float) -> Image.Image:
+            t: float, duration: float, *,
+            event_progress: float | None = None) -> Image.Image:
     """One filtered uniform magnification; no white margins or sprite warp."""
     if stage.size != FRAME_SIZE or stage.mode != "RGBA":
         raise ValueError("Expected opaque 1080x1380 original RGBA stage")
-    z,cx,cy=pose(topic,beat,t,duration)
+    z,cx,cy=pose(topic,beat,t,duration,event_progress=event_progress)
     inv=1.0/z
     w,h=FRAME_SIZE
     # source=(screen / zoom) + source-world origin, same zoom on both
