@@ -19,7 +19,8 @@ class VolcanicLightingTests(unittest.TestCase):
         self.assertEqual(image.getpixel((540,65)),(10,17,31,255))
         self.assertNotEqual(image.getpixel((540,540)),(10,17,31,255))
         self.assertIsNotNone(ImageChops.difference(
-            image,Image.new("RGBA",image.size,(10,17,31,255))).getbbox())
+            image.convert("RGB"),
+            Image.new("RGB",image.size,(10,17,31))).getbbox())
 
     def test_light_power_and_coordinates_change_render(self):
         a=Image.new("RGBA",(1080,1380),(10,17,31,255))

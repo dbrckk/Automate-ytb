@@ -36,7 +36,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v17-1080x1920-lossless-text-kinetic-volcano-rock-light"
+PORTRAIT_VERSION = "original-science-shorts-v17-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-rock-light"
 INK = (238, 247, 250, 255)
 
 
