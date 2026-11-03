@@ -427,7 +427,9 @@ def render_character_poster(*, topic: str, narration: str,
     from .science_rainbow import supports_topic as rainbow_topic
     from .science_lightning import supports_topic as lightning_topic
     from .science_aurora import supports_topic as aurora_topic
-    if rainbow_topic(topic) or lightning_topic(topic) or aurora_topic(topic):
+    from .science_volcano import supports_topic as volcano_topic
+    if (rainbow_topic(topic) or lightning_topic(topic)
+            or aurora_topic(topic) or volcano_topic(topic)):
         # The approval poster is a separate 16:9 crop of ORIGINAL 9:16
         # artwork. Only the delivered Shorts MP4 is native full portrait.
         # Never substitute the old Earth globe for atmospheric optics.

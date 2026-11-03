@@ -1,0 +1,51 @@
+name: Verify original volcano-eruption science Shorts
+
+on:
+  push:
+    branches: [main, feat/original-volcano-episode-20261103]
+    paths:
+      - .github/workflows/volcano-science-release-candidate.yml
+      - automate_ytb/science_volcano.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/science_motion.py
+      - automate_ytb/episode.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-verify:
+    name: Render five volcanic science scenes and English Kokoro voice
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "How Do Volcanoes Erupt?"
+      original_script: >-
+        Deep underground, hot rock partially melts, forming a glowing reservoir of magma beneath a volcano.
+        Gas bubbles become trapped in thick magma, and pressure steadily grows inside the deep underground chamber.
+        Rising pressure pushes magma steadily upward through cracks in the rock and a narrow vent toward the summit.
+        When magma reaches the surface, expanding gases can blast ash and glowing fragments high into the sky.
+        Escaping lava flows down the slopes, while ash settles and the volcano slowly cools.
+      character: "Original geological cross-section, magma, ash and lava animation"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 34
+      shot_seconds: 6.8
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm volcano MP4, English narration and visual QA
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm full inherited media and movement QA
+        run: |
+          echo 'Original volcano video passed technical media QA.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Editorial approval and YouTube publication remain separate.' >> "$GITHUB_STEP_SUMMARY"
