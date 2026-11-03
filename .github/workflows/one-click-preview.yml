@@ -171,9 +171,14 @@ jobs:
               raise SystemExit("Maximum 150 scenes per run")
           Path("build/script.txt").write_text(os.environ["YT_SCRIPT"], encoding="utf-8")
           PY
+          VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
+          if [ "$YT_STYLE" = "science" ]; then
+            VISUAL_BRIEF="Original schematic animated Earth and ocean science infographic, clear labels and locally generated diagrams; no third-party pictures"
+          fi
           python -m automate_ytb.scene_plan \
             --topic "$YT_TOPIC" --script build/script.txt \
             --character "$YT_CHARACTER" --duration "$YT_SECONDS" \
+            --style "$VISUAL_BRIEF" \
             --shot-seconds "$YT_SHOT" --output build/scene-plan.json
           python -m automate_ytb.science_preflight \
             --plan build/scene-plan.json --style "$YT_STYLE" \
@@ -207,10 +212,6 @@ jobs:
           YT_RESOLUTION: ${{ inputs.resolution }}
           YT_RENDER_PROFILE: ${{ inputs.render_profile }}
         run: |
-          VISUAL_BRIEF="Original cinematic 3D illustration, rounded character, soft film lighting"
-          if [ "$YT_STYLE" = "science" ]; then
-            VISUAL_BRIEF="Original schematic animated Earth and ocean science infographic, clear labels and locally generated diagrams; no third-party pictures"
-          fi
           VOICE_ARGS=()
           if [ "$YT_VOICE_NAME" != "auto" ]; then
             if [ "$YT_VOICE" != "kokoro" ]; then
