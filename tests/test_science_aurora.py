@@ -20,7 +20,7 @@ LINES=(
 
 class OriginalAuroraTests(unittest.TestCase):
     def test_shared_cinematic_director_enabled(self):
-        self.assertEqual(DIRECTOR_VERSION, "original-science-director-v1")
+        self.assertTrue(DIRECTOR_VERSION.startswith("original-science-director-v2-"))
 
     def test_five_semantically_mapped_shots(self):
         self.assertEqual(len(BEATS),5)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-VERSION = "original-science-director-v1"
+VERSION = "original-science-director-v2-event-cued-camera"
 FRAME_SIZE = (1080, 1380)
 
 # Shot-dependent pacing and focal height. In underground scenes the camera
@@ -34,6 +34,46 @@ SHOTS: dict[str, dict[str, tuple[float, float, float, float, float, float]]] = {
 }
 
 
+# Camera reactions are tied to a narrated physical action, not arbitrary
+# decorative shake. Smooth compact pulses preserve the scene boundary pose.
+# (event fraction, zoom emphasis, x offset, y offset, width fraction)
+ACTION_CUES = {
+    "volcano": {
+        "magma": (.54, .014, 0, 10, .28),
+        "pressure": (.69, .026, -8, 9, .24),
+        "ascent": (.63, .018, 0, -15, .32),
+        "eruption": (.46, .036, 0, -18, .24),
+        "lava": (.71, .018, 14, 8, .29),
+    },
+    "aurora": {
+        "solar_wind": (.60, .010, -5, 0, .28),
+        "magnetic_field": (.52, .014, 7, -3, .32),
+        "collisions": (.54, .019, 0, -6, .26),
+        "emission": (.61, .021, 0, -6, .25),
+        "curtains": (.67, .012, 9, -5, .35),
+    },
+}
+
+
+def action_envelope(topic: str, beat: str, progress: float) -> float:
+    """C1-continuous compact emphasis, zero at both scene boundaries."""
+    if (topic not in ACTION_CUES or beat not in ACTION_CUES[topic]
+            or type(progress) not in (int, float)
+            or not math.isfinite(progress) or not 0 <= progress <= 1):
+        raise ValueError("Unsupported action cue or progress")
+    center, _, _, _, width = ACTION_CUES[topic][beat]
+    # The impulse must vanish at BOTH scene boundaries. Clipping its
+    # support also avoids floating-point residuals at nominal endpoints.
+    support=min(width,center,1-center)
+    distance=abs(progress-center)
+    if distance>=support-1e-12:
+        return 0.
+    d=distance/support
+    # Squared smoothstep gives a soft anticipation and lingering decay.
+    x = 1-d
+    return (x*x*(3-2*x))**2
+
+
 def pose(topic: str, beat: str, t: float,
          duration: float) -> tuple[float, float, float]:
     """Continuous normalized camera pose; crop stays inside authored art."""
@@ -51,6 +91,14 @@ def pose(topic: str, beat: str, t: float,
     zoom=start_z+(end_z-start_z)*ease
     cx=start_x+(end_x-start_x)*ease
     cy=start_y+(end_y-start_y)*ease
+    # A physically motivated event beat (pressure build-up, vent burst,
+    # collision, photon emission) gives each shot a small transient emphasis.
+    # The pulse vanishes at shot boundaries: no transition jump.
+    _,push,offset_x,offset_y,_=ACTION_CUES[topic][beat]
+    reaction=action_envelope(topic,beat,q)
+    zoom+=push*reaction
+    cx+=offset_x*reaction
+    cy+=offset_y*reaction
     width,height=FRAME_SIZE
     half_w=width/(2*zoom)
     half_h=height/(2*zoom)
