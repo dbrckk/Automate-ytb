@@ -44,7 +44,9 @@ def height_at(radius: float, azimuth: float) -> float:
     else:
         u = (radius - 65) / 465
         height = 685 * max(0, 1 - u ** .89)
-    erosion = (max(0, radius - 70) / 465) ** .69
+    # Erosion fades to zero at the base; mountain must meet the ground.
+    erosion = ((max(0, radius - 70) / 465) ** .69
+               * max(0., 1 - (radius / 520) ** 4))
     height += erosion * (
         17 * math.sin(7 * azimuth + .6)
         + 12 * math.sin(13 * azimuth - .2)
