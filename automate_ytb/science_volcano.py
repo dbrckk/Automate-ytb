@@ -13,6 +13,8 @@ import unicodedata
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
+
 SIZE=(1080,1380)
 TOP=330
 BEATS=("magma","pressure","ascent","eruption","lava")
@@ -90,6 +92,34 @@ def _base(section: bool) -> Image.Image:
           (697,594),(805,769),(940,915),(1080,988),
           (1080,1380),(0,1380)]
     d.polygon(cone,fill=(42,42,50,255))
+    # Lithologic facets make the silhouette sculptural rather than one flat
+    # triangle. Separate cool shadow and warm rim planes suggest real relief.
+    d.polygon([(518,348),(485,421),(414,560),(341,683),
+               (239,806),(141,905),(300,824),(445,752),(510,527)],
+              fill=(71,64,62,225))
+    d.polygon([(559,350),(606,436),(699,595),(798,757),
+               (945,916),(834,809),(707,735),(605,560)],
+              fill=(24,31,42,239))
+    d.polygon([(516,374),(454,540),(397,650),(496,601),
+               (535,447)],fill=(89,76,69,128))
+    d.polygon([(568,372),(647,529),(745,692),(676,664),
+               (592,530)],fill=(15,20,32,155))
+    # Deterministic cracked rock seams with unequal shade and scale.
+    rock_rng=random.Random(9347)
+    for idx in range(180):
+        x=rock_rng.randrange(195,888)
+        top=round(348+abs(x-540)*1.53)
+        if top>=863:
+            continue
+        y=rock_rng.randrange(top+8,920)
+        span=rock_rng.randrange(8,47)
+        direction=-1 if x<540 else 1
+        d.line([(x,y),(x+direction*span,y+span*.44)],
+               fill=(97,83,76,96+idx%4*13),width=1+idx%3)
+        if idx%5==0:
+            d.line([(x+direction*span,y+span*.44),
+                    (x+direction*(span+12),y+span*.77)],
+                   fill=(22,25,34,130),width=2)
     d.line([(495,361),(515,336),(561,336),(586,401)],
            fill=(120,106,94,255),width=8,joint="curve")
     for j in range(45):
@@ -206,38 +236,88 @@ def _explosion(stage:Image.Image,t:float,duration:float)->None:
 
 
 def _lava(stage:Image.Image,t:float,duration:float)->None:
-    d=ImageDraw.Draw(stage,"RGBA")
-    routes=(
-        [(540,356),(588,436),(642,518),(699,605),(754,696),
-         (813,785),(893,876),(993,967),(1080,1028)],
-        [(530,355),(490,444),(442,528),(380,620),(322,712),
-         (251,811),(164,910),(65,988),(0,1043)],
-    )
-    for i,route in enumerate(routes):
-        f=min(1,t/duration*(1.13+i*.11))
-        index=(len(route)-1)*f
-        k=int(index)
-        points=route[:k+1]
-        if k<len(route)-1:
-            a,b=route[k:k+2]
-            z=index-k
-            points.append((a[0]*(1-z)+b[0]*z,
-                           a[1]*(1-z)+b[1]*z))
-        if len(points)<2:
-            continue
-        # Dimensional lava: dark cooling crust around a glowing inner river.
-        d.line(points,fill=(113,35,25,255),width=58,joint="curve")
-        d.line(points,fill=(234,72,26,250),width=37,joint="curve")
-        d.line(points,fill=(255,161,51,243),width=18,joint="curve")
-        d.line(points,fill=(255,232,142,225),width=5,joint="curve")
-        tipx,tipy=points[-1]
-        _glow(stage,[(tipx,tipy,72)])
-    for i in range(24):
-        x=(i*107+t*22)%1080
-        y=530+(i*73)%450
-        d.ellipse((x-3,y-3,x+3,y+3),
-                  fill=(255,153+i%3*17,67,140))
+    """Advancing, rock-guided meandering molten rivers with animated hot cores.
 
+    Meanders are *spatially stable* while molten fronts advance: the terrain
+    never warps to pretend it is liquid. Independent incandescent tracers and
+    spreading heat run along the same authored tracks.
+    """
+    d=ImageDraw.Draw(stage,"RGBA")
+    rough_routes=(
+        [(540,356),(584,429),(635,505),(670,589),(731,660),
+         (770,727),(823,797),(871,873),(937,941),(1020,1002),
+         (1080,1030)],
+        [(530,355),(493,430),(459,493),(414,578),(374,655),
+         (316,729),(276,794),(215,863),(145,929),(72,993),(0,1040)],
+    )
+    for side,route in enumerate(rough_routes):
+        # Smooth curves with bounded local variations (4 samples/segment).
+        # This prevents the previous long, straight glowing staircases.
+        track=[route[0]]
+        for segment,(a,b) in enumerate(zip(route,route[1:])):
+            dx,dy=b[0]-a[0],b[1]-a[1]
+            length=max(1,math.hypot(dx,dy))
+            normal=(-dy/length,dx/length)
+            for sub in range(1,6):
+                u=sub/5
+                wiggle=(8.4+side*3)*math.sin(math.pi*u)*math.sin(
+                    (segment+u)*1.68+side*.63)
+                track.append((
+                    a[0]+dx*u+normal[0]*wiggle,
+                    a[1]+dy*u+normal[1]*wiggle))
+        amount=min(1.,t/duration*(1.07+side*.06))
+        float_index=(len(track)-1)*amount
+        index=int(float_index)
+        visible=track[:index+1]
+        if index<len(track)-1:
+            p,q=track[index:index+2]
+            u=float_index-index
+            visible.append((p[0]+(q[0]-p[0])*u,
+                            p[1]+(q[1]-p[1])*u))
+        if len(visible)<2:
+            continue
+        # Light into the ground before painting sharp layered lava contours.
+        leading=visible[-1]
+        lights=[(*leading,67)]
+        lights.extend((*visible[j],42)
+                      for j in range(0,len(visible),max(1,len(visible)//6)))
+        _glow(stage,lights)
+        d=ImageDraw.Draw(stage,"RGBA")
+        d.line(visible,fill=(15,12,19,253),width=73,joint="curve")
+        d.line(visible,fill=(111,37,26,250),width=63,joint="curve")
+        d.line(visible,fill=(209,64,21,252),width=47,joint="curve")
+        d.line(visible,fill=(255,144,40,242),width=23,joint="curve")
+        d.line(visible,fill=(255,231,132,220),width=7,joint="curve")
+        # Cooling plates and glossy hot spots travel along existing channels,
+        # never independently across the sky or outside the volcano.
+        for grain in range(17):
+            travel=(grain*.082+t*(.085+side*.018))%1.
+            pos=travel*(len(visible)-1)
+            j=min(int(pos),len(visible)-2)
+            f=pos-j
+            x=visible[j][0]*(1-f)+visible[j+1][0]*f
+            y=visible[j][1]*(1-f)+visible[j+1][1]*f
+            radius=2+(grain%4)
+            d.ellipse((x-radius,y-radius,x+radius,y+radius),
+                      fill=(255,237,151,200+grain%3*14))
+            if grain%3==0:
+                d.line((x-10,y-6,x+9,y+5),
+                       fill=(48,22,24,145),width=4)
+        # An expanding nose of magma has a bright cap and cooled edges.
+        cx,cy=leading
+        d.ellipse((cx-23,cy-22,cx+23,cy+22),
+                  fill=(248,111,36,246))
+        d.ellipse((cx-11,cy-10,cx+11,cy+10),
+                  fill=(255,215,106,232))
+    # A few localized heat flecks above the moving lava (not uniform noise).
+    for i in range(30):
+        progress=(t*(.06+i%5*.013)+i*.117)%1
+        side=-1 if i%2 else 1
+        x=540+side*progress*430
+        y=355+progress*540-16-16*math.sin(t*.9+i)
+        radius=2+i%3
+        d.ellipse((x-radius,y-radius,x+radius,y+radius),
+                  fill=(255,155+i%3*17,66,108))
 
 def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
                  english:bool)->None:
@@ -254,4 +334,5 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
         _explosion(stage,t,duration)
     else:
         _lava(stage,t,duration)
-    picture.alpha_composite(stage,(0,TOP))
+    # Camera movement follows the narrated geological event; UI remains fixed.
+    picture.alpha_composite(reframe(stage, "volcano", beat, t, duration), (0,TOP))

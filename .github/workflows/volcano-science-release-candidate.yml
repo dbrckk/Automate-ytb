@@ -2,10 +2,12 @@ name: Verify original volcano-eruption science Shorts
 
 on:
   push:
-    branches: [main, feat/original-volcano-episode-20261103]
+    branches: [main, 'feat/science-*', feat/original-volcano-episode-20261103]
     paths:
       - .github/workflows/volcano-science-release-candidate.yml
       - automate_ytb/science_volcano.py
+      - automate_ytb/science_stage_director.py
+      - automate_ytb/production.py
       - automate_ytb/science_portrait.py
       - automate_ytb/science_motion.py
       - automate_ytb/episode.py
