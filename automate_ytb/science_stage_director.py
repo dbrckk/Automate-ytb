@@ -25,7 +25,7 @@ SHOTS: dict[str, dict[str, tuple[float, float, float, float, float, float]]] = {
         "lava": (1.09, 1.18, 545, 559, 730, 708),
     },
     "aurora": {
-        "solar_wind": (1.08, 1.16, 485, 539, 665, 667),
+        "solar_wind": (1.045, 1.065, 540, 540, 665, 667),
         "magnetic_field": (1.15, 1.25, 641, 628, 660, 663),
         "collisions": (1.18, 1.28, 524, 552, 677, 657),
         "emission": (1.25, 1.32, 538, 531, 671, 682),

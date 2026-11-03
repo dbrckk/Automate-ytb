@@ -44,6 +44,17 @@ class ScienceDirectorTests(unittest.TestCase):
             first.convert("RGB"),last.convert("RGB")).getbbox())
         self.assertEqual(first.getpixel((0,0))[3],255)
 
+    def test_solar_wind_keeps_both_celestial_bodies_visible(self):
+        # With Sun centre 214 radius 128, Earth centre 930 radius 102,
+        # both must remain inside the scene even during the moving push.
+        for frame in range(211):
+            z, cx, cy = pose("aurora", "solar_wind", frame/30, 7)
+            src_left=cx-540/z
+            sun_left=(214-128-src_left)*z
+            earth_right=(930+102-src_left)*z
+            self.assertGreater(sun_left,10)
+            self.assertLess(earth_right,1078)
+
     def test_invalid_camera_inputs_fail_explicitly(self):
         stage=Image.new("RGBA",FRAME_SIZE)
         for topic,beat,t,dur in (
