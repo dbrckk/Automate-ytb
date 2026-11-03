@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/volcano-science-release-candidate.yml
       - automate_ytb/science_volcano.py
+      - automate_ytb/science_volcano_mesh.py
       - automate_ytb/science_stage_director.py
       - automate_ytb/production.py
       - automate_ytb/science_portrait.py
