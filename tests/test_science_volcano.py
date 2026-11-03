@@ -9,8 +9,8 @@ from automate_ytb.science_portrait import PortraitScienceScene
 TOPIC="How Do Volcanoes Erupt?"
 SCRIPT=(
     "Deep underground, hot rock partially melts, forming a glowing reservoir of magma beneath a volcano.",
-    "Gas bubbles become trapped in thick magma, and pressure grows inside the chamber.",
-    "Rising pressure pushes magma upward through cracks and a narrow vent toward the summit.",
+    "Gas bubbles become trapped in thick magma, and pressure steadily grows inside the deep underground chamber.",
+    "Rising pressure pushes magma steadily upward through cracks in the rock and a narrow vent toward the summit.",
     "When magma reaches the surface, expanding gases can blast ash and glowing fragments high into the sky.",
     "Escaping lava flows down the slopes, while ash settles and the volcano slowly cools.",
 )
