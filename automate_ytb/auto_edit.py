@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 
 from .footage import VIDEO_SUFFIXES, probe_video
-from .production import _write_json, ingest_video, load_plan, render
+from .production import _sha, _write_json, PROVIDER, ingest_video, load_plan, render
 from .scene_plan import plan as create_plan
 
 VERSION = "licensed-multivideo-autoedit-v1"
@@ -270,7 +270,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             imported.append({
                 "sceneId":scene_id,
                 "sourceName":item["source"].name,
-                "sourceSHA256":None,  # source remains user-owned and external
+                "sourceSHA256":source_hashes[item["source"]],
                 "startSeconds":item["startSeconds"],
                 "durationSeconds":item["durationSeconds"],
                 "candidateCount":item["candidateCount"],
