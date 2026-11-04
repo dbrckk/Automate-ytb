@@ -12,7 +12,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-VISUAL_QA_VERSION = "sampled-visual-preflight-v2-episode-coverage"
+VISUAL_QA_VERSION = "sampled-visual-preflight-v3-stratified-six-window-coverage"
 SAMPLE_FPS = 2
 SAMPLE_SIZE = (96, 54)
 MAX_SECONDS = 18
@@ -90,7 +90,7 @@ def analyze_samples(raw: bytes, *, width: int = 96, height: int = 54,
 
 
 def sampling_windows(duration: float) -> list[tuple[float, float]]:
-    """Inspect short clips fully; inspect opening, middle and ending of long clips.
+    """Inspect short clips fully; inspect three or six distributed long-form windows.
 
     Each time interval is a bounded decoded sample *window*, not a claim that
     the unsampled minutes have been checked. Time spans do not overlap.
@@ -100,10 +100,17 @@ def sampling_windows(duration: float) -> list[tuple[float, float]]:
         raise ValueError("Invalid duration for episode visual sampling")
     if duration <= MAX_SECONDS:
         return [(0.0, float(duration))]
-    length = float(WINDOW_SECONDS)
-    return [(0.0, length),
-            (round(duration / 2 - length / 2, 3), length),
-            (round(duration - length, 3), length)]
+    if duration <= 36:
+        length = float(WINDOW_SECONDS)
+        return [(0.0, length),
+                (round(duration / 2 - length / 2, 3), length),
+                (round(duration - length, 3), length)]
+    # Long-form documentary, product and narrative videos must not be judged
+    # from only opening/middle/end. Keep the SAME 18s decode budget but
+    # distribute six 3s windows over the complete duration.
+    length = 3.0
+    return [(round(i * (duration - length) / 5, 3), length)
+            for i in range(6)]
 
 
 def _probe_duration(path: Path) -> float:
@@ -187,7 +194,8 @@ def inspect_video(path: Path) -> dict:
     return {
         "version": VISUAL_QA_VERSION,
         "status": "review" if warnings else "no-obvious-sampled-defects",
-        "samplingStrategy": "opening-middle-ending" if len(windows) == 3 else "short-clip",
+        "samplingStrategy": ("stratified-six-window" if len(windows) == 6 else
+                             "opening-middle-ending" if len(windows) == 3 else "short-clip"),
         "videoDurationSeconds": round(duration, 3),
         "sampledSpanSeconds": round(sum(end - start for start, end in
                                      ((w["startSeconds"], w["endSeconds"]) for w in windows)), 3),
