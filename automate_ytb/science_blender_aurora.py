@@ -64,6 +64,33 @@ class BlenderAuroraStage:
                     image.verify()
                 paths.append(file)
             validated[beat] = paths
+        # New Blender jobs report source-geometry evidence from the actual
+        # bpy scene, while older v1 manifests without metrics remain playable.
+        # Fail closed when a declared metric is malformed or incomplete.
+        details=data.get("sceneDetails")
+        if details is not None:
+            if not isinstance(details,dict) or set(details)!=set(BEATS):
+                raise ValueError("Incomplete verified Blender 3D scene geometry")
+            for beat,row in details.items():
+                required=("terrainVertices","totalMeshObjects","earthShaderNodes",
+                          "diatomicMolecules","incomingElectrons",
+                          "emittedPhotons","curtainSurfaceVertices")
+                if (not isinstance(row,dict) or set(row)!=set(required)
+                        or any(type(row[key]) is not int or row[key]<0
+                               for key in required)):
+                    raise ValueError(f"Invalid source 3D geometry metrics: {beat}")
+                if row["terrainVertices"] < 2000 or row["totalMeshObjects"] < 40:
+                    raise ValueError(f"3D polar environment is under-detailed: {beat}")
+                if beat in ("solar_wind","magnetic_field") and row["earthShaderNodes"] < 10:
+                    raise ValueError(f"Detailed Earth procedural material is missing: {beat}")
+                if beat in ("collisions","emission") and (
+                        row["diatomicMolecules"] < 12 or row["incomingElectrons"] < 8):
+                    raise ValueError(f"3D atmospheric causal interaction is missing: {beat}")
+                if beat=="emission" and row["emittedPhotons"] < 8:
+                    raise ValueError("Rendered photon emission geometry is missing")
+                if beat=="curtains" and row["curtainSurfaceVertices"] < 10000:
+                    raise ValueError("Aurora 3D curtain mesh is under-detailed")
+        self.scene_details = details
         self.paths = validated
         self.count = count
         self.source_size = (w,h)
