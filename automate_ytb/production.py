@@ -304,6 +304,16 @@ def audit(plan_path: Path, limit: int | None = None) -> dict:
             state = "unreviewed"
         elif _sha(dest) != scene["assetSha256"]:
             state = "changed"
+        elif "videoAsset" in scene and (
+                not scene.get("videoApproved")
+                or not scene.get("videoLicenseEvidence")
+                or not scene.get("videoSha256")):
+            state = "unreviewed"
+        elif "videoAsset" in scene and (
+                not _video_path(plan_path, scene).is_file()
+                or _video_path(plan_path, scene).is_symlink()
+                or _sha(_video_path(plan_path, scene)) != scene["videoSha256"]):
+            state = "changed"
         else:
             state = "ready"
             billed += _money(scene.get("assetCostUsd", "0"))
@@ -430,6 +440,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         uses_motion_rig = uses_owl_rig or uses_forest_rig or science_art
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
+            "sourceVideoSha": scene.get("videoSha256"),
+            "sourceType": "real-footage" if "videoAsset" in scene else "image",
             "dimensions": dims, "fps": fps, "renderer": VERSION,
             "universalCameraVersion": "universal-shot-camera-v1",
             "aurora3DManifestSHA": (
@@ -451,7 +463,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "scene": scene["narration"] if uses_motion_rig else "",
             "topic": data["topic"] if uses_motion_rig else "",
             "character": data.get("originalCharacterBible") if uses_motion_rig else "",
-            "direction": scene.get("direction") if uses_motion_rig else None,
+            "direction": scene.get("direction"),
             "carriedProp": carried_by_scene[scene_index] if uses_motion_rig else None,
             "landscape": scene_landscapes[scene_index] if uses_motion_rig else None,
             "synthesizedGestureCues": (
@@ -532,6 +544,15 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         landscape=scene_landscapes[scene_index],
                         render_profile=render_profile,
                     )
+                elif "videoAsset" in scene:
+                    # Respect actual recorded motion. Source audio is excluded
+                    # so the authored narration/music timeline stays intact.
+                    _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                          "-i", str(_video_path(plan_path, scene)),
+                          "-t", f"{seconds:.3f}",
+                          "-vf", (f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+                                  f"crop={w}:{h},fps={fps},format=yuv420p"),
+                          *video_args(render_profile), "-an", str(tmp)])
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-loop", "1", "-framerate", str(fps),
@@ -652,6 +673,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                      "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
+        "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
+        "realFootageSourceAudioIncluded": False,
         "renderProfile": render_profile,
         "videoEncodingPreset": codec["preset"],
         "videoEncodingCrf": codec["crf"],
