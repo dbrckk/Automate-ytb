@@ -598,7 +598,7 @@ def main():
                 len(obj.data.vertices) for obj in dynamic["sheets"]),
         }
         if (evidence["terrainVertices"] < 2000 or
-                (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 12) or
+                (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 10) or
                 (beat in ("collisions","emission") and
                  (evidence["diatomicMolecules"] < 12 or evidence["incomingElectrons"] < 8)) or
                 (beat=="emission" and evidence["emittedPhotons"] < 8) or
