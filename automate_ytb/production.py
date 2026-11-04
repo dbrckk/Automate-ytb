@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v51-science-cinema-blender3d-opt-in"
+VERSION = "render-v51-science-cinema-blender3d-opt-in-aurora3d-v1"
 
 
 def _sha(path: Path) -> str:
@@ -332,6 +332,11 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
+            "aurora3DManifestSHA": (
+                _sha(Path(os.environ["AUTOMATE_YTB_AURORA_3D_DIR"]) / "manifest.json")
+                if science_art and os.environ.get("AUTOMATE_YTB_AURORA_3D_DIR")
+                and "aurora" in data["topic"].casefold()
+                else None),
             "blender3DManifestSHA": (
                 _sha(Path(os.environ["AUTOMATE_YTB_OCEAN_3D_DIR"]) / "manifest.json")
                 if science_art and os.environ.get("AUTOMATE_YTB_OCEAN_3D_DIR")
