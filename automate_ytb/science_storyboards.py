@@ -13,6 +13,7 @@ import unicodedata
 from PIL import ImageDraw
 
 from .science_motion import _font
+from .science_causal_vfx import draw_interactions
 
 GOLD = (253, 192, 97, 255)
 CYAN = (119, 225, 241, 255)
@@ -279,7 +280,8 @@ def _progress_ribbon(draw: ImageDraw.ImageDraw, beat: str,
 
 def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
                     t: float, english: bool, *,
-                    duration: float | None = None) -> None:
+                    duration: float | None = None,
+                    event_progress: float | None = None) -> None:
     """Draw native educational motion; optionally show real-time causal progression."""
     if (beat not in BEATS or type(t) not in (int, float)
             or not math.isfinite(t) or t < 0 or type(english) is not bool):
@@ -306,6 +308,9 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
         _sinking(draw, t, english)
     elif beat == "heat":
         _heat(draw, t, english)
+    if duration is not None:
+        draw_interactions(draw, beat, t=t, duration=duration,
+                          event_progress=event_progress)
     _label(draw, (115, 620),
            "SCHEMATIC · NOT TO SCALE" if english else "SCHÉMA · HORS ÉCHELLE",
            color=(158, 195, 211, 225), size=29)
