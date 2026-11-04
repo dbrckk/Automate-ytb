@@ -79,6 +79,30 @@ passwords or proprietary downloads are involved.
   regresses.
 - Do not enable globally or publish until human review.
 
+## Latest P0 scene-world upgrade (November 4)
+
+Previously, the visible Blender stage used a flat blue Earth sphere, a low
+contrast sine-wave polar floor and isolated moving dots for the collision
+sequence. The following changes are authored in the actual 3D source:
+
+- **Planet**: procedural ocean/continent relief shading, polar ice region,
+  surface bump and a separate atmospheric grazing-angle scattering shell.
+  Landmass patterns are stylized, **not geographic maps**.
+- **Landscape**: 64×64 actual 3D ground vertices, a ridged mountain skyline,
+  altitude-specific ice/snow/granite material regions and foreground rocks
+  placed *on* the ground instead of at approximate floating heights.
+- **Atomic animation**: paired diatomic gas molecules with visible bonds,
+  incoming charged particles timed to impacts, molecule excitation pulses
+  and colored photon trajectories moving away from collisions.
+- **Verification**: the renderer's manifest now records actual source-scene
+  geometry counts and rejects incomplete landscapes, molecules, photons,
+  planet materials and auroral surfaces. The human contact-sheet review
+  includes those counts, not a fabricated artistic score.
+
+All improvements use original Blender materials/geometry and GitHub Actions
+CPU, with no third-party asset/license or paid inference dependency.
+These are explanatory visualizations, not plasma physics simulations.
+
 ## Remaining work
 
 Increase true 3D temporal sampling and use physical light-scattering materials
