@@ -44,7 +44,43 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
     if translucent and glow:
         transparent=nodes.new("ShaderNodeBsdfTransparent")
         mixer=nodes.new("ShaderNodeMixShader")
-        mixer.inputs[0].default_value=.47
+        # Vertical luminous threads instead of a flat opaque rectangle.
+        # Generated X is horizontal position; generated Z fades edges.
+        # Keeping the majority transparent preserves real star parallax.
+        coordinates=nodes.new("ShaderNodeTexCoord")
+        axes=nodes.new("ShaderNodeSeparateXYZ")
+        frequency=nodes.new("ShaderNodeMath")
+        frequency.operation="MULTIPLY"
+        frequency.inputs[1].default_value=122
+        oscillation=nodes.new("ShaderNodeMath")
+        oscillation.operation="SINE"
+        absolute=nodes.new("ShaderNodeMath")
+        absolute.operation="ABSOLUTE"
+        sharpen=nodes.new("ShaderNodeMath")
+        sharpen.operation="POWER"
+        sharpen.inputs[1].default_value=5
+        strength=nodes.new("ShaderNodeMath")
+        strength.operation="MULTIPLY"
+        strength.inputs[1].default_value=.27
+        vertical=nodes.new("ShaderNodeMath")
+        vertical.operation="MULTIPLY"
+        vertical.inputs[1].default_value=math.pi
+        edge_fade=nodes.new("ShaderNodeMath")
+        edge_fade.operation="SINE"
+        final_opacity=nodes.new("ShaderNodeMath")
+        final_opacity.operation="MULTIPLY"
+        links=mat.node_tree.links
+        links.new(coordinates.outputs["Generated"],axes.inputs[0])
+        links.new(axes.outputs["X"],frequency.inputs[0])
+        links.new(frequency.outputs[0],oscillation.inputs[0])
+        links.new(oscillation.outputs[0],absolute.inputs[0])
+        links.new(absolute.outputs[0],sharpen.inputs[0])
+        links.new(sharpen.outputs[0],strength.inputs[0])
+        links.new(axes.outputs["Z"],vertical.inputs[0])
+        links.new(vertical.outputs[0],edge_fade.inputs[0])
+        links.new(strength.outputs[0],final_opacity.inputs[0])
+        links.new(edge_fade.outputs[0],final_opacity.inputs[1])
+        links.new(final_opacity.outputs[0],mixer.inputs[0])
         mat.node_tree.links.new(transparent.outputs[0],mixer.inputs[1])
         mat.node_tree.links.new(shader.outputs[0],mixer.inputs[2])
         mat.node_tree.links.new(mixer.outputs[0], output.inputs["Surface"])
