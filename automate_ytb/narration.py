@@ -12,7 +12,8 @@ import wave
 
 DEFAULT_VOICES = {"fr": "ff_siwis", "en": "af_heart"}
 VOICE_CHOICES = {"fr": frozenset({"ff_siwis"}),
-                 "en": frozenset({"af_heart", "af_bella", "am_michael"})}
+                 "en": frozenset({"af_heart", "af_bella", "af_nicole",
+                                   "af_sarah", "am_michael"})}
 SAMPLE_RATE_KOKORO = 24000
 
 

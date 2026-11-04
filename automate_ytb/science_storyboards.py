@@ -13,6 +13,7 @@ import unicodedata
 from PIL import ImageDraw
 
 from .science_motion import _font
+from .science_causal_vfx import draw_interactions
 
 GOLD = (253, 192, 97, 255)
 CYAN = (119, 225, 241, 255)
@@ -279,7 +280,9 @@ def _progress_ribbon(draw: ImageDraw.ImageDraw, beat: str,
 
 def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
                     t: float, english: bool, *,
-                    duration: float | None = None) -> None:
+                    duration: float | None = None,
+                    event_progress: float | None = None,
+                    depth_background: bool = False) -> None:
     """Draw native educational motion; optionally show real-time causal progression."""
     if (beat not in BEATS or type(t) not in (int, float)
             or not math.isfinite(t) or t < 0 or type(english) is not bool):
@@ -290,8 +293,11 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
         raise ValueError("Invalid storyboard duration")
     if duration is not None:
         _progress_ribbon(draw, beat, t / duration, english)
+    if type(depth_background) is not bool:
+        raise ValueError("Depth plate selection must be boolean")
     draw.rounded_rectangle((80, 600, 1000, 1490), radius=40,
-                           fill=NAVY, outline=(97, 176, 210, 124), width=3)
+                           fill=None if depth_background else NAVY,
+                           outline=(97, 176, 210, 124), width=3)
     for x in range(140, 990, 105):
         draw.line((x, 620, x, 1470), fill=(71, 123, 164, 32), width=1)
     for y in range(750, 1460, 105):
@@ -306,6 +312,9 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
         _sinking(draw, t, english)
     elif beat == "heat":
         _heat(draw, t, english)
+    if duration is not None:
+        draw_interactions(draw, beat, t=t, duration=duration,
+                          event_progress=event_progress)
     _label(draw, (115, 620),
            "SCHEMATIC · NOT TO SCALE" if english else "SCHÉMA · HORS ÉCHELLE",
            color=(158, 195, 211, 225), size=29)

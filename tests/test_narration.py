@@ -77,7 +77,7 @@ class SpeechTests(unittest.TestCase):
 
         choices = {
             "fr": ("ff_siwis",),
-            "en": ("af_heart", "af_bella", "am_michael"),
+            "en": ("af_heart", "af_bella", "af_nicole", "af_sarah", "am_michael"),
         }
         self.assertEqual({k: tuple(sorted(v)) for k,v in VOICE_CHOICES.items()},
                          {k: tuple(sorted(v)) for k,v in choices.items()})
@@ -106,12 +106,12 @@ class SpeechTests(unittest.TestCase):
                     ".github/workflows/one-click-preview.yml").read_text(
                         encoding="utf-8")
         self.assertIn("voice_name:", workflow)
-        self.assertIn("options: [auto, af_heart, af_bella, am_michael, ff_siwis]",
+        self.assertIn("options: [auto, af_heart, af_bella, af_nicole, af_sarah, am_michael, ff_siwis]",
                       workflow)
         self.assertIn("default: auto", workflow)
         self.assertIn("YT_VOICE_NAME: ${{ inputs.voice_name }}", workflow)
         self.assertIn("case \"$YT_LANGUAGE:$YT_VOICE_NAME\" in", workflow)
-        self.assertIn("en:af_heart|en:af_bella|en:am_michael|fr:ff_siwis)", workflow)
+        self.assertIn("en:af_heart|en:af_bella|en:af_nicole|en:af_sarah|en:am_michael|fr:ff_siwis)", workflow)
         self.assertIn('VOICE_ARGS=(--voice-name "$YT_VOICE_NAME")', workflow)
         self.assertIn('"${VOICE_ARGS[@]}"', workflow)
 

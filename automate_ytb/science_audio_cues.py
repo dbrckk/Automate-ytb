@@ -7,7 +7,7 @@ from __future__ import annotations
 import math
 import re
 
-VERSION="science-phrase-event-timing-v1"
+VERSION="science-phrase-event-timing-v2-ocean"
 PATTERNS={
     "volcano":{
         "magma":r"\b(magma|melt(?:s|ed|ing)?|molten)\b",
@@ -15,6 +15,13 @@ PATTERNS={
         "ascent":r"\b(ris(?:es|ing)|upward|ascend(?:s|ing)?|cracks?|vent)\b",
         "eruption":r"\b(erupt(?:s|ion|ing)?|blast(?:s|ing)?|ash|ejecta|fragments?)\b",
         "lava":r"\b(lava|flows?|cool(?:s|ed|ing)?)\b",
+    },
+    "ocean":{
+        "solar":r"\b(sun|sunlight|solar|heat(?:s|ing)?|soleil)\b",
+        "wind":r"\b(winds?|push(?:es|ing)?|driv(?:e|es|ing)|vents?)\b",
+        "coriolis":r"\b(coriolis|rotat(?:e|es|ion|ing)|bends?|gyres?)\b",
+        "sinking":r"\b(sink(?:s|ing)?|cold|salty|dense|density|poles?)\b",
+        "heat":r"\b(heat|warm(?:ing)?|climate|redistribut(?:e|es|ing)|transport)\b",
     },
     "aurora":{
         "solar_wind":r"\b(solar wind|sun|particles?|releases?|sends?)\b",
