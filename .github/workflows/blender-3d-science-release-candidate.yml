@@ -1,0 +1,67 @@
+name: Verify real Blender 3D ocean science Short
+
+# Blender CPU is opt-in, never mistaken for the free 2.5D pipeline.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/blender-3d-science-release-candidate.yml
+      - .github/workflows/one-click-preview.yml
+      - scripts/blender_ocean_stage.py
+      - automate_ytb/science_blender_3d.py
+      - automate_ytb/blender_stage_review.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/science_storyboards.py
+      - automate_ytb/production.py
+      - tests/test_science_blender_3d.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blender-3d-science-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  render-and-verify-real-3d:
+    name: Produce original 3D ocean, English Kokoro and QA-checked Short
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Do Ocean Currents Move?"
+      original_script: >-
+        Sunlight heats tropical oceans more than polar waters, creating temperature contrasts.
+        Global winds push surface waters, driving currents across the ocean between continents.
+        Earth's rotation bends currents through the Coriolis effect, producing broad rotating gyres.
+        Near the poles, cold salty water sinks, feeding deep circulation beneath the waves.
+        Currents redistribute heat around Earth, influencing weather, climate, and marine life.
+      character: "Original physically lit Blender ocean models and authored science annotation"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: expressive
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
+      cinematic_3d: true
+
+  confirm-3d-release:
+    name: Verify Blender and video generation passed together
+    needs: render-and-verify-real-3d
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Surface editorial review and nonpublication controls
+        run: |
+          {
+            echo '### Blender real 3D CPU ocean Short encoded and QA-checked'
+            echo 'The reusable job completed Blender frame hash validation,'
+            echo 'five camera animation checks, Kokoro narration and FFmpeg QA.'
+            echo 'Download artifact automate-ytb-free-preview for the'
+            echo '30-second MP4 and 3D contact sheet.'
+            echo 'Not published; human review still required.'
+          } >> "$GITHUB_STEP_SUMMARY"
