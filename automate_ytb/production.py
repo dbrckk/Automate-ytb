@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v54-real-owned-footage-mixed-scenes-v1"
+VERSION = "render-v55-portrait-owned-footage-safe-reframing-v1"
 
 
 def _sha(path: Path) -> str:
@@ -372,11 +372,18 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
     if resolution == "shorts" and any(
-            scene.get("renderStyle") != "science"
-            or scene.get("motionRig") != "original-science-v1"
-            or scene.get("assetProvider") != "automate-local-graphics"
+            not (
+                (scene.get("renderStyle") == "science"
+                 and scene.get("motionRig") == "original-science-v1"
+                 and scene.get("assetProvider") == "automate-local-graphics")
+                or
+                (scene.get("motionRig") is None
+                 and scene.get("renderStyle") != "science")
+            )
             for scene in scenes):
-        raise ValueError("Native 9:16 Shorts require approved original science scenes")
+        raise ValueError(
+            "Native 9:16 Shorts need approved original science rigs or "
+            "owned non-rig images/video; other character rigs are unsupported")
     results = audit(plan_path, limit)
     if not results["readyForPreview"]:
         raise ValueError(f"Scene assets not ready: {results['counts']}")
@@ -449,6 +456,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "sourceVideoSha": scene.get("videoSha256"),
+            "sourceVideoDetails": scene.get("videoDetails"),
+            "videoFramingVersion": "owned-footage-auto-matte-v1",
             "sourceType": "real-footage" if "videoAsset" in scene else "image",
             "dimensions": dims, "fps": fps, "renderer": VERSION,
             "universalCameraVersion": "universal-shot-camera-v1",
@@ -553,13 +562,23 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         render_profile=render_profile,
                     )
                 elif "videoAsset" in scene:
-                    # Respect actual recorded motion. Source audio is excluded
-                    # so the authored narration/music timeline stays intact.
+                    # Preserve the real recorded scene on portrait/landscape
+                    # conversion; never crop away most of a landscape video.
+                    # Both blurred background and foreground come from the
+                    # SAME approved moving clip, not synthetic AI content.
+                    from .footage import framing_filter
+                    details = scene.get("videoDetails")
+                    if not isinstance(details,dict):
+                        raise ValueError("Missing validated original video dimensions")
+                    graph,complex_graph = framing_filter(
+                        source_width=details.get("normalizedWidth"),
+                        source_height=details.get("normalizedHeight"),
+                        width=w,height=h,fps=fps)
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-i", str(_video_path(plan_path, scene)),
                           "-t", f"{seconds:.3f}",
-                          "-vf", (f"scale={w}:{h}:force_original_aspect_ratio=increase,"
-                                  f"crop={w}:{h},fps={fps},format=yuv420p"),
+                          *(["-filter_complex",graph,"-map","[v]"]
+                            if complex_graph else ["-vf",graph]),
                           *video_args(render_profile), "-an", str(tmp)])
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -683,6 +702,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
         "realFootageSourceAudioIncluded": False,
+        "realFootageFramingVersion": "auto-contained-original-motion-blur-v1",
         "renderProfile": render_profile,
         "videoEncodingPreset": codec["preset"],
         "videoEncodingCrf": codec["crf"],
@@ -815,7 +835,7 @@ def main(argv=None) -> int:
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--audio", type=Path)
     p.add_argument("--limit", type=int, default=None)
-    p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
+    p.add_argument("--resolution", choices=["720p", "1080p", "shorts"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
     p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
     args = parser.parse_args(argv)
