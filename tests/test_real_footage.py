@@ -20,7 +20,7 @@ TOOLS = bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
 
 def run(*args):
     return subprocess.run(
-        list(args), capture_output=True, text=True, check=True, timeout=100)
+        list(args), capture_output=True, check=True, timeout=100)
 
 
 @unittest.skipUnless(TOOLS, "Free local FFmpeg + FFprobe required")
