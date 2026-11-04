@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v53-universal-directed-camera-v1"
+VERSION = "render-v54-real-owned-footage-mixed-scenes-v1"
 
 
 def _sha(path: Path) -> str:
@@ -72,6 +72,12 @@ def load_plan(path: Path) -> dict:
             raise ValueError(f"Unexpected scene identifier at index {i}")
         if scene.get("imageAsset") != f"assets/{expected}.png":
             raise ValueError(f"Unsafe image path for {sid}")
+        if "videoAsset" in scene:
+            if scene["videoAsset"] != f"assets/{expected}.mp4":
+                raise ValueError(f"Unsafe video path for {sid}")
+            if (scene.get("renderStyle") == "science" or
+                    scene.get("motionRig") is not None):
+                raise ValueError("Real source footage cannot impersonate an animated rig")
         start, end = scene.get("startMs"), scene.get("endMs")
         if (not isinstance(start, int) or not isinstance(end, int) or
                 isinstance(start, bool) or isinstance(end, bool) or
@@ -96,6 +102,17 @@ def _asset_path(plan_path: Path, scene: dict) -> Path:
     if not dest.resolve().is_relative_to(root):
         raise ValueError("Scene asset points outside the project")
     return dest
+
+
+def _video_path(plan_path: Path, scene: dict) -> Path:
+    root = plan_path.resolve().parent
+    rel = scene.get("videoAsset")
+    if rel != f"assets/{scene['id']}.mp4":
+        raise ValueError("Unsafe original footage asset path")
+    file = root / rel
+    if not file.resolve().is_relative_to(root):
+        raise ValueError("Original footage escapes approved workspace")
+    return file
 
 
 def prepare(plan_path: Path, output: Path, price_per_image_usd: str | None = None) -> dict:
