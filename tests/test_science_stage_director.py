@@ -1,7 +1,7 @@
 """Cinematic science camera is continuous, crop-safe, content preserving."""
 import unittest
 from PIL import Image, ImageChops
-from automate_ytb.science_stage_director import FRAME_SIZE, SHOTS, VERSION, ACTION_CUES, action_envelope, pose, reframe
+from automate_ytb.science_stage_director import FRAME_SIZE, SHOTS, VERSION, ACTION_CUES, EVENT_PROGRESS, camera_progress, action_envelope, pose, reframe
 
 
 class ScienceDirectorTests(unittest.TestCase):
@@ -87,8 +87,44 @@ class ScienceDirectorTests(unittest.TestCase):
                     # The camera must be visibly distinct from simple smoothstep.
                     middle=pose(topic,beat,center*7,7)[0]
                     q=center
-                    baseline=beats[beat][0]+(beats[beat][1]-beats[beat][0])*q*q*(3-2*q)
+                    baseline=beats[beat][0]+(beats[beat][1]-beats[beat][0])*camera_progress(topic,beat,q)
                     self.assertGreater(middle-baseline,push*.95)
+
+    def test_causal_camera_is_monotone_continuous_and_not_generic(self):
+        self.assertEqual(set(EVENT_PROGRESS), set(SHOTS))
+        authored_differences = []
+        for topic, beats in EVENT_PROGRESS.items():
+            self.assertEqual(set(beats), set(SHOTS[topic]))
+            for beat, knots in beats.items():
+                with self.subTest(topic=topic, beat=beat):
+                    self.assertEqual(knots[0], (0., 0.))
+                    self.assertEqual(knots[-1], (1., 1.))
+                    self.assertTrue(all(
+                        a[0] < b[0] and a[1] < b[1]
+                        for a, b in zip(knots, knots[1:])))
+                    progress = [camera_progress(topic,beat,i/600)
+                                for i in range(601)]
+                    self.assertEqual(progress[0], 0.)
+                    self.assertEqual(progress[-1], 1.)
+                    self.assertTrue(all(0 <= a <= b <= 1
+                                        for a,b in zip(progress,progress[1:])))
+                    self.assertLess(max(b-a for a,b in zip(progress,progress[1:])), .009)
+                    for x,_ in knots[1:-1]:
+                        # Velocity is zero at both sides of each authored knot.
+                        self.assertLess(
+                            camera_progress(topic,beat,x+.00001)
+                            - camera_progress(topic,beat,x-.00001), .0001)
+                    for q in (.2,.4,.6,.8):
+                        generic=q*q*(3-2*q)
+                        authored_differences.append(abs(camera_progress(topic,beat,q)-generic))
+        self.assertGreater(max(authored_differences), .05)
+
+    def test_invalid_causal_camera_clock_is_rejected(self):
+        for value in (-1, 1.01, float("nan"), float("inf"), True, "0.5"):
+            with self.assertRaises(ValueError):
+                camera_progress("volcano","eruption",value)
+        with self.assertRaises(ValueError):
+            camera_progress("unsupported","eruption",.5)
 
     def test_invalid_event_envelopes_fail(self):
         for value in (-1,1.1,float("nan"),float("inf")):
