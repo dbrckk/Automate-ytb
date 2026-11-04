@@ -263,9 +263,14 @@ jobs:
           YT_TRANSITION: ${{ inputs.transition }}
           YT_RESOLUTION: ${{ inputs.resolution }}
           YT_RENDER_PROFILE: ${{ inputs.render_profile }}
-          AUTOMATE_YTB_OCEAN_3D_DIR: ${{ inputs.cinematic_3d && 'build/ocean-3d' || '' }}
-          AUTOMATE_YTB_AURORA_3D_DIR: ${{ inputs.cinematic_3d && 'build/aurora-3d' || '' }}
         run: |
+          # Only the matching completed 3D manifest activates its renderer.
+          # Do not point the ocean cache at a non-existent aurora output.
+          if [ -f build/ocean-3d/manifest.json ]; then
+            export AUTOMATE_YTB_OCEAN_3D_DIR=build/ocean-3d
+          elif [ -f build/aurora-3d/manifest.json ]; then
+            export AUTOMATE_YTB_AURORA_3D_DIR=build/aurora-3d
+          fi
           VOICE_ARGS=()
           if [ "$YT_VOICE_NAME" != "auto" ]; then
             if [ "$YT_VOICE" != "kokoro" ]; then
