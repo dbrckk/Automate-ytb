@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-VERSION = "original-science-director-v3-synth-phrase-synchronized-camera"
+VERSION = "original-science-director-v3-phrase-cues-event-paced-v4"
 FRAME_SIZE = (1080, 1380)
 
 # Shot-dependent pacing and focal height. In underground scenes the camera
@@ -32,6 +32,46 @@ SHOTS: dict[str, dict[str, tuple[float, float, float, float, float, float]]] = {
         "curtains": (1.07, 1.14, 538, 552, 665, 649),
     },
 }
+
+
+
+# Authored action phases preserve the original framing endpoints but replace
+# the generic whole-shot ease with a slower establish / faster causal action /
+# gentle resolve rhythm. Smoothstep on each interval gives C1 continuity.
+# Audio-derived phrase cues still control the independent transient pulse.
+EVENT_PROGRESS: dict[str, dict[str, tuple[tuple[float, float], ...]]] = {
+    "volcano": {
+        "magma": ((0.,0.),(.34,.12),(.78,.86),(1.,1.)),
+        "pressure": ((0.,0.),(.27,.07),(.76,.91),(1.,1.)),
+        "ascent": ((0.,0.),(.16,.03),(.86,.94),(1.,1.)),
+        "eruption": ((0.,0.),(.20,.07),(.63,.87),(1.,1.)),
+        "lava": ((0.,0.),(.23,.06),(.85,.96),(1.,1.)),
+    },
+    "aurora": {
+        "solar_wind": ((0.,0.),(.18,.05),(.83,.93),(1.,1.)),
+        "magnetic_field": ((0.,0.),(.22,.06),(.76,.90),(1.,1.)),
+        "collisions": ((0.,0.),(.28,.11),(.75,.91),(1.,1.)),
+        "emission": ((0.,0.),(.32,.09),(.73,.91),(1.,1.)),
+        "curtains": ((0.,0.),(.16,.04),(.84,.96),(1.,1.)),
+    },
+}
+
+
+def camera_progress(topic: str, beat: str, fraction: float) -> float:
+    """Monotone C1 action-phase interpolation, bounded to [0, 1]."""
+    if (topic not in EVENT_PROGRESS or beat not in EVENT_PROGRESS[topic]
+            or type(fraction) not in (float, int)
+            or not math.isfinite(fraction) or not 0 <= fraction <= 1):
+        raise ValueError("Unsupported scene or invalid camera event clock")
+    knots = EVENT_PROGRESS[topic][beat]
+    for index in range(len(knots) - 1):
+        start_time, start_value = knots[index]
+        end_time, end_value = knots[index + 1]
+        if fraction <= end_time:
+            u = (fraction - start_time) / (end_time - start_time)
+            ease = u*u*(3-2*u)
+            return start_value + (end_value-start_value)*ease
+    return 1.0
 
 
 # Camera reactions are tied to a narrated physical action, not arbitrary
@@ -93,9 +133,9 @@ def pose(topic: str, beat: str, t: float,
             or duration <= 0 or duration > 180 or not 0 <= t <= duration):
         raise ValueError("Unsupported science camera or animation clock")
     q=t/duration
-    # Smoothstep is C1 continuous at start and end, avoiding camera jumps
-    # when an individual action begins or ends.
-    ease=q*q*(3-2*q)
+    # The authored action phase holds, accelerates and resolves while preserving
+    # exactly the previous shot endpoints. The audio cue pulse is composed later.
+    ease=camera_progress(topic,beat,q)
     start_z,end_z,start_x,end_x,start_y,end_y=SHOTS[topic][beat]
     zoom=start_z+(end_z-start_z)*ease
     cx=start_x+(end_x-start_x)*ease
