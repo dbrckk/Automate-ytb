@@ -335,7 +335,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "aurora3DManifestSHA": (
                 _sha(Path(os.environ["AUTOMATE_YTB_AURORA_3D_DIR"]) / "manifest.json")
                 if science_art and os.environ.get("AUTOMATE_YTB_AURORA_3D_DIR")
-                and "aurora" in data["topic"].casefold()
+                and (Path(os.environ["AUTOMATE_YTB_AURORA_3D_DIR"]) / "manifest.json").is_file()
                 else None),
             "blender3DManifestSHA": (
                 _sha(Path(os.environ["AUTOMATE_YTB_OCEAN_3D_DIR"]) / "manifest.json")
