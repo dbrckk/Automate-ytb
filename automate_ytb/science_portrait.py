@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .science_audio_cues import audio_event_fraction
 from .science_ocean_depth import draw_depth
+from .science_blender_aurora import stage_from_environment as aurora_stage_from_environment
 from .science_blender_3d import stage_from_environment
 from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
@@ -39,7 +40,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions-depth-v1-blender-cycles-opt-in-v1"
+PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions-depth-v1-blender-cycles-opt-in-v1-aurora-3d-v1"
 INK = (238, 247, 250, 255)
 
 
@@ -206,6 +207,8 @@ class PortraitScienceScene:
         self.rainbow_beat = classify_rainbow(topic, narration)
         self.lightning_beat = classify_lightning(topic, narration)
         self.aurora_beat = classify_aurora(topic, narration)
+        self._blender_aurora_stage = (
+            aurora_stage_from_environment() if self.aurora_beat is not None else None)
         self.volcano_beat = classify_volcano(topic, narration)
         self.earth_stop_beat = classify_earth_stop(topic, narration)
         if is_lightning and self.lightning_beat is None:
@@ -374,9 +377,14 @@ class PortraitScienceScene:
                            self.english)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.aurora_beat is not None:
+            aurora_plate = (
+                self._blender_aurora_stage.frame(
+                    self.aurora_beat, t=t, duration=duration)
+                if self._blender_aurora_stage is not None else None)
             draw_aurora(picture, self.aurora_beat, t, duration,
                         self.english,
-                        event_progress=self._narrated_event_fraction)
+                        event_progress=self._narrated_event_fraction,
+                        stage_plate=aurora_plate)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.volcano_beat is not None:
             draw_volcano(picture, self.volcano_beat, t, duration,

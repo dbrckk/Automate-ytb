@@ -1,0 +1,67 @@
+name: Produce professional aurora 3D science Short
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/pro-aurora-3d-release-candidate.yml
+      - .github/workflows/one-click-preview.yml
+      - scripts/blender_aurora_stage.py
+      - automate_ytb/science_blender_aurora.py
+      - automate_ytb/blender_aurora_review.py
+      - automate_ytb/science_aurora.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/production.py
+      - tests/test_science_blender_aurora.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premium-aurora-3d-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  real-3d-and-kokoro:
+    name: Render five 3D aurora scenes, English Bella, real 9:16 video and QA
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Are the Northern Lights Different Colors?"
+      original_script: >-
+        The Sun releases a steady solar wind of charged particles, carrying energy out into space.
+        Earth's magnetic field guides some of that energy along invisible curved paths into the upper atmosphere near the poles.
+        High above us, energetic electrons collide with oxygen and nitrogen, exciting the surrounding gas.
+        Excited oxygen emits green light at lower altitudes and red higher up; nitrogen can glow blue or pink.
+        As their colors overlap, glowing curtains ripple across the night sky, turning invisible energy into the northern lights.
+      character: "Original Blender-rendered night sky, atmosphere, charged particles and 3D polar aurora curtains"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_bella
+      voice_style: expressive
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 37
+      shot_seconds: 7.4
+      resolution: shorts
+      render_profile: high
+      cinematic_3d: false
+      cinematic_aurora_3d: true
+
+  confirm-export:
+    name: Confirm completed MP4, actual Blender frames and voice QA
+    needs: real-3d-and-kokoro
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Distinguish technical checks from editorial acceptance
+        run: |
+          {
+            echo '### Real original Blender aurora 3D video technically exported'
+            echo 'The reusable job completed Blender hash checking, five moving'
+            echo '3D scene reviews, English Kokoro synthesis, MP4/subtitles and QA.'
+            echo 'Download artifact automate-ytb-free-preview from this workflow.'
+            echo 'Human voice, visual and factual review is still required.'
+            echo 'Nothing has been published to YouTube.'
+          } >> "$GITHUB_STEP_SUMMARY"
