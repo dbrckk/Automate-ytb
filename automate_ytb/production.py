@@ -789,6 +789,16 @@ def main(argv=None) -> int:
     p.add_argument("--cost-usd", default="0")
     p.add_argument("--confirm-rights", action="store_true")
     p.add_argument("--replace", action="store_true")
+    p = sub.add_parser("ingest-video", help="Import an owned video clip with rights and source-audio isolation")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--scene", required=True)
+    p.add_argument("--video", type=Path, required=True)
+    p.add_argument("--provider", required=True)
+    p.add_argument("--rights-note", required=True)
+    p.add_argument("--cost-usd", default="0")
+    p.add_argument("--start-seconds", type=float, default=0)
+    p.add_argument("--confirm-rights", action="store_true")
+    p.add_argument("--replace", action="store_true")
     p = sub.add_parser("audit", help="Verify completeness, checksums, review and recorded image costs")
     p.add_argument("--plan", type=Path, required=True)
     p.add_argument("--limit", type=int, default=None)
@@ -809,6 +819,13 @@ def main(argv=None) -> int:
                             image_path=args.image, provider=args.provider,
                             rights_note=args.rights_note, cost_usd=args.cost_usd,
                             rights_confirmed=args.confirm_rights, replace=args.replace)
+        elif args.command == "ingest-video":
+            result = ingest_video(
+                plan_path=args.plan, scene_id=args.scene,
+                video_path=args.video, provider=args.provider,
+                rights_note=args.rights_note, cost_usd=args.cost_usd,
+                rights_confirmed=args.confirm_rights, replace=args.replace,
+                clip_start_seconds=args.start_seconds)
         elif args.command == "audit":
             result = audit(args.plan, args.limit)
         else:
