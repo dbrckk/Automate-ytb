@@ -415,7 +415,7 @@ def main(argv=None) -> int:
                    default="cartoon")
     p.add_argument("--language", choices=["fr", "en"], default="fr")
     p.add_argument("--voice", choices=["espeak", "kokoro", "none"], default="espeak")
-    p.add_argument("--voice-style", choices=["natural", "gentle", "lively"],
+    p.add_argument("--voice-style", choices=["natural", "gentle", "lively", "expressive"],
                    default="natural", help="Kokoro delivery; eSpeak remains unchanged")
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
