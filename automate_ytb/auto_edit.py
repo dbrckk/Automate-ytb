@@ -200,6 +200,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
     """Publish an inspectable project folder only after actual MP4 succeeds."""
     if not rights_confirmed:
         raise ValueError("Explicit --confirm-rights required for every source")
+    if (not PROVIDER.fullmatch(provider)
+            or not isinstance(rights_note,str)
+            or not 12 <= len(rights_note.strip()) <= 1000):
+        raise ValueError("Invalid video source or rights declaration")
     if genre not in GENRES:
         raise ValueError("Unsupported original footage genre")
     if (script_path is None) == (plan_path is None):
@@ -246,13 +250,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         profiles.append(probe_video(resolved,start=0,seconds=.5))
     capacities=[math.floor(x["sourceDurationSeconds"]*1000)
                 for x in profiles]
+    # Bind rendered excerpts to exact source bytes, not just filenames.
+    source_hashes={source:_sha(source) for source in sources}
     groups=assign_sources(durations,capacities)
     excerpts=select_excerpts(sources,durations,capacities,groups)
-    if any(item["technicalReview"]["requiresVisualReview"]
-           for item in excerpts):
-        # Diagnostic only, not reason to fabricate or suppress a shot.
-        pass
-
     staging=Path(tempfile.mkdtemp(
         prefix=".automate-ytb-autoedit-",dir=destination.parent))
     try:
@@ -267,6 +268,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
                 rights_note=rights_note,cost_usd="0",
                 rights_confirmed=True,
                 clip_start_seconds=item["startSeconds"])
+            if _sha(item["source"]) != source_hashes[item["source"]]:
+                raise ValueError("Original footage changed during import")
             imported.append({
                 "sceneId":scene_id,
                 "sourceName":item["source"].name,
