@@ -50,6 +50,10 @@ on:
       render_profile:
         type: string
         required: true
+      cinematic_3d:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       topic:
@@ -124,6 +128,10 @@ on:
         description: "preview = fast 24fps; high = H.264 medium CRF 18, 30fps and AAC 256k (slower CPU render)"
         options: [preview, high]
         default: preview
+      cinematic_3d:
+        type: boolean
+        description: "Real Blender/Cycles CPU ocean stage; slower and only for science Shorts"
+        default: false
 
 permissions:
   contents: read
@@ -183,6 +191,30 @@ jobs:
           python -m automate_ytb.science_preflight \
             --plan build/scene-plan.json --style "$YT_STYLE" \
             --resolution "$YT_RESOLUTION" --output build/scene-preflight.json
+      - name: Generate original animated ocean scenes with real Blender/Cycles CPU
+        if: ${{ inputs.cinematic_3d }}
+        env:
+          YT_STYLE: ${{ inputs.style }}
+          YT_RESOLUTION: ${{ inputs.resolution }}
+        run: |
+          if [ "$YT_STYLE" != "science" ] || [ "$YT_RESOLUTION" != "shorts" ]; then
+            echo "Blender 3D mode currently requires science shorts" >&2
+            exit 2
+          fi
+          python - <<'PY'
+          import json
+          from automate_ytb.science_storyboards import classify
+          data = json.load(open('build/scene-plan.json', encoding='utf8'))
+          if not any(classify(data['topic'], s['narration']) for s in data['scenes']):
+              raise SystemExit('Blender 3D mode needs an authored ocean-currents scene')
+          PY
+          sudo apt-get install -y -qq blender
+          blender --background --factory-startup -t 2 \
+            --python scripts/blender_ocean_stage.py -- \
+            --output build/ocean-3d --frames 10 \
+            --width 600 --height 580 --samples 8
+          python -m automate_ytb.blender_stage_review \
+            --folder build/ocean-3d --out build/ocean-3d/review.jpg
       - name: Cache open Kokoro voice assets
         if: ${{ inputs.voice == 'kokoro' }}
         uses: actions/cache@v4
@@ -211,6 +243,7 @@ jobs:
           YT_TRANSITION: ${{ inputs.transition }}
           YT_RESOLUTION: ${{ inputs.resolution }}
           YT_RENDER_PROFILE: ${{ inputs.render_profile }}
+          AUTOMATE_YTB_OCEAN_3D_DIR: ${{ inputs.cinematic_3d && 'build/ocean-3d' || '' }}
         run: |
           VOICE_ARGS=()
           if [ "$YT_VOICE_NAME" != "auto" ]; then
@@ -310,6 +343,9 @@ jobs:
             build/video/narration-pacing.json
             build/video/voice-sample.mp3
             build/video/voice-auditions/
+            build/ocean-3d/manifest.json
+            build/ocean-3d/review.jpg
+            build/ocean-3d/review.json
             build/video/VOICE_CREDITS.md
             build/video/background-original.wav
             build/video/draft-captions.srt
