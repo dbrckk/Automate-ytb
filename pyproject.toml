@@ -12,6 +12,7 @@ dependencies = ["Pillow>=10.4,<13"]
 [project.optional-dependencies]
 images = ["huggingface_hub>=0.36,<2"]
 speech = ["kokoro==0.9.4", "numpy>=1.26,<3"]
+motion = ["numpy>=1.26,<3", "opencv-python-headless==4.11.0.86"]
 
 [project.scripts]
 automate-ytb = "automate_ytb.cli:main"
