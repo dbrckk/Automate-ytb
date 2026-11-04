@@ -162,7 +162,8 @@ def select_excerpts(
             # and never overlap a previously selected scene.
             spread=min(10000,slack/(count+1)*.75)
             candidate_ms=sorted(set(
-                round(min(latest,max(cursor,ideal+delta))/100)*100
+                max(cursor,min(latest,int(round(
+                    min(latest,max(cursor,ideal+delta))/100))*100))
                 for delta in (-spread,0,spread)))
             evaluated=[]
             for start_ms in candidate_ms:
