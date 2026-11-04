@@ -21,6 +21,7 @@ def review(folder: Path, destination: Path) -> dict:
     draw = ImageDraw.Draw(sheet)
     animated = {}
     thumbprints = []
+    highlight_fractions = {}
     for index, beat in enumerate(BEATS):
         first = stage._pose(beat, 0).convert("RGB")
         last = stage._pose(beat, stage.count-1).convert("RGB")
@@ -29,6 +30,13 @@ def review(folder: Path, destination: Path) -> dict:
             raise ValueError(f"Frozen real Blender aurora frames for {beat}")
         animated[beat] = moving
         current = stage._pose(beat, stage.count//2).convert("RGB")
+        # Detect blown-out broad glow panels; this is a safety bound,
+        # not a metric for beauty or correct atmospheric physics.
+        tiny = current.convert("L").resize((90, 115), Image.Resampling.BILINEAR)
+        bright = sum(1 for value in tiny.getdata() if value >= 210)
+        highlight_fractions[beat] = round(bright / (90*115), 4)
+        if beat == "curtains" and highlight_fractions[beat] > .25:
+            raise ValueError("Overexposed 3D aurora sheets hide atmospheric depth")
         small = current.resize((225, 288), Image.Resampling.LANCZOS)
         sheet.paste(small, (10+index*245, 12))
         draw.text((13+index*245, 317), beat.replace("_", " ").upper(),
@@ -50,6 +58,7 @@ def review(folder: Path, destination: Path) -> dict:
         "semanticBeats": list(BEATS),
         "animated": animated,
         "distinctScenes": True,
+        "fractionOfVeryBrightPixelsByBeat": highlight_fractions,
         "humanApproved": False,
         "publicationApproved": False,
     }
