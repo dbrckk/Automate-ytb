@@ -61,6 +61,24 @@ La caméra se déplace entre les poses.
 Puis lancer la commande normale du pipeline en mode `science/shorts`
 sur un scénario d'aurores pris en charge.
 
+## Contrôle artistique sur le premier rendu réel
+
+Le premier Short 3D de 37,395 s (anglais Kokoro Bella, 1080×1920, 30 FPS,
+H.264/AAC, -16,2 LUFS) a été réellement exporté, mais les rideaux étaient
+trop opaques. Mesure sur l'image Blender de référence n° 5 :
+luminosité moyenne **108,11/255**, pixels au-dessus de 200 :
+**43,08 %**. Les scènes pédagogiques étaient lisibles, mais ce cinquième
+plan était visuellement sur-exposé.
+
+La correction conserve 7 rideaux animés plus transparents, un ciel nocturne
+visible et des filaments fins. Sur le second MP4 et son image 3D correspondante :
+luminosité moyenne **38,41/255**, pixels au-dessus de 200 : **0 %**.
+Une vérification bornée du ratio de pixels très lumineux est désormais
+exécutée lors de la création de la planche-contact. Ce n'est **pas** une
+mesure de photoréalisme ou de beauté. Le mix et les sous-titres restent
+inchangés. QA du MP4 corrigé : cinq scènes échantillonnées non gelées,
+aucune image blanche/noire suspecte, et approbation humaine toujours requise.
+
 ## Vérifications avant intégration
 
 - CI générale existante et tests spécifiques verts.
