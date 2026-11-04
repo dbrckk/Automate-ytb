@@ -112,6 +112,96 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
     return mat
 
 
+def planet_material():
+    """Color-layered Earth proxy with polar ice and ocean/continent relief.
+
+    Procedural noise is used for illustrative landmasses; this does not
+    pretend to be a geographically accurate map of the Earth.
+    """
+    mat=bpy.data.materials.new("Original detailed Earth ocean and continent shader")
+    mat.use_nodes=True
+    nodes=mat.node_tree.nodes
+    nodes.clear()
+    links=mat.node_tree.links
+    output=nodes.new("ShaderNodeOutputMaterial")
+    principled=nodes.new("ShaderNodeBsdfPrincipled")
+    principled.inputs["Roughness"].default_value=.49
+    coordinates=nodes.new("ShaderNodeTexCoord")
+    noise=nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value=4.6
+    noise.inputs["Detail"].default_value=5.0
+    noise.inputs["Roughness"].default_value=.65
+    palette=nodes.new("ShaderNodeValToRGB")
+    ramp=palette.color_ramp
+    ramp.elements[0].position=.0
+    ramp.elements[0].color=(.008,.038,.14,1)
+    ramp.elements[1].position=1.
+    ramp.elements[1].color=(.67,.74,.73,1)
+    for pos,color in (
+            (.35,(.02,.12,.29,1)),
+            (.47,(.04,.30,.52,1)),
+            (.515,(.06,.37,.24,1)),
+            (.59,(.19,.31,.18,1)),
+            (.69,(.39,.38,.25,1)),
+            (.80,(.70,.68,.59,1))):
+        ramp.elements.new(pos).color=color
+    split=nodes.new("ShaderNodeSeparateXYZ")
+    north=nodes.new("ShaderNodeMath")
+    north.operation="GREATER_THAN"
+    north.inputs[1].default_value=.86
+    south=nodes.new("ShaderNodeMath")
+    south.operation="LESS_THAN"
+    south.inputs[1].default_value=.14
+    polar=nodes.new("ShaderNodeMath")
+    polar.operation="MAXIMUM"
+    combine=nodes.new("ShaderNodeMixRGB")
+    combine.blend_type="MIX"
+    combine.inputs[2].default_value=(.69,.85,.91,1)
+    relief=nodes.new("ShaderNodeBump")
+    relief.inputs["Strength"].default_value=.10
+    relief.inputs["Distance"].default_value=.025
+    links.new(coordinates.outputs["Generated"],noise.inputs["Vector"])
+    links.new(noise.outputs["Fac"],palette.inputs["Fac"])
+    links.new(coordinates.outputs["Generated"],split.inputs[0])
+    links.new(split.outputs["Z"],north.inputs[0])
+    links.new(split.outputs["Z"],south.inputs[0])
+    links.new(north.outputs[0],polar.inputs[0])
+    links.new(south.outputs[0],polar.inputs[1])
+    links.new(polar.outputs[0],combine.inputs[0])
+    links.new(palette.outputs["Color"],combine.inputs[1])
+    links.new(combine.outputs[0],principled.inputs["Base Color"])
+    links.new(noise.outputs["Fac"],relief.inputs["Height"])
+    links.new(relief.outputs[0],principled.inputs["Normal"])
+    links.new(principled.outputs[0],output.inputs["Surface"])
+    return mat
+
+
+def atmosphere_material():
+    """Thin grazing-angle scattering proxy around a genuine 3D planet."""
+    mat=bpy.data.materials.new("Polar atmosphere soft Fresnel rim")
+    mat.use_nodes=True
+    nodes=mat.node_tree.nodes
+    nodes.clear()
+    links=mat.node_tree.links
+    output=nodes.new("ShaderNodeOutputMaterial")
+    transparent=nodes.new("ShaderNodeBsdfTransparent")
+    glow=nodes.new("ShaderNodeEmission")
+    glow.inputs["Color"].default_value=(.15,.60,1,1)
+    glow.inputs["Strength"].default_value=1.1
+    weight=nodes.new("ShaderNodeLayerWeight")
+    weight.inputs["Blend"].default_value=.3
+    intensity=nodes.new("ShaderNodeMath")
+    intensity.operation="MULTIPLY"
+    intensity.inputs[1].default_value=.33
+    mixer=nodes.new("ShaderNodeMixShader")
+    links.new(weight.outputs["Fresnel"],intensity.inputs[0])
+    links.new(intensity.outputs[0],mixer.inputs[0])
+    links.new(transparent.outputs[0],mixer.inputs[1])
+    links.new(glow.outputs[0],mixer.inputs[2])
+    links.new(mixer.outputs[0],output.inputs["Surface"])
+    return mat
+
+
 def aim(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
@@ -141,29 +231,47 @@ def curve(name, mat, *, points=80, radius=.015):
     return spline
 
 
-def mountain_floor(material, *, offset=-1.4, grid=23):
+def terrain_height(x, y):
+    """Reproducible polar mountain profile, with ridged background silhouettes."""
+    ridge=math.exp(-((y-2.55)/1.48)**2)
+    peaks=(.42+1.06*abs(math.sin(x*.91+y*.32))**2.7
+           +.40*abs(math.sin(x*2.21-y*.26))**2.2)
+    micro=.10*math.sin(x*1.84+y*1.17)+.06*math.sin(x*4.19-y*2.36)
+    return -1.56 +ridge*peaks+micro+.045*math.sin(y*3.4+x*1.3)
+
+
+def mountain_floor(material, *, snow, stone, grid=63):
+    """Original faceted alpine relief with multiple true 3D material regions."""
     vertices, faces=[],[]
     for i in range(grid+1):
         y=-3.3+7.5*i/grid
         for j in range(grid+1):
             x=-5.8+11.6*j/grid
-            z=offset+.17*math.sin(x*.8+y*.9)+.14*math.sin(x*2.1+y*.45)
-            z+=.075*(abs(x)+abs(y))
-            vertices.append((x,y,z))
+            vertices.append((x,y,terrain_height(x,y)))
     for i in range(grid):
         for j in range(grid):
             a=i*(grid+1)+j
             faces.append((a,a+1,a+grid+2,a+grid+1))
-    mesh=bpy.data.meshes.new("Original alpine terrain")
+    mesh=bpy.data.meshes.new("Polar stratified alpine relief 3D geometry")
     mesh.from_pydata(vertices,[],faces)
     mesh.update()
-    obj=bpy.data.objects.new("Original snow and stone alpine mountains",mesh)
+    obj=bpy.data.objects.new("Glacial landscape multi-layered terrain",mesh)
     bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    for poly in mesh.polygons:
-        poly.use_smooth=True
+    for selected in (material,snow,stone):
+        obj.data.materials.append(selected)
+    for i in range(grid):
+        for j in range(grid):
+            poly=mesh.polygons[i*grid+j]
+            poly.use_smooth=True
+            # Materials follow *real geometry height*, not a flat color plate.
+            z=sum(vertices[idx][2] for idx in poly.vertices)/4
+            if z > -.34:
+                poly.material_index=1
+            elif z > -.85 and (i*5+j*7)%11 < 3:
+                poly.material_index=2
+            else:
+                poly.material_index=0
     return obj
-
 
 def curtain(name, material, *, index=0, nx=64, nz=34):
     verts, faces=[],[]
@@ -255,8 +363,13 @@ def setup(beat, width, height, samples):
     world.node_tree.nodes.get("Background").inputs["Color"].default_value=(.018,.025,.07,1)
     world.node_tree.nodes.get("Background").inputs["Strength"].default_value=.42
     mats={
-        "snow":surface("Blue violet alpine stone",(.085,.16,.25),rough=.87),
-        "earth":surface("Original blue Earth sphere",(.045,.22,.44),rough=.43,metallic=.08),
+        "snow":surface("Dark blue coastal glacial bedrock",(.075,.12,.21),rough=.88),
+        "snowcap":surface("High altitude polar snow",(.66,.79,.85),rough=.68),
+        "granite":surface("Blue gray fractured granite",(.19,.25,.33),rough=.92),
+        "earth":planet_material(),
+        "atmosphere":atmosphere_material(),
+        "oxygen":surface("Unexcited oxygen molecule",(.18,.55,.65),rough=.32),
+        "nitrogen":surface("Unexcited nitrogen molecule",(.41,.30,.63),rough=.37),
         "sun":surface("Incandescent solar source",(1.0,.38,.10),glow=2.2),
         "cyan":surface("Charged teal particle",(.24,.81,1.0),glow=1.5),
         "green":surface("Atomic oxygen green photon",(.05,.94,.42),glow=1.6),
@@ -269,33 +382,37 @@ def setup(beat, width, height, samples):
         "veil_magenta":surface("Translucent physical nitrogen aurora",(.64,.18,1),glow=1.45,translucent=True),
         "veil_red":surface("Translucent physical red aurora",(1,.18,.22),glow=1.42,translucent=True),
     }
-    mountain_floor(mats["snow"])
+    mountain_floor(mats["snow"],snow=mats["snowcap"],stone=mats["granite"])
     rng=random.Random(2071+BEATS.index(beat)*53)
     # Foreground uneven boulders prevent a sterile flat-background appearance.
-    for i in range(12):
-        x,y=rng.uniform(-4.4,4.4),rng.uniform(-2.8,3.5)
+    for i in range(34):
+        x,y=rng.uniform(-5.2,5.2),rng.uniform(-3.0,3.9)
+        radius=rng.uniform(.10,.39)
         bpy.ops.mesh.primitive_ico_sphere_add(
-            subdivisions=1,radius=rng.uniform(.14,.34),
-            location=(x,y,-1.23+abs(x)*.04))
+            subdivisions=1 if i%3 else 2,radius=radius,
+            location=(x,y,terrain_height(x,y)+radius*.42))
         obj=bpy.context.object
-        obj.name="Irregular glacier rock %02d"%i
-        obj.scale=(1.0,rng.uniform(.66,1.4),rng.uniform(.45,.9))
-        obj.data.materials.append(mats["ice"] if i%4==0 else mats["snow"])
+        obj.name="Polar glacial foreground rock %02d"%i
+        obj.scale=(rng.uniform(.75,1.25),rng.uniform(.66,1.4),
+                   rng.uniform(.35,.86))
+        obj.data.materials.append(
+            mats["snowcap"] if i%5==0 else
+            mats["granite"] if i%3 else mats["snow"])
     # Real 3D stars with depth parallax, not a static image plate.
     for i in range(74):
         x,y,z=(rng.uniform(-7.6,7.6),rng.uniform(3.3,7.6),
                rng.uniform(.6,7.6))
         sphere("3D star depth layer %02d"%i,x,y,z,
                rng.uniform(.012,.027),mats["star"],low=True)
-    dynamic={"sheets":[],"fields":[],"streams":[],"particles":[]}
+    dynamic={"sheets":[],"fields":[],"streams":[],"particles":[],
+             "electrons":[],"photons":[]}
     if beat in ("solar_wind","magnetic_field"):
-        sphere("Globe physical three-dimensional Earth",
-               2.50 if beat=="solar_wind" else .22,
-               .6,2.10,1.22,mats["earth"])
-        # Polar caps and compact glint use their own 3D material/geometry.
-        sphere("Polar ice on modeled Earth",
-               2.50 if beat=="solar_wind" else .22,
-               .59,3.19,.24,mats["ice"],low=True)
+        globe_x=2.50 if beat=="solar_wind" else .22
+        globe=sphere("Detailed Earth: raised ocean-continent shader",
+                     globe_x,.6,2.10,1.22,mats["earth"])
+        globe.rotation_euler=(.26,.15,.33)
+        sphere("Layered polar atmospheric limb scattering",
+               globe_x,.6,2.10,1.29,mats["atmosphere"])
     if beat=="solar_wind":
         sphere("Glowing original solar sphere",-3.10,1.3,2.52,.92,mats["sun"])
         for i in range(9):
@@ -313,20 +430,38 @@ def setup(beat, width, height, samples):
                 "Electrons bending toward poles %02d"%i,
                 mats["cyan"],points=55,radius=.018))
     elif beat in ("collisions","emission"):
+        # Diatomic gas molecules have two genuine shaded atomic spheres and a
+        # connecting bond in world space. In-flight charged particles collide
+        # with them at staggered, explicitly authored action times.
         gases=[]
-        for i in range(26):
-            x,y,z=rng.uniform(-3.5,3.5),rng.uniform(-1.5,2.3),rng.uniform(.65,4.5)
-            mat=(mats["green"] if i%4 else mats["magenta"]) if beat=="emission" else mats["ice"]
-            obj=sphere("Physical oxygen or nitrogen excitation %02d"%i,
-                       x,y,z,.070+.021*(i%4),mat,low=True)
-            gases.append((obj,x,y,z))
+        for i in range(18):
+            x,y,z=(rng.uniform(-3.15,3.15),
+                   rng.uniform(-.65,2.6),rng.uniform(1.25,4.70))
+            material=mats["oxygen"] if i%3 else mats["nitrogen"]
+            if beat=="emission":
+                material=mats["green"] if i%3 else mats["magenta"]
+            rad=.105+.018*(i%4)
+            a=sphere("Diatomic atmospheric gas atom A %02d"%i,
+                     x-.15,y,z,rad,material,low=True)
+            b=sphere("Diatomic atmospheric gas atom B %02d"%i,
+                     x+.15,y,z,rad,material,low=True)
+            bond=curve("Physical 3D oxygen/nitrogen bond %02d"%i,
+                       mats["oxygen"] if i%3 else mats["nitrogen"],
+                       points=2,radius=.017)
+            gases.append((a,b,bond,x,y,z))
         dynamic["particles"]=gases
-        if beat=="emission":
-            for i in range(7):
-                line=curve("Visible photon trajectory %02d"%i,
-                           mats["red"] if i%4==0 else mats["green"],
-                           points=31,radius=.012)
-                dynamic["streams"].append(line)
+        for i in range(10):
+            target=(i*7+2)%len(gases)
+            impact=.27+.048*(i%9)
+            electron=sphere("Incoming charged collision particle %02d"%i,
+                            -4.2,0,2,.058,mats["cyan"],low=True)
+            dynamic["electrons"].append((electron,target,impact))
+            if beat=="emission":
+                source=mats["red"] if i%4==0 else (
+                    mats["green"] if i%4 != 1 else mats["magenta"])
+                photon=sphere("Emitted colored 3D photon %02d"%i,
+                              0,0,1,.092,source,low=True)
+                dynamic["photons"].append((photon,target,impact,i))
     if beat=="curtains":
         for i in range(6):
             mat=(mats["veil_green"],mats["veil_cyan"],mats["veil_magenta"],mats["veil_green"],mats["veil_red"],mats["veil_cyan"])[i]
@@ -373,10 +508,50 @@ def animate(beat,dynamic,camera,q):
                 p.co=(x,y,z,1)
         else:
             animate_stream(line,index=i,q=q,bend=beat=="magnetic_field")
-    for i,(obj,x,y,z) in enumerate(dynamic["particles"]):
-        obj.location.x=x+.10*math.sin(q*math.tau*.75+i*.73)
-        obj.location.y=y+.09*math.cos(q*math.tau*.4+i*.6)
-        obj.location.z=z+.12*math.sin(q*math.tau+i*.9)
+    # Coherent 3D gas-molecule vibration and genuine electron impacts.
+    # Animation is continuous, deterministic and evaluated in object space
+    # before Cycles renders each new camera pose.
+    impacts={}
+    for i,(_,target,hit) in enumerate(dynamic["electrons"]):
+        impacts.setdefault(target,[]).append(hit)
+    for i,(atom_a,atom_b,bond,x,y,z) in enumerate(dynamic["particles"]):
+        dx=.065*math.sin(q*math.tau*.82+i*.73)
+        dy=.065*math.cos(q*math.tau*.51+i*.6)
+        dz=.09*math.sin(q*math.tau*.7+i*.9)
+        pulse=max((max(0,1-abs(q-hit)/.09) for hit in impacts.get(i,())),
+                  default=0.)
+        atom_a.location=(x-.15+dx,y+dy,z+dz)
+        atom_b.location=(x+.15+dx,y+dy,z+dz)
+        atom_a.scale=(1+.33*pulse,)*3
+        atom_b.scale=(1+.33*pulse,)*3
+        bond.points[0].co=(x-.15+dx,y+dy,z+dz,1)
+        bond.points[1].co=(x+.15+dx,y+dy,z+dz,1)
+    for i,(obj,target,hit) in enumerate(dynamic["electrons"]):
+        gas=dynamic["particles"][target]
+        x,y,z=gas[3:6]
+        flight=min(1.,q/hit)
+        smooth=flight*flight*(3-2*flight)
+        start=(-4.8-.12*(i%5),-.45+i*.19,.8+i*.32)
+        if q <= hit:
+            obj.location=tuple(
+                start[k]+(point-start[k])*smooth
+                for k,point in enumerate((x,y,z)))
+            obj.scale=(1,)*3
+        else:
+            decay=max(0.,1-(q-hit)/.12)
+            obj.location=(x+(q-hit)*1.4,y-.15*(q-hit),z+.1*(q-hit))
+            obj.scale=(max(.001,decay),)*3
+    for photon,target,hit,i in dynamic["photons"]:
+        gas=dynamic["particles"][target]
+        x,y,z=gas[3:6]
+        fraction=max(0.,min(1.,(q-hit)/(1-hit)))
+        angle=i*2.399963229728653
+        direction=(math.cos(angle),math.sin(angle),.38+(i%3)*.16)
+        photon.location=(x+direction[0]*fraction*2.65,
+                         y+direction[1]*fraction*1.35,
+                         z+direction[2]*fraction*2.40)
+        visible=0.001 if q < hit else max(.001,1-fraction*.72)
+        photon.scale=(visible,)*3
     camera.location.x=.1+.37*math.sin(q*math.pi*.88)
     camera.location.y=-10.8+.25*q
     camera.location.z=4.3+.18*math.sin(q*math.pi)
@@ -402,11 +577,34 @@ def main():
     manifest={"schemaVersion":1,"domain":"aurora",
               "generator":"blender-cycles-cpu","width":options.width,
               "height":options.height,"framesPerBeat":options.frames,
-              "beats":{}}
+              "beats":{},"sceneDetails":{}}
     for beat in BEATS:
         scene,dynamic,camera=setup(beat,options.width,options.height,options.samples)
         folder=output/beat
         folder.mkdir(parents=True,exist_ok=True)
+        terrain=bpy.data.objects.get("Glacial landscape multi-layered terrain")
+        planet=bpy.data.materials.get("Original detailed Earth ocean and continent shader")
+        if terrain is None or terrain.type != "MESH":
+            raise RuntimeError("Aurora stage missing the physically modeled polar terrain")
+        # Actual Blender object/vertex counts; these are not editorial scores.
+        evidence={
+            "terrainVertices":len(terrain.data.vertices),
+            "totalMeshObjects":sum(1 for obj in scene.objects if obj.type=="MESH"),
+            "earthShaderNodes":len(planet.node_tree.nodes) if planet else 0,
+            "diatomicMolecules":len(dynamic["particles"]),
+            "incomingElectrons":len(dynamic["electrons"]),
+            "emittedPhotons":len(dynamic["photons"]),
+            "curtainSurfaceVertices":sum(
+                len(obj.data.vertices) for obj in dynamic["sheets"]),
+        }
+        if (evidence["terrainVertices"] < 2000 or
+                (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 10) or
+                (beat in ("collisions","emission") and
+                 (evidence["diatomicMolecules"] < 12 or evidence["incomingElectrons"] < 8)) or
+                (beat=="emission" and evidence["emittedPhotons"] < 8) or
+                (beat=="curtains" and evidence["curtainSurfaceVertices"] < 10000)):
+            raise RuntimeError(f"3D environment is incomplete: {beat}, {evidence}")
+        manifest["sceneDetails"][beat]=evidence
         records=[]
         for i in range(options.frames):
             q=i/(options.frames-1)

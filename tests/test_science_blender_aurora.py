@@ -124,6 +124,44 @@ class BlenderAuroraTests(unittest.TestCase):
             draw_aurora(picture,"curtains",2,6,True)
             effect.assert_called_once()
 
+    def test_real_blender_geometry_evidence_is_checked_and_exposed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            fixture(folder)
+            file=folder/"manifest.json"
+            doc=json.loads(file.read_text(encoding="utf8"))
+            doc["sceneDetails"]={}
+            for beat in BEATS:
+                doc["sceneDetails"][beat]={
+                    "terrainVertices":4096,"totalMeshObjects":120,
+                    "earthShaderNodes":11,
+                    "diatomicMolecules":18 if beat in ("collisions","emission") else 0,
+                    "incomingElectrons":10 if beat in ("collisions","emission") else 0,
+                    "emittedPhotons":10 if beat=="emission" else 0,
+                    "curtainSurfaceVertices":13056 if beat=="curtains" else 0,
+                }
+            file.write_text(json.dumps(doc),encoding="utf8")
+            source=BlenderAuroraStage(folder)
+            self.assertEqual(source.scene_details["curtains"]["curtainSurfaceVertices"],13056)
+            result=review(folder,folder/"review.jpg")
+            self.assertTrue(result["geometryVerified"])
+            self.assertEqual(result["actualBlenderSceneGeometry"]["emission"]["emittedPhotons"],10)
+            doc["sceneDetails"]["curtains"]["curtainSurfaceVertices"]=2
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"curtain mesh"):
+                BlenderAuroraStage(folder)
+
+    def test_missing_scene_geometry_evidence_is_rejected_if_declared(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            fixture(folder)
+            file=folder/"manifest.json"
+            doc=json.loads(file.read_text(encoding="utf8"))
+            doc["sceneDetails"]={"curtains":{}}
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Incomplete verified Blender"):
+                BlenderAuroraStage(folder)
+
     def test_contact_sheet_does_not_falsely_approve(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
