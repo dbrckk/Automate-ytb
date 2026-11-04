@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: blender-3d-science-${ github.ref }}
-  cancel-in-progress: ${ github.event_name == 'pull_request' }}
+  group: blender-3d-science-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   render-and-verify-real-3d:
