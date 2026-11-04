@@ -404,7 +404,8 @@ def setup(beat, width, height, samples):
                rng.uniform(.6,7.6))
         sphere("3D star depth layer %02d"%i,x,y,z,
                rng.uniform(.012,.027),mats["star"],low=True)
-    dynamic={"sheets":[],"fields":[],"streams":[],"particles":[]}
+    dynamic={"sheets":[],"fields":[],"streams":[],"particles":[],
+             "electrons":[],"photons":[]}
     if beat in ("solar_wind","magnetic_field"):
         globe_x=2.50 if beat=="solar_wind" else .22
         globe=sphere("Detailed Earth: raised ocean-continent shader",
@@ -429,20 +430,38 @@ def setup(beat, width, height, samples):
                 "Electrons bending toward poles %02d"%i,
                 mats["cyan"],points=55,radius=.018))
     elif beat in ("collisions","emission"):
+        # Diatomic gas molecules have two genuine shaded atomic spheres and a
+        # connecting bond in world space. In-flight charged particles collide
+        # with them at staggered, explicitly authored action times.
         gases=[]
-        for i in range(26):
-            x,y,z=rng.uniform(-3.5,3.5),rng.uniform(-1.5,2.3),rng.uniform(.65,4.5)
-            mat=(mats["green"] if i%4 else mats["magenta"]) if beat=="emission" else mats["ice"]
-            obj=sphere("Physical oxygen or nitrogen excitation %02d"%i,
-                       x,y,z,.070+.021*(i%4),mat,low=True)
-            gases.append((obj,x,y,z))
+        for i in range(18):
+            x,y,z=(rng.uniform(-3.15,3.15),
+                   rng.uniform(-.65,2.6),rng.uniform(1.25,4.70))
+            material=mats["oxygen"] if i%3 else mats["nitrogen"]
+            if beat=="emission":
+                material=mats["green"] if i%3 else mats["magenta"]
+            rad=.105+.018*(i%4)
+            a=sphere("Diatomic atmospheric gas atom A %02d"%i,
+                     x-.15,y,z,rad,material,low=True)
+            b=sphere("Diatomic atmospheric gas atom B %02d"%i,
+                     x+.15,y,z,rad,material,low=True)
+            bond=curve("Physical 3D oxygen/nitrogen bond %02d"%i,
+                       mats["oxygen"] if i%3 else mats["nitrogen"],
+                       points=2,radius=.017)
+            gases.append((a,b,bond,x,y,z))
         dynamic["particles"]=gases
-        if beat=="emission":
-            for i in range(7):
-                line=curve("Visible photon trajectory %02d"%i,
-                           mats["red"] if i%4==0 else mats["green"],
-                           points=31,radius=.012)
-                dynamic["streams"].append(line)
+        for i in range(10):
+            target=(i*7+2)%len(gases)
+            impact=.27+.048*(i%9)
+            electron=sphere("Incoming charged collision particle %02d"%i,
+                            -4.2,0,2,.058,mats["cyan"],low=True)
+            dynamic["electrons"].append((electron,target,impact))
+            if beat=="emission":
+                source=mats["red"] if i%4==0 else (
+                    mats["green"] if i%4 != 1 else mats["magenta"])
+                photon=sphere("Emitted colored 3D photon %02d"%i,
+                              0,0,1,.092,source,low=True)
+                dynamic["photons"].append((photon,target,impact,i))
     if beat=="curtains":
         for i in range(6):
             mat=(mats["veil_green"],mats["veil_cyan"],mats["veil_magenta"],mats["veil_green"],mats["veil_red"],mats["veil_cyan"])[i]
