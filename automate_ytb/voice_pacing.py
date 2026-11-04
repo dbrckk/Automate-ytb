@@ -10,12 +10,12 @@ import re
 
 STYLES = {"natural": 0.94, "gentle": 0.88, "lively": 1.04,
           "expressive": 0.95}
-VERSION = "kokoro-phrasing-v3-semantic-micro-prosody"
+VERSION = "kokoro-phrasing-v3-no-artificial-mid-sentence-pauses-semantic-micro-prosody"
 
 
 def speaking_speed(*, style: str) -> float:
     if not isinstance(style, str) or style not in STYLES:
-        raise ValueError("Narration style must be natural, gentle or lively")
+        raise ValueError("Narration style must be natural, gentle, lively or expressive")
     return STYLES[style]
 
 
