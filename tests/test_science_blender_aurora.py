@@ -128,6 +128,21 @@ class RealAuroraStageTests(unittest.TestCase):
             self.assertFalse(result["publicationApproved"])
             self.assertGreater((root/"review.jpg").stat().st_size,1000)
 
+    def test_professional_highlight_gate_rejects_overexposed_3d_curtains(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            make_fixture(root)
+            manifest=root/"manifest.json"
+            data=json.loads(manifest.read_text())
+            for i in range(2):
+                file=root/"curtains"/f"{i:04d}.png"
+                Image.new("RGB",(320,410),(250+i,250,249)).save(file)
+                data["beats"]["curtains"][i]["sha256"]=hashlib.sha256(
+                    file.read_bytes()).hexdigest()
+            manifest.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError,"Overexposed"):
+                review(root,root/"not-approved.jpg")
+
     def test_time_and_input_bounds(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
