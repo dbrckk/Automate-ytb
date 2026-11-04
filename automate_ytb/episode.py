@@ -140,7 +140,8 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     """
     from .captions import caption_phrases
     from .speech_pcm import compact_speech_pcm
-    from .voice_pacing import speaking_speed, natural_pause_ms, VERSION as PACING_VERSION
+    from .voice_pacing import (speaking_speed, phrase_speed, natural_pause_ms,
+                               VERSION as PACING_VERSION)
 
     if caption_timing not in ("estimated", "audio"):
         raise ValueError("Caption timing must be estimated or audio")
@@ -161,6 +162,7 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
     total_trimmed_ms = 0.0
     trimmed_phrases = 0
     inserted_pause_ms = 0
+    applied_rates: list[float] = []
     measured_scene_pacing = []
     for index, scene in enumerate(scenes):
         phrases = (caption_phrases(scene["narration"])
@@ -168,6 +170,9 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
         chunks = bytearray()
         starts = [0]
         for phrase_index, phrase in enumerate(phrases):
+            if engine == "kokoro":
+                synth.speed = phrase_speed(phrase, style=narration_style)
+                applied_rates.append(synth.speed)
             frames, rate = synth.audio(phrase)
             if (not isinstance(rate, int) or not 8000 <= rate <= 96000
                     or not isinstance(frames, bytes) or not frames
@@ -262,7 +267,10 @@ def _narrate_scenes(plan_path: Path, voice_path: Path, language: str,
         "delivery": {
             "version": PACING_VERSION,
             "style": narration_style,
-            "nativeSpeakingRate": synth.speed,
+            "nativeSpeakingRate": requested_speed if engine == "kokoro" else 1.0,
+            "expressivePacingEnabled": engine == "kokoro" and narration_style == "expressive",
+            "minRenderedSpeakingRate": min(applied_rates) if applied_rates else 1.0,
+            "maxRenderedSpeakingRate": max(applied_rates) if applied_rates else 1.0,
             "punctuationAwarePauses": engine == "kokoro" and
                                       caption_timing == "audio",
             "insertedBetweenPhraseSilenceMs": inserted_pause_ms,
