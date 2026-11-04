@@ -181,16 +181,17 @@ def build_scene(beat, width, height, samples):
         "star": material("White-blue cosmic star field", WHITE, emission=1.8),
         "rock": material("Dark matte arctic ridges", (.015,.059,.074), rough=.96),
         "curtain_a": material("Emerald semi-transparent 3D aurora ribbon", GREEN,
-                              emission=1.7, transparent=.38),
+                              emission=.95, transparent=.84),
         "curtain_b": material("Electric blue aurora ribbon", ICE,
-                              emission=1.45, transparent=.48),
+                              emission=.78, transparent=.87),
         "curtain_c": material("Purple high atmosphere ribbon", VIOLET,
-                              emission=1.5, transparent=.47),
+                              emission=.85, transparent=.87),
     }
     mountains(mats["rock"])
     star_field(mats["star"])
     state={"beat":beat,"mats":mats,"particles":[],"fields":[],
-           "molecules":[],"curtains":[],"planet":None,"sun":None}
+           "molecules":[],"curtains":[],"curtain_edges":[],
+           "planet":None,"sun":None}
     if beat=="solar_wind":
         state["sun"]=sphere("3D incandescent solar source",(-2.8,.2,3.4),.85,mats["sun"])
         state["planet"]=sphere("3D Earth receiving charged solar wind",(2.3,1.2,2.1),
@@ -234,7 +235,7 @@ def build_scene(beat, width, height, samples):
                 mats["oxygen" if i%3 else "red"],segments=10,rings=6))
     else:
         # Each ribbon is an actual variable-depth 3D mesh, NOT a drawn 2D line.
-        for i in range(9):
+        for i in range(7):
             layer=(
                 "curtain_a" if i%4 in (0,1) else
                 "curtain_b" if i%4==2 else "curtain_c"
@@ -242,6 +243,11 @@ def build_scene(beat, width, height, samples):
             state["curtains"].append(curtain_mesh(
                 f"Animated draping 3D auroral sheet {i:02d}",
                 mats[layer],width=1.55,rows=26,columns=22))
+            state["curtain_edges"].append(curve(
+                f"Filament of moving draped auroral ribbon {i:02d}",
+                mats["oxygen"] if i%4 in (0,1) else
+                mats["cyan"] if i%4==2 else mats["nitrogen"],
+                segments=45,radius=.012))
         for i in range(28):
             state["particles"].append(sphere(
                 f"Upper atmosphere charged tracer {i:02d}",(0,0,2),
@@ -339,7 +345,7 @@ def animate(state, progress):
         depth= .32+(i//5)*.84
         for j in range(rows+1):
             v=j/rows
-            z=.30+5.5*v
+            z=.55+4.4*v
             for k in range(columns+1):
                 u=k/columns
                 idx=j*(columns+1)+k
@@ -350,6 +356,16 @@ def animate(state, progress):
                 y=depth+.35*math.sin(u*math.tau*2.8+t*.48+i+v*2.1)
                 obj.data.vertices[idx].co=(x,y,z+.14*math.sin(t*.6+u*8+i))
         obj.data.update()
+    for i, spline in enumerate(state["curtain_edges"]):
+        base=-3.95+(i%5)*1.7
+        depth=.32+(i//5)*.84
+        n=len(spline.points)
+        for j,point in enumerate(spline.points):
+            u=j/(n-1)
+            x=base+1.55*u+.29*math.sin(5.3-t*.42+i)+.10*math.sin(u*math.tau*1.5+t*.57+i*.59+2)
+            y=depth+.35*math.sin(u*math.tau*2.8+t*.48+i+2.1)
+            z=4.95+.14*math.sin(t*.6+u*8+i)
+            point.co=(x,y,z,1)
 
 
 def main():
