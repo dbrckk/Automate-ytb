@@ -23,7 +23,10 @@ def review(folder: Path, destination: Path) -> dict:
     for i,beat in enumerate(BEATS):
         first=stage._pose(beat,0)
         last=stage._pose(beat,stage.count-1)
-        active=ImageChops.difference(first,last).getbbox() is not None
+        # RGBA difference alpha is zero when both frames are opaque; Pillow
+        # getbbox() defaults to alpha-only and would falsely mark every
+        # genuine 3D camera movement as frozen. Inspect RGB differences.
+        active=ImageChops.difference(first.convert("RGB"),last.convert("RGB")).getbbox() is not None
         changes[beat]=bool(active)
         if not active:
             raise ValueError(f"Frozen genuine 3D Blender aurora shot: {beat}")
