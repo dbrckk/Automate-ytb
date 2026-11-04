@@ -508,10 +508,50 @@ def animate(beat,dynamic,camera,q):
                 p.co=(x,y,z,1)
         else:
             animate_stream(line,index=i,q=q,bend=beat=="magnetic_field")
-    for i,(obj,x,y,z) in enumerate(dynamic["particles"]):
-        obj.location.x=x+.10*math.sin(q*math.tau*.75+i*.73)
-        obj.location.y=y+.09*math.cos(q*math.tau*.4+i*.6)
-        obj.location.z=z+.12*math.sin(q*math.tau+i*.9)
+    # Coherent 3D gas-molecule vibration and genuine electron impacts.
+    # Animation is continuous, deterministic and evaluated in object space
+    # before Cycles renders each new camera pose.
+    impacts={}
+    for i,(_,target,hit) in enumerate(dynamic["electrons"]):
+        impacts.setdefault(target,[]).append(hit)
+    for i,(atom_a,atom_b,bond,x,y,z) in enumerate(dynamic["particles"]):
+        dx=.065*math.sin(q*math.tau*.82+i*.73)
+        dy=.065*math.cos(q*math.tau*.51+i*.6)
+        dz=.09*math.sin(q*math.tau*.7+i*.9)
+        pulse=max((max(0,1-abs(q-hit)/.09) for hit in impacts.get(i,())),
+                  default=0.)
+        atom_a.location=(x-.15+dx,y+dy,z+dz)
+        atom_b.location=(x+.15+dx,y+dy,z+dz)
+        atom_a.scale=(1+.33*pulse,)*3
+        atom_b.scale=(1+.33*pulse,)*3
+        bond.points[0].co=(x-.15+dx,y+dy,z+dz,1)
+        bond.points[1].co=(x+.15+dx,y+dy,z+dz,1)
+    for i,(obj,target,hit) in enumerate(dynamic["electrons"]):
+        gas=dynamic["particles"][target]
+        x,y,z=gas[3:6]
+        flight=min(1.,q/hit)
+        smooth=flight*flight*(3-2*flight)
+        start=(-4.8-.12*(i%5),-.45+i*.19,.8+i*.32)
+        if q <= hit:
+            obj.location=tuple(
+                start[k]+(point-start[k])*smooth
+                for k,point in enumerate((x,y,z)))
+            obj.scale=(1,)*3
+        else:
+            decay=max(0.,1-(q-hit)/.12)
+            obj.location=(x+(q-hit)*1.4,y-.15*(q-hit),z+.1*(q-hit))
+            obj.scale=(max(.001,decay),)*3
+    for photon,target,hit,i in dynamic["photons"]:
+        gas=dynamic["particles"][target]
+        x,y,z=gas[3:6]
+        fraction=max(0.,min(1.,(q-hit)/(1-hit)))
+        angle=i*2.399963229728653
+        direction=(math.cos(angle),math.sin(angle),.38+(i%3)*.16)
+        photon.location=(x+direction[0]*fraction*2.65,
+                         y+direction[1]*fraction*1.35,
+                         z+direction[2]*fraction*2.40)
+        visible=0.001 if q < hit else max(.001,1-fraction*.72)
+        photon.scale=(visible,)*3
     camera.location.x=.1+.37*math.sin(q*math.pi*.88)
     camera.location.y=-10.8+.25*q
     camera.location.z=4.3+.18*math.sin(q*math.pi)
