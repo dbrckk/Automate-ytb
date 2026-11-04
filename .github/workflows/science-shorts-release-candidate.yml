@@ -9,6 +9,7 @@ on:
       - .github/workflows/science-shorts-release-candidate.yml
       - .github/workflows/one-click-preview.yml
       - automate_ytb/science_causal_vfx.py
+      - automate_ytb/science_ocean_depth.py
       - automate_ytb/science_storyboards.py
       - automate_ytb/science_portrait.py
       - automate_ytb/science_audio_cues.py
