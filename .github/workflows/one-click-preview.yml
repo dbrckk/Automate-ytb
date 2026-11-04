@@ -223,7 +223,7 @@ jobs:
           if [ "$(cat build/3d-domain.txt)" = aurora ]; then
             blender --background --factory-startup -t 2 \
               --python scripts/blender_aurora_stage.py -- \
-              --output build/aurora-3d --frames 12 \
+              --output build/aurora-3d --frames 18 \
               --width 600 --height 750 --samples 8
             python -m automate_ytb.aurora_stage_review \
               --folder build/aurora-3d --out build/aurora-3d/review.jpg
