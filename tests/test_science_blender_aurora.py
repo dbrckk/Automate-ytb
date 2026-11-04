@@ -93,6 +93,37 @@ class BlenderAuroraTests(unittest.TestCase):
             self.assertEqual(picture.getpixel((300,100)),(3,12,33,255))
             self.assertEqual(picture.getpixel((300,1800)),(3,12,33,255))
 
+    def test_real_3d_scene_never_paints_original_2d_rigs_over_it(self):
+        # Regression: previously a complete 2D curtain was painted over
+        # Blender's actual volumetric-looking translucent geometry. This
+        # also duplicated the two physically rendered planetary props.
+        artist_names=("_sphere","_stream","_field","_molecules","_curtains")
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            fixture(folder)
+            stage=BlenderAuroraStage(folder)
+            for beat in BEATS:
+                with self.subTest(beat=beat):
+                    picture=Image.new("RGBA",(1080,1920),(3,12,33,255))
+                    from contextlib import ExitStack
+                    with ExitStack() as stack:
+                        artists=[stack.enter_context(
+                            patch("automate_ytb.science_aurora."+name))
+                            for name in artist_names]
+                        draw_aurora(picture,beat,2,6,True,
+                                    rendered_stage=stage.frame(beat,t=2,duration=6))
+                        for artist in artists:
+                            artist.assert_not_called()
+                    self.assertNotEqual(picture.getpixel((540,900)),
+                                        (3,12,33,255))
+
+    def test_2d_curtailed_mode_retains_original_animated_effect(self):
+        from automate_ytb.science_aurora import _curtains
+        picture=Image.new("RGBA",(1080,1920),(3,12,33,255))
+        with patch("automate_ytb.science_aurora._curtains",wraps=_curtains) as effect:
+            draw_aurora(picture,"curtains",2,6,True)
+            effect.assert_called_once()
+
     def test_contact_sheet_does_not_falsely_approve(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
