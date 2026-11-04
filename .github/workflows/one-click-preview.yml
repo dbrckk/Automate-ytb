@@ -84,12 +84,12 @@ on:
       voice_style:
         type: choice
         description: "Speaking pace and energy, independent of speaker"
-        options: [natural, gentle, lively]
-        default: natural
+        options: [natural, gentle, lively, expressive]
+        default: expressive
       voice_name:
         type: choice
         description: "Optional Kokoro speaker: auto selects the validated voice for language"
-        options: [auto, af_heart, af_bella, am_michael, ff_siwis]
+        options: [auto, af_heart, af_bella, af_nicole, af_sarah, am_michael, ff_siwis]
         default: auto
       soundtrack:
         type: choice
@@ -219,7 +219,7 @@ jobs:
               exit 2
             fi
             case "$YT_LANGUAGE:$YT_VOICE_NAME" in
-              en:af_heart|en:af_bella|en:am_michael|fr:ff_siwis)
+              en:af_heart|en:af_bella|en:af_nicole|en:af_sarah|en:am_michael|fr:ff_siwis)
                 VOICE_ARGS=(--voice-name "$YT_VOICE_NAME") ;;
               *)
                 echo "Unsupported voice/language combination" >&2
@@ -285,6 +285,16 @@ jobs:
             --srt build/video/draft-captions.srt \
             --vtt build/video/draft-captions.vtt \
             --output build/video/qa-summary.json
+      - name: Render optional English speaker comparison for listening
+        if: ${{ inputs.voice == 'kokoro' && inputs.language == 'en' }}
+        continue-on-error: true
+        env:
+          YT_VOICE_STYLE: ${{ inputs.voice_style }}
+        run: |
+          python -m automate_ytb.voice_audition \
+            --script build/script.txt \
+            --output build/video/voice-auditions \
+            --style "$YT_VOICE_STYLE"
       - name: Download video, thumbnails, script and audit
         if: always()
         uses: actions/upload-artifact@v4
@@ -299,6 +309,7 @@ jobs:
             build/video/narration.wav
             build/video/narration-pacing.json
             build/video/voice-sample.mp3
+            build/video/voice-auditions/
             build/video/VOICE_CREDITS.md
             build/video/background-original.wav
             build/video/draft-captions.srt
