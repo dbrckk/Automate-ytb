@@ -103,6 +103,48 @@ All improvements use original Blender materials/geometry and GitHub Actions
 CPU, with no third-party asset/license or paid inference dependency.
 These are explanatory visualizations, not plasma physics simulations.
 
+## Motion-aware interpolation with measured source-frame holdouts
+
+The original video crossfaded two unrelated 3D camera poses, introducing
+double edges on moving planets and molecular objects. New local,
+**optional CPU optical flow** estimates forward and backward pixel motion,
+warps *both* genuine Blender frames toward their intermediate positions,
+and fades toward the safe original dissolve where the two flows disagree.
+The filter is applied to aurora 3D scenes only.
+
+**Crucial safeguard:** this is never enabled on assumed improvement.
+Before producing the video, the renderer withholds five actual Cycles
+keyframes per action. For each, it synthesizes a midpoint from its
+neighboring frames and measures both methods against the withheld genuine
+Blender image. Optical flow is selected for that individual action only if:
+
+- The mean RGB pixel error improves by at least 4.5%.
+- At least 60% of the sampled withheld frames show 2% or better gains.
+- No sampled frame has a severe (over 20%) pixel-error regression.
+
+Otherwise, the shot keeps its previous dissolve. The output contains
+\`aurora-3d/motion-review.json\` (measured errors and per-action selection)
+and \`aurora-3d/motion-comparison.jpg\` (genuine withheld target, dissolve,
+optical flow), in addition to the existing Cycles manifest and MP4 QA.
+
+To run from a machine with the original Blender PNG poses:
+
+    python -m pip install -e '.[motion]'
+    python -m automate_ytb.aurora_motion_review \
+      --folder build/aurora-3d \
+      --out build/aurora-3d/motion-review.json
+
+The production loader verifies the motion report is bound to the exact
+SHA-256 Blender manifest. Missing reports preserve the old interpolation;
+altered reports or unsupported algorithms are rejected. This costs more
+CPU during preparation and frame encoding but does not add model credits.
+
+**Limitations:** Farneback flow is screen-space, not 3D geometry
+re-rendering. The original video remains 30fps encoded from only 18 real
+Blender poses per scene. Holdout RGB error is a screening metric, not a
+guarantee against edge tearing, occlusions or strange physical motion.
+Human review of the actual MP4 remains mandatory.
+
 ## Remaining work
 
 Increase true 3D temporal sampling and use physical light-scattering materials
