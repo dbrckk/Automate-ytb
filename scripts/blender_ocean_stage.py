@@ -44,6 +44,10 @@ def material(name, color, *, metal=0., rough=.4, emission=0.):
     principled.inputs["Base Color"].default_value = (*color, 1)
     principled.inputs["Metallic"].default_value = metal
     principled.inputs["Roughness"].default_value = rough
+    if "Ocean blue" in name:
+        for transmission_input in ("Transmission Weight", "Transmission"):
+            if transmission_input in principled.inputs:
+                principled.inputs[transmission_input].default_value = .22
     for input_name in ("Emission Color", "Emission"):
         if input_name in principled.inputs:
             principled.inputs[input_name].default_value = (*color, 1)
@@ -229,9 +233,11 @@ def setup(beat, width, height, samples):
     scene.render.threads_mode = "FIXED"
     scene.render.threads = 2
     scene.view_settings.view_transform = "Standard"
-    scene.view_settings.look = "Medium High Contrast" if "Medium High Contrast" in (
-        [item.identifier for item in scene.view_settings.bl_rna.properties["look"].enum_items]
-    ) else "Medium High Contrast"  # compatible Blender installations
+    try:
+        scene.view_settings.look = "Medium High Contrast"
+    except TypeError:
+        # Look preset names differ between Blender major versions.
+        pass
     scene.view_settings.exposure = 0
     scene.view_settings.gamma = 1
     color = TINTS[beat]
