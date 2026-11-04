@@ -20,7 +20,7 @@ class VisualPreflightTests(unittest.TestCase):
         black=bytes([0])*pixels
         white=bytes([255])*pixels
         report=analyze_samples(black+white+black, width=w, height=h, fps=2)
-        self.assertIn("v2", VISUAL_QA_VERSION)
+        self.assertIn("v3", VISUAL_QA_VERSION)
         self.assertEqual(report["nearBlackFrames"],2)
         self.assertEqual(report["nearWhiteFrames"],1)
         self.assertEqual(report["largeLumaSteps"],2)
@@ -48,10 +48,11 @@ class VisualPreflightTests(unittest.TestCase):
         self.assertEqual(sampling_windows(1.4), [(0.0, 1.4)])
         self.assertEqual(sampling_windows(18), [(0.0, 18.0)])
         self.assertEqual(sampling_windows(120),
-                         [(0.0, 6.0), (57.0, 6.0), (114.0, 6.0)])
+                         [(0.0, 3.0), (23.4, 3.0), (46.8, 3.0),
+                          (70.2, 3.0), (93.6, 3.0), (117.0, 3.0)])
         for duration in (18.01, 19, 100, 900, 3600):
             windows = sampling_windows(duration)
-            self.assertEqual(len(windows), 3)
+            self.assertEqual(len(windows), 3 if duration <= 36 else 6)
             self.assertEqual(windows[0][0], 0)
             self.assertLessEqual(sum(length for _, length in windows), 18)
             self.assertTrue(all(start >= 0 and start + length <= duration + .001
