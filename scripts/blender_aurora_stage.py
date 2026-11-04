@@ -6,7 +6,7 @@ paths are educational illustrations, not plasma or atmospheric simulation.
 
 Run:
  blender -b --factory-startup -t 2 --python scripts/blender_aurora_stage.py -- \
-   --output build/aurora-3d --frames 12 --width 600 --height 750 --samples 8
+   --output build/aurora-3d --frames 18 --width 600 --height 750 --samples 8
 """
 from __future__ import annotations
 
@@ -387,7 +387,7 @@ def main():
     args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",type=Path,required=True)
-    parser.add_argument("--frames",type=int,default=12)
+    parser.add_argument("--frames",type=int,default=18)
     parser.add_argument("--width",type=int,default=600)
     parser.add_argument("--height",type=int,default=750)
     parser.add_argument("--samples",type=int,default=8)
