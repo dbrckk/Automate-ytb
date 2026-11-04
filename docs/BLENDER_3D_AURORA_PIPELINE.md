@@ -51,7 +51,7 @@ On a Linux PC or GitHub runner with Blender/Cycles installed:
 
     blender --background --factory-startup -t 2 \
       --python scripts/blender_aurora_stage.py -- \
-      --output build/aurora-3d --frames 12 \
+      --output build/aurora-3d --frames 18 \
       --width 600 --height 750 --samples 8
 
     python -m automate_ytb.aurora_stage_review \
@@ -59,12 +59,12 @@ On a Linux PC or GitHub runner with Blender/Cycles installed:
 
     export AUTOMATE_YTB_AURORA_3D_DIR="$PWD/build/aurora-3d"
 
-The renderer outputs **12 genuinely rendered 3D poses per science action**,
+The renderer outputs **18 genuinely rendered 3D poses per science action**,
 then the video path interpolates between those keyframes at 30 FPS. Motion
 still requires human viewing to detect interpolation ghosting; it is *not*
 30 independently path-traced Blender images per second.
 
-All 60 PNGs have exact manifest hashes, dimensions and sequence IDs. A
+All 90 PNGs have exact manifest hashes, dimensions and sequence IDs. A
 missing, corrupted or misattributed frame fails the job. Blender materials,
 lighting, geometry and shot paths are created locally; no cloud AI assets,
 passwords or proprietary downloads are involved.
