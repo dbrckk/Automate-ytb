@@ -131,9 +131,9 @@ def draw_interactions(draw: ImageDraw.ImageDraw, beat: str, *,
         if opacity > 1:
             draw.ellipse((round(x-ring_radius), round(y-ring_radius),
                           round(x+ring_radius), round(y+ring_radius)),
-                         outline=(*COOL if beat in ("sinking", "heat") else main_color,
+                         outline=(*(COOL if beat in ("sinking", "heat") else main_color),
                                  opacity), width=max(2, round(6*(1-impact))))
         # Small stable arrival core makes the resulting causal state legible.
         draw.ellipse((round(x-10), round(y-10), round(x+10), round(y+10)),
-                     fill=(*COOL if beat in ("sinking", "heat") else main_color,
+                     fill=(*(COOL if beat in ("sinking", "heat") else main_color),
                            round(95+130*impact)))
