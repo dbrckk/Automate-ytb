@@ -278,7 +278,18 @@ def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
     elif beat=="emission":
         _molecules(stage,t,photons=True)
     else:
-        _curtains(stage,t,duration)
+        if stage_plate is None:
+            _curtains(stage,t,duration)
+        else:
+            # The 3D plate already contains several real draping auroral
+            # sheets. Do not flatten them with a second full-screen 2D
+            # color wash: add only subtle surface/light reflections.
+            d=ImageDraw.Draw(stage,"RGBA")
+            for i in range(14):
+                x=(i*109+t*(12+i%3*5))%1150-45
+                y=1052+(i%4)*27
+                d.line((x,y,x+12+(i%5)*5,y),
+                       fill=(66,210,176,52),width=2)
     picture.alpha_composite(reframe(stage, "aurora", beat, t, duration,
                                     event_progress=event_progress),
                             (0,STAGE_TOP))
