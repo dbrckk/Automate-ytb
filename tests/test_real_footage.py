@@ -95,6 +95,50 @@ class RealFootageTests(unittest.TestCase):
         self.assertGreaterEqual(len(raw),3*pixels)
         self.assertNotEqual(raw[:pixels],raw[-pixels:])
 
+    def test_native_portrait_short_from_original_landscape_video(self):
+        from automate_ytb.footage import framing_filter
+        graph, needs_complex = framing_filter(
+            source_width=480, source_height=320,
+            width=1080,height=1920,fps=24)
+        self.assertTrue(needs_complex)
+        self.assertIn("overlay=",graph)
+        self.assertIn("boxblur=",graph)
+        aligned,complex_aligned=framing_filter(
+            source_width=1080,source_height=1920,
+            width=1080,height=1920,fps=30)
+        self.assertFalse(complex_aligned)
+        self.assertIn("crop=",aligned)
+        with self.assertRaises(ValueError):
+            framing_filter(source_width=0,source_height=320,
+                           width=1080,height=1920,fps=24)
+
+        self.attach()
+        target=self.root/"portrait"
+        report=render(plan_path=self.plan_path,output=target,limit=1,
+                      resolution="shorts",fps=24,transition="cut")
+        self.assertEqual(report["realFootageSceneCount"],1)
+        self.assertEqual(report["resolution"],"shorts")
+        movie=target/"preview.mp4"
+        metadata=json.loads(run(
+            "ffprobe","-v","error","-show_entries",
+            "stream=codec_name,codec_type,width,height:format=duration",
+            "-of","json",str(movie)).stdout)
+        video=next(row for row in metadata["streams"]
+                   if row["codec_type"]=="video")
+        self.assertEqual((video["width"],video["height"]),(1080,1920))
+        self.assertFalse(any(s.get("codec_type")=="audio"
+                             for s in metadata["streams"]))
+        self.assertAlmostEqual(float(metadata["format"]["duration"]),6,delta=.2)
+        poster=self.root/"portrait-check.png"
+        run("ffmpeg","-nostdin","-hide_banner","-v","error","-y",
+            "-ss","2","-i",str(movie),"-frames:v","1",
+            "-update","1",str(poster))
+        with Image.open(poster) as img:
+            self.assertEqual(img.size,(1080,1920))
+            # Background and central original image are both nonblack.
+            self.assertGreater(sum(img.getpixel((20,350))[:3]),10)
+            self.assertGreater(sum(img.getpixel((540,960))[:3]),10)
+
     def test_tampered_video_rejects_render_and_stale_stills_can_replace(self):
         self.attach()
         movie=self.root/"assets/scene-001.mp4"

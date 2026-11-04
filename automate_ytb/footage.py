@@ -70,6 +70,43 @@ def probe_video(source: Path, *, start: float, seconds: float) -> dict:
             "clipDurationSeconds":round(seconds,3)}
 
 
+
+def framing_filter(*, source_width: int, source_height: int,
+                   width: int, height: int, fps: int) -> tuple[str,bool]:
+    """Return a safe FFmpeg filter and whether it needs filter_complex.
+
+    Cropping a landscape video into portrait often removes the main action.
+    If aspect ratios differ strongly, retain all source content over a
+    blurred, moving fill made from the SAME original footage.
+    """
+    if (any(type(v) is not int for v in (
+            source_width,source_height,width,height,fps))
+            or not 256 <= source_width <= 4096
+            or not 256 <= source_height <= 4096
+            or not 128 <= width <= 3840 or not 128 <= height <= 3840
+            or fps not in (24,30)):
+        raise ValueError("Invalid original footage framing geometry")
+    source_ratio=source_width/source_height
+    target_ratio=width/height
+    disparity=max(source_ratio/target_ratio,target_ratio/source_ratio)
+    if disparity < 1.36:
+        return (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},fps={fps},format=yuv420p",False)
+    filter_graph=(
+        "[0:v]split=2[background][foreground];"
+        f"[background]scale={width}:{height}:"
+        f"force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},setsar=1,"
+        "boxblur=luma_radius=14:luma_power=1:"
+        "chroma_radius=7:chroma_power=1[softbg];"
+        f"[foreground]scale={width}:{height}:"
+        "force_original_aspect_ratio=decrease,"
+        "setsar=1[subject];"
+        "[softbg][subject]overlay=(W-w)/2:(H-h)/2:shortest=1,"
+        f"fps={fps},format=yuv420p[v]")
+    return filter_graph,True
+
 def normalize_video(source: Path, dest: Path, poster: Path, *,
                     start: float, seconds: float) -> dict:
     """Cut a single real clip to scene length, re-encode deterministically.
