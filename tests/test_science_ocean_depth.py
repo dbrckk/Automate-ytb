@@ -34,7 +34,7 @@ class OceanDepthTests(unittest.TestCase):
         self.assertEqual(a.getpixel((500, 400)), (3, 12, 25, 255))
         self.assertEqual(a.getpixel((500, 1650)), (3, 12, 25, 255))
         self.assertEqual(a.getpixel((50, 1000)), (3, 12, 25, 255))
-        self.assertIsNotNone(ImageChops.difference(a, b).getbbox())
+        self.assertIsNotNone(ImageChops.difference(a.convert("RGB"), b.convert("RGB")).getbbox())
 
     def test_seek_is_deterministic_and_nonfinite_times_are_rejected(self):
         one = Image.new("RGBA", (1080, 1920), (2, 12, 18, 255))
