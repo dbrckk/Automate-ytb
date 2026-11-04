@@ -25,7 +25,7 @@ BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 SIZE_LIMIT = (1080, 1380)
 
 
-def surface(name, rgb, *, glow=0., rough=.52, metallic=0.):
+def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = (*rgb, 1)
     mat.use_nodes = True
@@ -41,7 +41,15 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0.):
         shader.inputs["Base Color"].default_value = (*rgb, 1)
         shader.inputs["Roughness"].default_value = rough
         shader.inputs["Metallic"].default_value = metallic
-    mat.node_tree.links.new(shader.outputs[0], output.inputs["Surface"])
+    if translucent and glow:
+        transparent=nodes.new("ShaderNodeBsdfTransparent")
+        mixer=nodes.new("ShaderNodeMixShader")
+        mixer.inputs[0].default_value=.47
+        mat.node_tree.links.new(transparent.outputs[0],mixer.inputs[1])
+        mat.node_tree.links.new(shader.outputs[0],mixer.inputs[2])
+        mat.node_tree.links.new(mixer.outputs[0], output.inputs["Surface"])
+    else:
+        mat.node_tree.links.new(shader.outputs[0], output.inputs["Surface"])
     return mat
 
 
@@ -191,6 +199,11 @@ def setup(beat, width, height, samples):
         "magenta":surface("Ionized nitrogen violet glow",(.64,.18,1.0),glow=1.45),
         "ice":surface("Polar snow highlight",(.67,.83,.92),rough=.63),
         "red":surface("Upper atmosphere oxygen red glow",(1.0,.18,.22),glow=1.45),
+        "star":surface("Original three-dimensional distant starlight",(.63,.85,1),glow=.9),
+        "veil_green":surface("Translucent physical oxygen aurora",(.05,.94,.42),glow=1.5,translucent=True),
+        "veil_cyan":surface("Translucent physical blue aurora",(.24,.81,1),glow=1.45,translucent=True),
+        "veil_magenta":surface("Translucent physical nitrogen aurora",(.64,.18,1),glow=1.45,translucent=True),
+        "veil_red":surface("Translucent physical red aurora",(1,.18,.22),glow=1.42,translucent=True),
     }
     mountain_floor(mats["snow"])
     rng=random.Random(2071+BEATS.index(beat)*53)
@@ -209,7 +222,7 @@ def setup(beat, width, height, samples):
         x,y,z=(rng.uniform(-7.6,7.6),rng.uniform(3.3,7.6),
                rng.uniform(.6,7.6))
         sphere("3D star depth layer %02d"%i,x,y,z,
-               rng.uniform(.012,.027),mats["ice"],low=True)
+               rng.uniform(.012,.027),mats["star"],low=True)
     dynamic={"sheets":[],"fields":[],"streams":[],"particles":[]}
     if beat in ("solar_wind","magnetic_field"):
         sphere("Globe physical three-dimensional Earth",
@@ -252,7 +265,7 @@ def setup(beat, width, height, samples):
                 dynamic["streams"].append(line)
     if beat=="curtains":
         for i in range(6):
-            mat=(mats["green"],mats["cyan"],mats["magenta"],mats["green"],mats["red"],mats["cyan"])[i]
+            mat=(mats["veil_green"],mats["veil_cyan"],mats["veil_magenta"],mats["veil_green"],mats["veil_red"],mats["veil_cyan"])[i]
             dynamic["sheets"].append(curtain(
                 "True 3D pleated aurora emissive curtain %02d"%i,mat,index=i))
     bpy.ops.object.light_add(type="AREA",location=(-3.0,-4.2,6.5))
