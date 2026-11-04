@@ -146,6 +146,31 @@ class QualityGateTests(unittest.TestCase):
         self.assertEqual(bad_subtitles["status"], "failed")
         self.assertTrue(any("subtitle" in m.lower() for m in bad_subtitles["errors"]))
 
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
+                         "Real FFmpeg and ffprobe required")
+    def test_quality_gate_checks_adaptive_cut_fade_sum_and_scene_boundaries(self):
+        folder=self.root/"adaptive"
+        rendered=build_preview(
+            plan_path=self.plan_file,output=folder,style="documentary",
+            voice="none",soundtrack="none",limit=2,transition="adaptive")
+        transitions=rendered["render"]["transitions"]
+        self.assertEqual(transitions["mode"],"adaptive")
+        self.assertEqual(transitions["count"]+transitions["cutCount"],1)
+        self.assertEqual(transitions["analyzedBoundaries"],1)
+        self.assertEqual(transitions["timelineShiftMs"],0)
+        report=check(plan=self.plan_file,output=folder,
+                     expected_voice="none",expected_soundtrack="none")
+        self.assertEqual(report["status"],"passed",report["errors"])
+        saved=folder/"render-report.json"
+        original=json.loads(saved.read_text(encoding="utf8"))
+        original["transitions"]["cutCount"]+=1
+        saved.write_text(json.dumps(original),encoding="utf8")
+        corrupt=check(plan=self.plan_file,output=folder,
+                      expected_voice="none",expected_soundtrack="none",
+                      decode_frames=False)
+        self.assertEqual(corrupt["status"],"failed")
+        self.assertTrue(any("transitions" in msg for msg in corrupt["errors"]))
+
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe")
                          and (shutil.which("espeak") or shutil.which("espeak-ng")),
                          "FFmpeg and eSpeak needed for a real narrated video")
