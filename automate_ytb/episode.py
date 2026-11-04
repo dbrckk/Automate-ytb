@@ -289,7 +289,7 @@ def build_preview(*, plan_path: Path, output: Path,
                   resolution: str = "720p", voice_name: str | None = None,
                   soundtrack: str = "none",
                   caption_timing: str = "estimated",
-                  transition: str = "dissolve",
+                  transition: str = "adaptive",
                   voice_style: str = "natural",
                   render_profile: str = "preview") -> dict:
     from .voice_pacing import speaking_speed
@@ -302,7 +302,7 @@ def build_preview(*, plan_path: Path, output: Path,
         raise ValueError("Soundtrack must be none or ambient")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
-    if transition not in {"cut", "dissolve"}:
+    if transition not in {"cut", "dissolve", "adaptive"}:
         raise ValueError("Transition must be cut or dissolve")
     if resolution == "shorts" and style != "science":
         raise ValueError("Native 9:16 Shorts currently require science style")
@@ -420,9 +420,9 @@ def main(argv=None) -> int:
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
     p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
                    help="Original local ambient backing track with narration ducking")
-    p.add_argument("--transition", choices=["dissolve", "cut"],
-                   default="dissolve",
-                   help="Visual hold-frame dissolve without modifying scene times")
+    p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"],
+                   default="adaptive",
+                   help="Adaptive clean cut or fade; preserves narration timecodes")
     p.add_argument("--caption-timing", choices=["estimated", "audio"],
                    default="estimated",
                    help="Audio mode measures synthesized phrase boundaries; not word alignment")
