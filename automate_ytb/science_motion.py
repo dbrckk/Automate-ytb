@@ -18,7 +18,7 @@ import subprocess
 import unicodedata
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-SCIENCE_VERSION = "science-motion-v5-portrait-shorts-volcano-ash-shadow-depth"
+SCIENCE_VERSION = "science-motion-v4-portrait-shorts-causal-camera-v4-ash-shadow-depth-v1"
 SIZE = (1280, 720)
 FULL_HD = (1920, 1080)
 GOLD = (251, 200, 119)
