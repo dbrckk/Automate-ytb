@@ -21,7 +21,7 @@ jobs:
       topic: "Why Are the Northern Lights Different Colors?"
       original_script: >-
         The Sun releases a steady solar wind of charged particles, carrying energy out into space.
-        Earth's magnetic field guides some of that energy into the upper atmosphere near the poles.
+        Earth's magnetic field guides some of that energy along invisible curved paths into the upper atmosphere near the poles.
         High above us, energetic electrons collide with oxygen and nitrogen, exciting the surrounding gas.
         Excited oxygen emits green light at lower altitudes and red higher up; nitrogen can glow blue or pink.
         As their colors overlap, glowing curtains ripple across the night sky, turning invisible energy into the northern lights.
@@ -34,8 +34,8 @@ jobs:
       soundtrack: ambient
       transition: dissolve
       caption_timing: audio
-      duration_seconds: 33
-      shot_seconds: 6.6
+      duration_seconds: 37
+      shot_seconds: 7.4
       resolution: shorts
       render_profile: high
       cinematic_3d: false
