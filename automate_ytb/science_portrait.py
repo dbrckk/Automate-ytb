@@ -37,7 +37,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera"
+PORTRAIT_VERSION = "original-science-shorts-v21-ocean-phrase-driven-causal-interactions"
 INK = (238, 247, 250, 255)
 
 
@@ -242,9 +242,11 @@ class PortraitScienceScene:
         # Reuse PCM-derived *phrase* boundaries for the physical camera beat.
         # No word timing is invented; scenes lacking a cue keep authored timing.
         domain=("volcano" if self.volcano_beat is not None else
-                "aurora" if self.aurora_beat is not None else None)
+                "aurora" if self.aurora_beat is not None else
+                "ocean" if self.beat is not None else None)
         action=(self.volcano_beat if domain=="volcano" else
-                self.aurora_beat if domain=="aurora" else None)
+                self.aurora_beat if domain=="aurora" else
+                self.beat if domain=="ocean" else None)
         self._narrated_event_fraction=(
             audio_event_fraction(domain,action,caption_segments,scene_start_ms)
             if domain is not None else None)
@@ -381,7 +383,8 @@ class PortraitScienceScene:
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
         elif self.beat is not None:
-            draw_storyboard(d, self.beat, t, self.english, duration=duration)
+            draw_storyboard(d, self.beat, t, self.english, duration=duration,
+                            event_progress=self._narrated_event_fraction)
         elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
             center_x = 540 + round(16 * math.sin(t*.32))
