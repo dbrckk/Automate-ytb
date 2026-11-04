@@ -205,6 +205,88 @@ def ingest(*, plan_path: Path, scene_id: str, image_path: Path,
             "recordedCostUsd": str(cost), "publicationApproved": False}
 
 
+
+def ingest_video(*, plan_path: Path, scene_id: str, video_path: Path,
+                 provider: str, rights_note: str, cost_usd: str,
+                 rights_confirmed: bool = False, replace: bool = False,
+                 clip_start_seconds: float = 0) -> dict:
+    """Import an owned/licensed source clip as a genuine moving scene.
+
+    The clip is stored with a verified fixed name and generates its own
+    reviewed PNG poster. Source audio is intentionally excluded; separate
+    narration and original music keep their existing production timing.
+    """
+    from .footage import normalize_video, VERSION as FOOTAGE_VERSION
+    if not rights_confirmed:
+        raise ValueError("Explicit --confirm-rights required before importing footage")
+    if not PROVIDER.fullmatch(provider) or not 12 <= len(rights_note.strip()) <= 1000:
+        raise ValueError("Provide a valid provider and detailed source/rights note")
+    cost = _money(cost_usd)
+    data = load_plan(plan_path)
+    match = next((scene for scene in data["scenes"] if scene["id"] == scene_id), None)
+    if match is None:
+        raise ValueError("Unknown scene identifier")
+    if (match.get("renderStyle") == "science" or
+            match.get("motionRig") is not None):
+        raise ValueError("Original science/cartoon motion rigs cannot use footage replacement")
+    source = Path(video_path).expanduser()
+    if not source.is_file() or source.is_symlink():
+        raise ValueError("Original footage must be a regular local file")
+    poster = _asset_path(plan_path, match)
+    movie = poster.parent / f"{scene_id}.mp4"
+    if (poster.exists() or movie.exists()) and not replace:
+        raise ValueError("Scene media exists; use --replace to overwrite explicitly")
+    if source.resolve() in (poster.resolve(), movie.resolve()):
+        raise ValueError("Original source footage must be outside managed destinations")
+    poster.parent.mkdir(parents=True, exist_ok=True)
+    seconds = (match["endMs"] - match["startMs"]) / 1000
+    fd_movie, temp_movie = tempfile.mkstemp(
+        prefix=".footage-", suffix=".mp4", dir=poster.parent)
+    fd_image, temp_image = tempfile.mkstemp(
+        prefix=".footage-poster-", suffix=".png", dir=poster.parent)
+    os.close(fd_movie)
+    os.close(fd_image)
+    try:
+        details = normalize_video(
+            source, Path(temp_movie), Path(temp_image),
+            start=clip_start_seconds, seconds=seconds)
+        movie_hash = _sha(Path(temp_movie))
+        poster_hash = _sha(Path(temp_image))
+        # Both approved media files are moved only after full decoding,
+        # codec validation and PNG poster extraction have succeeded.
+        os.replace(temp_movie, movie)
+        os.replace(temp_image, poster)
+    finally:
+        Path(temp_movie).unlink(missing_ok=True)
+        Path(temp_image).unlink(missing_ok=True)
+    match.update({
+        "assetApproved": True,
+        "assetLicenseEvidence": rights_note.strip(),
+        "assetSha256": poster_hash,
+        "assetProvider": provider,
+        "assetCostUsd": str(cost),
+        "assetImportedAt": datetime.now(timezone.utc).isoformat(),
+        "reviewStatus": "original-footage-rights-confirmed-by-user",
+        "videoAsset": f"assets/{scene_id}.mp4",
+        "videoApproved": True,
+        "videoSha256": movie_hash,
+        "videoLicenseEvidence": rights_note.strip(),
+        "videoProvenanceVersion": FOOTAGE_VERSION,
+        "videoDetails": details,
+    })
+    data["assetUseApproved"] = all(x.get("assetApproved") for x in data["scenes"])
+    data["publicationApproved"] = False
+    _write_json(plan_path.resolve(), data)
+    return {
+        "sceneId": scene_id,
+        "videoSha256": movie_hash,
+        "posterSha256": poster_hash,
+        "videoDetails": details,
+        "recordedCostUsd": str(cost),
+        "sourceAudioIncluded": False,
+        "publicationApproved": False,
+    }
+
 def audit(plan_path: Path, limit: int | None = None) -> dict:
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
