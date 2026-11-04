@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .science_audio_cues import audio_event_fraction
+from .science_ocean_depth import draw_depth
 from .captions import timed_cues_for_scene
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
@@ -37,7 +38,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions"
+PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions-depth-v1"
 INK = (238, 247, 250, 255)
 
 
@@ -383,8 +384,11 @@ class PortraitScienceScene:
         elif self.rainbow_beat is not None:
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
         elif self.beat is not None:
+            draw_depth(picture, self.beat, t=t, duration=duration)
+            d = ImageDraw.Draw(picture, "RGBA")
             draw_storyboard(d, self.beat, t, self.english, duration=duration,
-                            event_progress=self._narrated_event_fraction)
+                            event_progress=self._narrated_event_fraction,
+                            depth_background=True)
         elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
             center_x = 540 + round(16 * math.sin(t*.32))
