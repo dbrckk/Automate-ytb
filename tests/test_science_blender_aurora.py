@@ -25,7 +25,7 @@ from automate_ytb.science_portrait import PortraitScienceScene
 def make_fixture(root: Path) -> None:
     records={}
     for beat_number, beat in enumerate(BEATS):
-        (root/beat).mkdir(parents=True)
+        (root/beat).mkdir(parents=True, exist_ok=True)
         frames=[]
         for i in range(2):
             rel=f"{beat}/{i:04d}.png"
