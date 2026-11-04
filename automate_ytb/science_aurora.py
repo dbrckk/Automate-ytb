@@ -246,14 +246,21 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
 
 
 def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
-                english:bool, *, event_progress:float|None=None) -> None:
+                english:bool, *, event_progress:float|None=None,
+                rendered_stage:Image.Image|None=None) -> None:
     if (picture.mode!="RGBA" or picture.size!=(1080,1920)
             or beat not in BEATS or type(english) is not bool
             or type(t) not in (int,float) or type(duration) not in (int,float)
             or not math.isfinite(t) or not math.isfinite(duration)
             or not 0<duration<=180 or not 0<=t<=duration):
         raise ValueError("Invalid aurora science frame")
-    stage = _plate(night=beat=="curtains").copy()
+    if rendered_stage is not None and (
+            not isinstance(rendered_stage, Image.Image)
+            or rendered_stage.size != STAGE_SIZE
+            or rendered_stage.mode != "RGBA"):
+        raise ValueError("Blender aurora scene must be a full-size RGBA stage")
+    stage = (rendered_stage.copy() if rendered_stage is not None
+             else _plate(night=beat=="curtains").copy())
     if beat=="solar_wind":
         _sphere(stage,214,530,128,sunlight=True)
         _stream(stage,t)
