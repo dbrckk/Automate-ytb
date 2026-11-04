@@ -261,20 +261,26 @@ def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
         raise ValueError("Blender aurora scene must be a full-size RGBA stage")
     stage = (rendered_stage.copy() if rendered_stage is not None
              else _plate(night=beat=="curtains").copy())
-    if beat=="solar_wind":
-        _sphere(stage,214,530,128,sunlight=True)
-        _stream(stage,t)
-        _sphere(stage,930,650,102)
-    elif beat=="magnetic_field":
-        _sphere(stage,660,660,149)
-        _field(stage,t)
-        _stream(stage,t,bend=True)
-    elif beat=="collisions":
-        _molecules(stage,t)
-    elif beat=="emission":
-        _molecules(stage,t,photons=True)
-    else:
-        _curtains(stage,t,duration)
+    # The old 2D rig used the same subjects as the new Blender world. Drawing
+    # both produced duplicate Suns and Earths, and in the curtain scene it
+    # painted opaque 2D waves OVER the actual emissive 3D aurora. Let the real
+    # 3D geometry own each shot. The stationary title, semantic badge and
+    # speech-timed subtitles are authored later by PortraitScienceScene.
+    if rendered_stage is None:
+        if beat=="solar_wind":
+            _sphere(stage,214,530,128,sunlight=True)
+            _stream(stage,t)
+            _sphere(stage,930,650,102)
+        elif beat=="magnetic_field":
+            _sphere(stage,660,660,149)
+            _field(stage,t)
+            _stream(stage,t,bend=True)
+        elif beat=="collisions":
+            _molecules(stage,t)
+        elif beat=="emission":
+            _molecules(stage,t,photons=True)
+        else:
+            _curtains(stage,t,duration)
     picture.alpha_composite(reframe(stage, "aurora", beat, t, duration,
                                     event_progress=event_progress),
                             (0,STAGE_TOP))

@@ -6,7 +6,7 @@ paths are educational illustrations, not plasma or atmospheric simulation.
 
 Run:
  blender -b --factory-startup -t 2 --python scripts/blender_aurora_stage.py -- \
-   --output build/aurora-3d --frames 12 --width 600 --height 750 --samples 8
+   --output build/aurora-3d --frames 18 --width 600 --height 750 --samples 8
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
         sharpen.inputs[1].default_value=5
         strength=nodes.new("ShaderNodeMath")
         strength.operation="MULTIPLY"
-        strength.inputs[1].default_value=.27
+        strength.inputs[1].default_value=.50
         vertical=nodes.new("ShaderNodeMath")
         vertical.operation="MULTIPLY"
         vertical.inputs[1].default_value=math.pi
@@ -80,7 +80,30 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
         links.new(vertical.outputs[0],edge_fade.inputs[0])
         links.new(strength.outputs[0],final_opacity.inputs[0])
         links.new(edge_fade.outputs[0],final_opacity.inputs[1])
-        links.new(final_opacity.outputs[0],mixer.inputs[0])
+        # Natural-looking columns taper towards both ends of each ribbon.
+        # World-space folds still come from actual animated 3D geometry;
+        # this anisotropic texture only controls sheet transmission.
+        x_weight=nodes.new("ShaderNodeMath")
+        x_weight.operation="MULTIPLY"
+        x_weight.inputs[1].default_value=math.pi
+        x_taper=nodes.new("ShaderNodeMath")
+        x_taper.operation="SINE"
+        x_opacity=nodes.new("ShaderNodeMath")
+        x_opacity.operation="MULTIPLY"
+        noise=nodes.new("ShaderNodeTexNoise")
+        noise.inputs["Scale"].default_value=7.5
+        noise.inputs["Detail"].default_value=2.5
+        noise.inputs["Roughness"].default_value=.62
+        noise_opacity=nodes.new("ShaderNodeMath")
+        noise_opacity.operation="MULTIPLY"
+        links.new(axes.outputs["X"],x_weight.inputs[0])
+        links.new(x_weight.outputs[0],x_taper.inputs[0])
+        links.new(final_opacity.outputs[0],x_opacity.inputs[0])
+        links.new(x_taper.outputs[0],x_opacity.inputs[1])
+        links.new(coordinates.outputs["Generated"],noise.inputs["Vector"])
+        links.new(x_opacity.outputs[0],noise_opacity.inputs[0])
+        links.new(noise.outputs["Fac"],noise_opacity.inputs[1])
+        links.new(noise_opacity.outputs[0],mixer.inputs[0])
         mat.node_tree.links.new(transparent.outputs[0],mixer.inputs[1])
         mat.node_tree.links.new(shader.outputs[0],mixer.inputs[2])
         mat.node_tree.links.new(mixer.outputs[0], output.inputs["Surface"])
@@ -142,7 +165,7 @@ def mountain_floor(material, *, offset=-1.4, grid=23):
     return obj
 
 
-def curtain(name, material, *, index=0, nx=36, nz=22):
+def curtain(name, material, *, index=0, nx=64, nz=34):
     verts, faces=[],[]
     for row in range(nz):
         for col in range(nx):
@@ -164,17 +187,22 @@ def curtain(name, material, *, index=0, nx=36, nz=22):
 
 
 def animate_curtain(obj, index, q):
-    nx,nz=36,22
+    nx,nz=64,34
     phase=q*math.tau*.64 + index*.78
     for row in range(nz):
         v=row/(nz-1)
         for col in range(nx):
             u=col/(nx-1)
             x=(u-.5)*9.0
-            folding=(.41+.12*index)*math.sin(x*1.16+phase)+.20*math.sin(
-                x*2.4-phase*.65+v*3.1)
-            y=1.15+index*.55+folding*(.35+v*.65)
-            z=.9+v*(3.5+index*.18)+.16*math.sin(x*.88+phase)*v
+            # Three independent wavelengths prevent uniform ribbon shapes.
+            # The coherent travelling phase keeps each surface continuous.
+            folding=(.37+.09*index)*math.sin(
+                x*(.95+.08*index)+phase)
+            folding+=.18*math.sin(x*2.4-phase*.63+v*3.1)
+            folding+=.09*math.sin(x*4.1+phase*.37+index)
+            y=1.1+index*.61+folding*(.36+v*.80)
+            z=1.05+v*(3.6+index*.12)+.27*math.sin(x*.61+phase)*v
+            x+=.12*math.sin(v*4.0+phase+x*.31)
             obj.data.vertices[row*nx+col].co=(x,y,z)
     obj.data.update()
 
@@ -359,7 +387,7 @@ def main():
     args=sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",type=Path,required=True)
-    parser.add_argument("--frames",type=int,default=12)
+    parser.add_argument("--frames",type=int,default=18)
     parser.add_argument("--width",type=int,default=600)
     parser.add_argument("--height",type=int,default=750)
     parser.add_argument("--samples",type=int,default=8)
