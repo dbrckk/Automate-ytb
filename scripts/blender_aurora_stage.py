@@ -363,8 +363,13 @@ def setup(beat, width, height, samples):
     world.node_tree.nodes.get("Background").inputs["Color"].default_value=(.018,.025,.07,1)
     world.node_tree.nodes.get("Background").inputs["Strength"].default_value=.42
     mats={
-        "snow":surface("Blue violet alpine stone",(.085,.16,.25),rough=.87),
-        "earth":surface("Original blue Earth sphere",(.045,.22,.44),rough=.43,metallic=.08),
+        "snow":surface("Dark blue coastal glacial bedrock",(.075,.12,.21),rough=.88),
+        "snowcap":surface("High altitude polar snow",(.66,.79,.85),rough=.68),
+        "granite":surface("Blue gray fractured granite",(.19,.25,.33),rough=.92),
+        "earth":planet_material(),
+        "atmosphere":atmosphere_material(),
+        "oxygen":surface("Unexcited oxygen molecule",(.18,.55,.65),rough=.32),
+        "nitrogen":surface("Unexcited nitrogen molecule",(.41,.30,.63),rough=.37),
         "sun":surface("Incandescent solar source",(1.0,.38,.10),glow=2.2),
         "cyan":surface("Charged teal particle",(.24,.81,1.0),glow=1.5),
         "green":surface("Atomic oxygen green photon",(.05,.94,.42),glow=1.6),
@@ -377,18 +382,22 @@ def setup(beat, width, height, samples):
         "veil_magenta":surface("Translucent physical nitrogen aurora",(.64,.18,1),glow=1.45,translucent=True),
         "veil_red":surface("Translucent physical red aurora",(1,.18,.22),glow=1.42,translucent=True),
     }
-    mountain_floor(mats["snow"])
+    mountain_floor(mats["snow"],snow=mats["snowcap"],stone=mats["granite"])
     rng=random.Random(2071+BEATS.index(beat)*53)
     # Foreground uneven boulders prevent a sterile flat-background appearance.
-    for i in range(12):
-        x,y=rng.uniform(-4.4,4.4),rng.uniform(-2.8,3.5)
+    for i in range(34):
+        x,y=rng.uniform(-5.2,5.2),rng.uniform(-3.0,3.9)
+        radius=rng.uniform(.10,.39)
         bpy.ops.mesh.primitive_ico_sphere_add(
-            subdivisions=1,radius=rng.uniform(.14,.34),
-            location=(x,y,-1.23+abs(x)*.04))
+            subdivisions=1 if i%3 else 2,radius=radius,
+            location=(x,y,terrain_height(x,y)+radius*.42))
         obj=bpy.context.object
-        obj.name="Irregular glacier rock %02d"%i
-        obj.scale=(1.0,rng.uniform(.66,1.4),rng.uniform(.45,.9))
-        obj.data.materials.append(mats["ice"] if i%4==0 else mats["snow"])
+        obj.name="Polar glacial foreground rock %02d"%i
+        obj.scale=(rng.uniform(.75,1.25),rng.uniform(.66,1.4),
+                   rng.uniform(.35,.86))
+        obj.data.materials.append(
+            mats["snowcap"] if i%5==0 else
+            mats["granite"] if i%3 else mats["snow"])
     # Real 3D stars with depth parallax, not a static image plate.
     for i in range(74):
         x,y,z=(rng.uniform(-7.6,7.6),rng.uniform(3.3,7.6),
@@ -397,13 +406,12 @@ def setup(beat, width, height, samples):
                rng.uniform(.012,.027),mats["star"],low=True)
     dynamic={"sheets":[],"fields":[],"streams":[],"particles":[]}
     if beat in ("solar_wind","magnetic_field"):
-        sphere("Globe physical three-dimensional Earth",
-               2.50 if beat=="solar_wind" else .22,
-               .6,2.10,1.22,mats["earth"])
-        # Polar caps and compact glint use their own 3D material/geometry.
-        sphere("Polar ice on modeled Earth",
-               2.50 if beat=="solar_wind" else .22,
-               .59,3.19,.24,mats["ice"],low=True)
+        globe_x=2.50 if beat=="solar_wind" else .22
+        globe=sphere("Detailed Earth: raised ocean-continent shader",
+                     globe_x,.6,2.10,1.22,mats["earth"])
+        globe.rotation_euler=(.26,.15,.33)
+        sphere("Layered polar atmospheric limb scattering",
+               globe_x,.6,2.10,1.29,mats["atmosphere"])
     if beat=="solar_wind":
         sphere("Glowing original solar sphere",-3.10,1.3,2.52,.92,mats["sun"])
         for i in range(9):
