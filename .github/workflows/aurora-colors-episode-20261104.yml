@@ -1,0 +1,57 @@
+name: Produce Aurora Colors - Original English Science Short
+
+# One full offline 9:16 release candidate, not a YouTube publication.
+# The reusable pipeline owns actual Kokoro synthesis, 30fps MP4 encoding,
+# captions, visual freeze detection and downloadable review artifacts.
+on:
+  push:
+    branches: [feat/aurora-colors-episode-20261104]
+    paths:
+      - .github/workflows/aurora-colors-episode-20261104.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aurora-colors:
+    name: Produce new multicolor aurora story with natural English Kokoro
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Are the Northern Lights Different Colors?"
+      original_script: >-
+        The Sun releases a steady solar wind of charged particles, carrying energy out into space.
+        Earth's magnetic field guides some of that energy into the upper atmosphere near the poles.
+        High above us, energetic electrons collide with oxygen and nitrogen, exciting the surrounding gas.
+        Excited oxygen emits green light at lower altitudes and red higher up; nitrogen can glow blue or pink.
+        As their colors overlap, glowing curtains ripple across the night sky, turning invisible energy into the northern lights.
+      character: "Original dynamic multicolored atmospheric particles and aurora curtains"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_bella
+      voice_style: expressive
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 33
+      shot_seconds: 6.6
+      resolution: shorts
+      render_profile: high
+      cinematic_3d: false
+
+  confirm:
+    name: Confirm original multicolored aurora MP4 and technical QA
+    needs: aurora-colors
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Record success after real media checks
+        run: |
+          {
+            echo '### Original Aurora Colors video generated successfully'
+            echo 'Find MP4, voice samples, SRT/VTT and detailed quality reports'
+            echo 'in artifact automate-ytb-free-preview of THIS workflow run.'
+            echo 'Artwork is an original animated scientific illustration, not 3D.'
+            echo 'Human editorial review required; no YouTube publication.'
+          } >> "$GITHUB_STEP_SUMMARY"
