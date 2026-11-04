@@ -231,29 +231,47 @@ def curve(name, mat, *, points=80, radius=.015):
     return spline
 
 
-def mountain_floor(material, *, offset=-1.4, grid=23):
+def terrain_height(x, y):
+    """Reproducible polar mountain profile, with ridged background silhouettes."""
+    ridge=math.exp(-((y-2.55)/1.48)**2)
+    peaks=(.42+1.06*abs(math.sin(x*.91+y*.32))**2.7
+           +.40*abs(math.sin(x*2.21-y*.26))**2.2)
+    micro=.10*math.sin(x*1.84+y*1.17)+.06*math.sin(x*4.19-y*2.36)
+    return -1.56 +ridge*peaks+micro+.045*math.sin(y*3.4+x*1.3)
+
+
+def mountain_floor(material, *, snow, stone, grid=63):
+    """Original faceted alpine relief with multiple true 3D material regions."""
     vertices, faces=[],[]
     for i in range(grid+1):
         y=-3.3+7.5*i/grid
         for j in range(grid+1):
             x=-5.8+11.6*j/grid
-            z=offset+.17*math.sin(x*.8+y*.9)+.14*math.sin(x*2.1+y*.45)
-            z+=.075*(abs(x)+abs(y))
-            vertices.append((x,y,z))
+            vertices.append((x,y,terrain_height(x,y)))
     for i in range(grid):
         for j in range(grid):
             a=i*(grid+1)+j
             faces.append((a,a+1,a+grid+2,a+grid+1))
-    mesh=bpy.data.meshes.new("Original alpine terrain")
+    mesh=bpy.data.meshes.new("Polar stratified alpine relief 3D geometry")
     mesh.from_pydata(vertices,[],faces)
     mesh.update()
-    obj=bpy.data.objects.new("Original snow and stone alpine mountains",mesh)
+    obj=bpy.data.objects.new("Glacial landscape multi-layered terrain",mesh)
     bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    for poly in mesh.polygons:
-        poly.use_smooth=True
+    for selected in (material,snow,stone):
+        obj.data.materials.append(selected)
+    for i in range(grid):
+        for j in range(grid):
+            poly=mesh.polygons[i*grid+j]
+            poly.use_smooth=True
+            # Materials follow *real geometry height*, not a flat color plate.
+            z=sum(vertices[idx][2] for idx in poly.vertices)/4
+            if z > -.34:
+                poly.material_index=1
+            elif z > -.85 and (i*5+j*7)%11 < 3:
+                poly.material_index=2
+            else:
+                poly.material_index=0
     return obj
-
 
 def curtain(name, material, *, index=0, nx=64, nz=34):
     verts, faces=[],[]
