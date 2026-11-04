@@ -19,8 +19,8 @@ VERSION = "approved-still-editorial-camera-v1"
 ZOOM_RANGE = {
     "wide": .034,
     "medium": .049,
-    "closeup": .058,
-    "macro": .061,
+    "closeup": .055,
+    "macro": .057,
     "low": .043,
     "shoulder": .054,
 }
