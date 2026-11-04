@@ -14,7 +14,7 @@ import tempfile
 from .encoding_profiles import video_args
 
 
-VERSION = "hold-frame-dissolve-v2-science-ui-mask"
+VERSION = "hold-frame-dissolve-v3-universal-editorial-cut"
 DISSOLVE_SECONDS = 0.32
 
 
@@ -27,8 +27,8 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
     video_args(render_profile)
     if type(preserve_science_ui) is not bool:
         raise ValueError("Invalid science UI preservation flag")
-    if mode not in {"dissolve", "cut"}:
-        raise ValueError("Unknown scene transition; use dissolve or cut")
+    if mode not in {"dissolve", "cut", "adaptive"}:
+        raise ValueError("Unknown scene transition; use adaptive, dissolve or cut")
     if fps not in {24, 30}:
         raise ValueError("Unsupported transition frame rate")
     if not clips or len(clips) != len(durations):
@@ -42,12 +42,49 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
                        "timelineShiftMs": 0, "method": "direct-cut"}
     from .production import _run
     cache.mkdir(parents=True, exist_ok=True)
+    boundary_reports = []
+    fade_count = 0
+    cut_count = 0
     for i in range(1, len(clips)):
         previous, current = clips[i - 1], clips[i]
         if not previous.is_file() or not current.is_file():
             raise ValueError("Cannot transition missing scene clips")
         blend = min(DISSOLVE_SECONDS, durations[i - 1] * 0.35,
                     durations[i] * 0.35)
+        # The adaptive editor compares ACTUAL encoded frame pairs rather
+        # than assuming every narrative boundary wants a double exposure.
+        # An explicit dissolve always retains the requested dissolve.
+        decision = None
+        if mode == "adaptive":
+            from .editorial_cuts import choose_transition
+            from PIL import Image
+            with tempfile.TemporaryDirectory(prefix="automate-ytb-cut-review-") as review_dir:
+                review_path = Path(review_dir)
+                outgoing = review_path / "outgoing.png"
+                incoming = review_path / "incoming.png"
+                _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                      "-y", "-sseof", "-0.12", "-i", str(previous),
+                      "-frames:v", "1", str(outgoing)])
+                _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                      "-y", "-i", str(current), "-frames:v", "1", str(incoming)])
+                with Image.open(outgoing) as frame:
+                    old = frame.convert("RGB")
+                with Image.open(incoming) as frame:
+                    new = frame.convert("RGB")
+                decision = choose_transition(old, new)
+        actual_mode = decision["mode"] if decision else "dissolve"
+        boundary_reports.append({
+            "fromScene": i,
+            "toScene": i + 1,
+            "transition": actual_mode,
+            "analysis": decision,
+            "timelineShiftMs": 0,
+        })
+        if actual_mode == "cut":
+            result.append(current)
+            cut_count += 1
+            continue
+        fade_count += 1
         # Never depend on a mutable clip name alone; production scene clips
         # contain approved image hashes, timing, direction and render version.
         source = f"{VERSION}|{previous.name}|{current.name}|{fps}|{blend:.6f}|{render_profile}|{preserve_science_ui}"
@@ -99,6 +136,14 @@ def transition_clips(clips: list[Path], *, cache: Path, fps: int,
             finally:
                 temp.unlink(missing_ok=True)
         result.append(dest)
-    return result, {"mode": mode, "count": len(clips) - 1,
-                    "durationSeconds": DISSOLVE_SECONDS,
-                    "timelineShiftMs": 0, "method": VERSION}
+    return result, {
+        "mode": mode,
+        "count": fade_count,
+        "cutCount": cut_count,
+        "analyzedBoundaries": len(boundary_reports),
+        "boundaries": boundary_reports,
+        "durationSeconds": DISSOLVE_SECONDS,
+        "timelineShiftMs": 0,
+        "method": VERSION,
+        "publicationApproved": False,
+    }

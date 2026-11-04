@@ -154,15 +154,42 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         # the separately narrated timeline and SRT boundaries.
         transitions = rendered.get("transitions", {})
         mode = transitions.get("mode") if isinstance(transitions, dict) else None
-        expected_transitions = count - 1 if mode == "dissolve" else 0
         metrics["transitionMode"] = mode
         metrics["transitionCount"] = (
             transitions.get("count") if isinstance(transitions, dict) else None)
         metrics["transitionTimelineShiftMs"] = (
             transitions.get("timelineShiftMs") if isinstance(transitions, dict) else None)
-        if (mode not in ("cut", "dissolve")
-                or transitions.get("count") != expected_transitions
-                or transitions.get("timelineShiftMs") != 0):
+        total_boundaries = count - 1
+        fade_count = transitions.get("count", -1) if isinstance(transitions, dict) else -1
+        cut_count = transitions.get("cutCount", 0) if isinstance(transitions, dict) else -1
+        boundaries = transitions.get("boundaries") if isinstance(transitions, dict) else None
+        valid_counts = (type(fade_count) is int and type(cut_count) is int
+                        and 0 <= fade_count <= total_boundaries
+                        and 0 <= cut_count <= total_boundaries)
+        if mode == "dissolve":
+            transition_valid = valid_counts and fade_count == total_boundaries and cut_count == 0
+        elif mode == "cut":
+            transition_valid = valid_counts and fade_count == 0
+        elif mode == "adaptive":
+            transition_valid = (
+                valid_counts and fade_count + cut_count == total_boundaries
+                and (total_boundaries == 0 and boundaries is None
+                     or isinstance(boundaries,list) and len(boundaries) == total_boundaries
+                     and all(
+                         isinstance(row,dict)
+                         and row.get("fromScene") == index+1
+                         and row.get("toScene") == index+2
+                         and row.get("transition") in ("cut","dissolve")
+                         and row.get("timelineShiftMs") == 0
+                         for index,row in enumerate(boundaries))
+                     and sum(row["transition"] == "dissolve" for row in boundaries) == fade_count)
+            )
+        else:
+            transition_valid = False
+        metrics["transitionCutCount"] = cut_count if valid_counts else None
+        metrics["transitionBoundariesVerified"] = (
+            total_boundaries if mode == "adaptive" and transition_valid else None)
+        if not transition_valid or transitions.get("timelineShiftMs") != 0:
             errors.append("Visual scene transitions changed or misstated the planned timeline")
         metrics["renderedDurationSeconds"] = rendered.get("targetDurationSeconds")
         if abs(float(rendered.get("targetDurationSeconds", -999)) - planned_duration) > 0.01:

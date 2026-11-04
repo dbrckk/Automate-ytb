@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v52-cycles-aurora-heldout-motion-v1"
+VERSION = "render-v53-adaptive-editing-bounded-camera-all-styles"
 
 
 def _sha(path: Path) -> str:
@@ -239,7 +239,7 @@ def _srt_time(ms: int) -> str:
 def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            limit: int | None = None, resolution: str = "720p", fps: int = 24,
            music: Path | None = None, caption_timing: str = "estimated",
-           transition: str = "dissolve",
+           transition: str = "adaptive",
            render_profile: str = "preview") -> dict:
     from .encoding_profiles import (settings, video_args, aac_args,
                                     VERSION as ENCODING_VERSION)
@@ -248,8 +248,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Supported resolutions: 720p/1080p/shorts, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
-    if transition not in {"cut", "dissolve"}:
-        raise ValueError("Transition must be cut or dissolve")
+    if transition not in {"cut", "dissolve", "adaptive"}:
+        raise ValueError("Transition must be adaptive, cut or dissolve")
     if caption_timing == "audio" and audio is None:
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
@@ -285,6 +285,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         if audio is not None else None for scene in scenes
     ]
     clips = []
+    editorial_cameras = []
     for scene_index, scene in enumerate(scenes):
         # Posters remain bound to the narration and character-specific rig.
         rig_tag = scene.get("motionRig")
@@ -375,14 +376,17 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         }, sort_keys=True, ensure_ascii=False).encode("utf-8")
         key = hashlib.sha256(stamp).hexdigest()[:18]
         clip = cache / f"{scene['id']}-{key}.mp4"
+        # For approved still-image documentaries, cinematic videos and
+        # non-articulated cartoons, apply a gentle, semantically directed
+        # camera instead of the original repetitive center zoom.
+        if not uses_motion_rig:
+            from .editorial_camera import camera_metadata
+            editorial_cameras.append(dict(
+                sceneId=scene["id"], **camera_metadata(
+                    scene_index=scene_index, duration=seconds,
+                    direction=scene.get("direction"))))
         if not clip.exists() or clip.stat().st_size == 0:
             w, h = dims
-            # Subtle continuous camera push-in; avoids frozen slides.
-            motion = ("scale=" + f"{w}:{h}:force_original_aspect_ratio=increase"
-                      + f",crop={w}:{h},"
-                      + "zoompan=z='min(zoom+0.00045,1.12)':"
-                      + "x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':"
-                      + f"d=1:s={w}x{h}:fps={fps},format=yuv420p")
             tmp = clip.with_name(clip.stem + ".tmp.mp4")
             try:
                 if science_art:
@@ -433,10 +437,14 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         render_profile=render_profile,
                     )
                 else:
+                    from .editorial_camera import camera_filter
+                    camera_motion = camera_filter(
+                        width=w, height=h, fps=fps, duration=seconds,
+                        scene_index=scene_index, direction=scene.get("direction"))
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-loop", "1", "-framerate", str(fps),
                           "-i", str(_asset_path(plan_path, scene)), "-t", f"{seconds:.3f}",
-                          "-vf", motion, *video_args(render_profile, still=True),
+                          "-vf", camera_motion, *video_args(render_profile, still=True),
                           "-an", str(tmp)])
                 os.replace(tmp, clip)
             finally:
@@ -569,6 +577,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                          else "original-bed-only" if music is not None else "narration-only" if audio is not None
                          else "silent"),
         "transitions": transitions_report,
+        "stillSceneCameras": editorial_cameras,
         "objectGaze": {
             "version": "prop-eye-pose-v1",
             "method": "static-original-2d-eye-offset-toward-scripted-object",
@@ -676,7 +685,7 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
-    p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
+    p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"], default="adaptive")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
