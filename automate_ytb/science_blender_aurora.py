@@ -17,7 +17,7 @@ from PIL import Image
 from .science_aurora import BEATS, STAGE_SIZE
 
 ENV_VAR = "AUTOMATE_YTB_AURORA_3D_DIR"
-VERSION = "cycles-aurora-stage-v1"
+VERSION = "cycles-aurora-stage-v2-heldout-motion"
 
 
 class BlenderAuroraStage:
@@ -94,12 +94,46 @@ class BlenderAuroraStage:
         self.paths = validated
         self.count = count
         self.source_size = (w,h)
+        # Optional real-render holdout gate. Absence preserves the old,
+        # dependency-free dissolve; a corrupted/foreign report hard-fails.
+        self.motion_modes = {beat: "dissolve" for beat in BEATS}
+        report_path = self.root / "motion-review.json"
+        if report_path.exists():
+            if (report_path.is_symlink() or not report_path.is_file()
+                    or not 0 < report_path.stat().st_size < 160_000):
+                raise ValueError("Unsafe source-render motion review file")
+            report = json.loads(report_path.read_text(encoding="utf8"))
+            from .motion_interpolation import VERSION as MOTION_VERSION
+            if (not isinstance(report,dict) or
+                    report.get("schemaVersion") != 1 or
+                    report.get("renderer") != "blender-cycles-cpu" or
+                    report.get("algorithm") != MOTION_VERSION or
+                    report.get("framesPerBeat") != count or
+                    report.get("sourceManifestSHA256") !=
+                    hashlib.sha256(manifest.read_bytes()).hexdigest()):
+                raise ValueError("3D motion QA does not match verified Blender source")
+            modes=report.get("beatModes")
+            if (not isinstance(modes,dict) or set(modes)!=set(BEATS) or
+                    any(mode not in ("flow","dissolve") for mode in modes.values())):
+                raise ValueError("Invalid per-scene 3D interpolation QA result")
+            self.motion_modes = dict(modes)
 
     @lru_cache(maxsize=4)
     def _pose(self, beat:str, index:int) -> Image.Image:
         with Image.open(self.paths[beat][index]) as file:
             return file.convert("RGBA").resize(
                 STAGE_SIZE,Image.Resampling.LANCZOS)
+
+    @lru_cache(maxsize=8)
+    def _native_pose(self, beat:str, index:int) -> Image.Image:
+        with Image.open(self.paths[beat][index]) as img:
+            return img.convert("RGBA")
+
+    @lru_cache(maxsize=2)
+    def _motion_pair(self, beat:str, lower:int):
+        from .motion_interpolation import MotionPair
+        return MotionPair(self._native_pose(beat,lower),
+                          self._native_pose(beat,lower+1))
 
     def frame(self, beat:str, *,t:float,duration:float) -> Image.Image:
         if (beat not in self.paths or type(t) not in (int,float)
@@ -114,6 +148,11 @@ class BlenderAuroraStage:
         a=self._pose(beat,lo)
         if hi == lo or delta <= 1e-9:
             return a.copy()
+        if self.motion_modes[beat] == "flow":
+            # Pair-specific bidirectional flow is computed only once and
+            # shared by every encoded frame between the same Cycles poses.
+            return self._motion_pair(beat,lo).frame(delta).resize(
+                STAGE_SIZE, Image.Resampling.LANCZOS)
         return Image.blend(a,self._pose(beat,hi),delta)
 
 
