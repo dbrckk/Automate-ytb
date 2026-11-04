@@ -37,7 +37,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v21-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-ash-atmosphere"
+PORTRAIT_VERSION = "original-science-shorts-v22-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-ash-atmosphere-worldmesh"
 INK = (238, 247, 250, 255)
 
 

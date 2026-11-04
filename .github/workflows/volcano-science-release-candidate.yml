@@ -10,6 +10,7 @@ on:
       - automate_ytb/science_volcano_lighting.py
       - automate_ytb/science_volcano_plume.py
       - automate_ytb/science_volcano_atmosphere.py
+      - automate_ytb/science_volcano_3d_camera.py
       - automate_ytb/science_volcano_magma.py
       - automate_ytb/science_audio_cues.py
       - automate_ytb/science_stage_director.py

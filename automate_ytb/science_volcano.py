@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
 from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
+from .science_volcano_3d_camera import render_orbit_terrain, VERSION as WORLD_CAMERA_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_atmosphere import cast_plume_shadow, draw_windborne_ash, VERSION as ATMOSPHERE_VERSION
@@ -77,6 +78,14 @@ def portrait_background() -> Image.Image:
 
 @lru_cache(maxsize=2)
 def _base(section: bool) -> Image.Image:
+    """Cached establishing/cutaway geography for all non-orbiting shots."""
+    return _compose_base(section)
+
+
+def _compose_base(section: bool, terrain: Image.Image | None = None) -> Image.Image:
+    """Put real rock geometry behind the original foreground and crater rim."""
+    if terrain is not None and (terrain.mode!="RGBA" or terrain.size!=SIZE):
+        raise ValueError("Volcanic terrain stage must be native RGBA")
     frame=Image.new("RGBA",SIZE)
     d=ImageDraw.Draw(frame)
     for y in range(SIZE[1]):
@@ -97,7 +106,7 @@ def _base(section: bool) -> Image.Image:
     # Do not extrude a flat opaque cone all the way to the bottom of frame.
     foundation = (*CONE_OUTLINE[:13], (1080, 1080), (0, 1080))
     d.polygon(foundation, fill=(28, 31, 41, 255))
-    frame.alpha_composite(shaded_terrain())
+    frame.alpha_composite(shaded_terrain() if terrain is None else terrain)
     d = ImageDraw.Draw(frame)
     if not section:
         # This foreground occlusion conceals the open 3D shell's lower rim,
@@ -261,7 +270,9 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
             or not math.isfinite(t) or not math.isfinite(duration)
             or not 0<duration<=180 or not 0<=t<=duration):
         raise ValueError("Invalid original volcano frame")
-    stage=_base(section=beat in ("magma","pressure","ascent")).copy()
+    stage=(_compose_base(False,render_orbit_terrain(t,duration))
+           if beat=="eruption" else
+           _base(section=beat in ("magma","pressure","ascent")).copy())
     if beat in ("magma","pressure","ascent"):
         draw_magma(stage,beat,t,duration)
     elif beat=="eruption":
