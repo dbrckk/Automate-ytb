@@ -21,7 +21,7 @@ from automate_ytb.captions import caption_phrases, subtitles_for_scenes
 
 class NaturalNarrationTests(unittest.TestCase):
     def test_profiles_bounded_and_not_fake_voice_replacements(self):
-        self.assertEqual(set(STYLES), {"natural", "gentle", "lively"})
+        self.assertEqual(set(STYLES), {"natural", "gentle", "lively", "expressive"})
         self.assertEqual(speaking_speed(style="natural"), .94)
         self.assertLess(speaking_speed(style="gentle"), .94)
         self.assertGreater(speaking_speed(style="lively"), 1)
