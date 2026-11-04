@@ -188,6 +188,14 @@ def ingest(*, plan_path: Path, scene_id: str, image_path: Path,
     finally:
         if os.path.exists(tmp_name):
             os.unlink(tmp_name)
+    # Explicitly replacing moving footage with a still must remove stale
+    # video approval; otherwise render would silently keep the old clip.
+    if "videoAsset" in match:
+        old_video = _video_path(plan_path, match)
+        old_video.unlink(missing_ok=True)
+        for key in ("videoAsset","videoApproved","videoSha256",
+                    "videoLicenseEvidence","videoProvenanceVersion","videoDetails"):
+            match.pop(key, None)
     match.update({
         "assetApproved": True,
         "assetLicenseEvidence": rights_note.strip(),
