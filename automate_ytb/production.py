@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v53-universal-directed-camera-v1"
+VERSION = "render-v54-real-owned-footage-mixed-scenes-v1"
 
 
 def _sha(path: Path) -> str:
@@ -72,6 +72,12 @@ def load_plan(path: Path) -> dict:
             raise ValueError(f"Unexpected scene identifier at index {i}")
         if scene.get("imageAsset") != f"assets/{expected}.png":
             raise ValueError(f"Unsafe image path for {sid}")
+        if "videoAsset" in scene:
+            if scene["videoAsset"] != f"assets/{expected}.mp4":
+                raise ValueError(f"Unsafe video path for {sid}")
+            if (scene.get("renderStyle") == "science" or
+                    scene.get("motionRig") is not None):
+                raise ValueError("Real source footage cannot impersonate an animated rig")
         start, end = scene.get("startMs"), scene.get("endMs")
         if (not isinstance(start, int) or not isinstance(end, int) or
                 isinstance(start, bool) or isinstance(end, bool) or
@@ -96,6 +102,17 @@ def _asset_path(plan_path: Path, scene: dict) -> Path:
     if not dest.resolve().is_relative_to(root):
         raise ValueError("Scene asset points outside the project")
     return dest
+
+
+def _video_path(plan_path: Path, scene: dict) -> Path:
+    root = plan_path.resolve().parent
+    rel = scene.get("videoAsset")
+    if rel != f"assets/{scene['id']}.mp4":
+        raise ValueError("Unsafe original footage asset path")
+    file = root / rel
+    if not file.resolve().is_relative_to(root):
+        raise ValueError("Original footage escapes approved workspace")
+    return file
 
 
 def prepare(plan_path: Path, output: Path, price_per_image_usd: str | None = None) -> dict:
@@ -171,6 +188,14 @@ def ingest(*, plan_path: Path, scene_id: str, image_path: Path,
     finally:
         if os.path.exists(tmp_name):
             os.unlink(tmp_name)
+    # Explicitly replacing moving footage with a still must remove stale
+    # video approval; otherwise render would silently keep the old clip.
+    if "videoAsset" in match:
+        old_video = _video_path(plan_path, match)
+        old_video.unlink(missing_ok=True)
+        for key in ("videoAsset","videoApproved","videoSha256",
+                    "videoLicenseEvidence","videoProvenanceVersion","videoDetails"):
+            match.pop(key, None)
     match.update({
         "assetApproved": True,
         "assetLicenseEvidence": rights_note.strip(),
@@ -188,6 +213,88 @@ def ingest(*, plan_path: Path, scene_id: str, image_path: Path,
             "recordedCostUsd": str(cost), "publicationApproved": False}
 
 
+
+def ingest_video(*, plan_path: Path, scene_id: str, video_path: Path,
+                 provider: str, rights_note: str, cost_usd: str,
+                 rights_confirmed: bool = False, replace: bool = False,
+                 clip_start_seconds: float = 0) -> dict:
+    """Import an owned/licensed source clip as a genuine moving scene.
+
+    The clip is stored with a verified fixed name and generates its own
+    reviewed PNG poster. Source audio is intentionally excluded; separate
+    narration and original music keep their existing production timing.
+    """
+    from .footage import normalize_video, VERSION as FOOTAGE_VERSION
+    if not rights_confirmed:
+        raise ValueError("Explicit --confirm-rights required before importing footage")
+    if not PROVIDER.fullmatch(provider) or not 12 <= len(rights_note.strip()) <= 1000:
+        raise ValueError("Provide a valid provider and detailed source/rights note")
+    cost = _money(cost_usd)
+    data = load_plan(plan_path)
+    match = next((scene for scene in data["scenes"] if scene["id"] == scene_id), None)
+    if match is None:
+        raise ValueError("Unknown scene identifier")
+    if (match.get("renderStyle") == "science" or
+            match.get("motionRig") is not None):
+        raise ValueError("Original science/cartoon motion rigs cannot use footage replacement")
+    source = Path(video_path).expanduser()
+    if not source.is_file() or source.is_symlink():
+        raise ValueError("Original footage must be a regular local file")
+    poster = _asset_path(plan_path, match)
+    movie = poster.parent / f"{scene_id}.mp4"
+    if (poster.exists() or movie.exists()) and not replace:
+        raise ValueError("Scene media exists; use --replace to overwrite explicitly")
+    if source.resolve() in (poster.resolve(), movie.resolve()):
+        raise ValueError("Original source footage must be outside managed destinations")
+    poster.parent.mkdir(parents=True, exist_ok=True)
+    seconds = (match["endMs"] - match["startMs"]) / 1000
+    fd_movie, temp_movie = tempfile.mkstemp(
+        prefix=".footage-", suffix=".mp4", dir=poster.parent)
+    fd_image, temp_image = tempfile.mkstemp(
+        prefix=".footage-poster-", suffix=".png", dir=poster.parent)
+    os.close(fd_movie)
+    os.close(fd_image)
+    try:
+        details = normalize_video(
+            source, Path(temp_movie), Path(temp_image),
+            start=clip_start_seconds, seconds=seconds)
+        movie_hash = _sha(Path(temp_movie))
+        poster_hash = _sha(Path(temp_image))
+        # Both approved media files are moved only after full decoding,
+        # codec validation and PNG poster extraction have succeeded.
+        os.replace(temp_movie, movie)
+        os.replace(temp_image, poster)
+    finally:
+        Path(temp_movie).unlink(missing_ok=True)
+        Path(temp_image).unlink(missing_ok=True)
+    match.update({
+        "assetApproved": True,
+        "assetLicenseEvidence": rights_note.strip(),
+        "assetSha256": poster_hash,
+        "assetProvider": provider,
+        "assetCostUsd": str(cost),
+        "assetImportedAt": datetime.now(timezone.utc).isoformat(),
+        "reviewStatus": "original-footage-rights-confirmed-by-user",
+        "videoAsset": f"assets/{scene_id}.mp4",
+        "videoApproved": True,
+        "videoSha256": movie_hash,
+        "videoLicenseEvidence": rights_note.strip(),
+        "videoProvenanceVersion": FOOTAGE_VERSION,
+        "videoDetails": details,
+    })
+    data["assetUseApproved"] = all(x.get("assetApproved") for x in data["scenes"])
+    data["publicationApproved"] = False
+    _write_json(plan_path.resolve(), data)
+    return {
+        "sceneId": scene_id,
+        "videoSha256": movie_hash,
+        "posterSha256": poster_hash,
+        "videoDetails": details,
+        "recordedCostUsd": str(cost),
+        "sourceAudioIncluded": False,
+        "publicationApproved": False,
+    }
+
 def audit(plan_path: Path, limit: int | None = None) -> dict:
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
@@ -204,6 +311,16 @@ def audit(plan_path: Path, limit: int | None = None) -> dict:
               or not scene.get("assetSha256")):
             state = "unreviewed"
         elif _sha(dest) != scene["assetSha256"]:
+            state = "changed"
+        elif "videoAsset" in scene and (
+                not scene.get("videoApproved")
+                or not scene.get("videoLicenseEvidence")
+                or not scene.get("videoSha256")):
+            state = "unreviewed"
+        elif "videoAsset" in scene and (
+                not _video_path(plan_path, scene).is_file()
+                or _video_path(plan_path, scene).is_symlink()
+                or _sha(_video_path(plan_path, scene)) != scene["videoSha256"]):
             state = "changed"
         else:
             state = "ready"
@@ -331,6 +448,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         uses_motion_rig = uses_owl_rig or uses_forest_rig or science_art
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
+            "sourceVideoSha": scene.get("videoSha256"),
+            "sourceType": "real-footage" if "videoAsset" in scene else "image",
             "dimensions": dims, "fps": fps, "renderer": VERSION,
             "universalCameraVersion": "universal-shot-camera-v1",
             "aurora3DManifestSHA": (
@@ -352,7 +471,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "scene": scene["narration"] if uses_motion_rig else "",
             "topic": data["topic"] if uses_motion_rig else "",
             "character": data.get("originalCharacterBible") if uses_motion_rig else "",
-            "direction": scene.get("direction") if uses_motion_rig else None,
+            "direction": scene.get("direction"),
             "carriedProp": carried_by_scene[scene_index] if uses_motion_rig else None,
             "landscape": scene_landscapes[scene_index] if uses_motion_rig else None,
             "synthesizedGestureCues": (
@@ -433,6 +552,15 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         landscape=scene_landscapes[scene_index],
                         render_profile=render_profile,
                     )
+                elif "videoAsset" in scene:
+                    # Respect actual recorded motion. Source audio is excluded
+                    # so the authored narration/music timeline stays intact.
+                    _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                          "-i", str(_video_path(plan_path, scene)),
+                          "-t", f"{seconds:.3f}",
+                          "-vf", (f"scale={w}:{h}:force_original_aspect_ratio=increase,"
+                                  f"crop={w}:{h},fps={fps},format=yuv420p"),
+                          *video_args(render_profile), "-an", str(tmp)])
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-loop", "1", "-framerate", str(fps),
@@ -553,6 +681,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                      "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
+        "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
+        "realFootageSourceAudioIncluded": False,
         "renderProfile": render_profile,
         "videoEncodingPreset": codec["preset"],
         "videoEncodingCrf": codec["crf"],
@@ -667,6 +797,16 @@ def main(argv=None) -> int:
     p.add_argument("--cost-usd", default="0")
     p.add_argument("--confirm-rights", action="store_true")
     p.add_argument("--replace", action="store_true")
+    p = sub.add_parser("ingest-video", help="Import an owned video clip with rights and source-audio isolation")
+    p.add_argument("--plan", type=Path, required=True)
+    p.add_argument("--scene", required=True)
+    p.add_argument("--video", type=Path, required=True)
+    p.add_argument("--provider", required=True)
+    p.add_argument("--rights-note", required=True)
+    p.add_argument("--cost-usd", default="0")
+    p.add_argument("--start-seconds", type=float, default=0)
+    p.add_argument("--confirm-rights", action="store_true")
+    p.add_argument("--replace", action="store_true")
     p = sub.add_parser("audit", help="Verify completeness, checksums, review and recorded image costs")
     p.add_argument("--plan", type=Path, required=True)
     p.add_argument("--limit", type=int, default=None)
@@ -687,6 +827,13 @@ def main(argv=None) -> int:
                             image_path=args.image, provider=args.provider,
                             rights_note=args.rights_note, cost_usd=args.cost_usd,
                             rights_confirmed=args.confirm_rights, replace=args.replace)
+        elif args.command == "ingest-video":
+            result = ingest_video(
+                plan_path=args.plan, scene_id=args.scene,
+                video_path=args.video, provider=args.provider,
+                rights_note=args.rights_note, cost_usd=args.cost_usd,
+                rights_confirmed=args.confirm_rights, replace=args.replace,
+                clip_start_seconds=args.start_seconds)
         elif args.command == "audit":
             result = audit(args.plan, args.limit)
         else:
