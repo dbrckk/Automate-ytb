@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v52-cycles-aurora-heldout-motion-v1"
+VERSION = "render-v53-universal-directed-camera-v1"
 
 
 def _sha(path: Path) -> str:
@@ -332,6 +332,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
+            "universalCameraVersion": "universal-shot-camera-v1",
             "aurora3DManifestSHA": (
                 _sha(Path(os.environ["AUTOMATE_YTB_AURORA_3D_DIR"]) / "manifest.json")
                 if science_art and os.environ.get("AUTOMATE_YTB_AURORA_3D_DIR")
@@ -377,12 +378,12 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         clip = cache / f"{scene['id']}-{key}.mp4"
         if not clip.exists() or clip.stat().st_size == 0:
             w, h = dims
-            # Subtle continuous camera push-in; avoids frozen slides.
-            motion = ("scale=" + f"{w}:{h}:force_original_aspect_ratio=increase"
-                      + f",crop={w}:{h},"
-                      + "zoompan=z='min(zoom+0.00045,1.12)':"
-                      + "x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':"
-                      + f"d=1:s={w}x{h}:fps={fps},format=yuv420p")
+            # Generic still-image genres use the same authored camera grammar
+            # as animated scenes; no more identical center zoom on every shot.
+            from .camera_motion import camera_filter
+            motion = camera_filter(
+                w, h, fps=fps, duration=seconds,
+                direction=scene.get("direction"))
             tmp = clip.with_name(clip.stem + ".tmp.mp4")
             try:
                 if science_art:
