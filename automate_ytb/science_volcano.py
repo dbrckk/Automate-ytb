@@ -17,6 +17,7 @@ from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
 from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
+from .science_volcano_atmosphere import cast_plume_shadow, draw_windborne_ash, VERSION as ATMOSPHERE_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
 
 SIZE=(1080,1380)
@@ -145,6 +146,9 @@ def _glow(stage:Image.Image,centres:list[tuple[float,float,float]])->None:
 
 def _explosion(stage:Image.Image,t:float,duration:float)->None:
     """Crater-origin glowing vent, continuously turbulent ash and tephra."""
+    # The growing ash column dims *the lit 3D rock*, not the sky/UI.
+    # Crater incandescence then relights nearby facets through that shadow.
+    cast_plume_shadow(stage,t,duration)
     illuminate_rock(stage,[(540,345,330,.78+.22*math.sin(t*3.8)**2)])
     _glow(stage,[(540,345,182+34*math.sin(t*2.2)**2)])
     # Billows rise from the same summit as the red-hot vent, gradually
@@ -157,6 +161,8 @@ def _explosion(stage:Image.Image,t:float,duration:float)->None:
     d.line((540,354,541,354-jet),fill=(244,83,25,234),width=24)
     d.line((540,347,541,354-jet),fill=(255,221,112,235),width=9)
     draw_ejecta(stage,t,duration)
+    # Near-field ash travels on independent depth/settling trajectories.
+    draw_windborne_ash(stage,t,duration)
 
 def _lava(stage:Image.Image,t:float,duration:float)->None:
     """Advancing, rock-guided meandering molten rivers with animated hot cores.
