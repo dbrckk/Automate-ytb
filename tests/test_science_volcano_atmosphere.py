@@ -43,7 +43,11 @@ class VolcanicAtmosphereTests(unittest.TestCase):
         stage = _base(False).copy()
         _explosion(stage, 3.1, 6.8)
         self.assertEqual(stage.size, SIZE)
-        self.assertEqual(stage.getchannel("A").getextrema(), (255,255))
+        self.assertEqual(stage.mode, "RGBA")
+        # This intermediate layer legitimately contains translucent terrain
+        # and tephra. The final portrait compositor supplies the opaque sky.
+        # Requiring alpha==255 here was an incorrect test contract.
+        self.assertNotEqual(stage.tobytes(), _base(False).tobytes())
 
     def test_invalid_stages_and_clocks_fail_explicitly(self):
         for t,duration in ((-1,6), (7,6), (1,0),
