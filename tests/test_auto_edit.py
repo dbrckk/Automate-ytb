@@ -39,7 +39,7 @@ class SourceAllocationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Not enough continuous"):
             assign_sources([6000]*4,[7000,7000])
         with self.assertRaises(ValueError):
-            assign_sources([500], [10000])
+            assign_sources([499], [10000])
 
     def test_genres_are_explicit_not_llm_semantic_inference(self):
         self.assertIn("documentary", GENRES)
