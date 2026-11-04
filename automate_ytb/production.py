@@ -685,7 +685,7 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--resolution", choices=["720p", "1080p"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
-    p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
+    p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"], default="adaptive")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
