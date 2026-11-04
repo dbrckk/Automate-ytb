@@ -577,11 +577,34 @@ def main():
     manifest={"schemaVersion":1,"domain":"aurora",
               "generator":"blender-cycles-cpu","width":options.width,
               "height":options.height,"framesPerBeat":options.frames,
-              "beats":{}}
+              "beats":{},"sceneDetails":{}}
     for beat in BEATS:
         scene,dynamic,camera=setup(beat,options.width,options.height,options.samples)
         folder=output/beat
         folder.mkdir(parents=True,exist_ok=True)
+        terrain=bpy.data.objects.get("Glacial landscape multi-layered terrain")
+        planet=bpy.data.materials.get("Original detailed Earth ocean and continent shader")
+        if terrain is None or terrain.type != "MESH":
+            raise RuntimeError("Aurora stage missing the physically modeled polar terrain")
+        # Actual Blender object/vertex counts; these are not editorial scores.
+        evidence={
+            "terrainVertices":len(terrain.data.vertices),
+            "totalMeshObjects":sum(1 for obj in scene.objects if obj.type=="MESH"),
+            "earthShaderNodes":len(planet.node_tree.nodes) if planet else 0,
+            "diatomicMolecules":len(dynamic["particles"]),
+            "incomingElectrons":len(dynamic["electrons"]),
+            "emittedPhotons":len(dynamic["photons"]),
+            "curtainSurfaceVertices":sum(
+                len(obj.data.vertices) for obj in dynamic["sheets"]),
+        }
+        if (evidence["terrainVertices"] < 2000 or
+                (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 12) or
+                (beat in ("collisions","emission") and
+                 (evidence["diatomicMolecules"] < 12 or evidence["incomingElectrons"] < 8)) or
+                (beat=="emission" and evidence["emittedPhotons"] < 8) or
+                (beat=="curtains" and evidence["curtainSurfaceVertices"] < 10000)):
+            raise RuntimeError(f"3D environment is incomplete: {beat}, {evidence}")
+        manifest["sceneDetails"][beat]=evidence
         records=[]
         for i in range(options.frames):
             q=i/(options.frames-1)
