@@ -1,0 +1,62 @@
+name: Verify real Blender 3D aurora science Short
+
+# Runs the real CPU Cycles renderer and full Kokoro/FFmpeg QA on one run.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/aurora-blender3d-release-candidate.yml
+      - .github/workflows/one-click-preview.yml
+      - scripts/blender_aurora_stage.py
+      - automate_ytb/science_blender_aurora.py
+      - automate_ytb/aurora_stage_review.py
+      - automate_ytb/science_aurora.py
+      - automate_ytb/science_portrait.py
+      - automate_ytb/production.py
+      - tests/test_science_blender_aurora.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blender-3d-aurora-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-aurora-blender-video:
+    name: Original 3D aurora, actual English Kokoro MP4 and independent QA
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Do Northern Lights Dance?"
+      original_script: >-
+        The Sun constantly releases a stream of charged particles called the solar wind, flowing out through space.
+        Earth's invisible magnetic field guides some of them toward the northern and southern polar skies.
+        High above us, those particles collide with oxygen and nitrogen in the atmosphere.
+        Excited gases emit colored light, usually green, sometimes red or violet.
+        These glowing regions stretch into rippling curtains: the northern lights dancing across the sky.
+      character: "Original cinematic aurora: real 3D particles, polar sky and glowing curtains"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: dissolve
+      caption_timing: audio
+      duration_seconds: 31
+      shot_seconds: 6.2
+      resolution: shorts
+      render_profile: high
+      cinematic_3d: true
+
+  verify:
+    name: Publish artifacts only for technical review, not to YouTube
+    needs: real-aurora-blender-video
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Explain human release gate
+        run: |
+          echo '### Original Blender 3D aurora Short technically passed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Download the actual MP4 and Blender review sheet in this run.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Human watching, listening and source checking are still required.' >> "$GITHUB_STEP_SUMMARY"
