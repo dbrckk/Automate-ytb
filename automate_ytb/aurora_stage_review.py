@@ -40,7 +40,10 @@ def review(folder: Path, destination: Path) -> dict:
         "schemaVersion":1,"renderer":"blender-cycles-cpu",
         "domain":"aurora","scenesReviewed":len(BEATS),
         "framesPerBeat":stage.count,"allAnimated":all(changes.values()),
-        "motionEvidence":changes,"humanApproved":False,
+        "motionEvidence":changes,
+        "actualBlenderSceneGeometry":stage.scene_details,
+        "geometryVerified":stage.scene_details is not None,
+        "humanApproved":False,
         "publicationApproved":False,
         "limit":"Two sampled source 3D poses per beat do not certify full temporal quality",
     }
