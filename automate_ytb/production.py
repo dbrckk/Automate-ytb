@@ -23,7 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 SCENE_ID = re.compile(r"scene-\d{3,4}\Z")
 PROVIDER = re.compile(r"[a-zA-Z0-9_.-]{2,64}\Z")
 MAX_SCENES = 1200
-VERSION = "render-v50-science-cinema-overlay-safe"
+VERSION = "render-v51-science-cinema-blender3d-opt-in"
 
 
 def _sha(path: Path) -> str:
@@ -332,6 +332,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         stamp = json.dumps({
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "dimensions": dims, "fps": fps, "renderer": VERSION,
+            "blender3DManifestSHA": (
+                _sha(Path(os.environ["AUTOMATE_YTB_OCEAN_3D_DIR"]) / "manifest.json")
+                if science_art and os.environ.get("AUTOMATE_YTB_OCEAN_3D_DIR")
+                else None),
             "renderProfile": render_profile, "encodingVersion": ENCODING_VERSION,
             "rig": rig_tag if uses_motion_rig else None,
             "scene": scene["narration"] if uses_motion_rig else "",
