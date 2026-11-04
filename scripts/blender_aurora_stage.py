@@ -112,6 +112,96 @@ def surface(name, rgb, *, glow=0., rough=.52, metallic=0., translucent=False):
     return mat
 
 
+def planet_material():
+    """Color-layered Earth proxy with polar ice and ocean/continent relief.
+
+    Procedural noise is used for illustrative landmasses; this does not
+    pretend to be a geographically accurate map of the Earth.
+    """
+    mat=bpy.data.materials.new("Original detailed Earth ocean and continent shader")
+    mat.use_nodes=True
+    nodes=mat.node_tree.nodes
+    nodes.clear()
+    links=mat.node_tree.links
+    output=nodes.new("ShaderNodeOutputMaterial")
+    principled=nodes.new("ShaderNodeBsdfPrincipled")
+    principled.inputs["Roughness"].default_value=.49
+    coordinates=nodes.new("ShaderNodeTexCoord")
+    noise=nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value=4.6
+    noise.inputs["Detail"].default_value=5.0
+    noise.inputs["Roughness"].default_value=.65
+    palette=nodes.new("ShaderNodeValToRGB")
+    ramp=palette.color_ramp
+    ramp.elements[0].position=.0
+    ramp.elements[0].color=(.008,.038,.14,1)
+    ramp.elements[1].position=1.
+    ramp.elements[1].color=(.67,.74,.73,1)
+    for pos,color in (
+            (.35,(.02,.12,.29,1)),
+            (.47,(.04,.30,.52,1)),
+            (.515,(.06,.37,.24,1)),
+            (.59,(.19,.31,.18,1)),
+            (.69,(.39,.38,.25,1)),
+            (.80,(.70,.68,.59,1))):
+        ramp.elements.new(pos).color=color
+    split=nodes.new("ShaderNodeSeparateXYZ")
+    north=nodes.new("ShaderNodeMath")
+    north.operation="GREATER_THAN"
+    north.inputs[1].default_value=.86
+    south=nodes.new("ShaderNodeMath")
+    south.operation="LESS_THAN"
+    south.inputs[1].default_value=.14
+    polar=nodes.new("ShaderNodeMath")
+    polar.operation="MAXIMUM"
+    combine=nodes.new("ShaderNodeMixRGB")
+    combine.blend_type="MIX"
+    combine.inputs[2].default_value=(.69,.85,.91,1)
+    relief=nodes.new("ShaderNodeBump")
+    relief.inputs["Strength"].default_value=.10
+    relief.inputs["Distance"].default_value=.025
+    links.new(coordinates.outputs["Generated"],noise.inputs["Vector"])
+    links.new(noise.outputs["Fac"],palette.inputs["Fac"])
+    links.new(coordinates.outputs["Generated"],split.inputs[0])
+    links.new(split.outputs["Z"],north.inputs[0])
+    links.new(split.outputs["Z"],south.inputs[0])
+    links.new(north.outputs[0],polar.inputs[0])
+    links.new(south.outputs[0],polar.inputs[1])
+    links.new(polar.outputs[0],combine.inputs[0])
+    links.new(palette.outputs["Color"],combine.inputs[1])
+    links.new(combine.outputs[0],principled.inputs["Base Color"])
+    links.new(noise.outputs["Fac"],relief.inputs["Height"])
+    links.new(relief.outputs[0],principled.inputs["Normal"])
+    links.new(principled.outputs[0],output.inputs["Surface"])
+    return mat
+
+
+def atmosphere_material():
+    """Thin grazing-angle scattering proxy around a genuine 3D planet."""
+    mat=bpy.data.materials.new("Polar atmosphere soft Fresnel rim")
+    mat.use_nodes=True
+    nodes=mat.node_tree.nodes
+    nodes.clear()
+    links=mat.node_tree.links
+    output=nodes.new("ShaderNodeOutputMaterial")
+    transparent=nodes.new("ShaderNodeBsdfTransparent")
+    glow=nodes.new("ShaderNodeEmission")
+    glow.inputs["Color"].default_value=(.15,.60,1,1)
+    glow.inputs["Strength"].default_value=1.1
+    weight=nodes.new("ShaderNodeLayerWeight")
+    weight.inputs["Blend"].default_value=.3
+    intensity=nodes.new("ShaderNodeMath")
+    intensity.operation="MULTIPLY"
+    intensity.inputs[1].default_value=.33
+    mixer=nodes.new("ShaderNodeMixShader")
+    links.new(weight.outputs["Fresnel"],intensity.inputs[0])
+    links.new(intensity.outputs[0],mixer.inputs[0])
+    links.new(transparent.outputs[0],mixer.inputs[1])
+    links.new(glow.outputs[0],mixer.inputs[2])
+    links.new(mixer.outputs[0],output.inputs["Surface"])
+    return mat
+
+
 def aim(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
