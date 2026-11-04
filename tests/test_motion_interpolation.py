@@ -27,12 +27,12 @@ def _source_frame(source: np.ndarray, offset: float) -> Image.Image:
 
 def _fixture(folder: Path, *, count=7) -> None:
     rng=np.random.default_rng(247)
-    base=rng.integers(8,231,(240,320,3),dtype=np.uint8)
+    base=rng.integers(8,231,(320,360,3),dtype=np.uint8)
     cv2.circle(base,(108,103),31,(246,83,32),-1,cv2.LINE_AA)
     cv2.rectangle(base,(209,64),(278,157),(51,237,118),-1)
     manifest={"schemaVersion":1,"domain":"aurora",
               "generator":"blender-cycles-cpu",
-              "width":320,"height":240,"framesPerBeat":count,"beats":{}}
+              "width":360,"height":320,"framesPerBeat":count,"beats":{}}
     for beat in BEATS:
         directory=folder/beat
         directory.mkdir()
