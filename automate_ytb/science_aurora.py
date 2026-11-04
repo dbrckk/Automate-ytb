@@ -246,20 +246,31 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
 
 
 def draw_aurora(picture: Image.Image,beat:str,t:float,duration:float,
-                english:bool, *, event_progress:float|None=None) -> None:
+                english:bool, *, event_progress:float|None=None,
+                stage_plate:Image.Image|None=None) -> None:
     if (picture.mode!="RGBA" or picture.size!=(1080,1920)
             or beat not in BEATS or type(english) is not bool
             or type(t) not in (int,float) or type(duration) not in (int,float)
             or not math.isfinite(t) or not math.isfinite(duration)
             or not 0<duration<=180 or not 0<=t<=duration):
         raise ValueError("Invalid aurora science frame")
-    stage = _plate(night=beat=="curtains").copy()
+    if stage_plate is not None and (
+            not isinstance(stage_plate, Image.Image)
+            or stage_plate.mode != "RGBA" or stage_plate.size != STAGE_SIZE):
+        raise ValueError("Invalid real Blender aurora background plate")
+    stage = (stage_plate.copy() if stage_plate is not None else
+             _plate(night=beat=="curtains").copy())
     if beat=="solar_wind":
-        _sphere(stage,214,530,128,sunlight=True)
+        # With real 3D, leave Blender's solar source and planet visible;
+        # retain the explanatory moving charged-particle overlay.
+        if stage_plate is None:
+            _sphere(stage,214,530,128,sunlight=True)
         _stream(stage,t)
-        _sphere(stage,930,650,102)
+        if stage_plate is None:
+            _sphere(stage,930,650,102)
     elif beat=="magnetic_field":
-        _sphere(stage,660,660,149)
+        if stage_plate is None:
+            _sphere(stage,660,660,149)
         _field(stage,t)
         _stream(stage,t,bend=True)
     elif beat=="collisions":
