@@ -612,7 +612,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         clips, cache=cache, fps=fps,
         durations=[(s["endMs"] - s["startMs"]) / 1000 for s in scenes],
         mode=transition, render_profile=render_profile,
-        preserve_science_ui=(resolution == "shorts"))
+        # Only authored science scenes have protected title/caption UI.
+        # Licensed 9:16 footage must transition across its full moving frame.
+        preserve_science_ui=(resolution == "shorts" and any(
+            scene.get("renderStyle") == "science" for scene in scenes)))
     concat = output / "clips.ffconcat"
     concat.write_text("ffconcat version 1.0\n" +
                       "".join(f"file {_quoted(c)}\n" for c in edited_clips), encoding="utf-8")
