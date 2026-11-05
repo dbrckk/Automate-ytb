@@ -197,7 +197,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
               provider: str = "original-camera",
               resolution: str = "shorts", fps: int = 30,
               transition: str = "adaptive", render_profile: str = "preview",
-              audio: Path | None = None, music: Path | None = None) -> dict:
+              audio: Path | None = None, music: Path | None = None,
+              voice_engine: str = "none", language: str = "en",
+              voice_name: str | None = None,
+              narration_style: str = "natural") -> dict:
     """Publish an inspectable project folder only after actual MP4 succeeds."""
     if not rights_confirmed:
         raise ValueError("Explicit --confirm-rights required for every source")
@@ -215,6 +218,14 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         raise ValueError("Invalid original video export size or frame rate")
     if transition not in ("cut","dissolve","adaptive") or render_profile not in ("preview","high"):
         raise ValueError("Invalid transition or render profile")
+    if voice_engine not in ("none", "espeak", "kokoro") or language not in ("en", "fr"):
+        raise ValueError("Unsupported narration engine/language")
+    if narration_style not in ("natural", "gentle", "lively", "expressive"):
+        raise ValueError("Unsupported narration delivery style")
+    if audio is not None and voice_engine != "none":
+        raise ValueError("Choose supplied narration audio or local synthesized speech")
+    if voice_name is not None and voice_engine != "kokoro":
+        raise ValueError("A named voice requires Kokoro narration")
     destination=Path(destination).expanduser().resolve()
     if destination.exists():
         raise ValueError("Destination already exists; choose a new output folder")
@@ -253,13 +264,35 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
                 for x in profiles]
     # Bind rendered excerpts to exact source bytes, not just filenames.
     source_hashes={source:_sha(source) for source in sources}
-    groups=assign_sources(durations,capacities)
-    excerpts=select_excerpts(sources,durations,capacities,groups)
+    # Reject obviously impossible edit requests before loading a TTS model.
+    assign_sources(durations, capacities)
     staging=Path(tempfile.mkdtemp(
         prefix=".automate-ytb-autoedit-",dir=destination.parent))
     try:
         staged_plan=staging/"scene-plan.json"
         _write_json(staged_plan,storyboard)
+        effective_audio=audio
+        narration_info=None
+        if voice_engine != "none":
+            # Reuse the production voice pipeline: its real PCM duration
+            # updates the scene plan and audio-derived caption boundaries.
+            # The final footage allocation must be computed AFTER this step.
+            from .episode import _narrate_scenes
+            effective_audio=staging/"narration.wav"
+            narration_info=_narrate_scenes(
+                staged_plan, effective_audio, language, None,
+                engine=voice_engine, voice_name=voice_name,
+                caption_timing="audio", narration_style=narration_style)
+            storyboard=load_plan(staged_plan)
+            durations=[scene["endMs"]-scene["startMs"]
+                       for scene in storyboard["scenes"]]
+            voice_report=dict(narration_info)
+            voice_report["voice"]=str(destination/"narration.wav")
+            _write_json(staging/"voice-report.json",voice_report)
+        # Speech may be longer than authored timeboxes: fail closed rather
+        # than speeding up speech, duplicating footage or truncating phrases.
+        groups=assign_sources(durations,capacities)
+        excerpts=select_excerpts(sources,durations,capacities,groups)
         imported=[]
         for item in excerpts:
             scene_id=storyboard["scenes"][item["sceneIndex"]]["id"]
@@ -285,7 +318,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         edited=render(
             plan_path=staged_plan,output=staging/"render",
             resolution=resolution,fps=fps,transition=transition,
-            render_profile=render_profile,audio=audio,music=music)
+            render_profile=render_profile,audio=effective_audio,music=music,
+            caption_timing="audio" if narration_info is not None else "estimated")
         preview=staging/"render"/"preview.mp4"
         if (not preview.is_file() or preview.stat().st_size < 10000
                 or edited["scenesRendered"] != len(excerpts)):
@@ -304,8 +338,20 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "sourceOrderPreserved":True,
             "sourceSegmentsNonoverlapping":True,
             "semanticMatchingPerformed":False,
-            "voiceGenerated":False,
+            "voiceGenerated":narration_info is not None,
             "hasUserProvidedNarration":audio is not None,
+            "narrationEngine":(
+                narration_info["engine"] if narration_info is not None
+                else ("user-provided" if audio is not None else "none")),
+            "narrationLanguage":language if narration_info is not None else None,
+            "narrationVoiceId":(
+                narration_info["voiceId"] if narration_info is not None else None),
+            "narrationAudio":(
+                str(destination/"narration.wav") if narration_info is not None
+                else None),
+            "subtitleTiming":(
+                "audio-derived-synthesized-phrases"
+                if narration_info is not None else "estimated"),
             "sourceAudioIncluded":False,
             "outputVideo":str(destination/"render"/"preview.mp4"),
             "resolution":resolution,"fps":fps,
@@ -316,7 +362,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "limitations":[
                 "Only technical exposure/contrast/motion indicators; no subject understanding.",
                 "Footage stays in provided order; no semantic script-to-footage matching.",
-                "This command does not synthesize narration or publish the video.",
+                "Synthesized speech requires an explicitly selected local voice engine.",
+                "Speech-derived subtitle timing is not word-level forced alignment.",
                 "An editor must review story coherence, claims, rights and audio.",
             ],
         }
@@ -361,6 +408,13 @@ def main(argv: list[str] | None = None) -> int:
                         default="preview")
     parser.add_argument("--audio",type=Path)
     parser.add_argument("--music",type=Path)
+    parser.add_argument("--voice-engine",choices=("none","espeak","kokoro"),
+                        default="none")
+    parser.add_argument("--language",choices=("en","fr"),default="en")
+    parser.add_argument("--voice-name",default=None)
+    parser.add_argument("--narration-style",
+                        choices=("natural","gentle","lively","expressive"),
+                        default="natural")
     args=parser.parse_args(argv)
     try:
         report=auto_edit(
@@ -372,7 +426,9 @@ def main(argv: list[str] | None = None) -> int:
             rights_confirmed=args.confirm_rights,provider=args.provider,
             resolution=args.resolution,fps=args.fps,
             transition=args.transition,render_profile=args.render_profile,
-            audio=args.audio,music=args.music)
+            audio=args.audio,music=args.music,
+            voice_engine=args.voice_engine,language=args.language,
+            voice_name=args.voice_name,narration_style=args.narration_style)
         print(json.dumps({
             "status":report["status"],"video":report["outputVideo"],
             "scenes":report["sceneCount"],"warnings":report["warnings"],

@@ -37,7 +37,7 @@ sans vérification humaine explicite.
 | P2 | Transfert Android sans logiciel lourd | Upload multi-fichiers authentifié, reprise des transferts, quotas, suppression sécurisée, suivi de tâches, stockage borné; test réel sur navigateur mobile et serveur gratuit viable |
 | P3 | Analyse sémantique du dérushage | Transcription locale facultative, segmentation des plans, événements visuels, alignement avec narration; abstention quand faible confiance; test contre vidéos annotées |
 | P4 | Montage visible et dynamique | Sélection de plans variée, rythmes liés aux événements/voix/musique, coupes J/L si audio autorisé, effets qui servent le récit; comparaison réelle des exports |
-| P5 | Voix multilingue naturelle | Voix Kokoro EN/FR par genre, dictionnaire de prononciation, pauses et émotions contrôlées, sélection après écoute, durée et sous-titres justes |
+| P5 — intégration en cours | Voix multilingue naturelle | Kokoro EN/FR directement disponible en option du montage multi-sources, durées PCM et sous-titres par phrases; dictionnaire de prononciation, tests d’écoute et alignement plus fin encore à développer |
 | P6 | Graphismes et animation premium | Typographies mobiles, titrages natifs, effets de profondeur, motion design original, plus de poses Blender quand utile; grilles de captures et contrôle de lisibilité |
 | P7 | Montage audio et son | Musique libre ou originale avec preuve de droits, ducking cohérent, LUFS/true peak, ambiance et sound design, aucun audio parasite |
 | P8 | Formats et diffusion | Shorts 9:16, paysage 16:9, carré 1:1, 24/30fps, profils CPU, export prêt YouTube/TikTok/Instagram, SEO et métadonnées sous validation |
@@ -82,3 +82,23 @@ rapport QA et revue humaine → export et éventuelle publication autorisée.
 
 Le noyau reste Python/FFmpeg/Pillow avec Blender/Kokoro disponibles par
 option; préférer les moteurs gratuits et éviter l'inférence payante.
+
+## Livraison de consolidation P1 → P5 (5 novembre 2026)
+
+- Le montage automatique de rushes originaux est fusionné dans `main`
+  via PR #187, commit `52f0f531d1fc12e2b1040382ec15ebb49c98577a`.
+  Les 542 tests CI et l'export de démonstration ont réussi sur la PR.
+- La branche `feat/multivideo-natural-narration-20261105` relie
+  volontairement le moteur multi-sources au narrateur déjà existant :
+  voix Kokoro EN/FR en option, voix de brouillon eSpeak et sous-titres
+  fondés sur les durées réelles de synthèse PCM.
+- Les clips sont alloués **après** la mesure effective des paroles.
+  Si la durée dépasse les rushes disponibles, aucune sortie finale
+  partielle ne doit être publiée.
+- Critères de fusion : contrôle CI sur le commit exact, vrai export
+  MP4 avec AAC narré, voix/horodatage de sous-titres vérifiés,
+  mode silencieux préservé, pas d'audio caméra, pas de publication.
+- Les modèles ne sont ni téléchargés ni exécutés sans activation.
+  La narration française et anglaise doit être écoutée avant toute
+  affirmation de qualité professionnelle; ces contrôles ne valent
+  ni alignement phonétique, ni dérushage sémantique.

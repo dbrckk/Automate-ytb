@@ -156,6 +156,57 @@ class EndToEndAutoEditTests(unittest.TestCase):
             auto_edit(**args)
         self.assertFalse(args["destination"].exists())
 
+    @unittest.skipUnless(
+        shutil.which("espeak-ng") or shutil.which("espeak"),
+        "Real local eSpeak required for speech-to-video integration")
+    def test_local_english_narration_is_audible_and_captions_use_pcm_times(self):
+        request=self.kwargs()
+        request["destination"]=self.root/"narrated-documentary"
+        request.update(voice_engine="espeak",language="en",
+                       narration_style="natural")
+        final=auto_edit(**request)
+        output=request["destination"]
+        self.assertTrue(final["voiceGenerated"])
+        self.assertEqual(final["narrationEngine"],"espeak-draft")
+        self.assertEqual(final["narrationLanguage"],"en")
+        self.assertEqual(final["subtitleTiming"],
+                         "audio-derived-synthesized-phrases")
+        self.assertFalse(final["hasUserProvidedNarration"])
+        self.assertFalse(final["sourceAudioIncluded"])
+        self.assertTrue((output/"narration.wav").is_file())
+        voice=json.loads((output/"voice-report.json").read_text())
+        self.assertEqual(voice["voice"],str(output/"narration.wav"))
+        self.assertGreater(voice["captionPhraseCount"],0)
+        scenes=load_plan(output/"scene-plan.json")["scenes"]
+        self.assertTrue(all(s.get("captionSegments") for s in scenes))
+        self.assertTrue(all(
+            s["startMs"] <= cap["startMs"] < cap["endMs"] <= s["endMs"]
+            for s in scenes for cap in s["captionSegments"]))
+        movie=output/"render"/"preview.mp4"
+        probe=json.loads(command(
+            "ffprobe","-v","error","-show_entries",
+            "stream=codec_type,codec_name:format=duration",
+            "-of","json",str(movie)))
+        self.assertIn("aac",[
+            stream["codec_name"] for stream in probe["streams"]
+            if stream["codec_type"]=="audio"])
+        self.assertAlmostEqual(float(probe["format"]["duration"]),
+                               scenes[-1]["endMs"]/1000,delta=.35)
+
+    def test_narration_configuration_conflicts_fail_without_output(self):
+        args=self.kwargs()
+        args["voice_engine"]="espeak"
+        args["audio"]=self.root/"user-voice.wav"
+        with self.assertRaisesRegex(ValueError,"Choose supplied narration"):
+            auto_edit(**args)
+        self.assertFalse(args["destination"].exists())
+        args.pop("audio")
+        args["voice_engine"]="none"
+        args["voice_name"]="af_bella"
+        with self.assertRaisesRegex(ValueError,"named voice requires Kokoro"):
+            auto_edit(**args)
+        self.assertFalse(args["destination"].exists())
+
     def test_real_short_samples_have_exposure_and_motion_diagnostics(self):
         source=self.sources[0]
         excerpts=select_excerpts([source],[6000],[12500],(1,))
