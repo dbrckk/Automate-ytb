@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/kokoro-short-voice.yml"
       - "automate_ytb/short_voice.py"
+      - "automate_ytb/deepsea_short.py"
       - "examples/deep-ocean-jellyfish-short.en.txt"
   workflow_dispatch:
 
@@ -62,24 +63,63 @@ jobs:
         run: |
           mkdir -p build/shorts-footage
           curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 \
-            --user-agent 'Automate-ytb-educational-video/1.0 (source Wikimedia Commons)' \
-            'https://upload.wikimedia.org/wikipedia/commons/2/23/Phantom_Jellyfish_Off_of_the_Melchior_Islands.webm' \
-            -o build/shorts-footage/phantom-ccby4.webm
+            --user-agent 'Automate-ytb-educational-video/1.0 (source NOAA via Wikimedia Commons)' \
+            'https://upload.wikimedia.org/wikipedia/commons/9/9f/Okeanos_Explorer_PR_and_USVI_Dive_8-_Psychedelic_Medusa-NOAA-1280x720.webm' \
+            -o build/shorts-footage/noaa-medusa-public-domain.webm
           curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 \
             --user-agent 'Automate-ytb-educational-video/1.0 (source Wikimedia Commons)' \
             'https://upload.wikimedia.org/wikipedia/commons/c/c1/Jellyfish-_2016_Deepwater_Exploration_of_the_Marianas.webm' \
             -o build/shorts-footage/noaa-crossota-public-domain.webm
           ffprobe -v error -show_entries stream=codec_type,width,height -of json \
-            build/shorts-footage/phantom-ccby4.webm
+            build/shorts-footage/noaa-medusa-public-domain.webm
           ffprobe -v error -show_entries stream=codec_type,width,height -of json \
             build/shorts-footage/noaa-crossota-public-domain.webm
-      - name: Upload clean voice for video assembly
+      - name: Produce final vertical 30 FPS documentary with measured Kokoro scene beats
+        run: |
+          python -m automate_ytb.deepsea_short \
+            --crossota build/shorts-footage/noaa-crossota-public-domain.webm \
+            --medusa build/shorts-footage/noaa-medusa-public-domain.webm \
+            --voice build/shorts-narrator/narration.wav \
+            --report build/shorts-narrator/narration.json \
+            --output build/shorts-narrator/deep-sea-short.mp4
+      - name: Independently verify real H264 MP4 audio and subtitle timing
+        run: |
+          python -m automate_ytb.media_qa \
+            --video build/shorts-narrator/deep-sea-short.mp4 \
+            --srt build/shorts-narrator/deep-sea-short.srt \
+            --duration 22.05 --require-audio --target-lufs -16 \
+            --report build/shorts-narrator/deep-sea-media-qa.json
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          media=json.loads((Path("build/shorts-narrator/deep-sea-short.json")).read_text())
+          assert media["voiceEngine"]=="kokoro-natural"
+          assert media["resolution"]==[1080,1920]
+          assert not media["publicationApproved"]
+          raw=subprocess.check_output([
+              "ffprobe","-v","error","-show_entries",
+              "stream=codec_type,codec_name,width,height,avg_frame_rate",
+              "-of","json","build/shorts-narrator/deep-sea-short.mp4"
+          ])
+          streams=json.loads(raw)["streams"]
+          vids=[s for s in streams if s["codec_type"]=="video"]
+          audio=[s for s in streams if s["codec_type"]=="audio"]
+          assert len(vids)==1 and len(audio)==1
+          assert vids[0]["codec_name"]=="h264" and vids[0]["width"]==1080 and vids[0]["height"]==1920
+          assert vids[0]["avg_frame_rate"]=="30/1" and audio[0]["codec_name"]=="aac"
+          print("Real fully narrated NOAA jellyfish MP4 passed 9:16 30 FPS H264 AAC checks")
+          PY
+      - name: Upload complete narrated Short, rights, subtitles and QC
         uses: actions/upload-artifact@v4
         with:
           name: original-deep-sea-kokoro-narration
           path: |
             build/shorts-narrator/narration.wav
             build/shorts-narrator/narration.json
+            build/shorts-narrator/deep-sea-short.mp4
+            build/shorts-narrator/deep-sea-short.srt
+            build/shorts-narrator/deep-sea-short.json
+            build/shorts-narrator/deep-sea-media-qa.json
             examples/deep-ocean-jellyfish-short.en.txt
             docs/VOICE_CREDITS.md
             build/shorts-footage/*.webm
