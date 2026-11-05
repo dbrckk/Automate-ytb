@@ -1,0 +1,32 @@
+name: Download and inspect verified NOAA jellyfish video
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/noaa-ocean-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  footage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Acquire public-domain authentic underwater video
+        run: |
+          mkdir -p build/noaa
+          curl --fail --location --retry 3 --connect-timeout 10 --max-time 140 \
+            --user-agent 'Automate-ytb-educational-video/1.0' \
+            'https://upload.wikimedia.org/wikipedia/commons/9/9f/Okeanos_Explorer_PR_and_USVI_Dive_8-_Psychedelic_Medusa-NOAA-1280x720.webm' \
+            -o build/noaa/psychedelic-medusa.webm
+          ffprobe -v error -show_entries format=duration,size:stream=width,height,codec_name,codec_type \
+            -of json build/noaa/psychedelic-medusa.webm
+          test $(stat -c%s build/noaa/psychedelic-medusa.webm) -gt 5000000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noaa-authentic-psychedelic-medusa-public-domain
+          path: build/noaa/psychedelic-medusa.webm
+          retention-days: 7
+          if-no-files-found: error
