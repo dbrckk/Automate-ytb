@@ -365,8 +365,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Supported resolutions: 720p/1080p/shorts, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
-    if transition not in {"cut", "dissolve"}:
-        raise ValueError("Transition must be cut or dissolve")
+    if transition not in {"cut", "dissolve", "adaptive"}:
+        raise ValueError("Transition must be adaptive, cut or dissolve")
     if caption_timing == "audio" and audio is None:
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
@@ -837,7 +837,7 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--resolution", choices=["720p", "1080p", "shorts"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
-    p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
+    p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"], default="dissolve")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
