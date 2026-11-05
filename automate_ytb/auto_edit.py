@@ -196,7 +196,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
               rights_note: str, rights_confirmed: bool,
               provider: str = "original-camera",
               resolution: str = "shorts", fps: int = 30,
-              transition: str = "dissolve", render_profile: str = "preview",
+              transition: str = "adaptive", render_profile: str = "preview",
               audio: Path | None = None, music: Path | None = None) -> dict:
     """Publish an inspectable project folder only after actual MP4 succeeds."""
     if not rights_confirmed:
@@ -213,7 +213,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         raise ValueError("Provide 1 to 32 owned local source videos")
     if resolution not in ("shorts","720p","1080p") or fps not in (24,30):
         raise ValueError("Invalid original video export size or frame rate")
-    if transition not in ("cut","dissolve") or render_profile not in ("preview","high"):
+    if transition not in ("cut","dissolve","adaptive") or render_profile not in ("preview","high"):
         raise ValueError("Invalid transition or render profile")
     destination=Path(destination).expanduser().resolve()
     if destination.exists():
@@ -355,8 +355,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--resolution",choices=("shorts","720p","1080p"),
                         default="shorts")
     parser.add_argument("--fps",type=int,choices=(24,30),default=30)
-    parser.add_argument("--transition",choices=("dissolve","cut"),
-                        default="dissolve")
+    parser.add_argument("--transition",choices=("adaptive","dissolve","cut"),
+                        default="adaptive")
     parser.add_argument("--render-profile",choices=("preview","high"),
                         default="preview")
     parser.add_argument("--audio",type=Path)
