@@ -1,0 +1,57 @@
+name: Verify universal video montage across non-science styles
+
+# Real English Kokoro + FFmpeg MP4, every non-science production family.
+# Scientific native portrait has its own production release-candidate gate.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/universal-editorial-release-candidate.yml
+      - .github/workflows/one-click-preview.yml
+      - automate_ytb/editorial_cuts.py
+      - automate_ytb/camera_motion.py
+      - automate_ytb/auto_edit.py
+      - automate_ytb/quality.py
+      - automate_ytb/transitions.py
+      - automate_ytb/production.py
+      - automate_ytb/episode.py
+      - docs/ADAPTIVE_VIDEO_EDITING_2026-11-05.md
+      - tests/test_universal_editorial.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universal-editorial-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  production:
+    strategy:
+      fail-fast: false
+      matrix:
+        style: [cartoon, cinematic, documentary]
+    name: Real original ${{ matrix.style }} English 720p video
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "An Original Journey Through the Night Forest"
+      original_script: >-
+        An owl sees the first stars above the quiet forest.
+        She moves toward a bright river between the trees.
+        A curious fox emerges beside the moss-covered path.
+        The travelers discover a glowing clearing under the moon.
+        As dawn arrives they return safely home and remember the journey.
+      character: "An original violet owl with turquoise eyes and a golden scarf"
+      style: ${{ matrix.style }}
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: adaptive
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: 720p
+      render_profile: preview
+      cinematic_3d: false
