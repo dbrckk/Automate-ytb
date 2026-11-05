@@ -102,9 +102,9 @@ on:
         default: ambient
       transition:
         type: choice
-        description: "Visual dissolve without altering narration or subtitle timing"
-        options: [dissolve, cut]
-        default: dissolve
+        description: "Adaptive cuts on large scene differences; fades for visually similar frames"
+        options: [adaptive, dissolve, cut]
+        default: adaptive
       caption_timing:
         type: choice
         description: "audio = speech-synthesized phrase timing, estimated = fast fallback"
