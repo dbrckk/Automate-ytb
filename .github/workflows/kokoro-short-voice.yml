@@ -58,6 +58,21 @@ jobs:
           assert report["engine"] == "kokoro-natural"
           print("Verified true neural voice, non-silent PCM and actual beat timecodes")
           PY
+      - name: Acquire attributed real-world jellyfish footage for the final edit
+        run: |
+          mkdir -p build/shorts-footage
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 \
+            --user-agent 'Automate-ytb-educational-video/1.0 (source Wikimedia Commons)' \
+            'https://upload.wikimedia.org/wikipedia/commons/2/23/Phantom_Jellyfish_Off_of_the_Melchior_Islands.webm' \
+            -o build/shorts-footage/phantom-ccby4.webm
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 \
+            --user-agent 'Automate-ytb-educational-video/1.0 (source Wikimedia Commons)' \
+            'https://upload.wikimedia.org/wikipedia/commons/c/c1/Jellyfish-_2016_Deepwater_Exploration_of_the_Marianas.webm' \
+            -o build/shorts-footage/noaa-crossota-public-domain.webm
+          ffprobe -v error -show_entries stream=codec_type,width,height -of json \
+            build/shorts-footage/phantom-ccby4.webm
+          ffprobe -v error -show_entries stream=codec_type,width,height -of json \
+            build/shorts-footage/noaa-crossota-public-domain.webm
       - name: Upload clean voice for video assembly
         uses: actions/upload-artifact@v4
         with:
@@ -67,5 +82,7 @@ jobs:
             build/shorts-narrator/narration.json
             examples/deep-ocean-jellyfish-short.en.txt
             docs/VOICE_CREDITS.md
+            build/shorts-footage/*.webm
+            docs/DEEP_OCEAN_FOOTAGE_CREDITS.md
           retention-days: 7
           if-no-files-found: error
