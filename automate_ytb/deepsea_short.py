@@ -90,8 +90,9 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
         expected = (1920, 1080) if name == "crossota" else (1280, 720)
         if len(videos) != 1 or tuple(videos[0].get(k) for k in ("width","height")) != expected:
             raise ValueError("Unexpected original footage frame dimensions")
-    for (_, offset, _, _), length in zip(SHOTS, lengths):
-        if offset + length > (43 if _ == "crossota" else 67):
+    for (name, offset, _crop, _title), length in zip(SHOTS, lengths):
+        source_duration = float(_probe(paths[name])["format"]["duration"])
+        if offset + length > source_duration - .05:
             raise ValueError("Source cannot cover the actual spoken segment")
 
     output = output.resolve()
