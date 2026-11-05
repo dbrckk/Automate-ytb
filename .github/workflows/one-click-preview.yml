@@ -329,6 +329,19 @@ jobs:
             PARAMS+=(--target-lufs -24)
           fi
           python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/media-report.json "${PARAMS[@]}"
+      - name: Verify TikTok and YouTube Shorts export from actual MP4
+        if: ${{ inputs.resolution == 'shorts' }}
+        env:
+          EXPECT_VOICE: ${{ inputs.voice }}
+          EXPECT_SOUNDTRACK: ${{ inputs.soundtrack }}
+        run: |
+          AUDIO_ARGS=()
+          if [ "$EXPECT_VOICE" != "none" ] || [ "$EXPECT_SOUNDTRACK" != "none" ]; then
+            AUDIO_ARGS+=(--require-audio)
+          fi
+          python -m automate_ytb.shorts_delivery \
+            --video build/video/preview.mp4 \
+            --report build/video/platform-shorts-report.json "${AUDIO_ARGS[@]}"
       - name: Extract mobile storyboard and check for frozen animated MP4 scenes
         run: |
           python -m automate_ytb.review_board \
