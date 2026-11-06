@@ -139,6 +139,77 @@ class RealFootageTests(unittest.TestCase):
             self.assertGreater(sum(img.getpixel((20,350))[:3]),10)
             self.assertGreater(sum(img.getpixel((540,960))[:3]),10)
 
+    def test_optical_portrait_export_uses_real_frames_not_blurred_fill(self):
+        from automate_ytb.footage import SMART_FRAMING_VERSION
+        self.attach()
+        target = self.root / "tracked-short"
+        result = render(plan_path=self.plan_path, output=target,
+                        limit=1, resolution="shorts", fps=24,
+                        transition="cut", portrait_framing="auto")
+        details = result["realFootageFraming"]
+        self.assertEqual(details["requested"], "auto")
+        self.assertEqual(details["trackedScenes"], 1)
+        self.assertEqual(details["preservedScenes"], 0)
+        shot = details["scenes"][0]
+        self.assertEqual(shot["version"], SMART_FRAMING_VERSION)
+        self.assertEqual(shot["applied"], "follow")
+        self.assertTrue(shot["humanReviewRequired"])
+        self.assertGreaterEqual(shot["tracking"]["sampledFrames"], 2)
+        positions = shot["tracking"]["keyframes"]
+        self.assertTrue(all(
+            0 <= p["cropX"] <=
+            shot["tracking"]["sourceWidth"] - shot["tracking"]["cropWidth"]
+            for p in positions))
+        movie = target / "preview.mp4"
+        info = json.loads(run("ffprobe", "-v", "error", "-show_entries",
+                              "stream=width,height,codec_name,codec_type",
+                              "-of", "json", str(movie)).stdout)
+        video = next(x for x in info["streams"]
+                     if x["codec_type"] == "video")
+        self.assertEqual((video["width"], video["height"]), (1080, 1920))
+        self.assertEqual(video["codec_name"], "h264")
+        self.assertFalse(any(x["codec_type"] == "audio" for x in info["streams"]))
+        run("ffmpeg", "-nostdin", "-v", "error", "-i", str(movie),
+            "-f", "null", "-")
+
+    def test_no_motion_tracked_source_falls_back_to_preserved_frame(self):
+        from automate_ytb.footage import smart_framing_filter
+        black = self.root / "black.mp4"
+        run("ffmpeg", "-nostdin", "-v", "error", "-y",
+            "-f", "lavfi", "-i", "color=c=black:s=480x320:d=2:r=12",
+            "-c:v", "libx264", "-preset", "ultrafast", str(black))
+        graph, complex_graph, report = smart_framing_filter(
+            source=black, seconds=2, source_width=480, source_height=320,
+            width=1080, height=1920, fps=24, mode="auto")
+        self.assertEqual(report["applied"], "preserve")
+        self.assertEqual(report["tracking"]["lowInformationFrames"],
+                         report["tracking"]["sampledFrames"])
+        self.assertTrue(complex_graph)
+        self.assertIn("overlay=", graph)
+
+        graph, complex_graph, manual = smart_framing_filter(
+            source=black, seconds=2, source_width=480, source_height=320,
+            width=1080, height=1920, fps=24, mode="follow")
+        self.assertEqual(manual["applied"], "follow")
+        self.assertFalse(complex_graph)
+        self.assertIn("crop=", graph)
+        # A clip longer than the bounded optical sample must never be
+        # advertised as wholly followed if only its first part was read.
+        _, _, overlong = smart_framing_filter(
+            source=black, seconds=45, source_width=480, source_height=320,
+            width=1080, height=1920, fps=24, mode="auto")
+        self.assertEqual(overlong["applied"], "preserve")
+        self.assertIn("fully sampled", overlong["reason"])
+        with self.assertRaisesRegex(ValueError, "Tracking requires real clips"):
+            smart_framing_filter(
+                source=black, seconds=45, source_width=480, source_height=320,
+                width=1080, height=1920, fps=24, mode="follow")
+        with self.assertRaisesRegex(ValueError, "Portrait framing"):
+            smart_framing_filter(source=black, seconds=2,
+                                 source_width=480, source_height=320,
+                                 width=1080, height=1920, fps=24,
+                                 mode="silently-fake")
+
     def test_tampered_video_rejects_render_and_stale_stills_can_replace(self):
         self.attach()
         movie=self.root/"assets/scene-001.mp4"

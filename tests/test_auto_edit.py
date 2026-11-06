@@ -110,6 +110,9 @@ class EndToEndAutoEditTests(unittest.TestCase):
         self.assertEqual(audit(destination/"scene-plan.json")["counts"]["ready"],5)
         persisted=json.loads((destination/"auto-edit-report.json").read_text())
         self.assertEqual(persisted["shots"],final["shots"])
+        self.assertEqual(final["portraitFraming"]["requested"], "auto")
+        self.assertEqual(final["portraitFraming"]["trackedScenes"], 0)
+        self.assertEqual(final["portraitFraming"]["preservedScenes"], 5)
         self.assertTrue(all(len(shot["sourceSHA256"])==64
                             for shot in final["shots"]))
         self.assertTrue(all(shot["normalizedVideoSHA256"] and
@@ -151,6 +154,12 @@ class EndToEndAutoEditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Duplicate source"):
             auto_edit(**args)
         self.assertFalse(args["destination"].exists())
+        args["portrait_framing"]="unsafe"
+        args["video_paths"]=self.sources
+        with self.assertRaisesRegex(ValueError,"Portrait framing"):
+            auto_edit(**args)
+        self.assertFalse(args["destination"].exists())
+        args.pop("portrait_framing")
         args["video_paths"]=[self.sources[2]]
         with self.assertRaisesRegex(ValueError,"Not enough continuous"):
             auto_edit(**args)

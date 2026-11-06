@@ -20,7 +20,7 @@ from .footage import VIDEO_SUFFIXES, probe_video
 from .production import _sha, _write_json, PROVIDER, ingest_video, load_plan, render
 from .scene_plan import plan as create_plan
 
-VERSION = "licensed-multivideo-autoedit-v1"
+VERSION = "licensed-multivideo-autoedit-v1-optical-portrait"
 MAX_SOURCES = 32
 PIXELS = 96 * 54
 MAX_SAMPLE_FRAMES = 6
@@ -200,7 +200,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
               audio: Path | None = None, music: Path | None = None,
               voice_engine: str = "none", language: str = "en",
               voice_name: str | None = None,
-              narration_style: str = "natural") -> dict:
+              narration_style: str = "natural",
+              portrait_framing: str = "auto") -> dict:
     """Publish an inspectable project folder only after actual MP4 succeeds."""
     if not rights_confirmed:
         raise ValueError("Explicit --confirm-rights required for every source")
@@ -222,6 +223,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         raise ValueError("Unsupported narration engine/language")
     if narration_style not in ("natural", "gentle", "lively", "expressive"):
         raise ValueError("Unsupported narration delivery style")
+    if portrait_framing not in ("auto", "follow", "preserve"):
+        raise ValueError("Portrait framing must be auto, follow or preserve")
     if audio is not None and voice_engine != "none":
         raise ValueError("Choose supplied narration audio or local synthesized speech")
     if voice_name is not None and voice_engine != "kokoro":
@@ -319,6 +322,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             plan_path=staged_plan,output=staging/"render",
             resolution=resolution,fps=fps,transition=transition,
             render_profile=render_profile,audio=effective_audio,music=music,
+            portrait_framing=portrait_framing,
             caption_timing="audio" if narration_info is not None else "estimated")
         preview=staging/"render"/"preview.mp4"
         if (not preview.is_file() or preview.stat().st_size < 10000
@@ -353,6 +357,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
                 "audio-derived-synthesized-phrases"
                 if narration_info is not None else "estimated"),
             "sourceAudioIncluded":False,
+            "portraitFraming":edited["realFootageFraming"],
             "outputVideo":str(destination/"render"/"preview.mp4"),
             "resolution":resolution,"fps":fps,
             "rightsConfirmedByUser":True,
@@ -406,6 +411,9 @@ def main(argv: list[str] | None = None) -> int:
                         default="adaptive")
     parser.add_argument("--render-profile",choices=("preview","high"),
                         default="preview")
+    parser.add_argument("--portrait-framing",
+                        choices=("auto","follow","preserve"),default="auto",
+                        help="Real-footage Shorts: track motion, or preserve the full frame")
     parser.add_argument("--audio",type=Path)
     parser.add_argument("--music",type=Path)
     parser.add_argument("--voice-engine",choices=("none","espeak","kokoro"),
@@ -428,7 +436,8 @@ def main(argv: list[str] | None = None) -> int:
             transition=args.transition,render_profile=args.render_profile,
             audio=args.audio,music=args.music,
             voice_engine=args.voice_engine,language=args.language,
-            voice_name=args.voice_name,narration_style=args.narration_style)
+            voice_name=args.voice_name,narration_style=args.narration_style,
+            portrait_framing=args.portrait_framing)
         print(json.dumps({
             "status":report["status"],"video":report["outputVideo"],
             "scenes":report["sceneCount"],"warnings":report["warnings"],

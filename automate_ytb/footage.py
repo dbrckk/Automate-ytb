@@ -107,6 +107,78 @@ def framing_filter(*, source_width: int, source_height: int,
         f"fps={fps},format=yuv420p[v]")
     return filter_graph,True
 
+
+SMART_FRAMING_VERSION = "owned-footage-motion-reframing-v1"
+
+
+def smart_framing_filter(*, source: Path, seconds: float,
+                         source_width: int, source_height: int,
+                         width: int, height: int, fps: int,
+                         mode: str = "preserve") -> tuple[str, bool, dict]:
+    """Choose a real pixel-tracked vertical crop or safe full-content framing.
+
+    The optical mode does *not* identify an object or promise a good crop.
+    Preserve remains the default so older callers keep their image geometry.
+    Generic automatic montage can opt into 'auto'; users can explicitly
+    force 'follow' or 'preserve' without editing the original source.
+    """
+    if mode not in {"auto", "follow", "preserve"}:
+        raise ValueError("Portrait framing must be auto, follow or preserve")
+    existing, complex_graph = framing_filter(
+        source_width=source_width, source_height=source_height,
+        width=width, height=height, fps=fps)
+    report = {
+        "version": SMART_FRAMING_VERSION,
+        "requested": mode,
+        "applied": "preserve",
+        "reason": None,
+        "tracking": None,
+        "humanReviewRequired": True,
+    }
+    if mode == "preserve":
+        report["reason"] = "User chose full-content preservation"
+        return existing, complex_graph, report
+    disparity = (source_width / source_height) / (width / height)
+    if not (source_width > source_height and width < height and
+            disparity >= 1.36):
+        report["reason"] = "Moving crop is unnecessary or inappropriate for this geometry"
+        return existing, complex_graph, report
+    crop_width = int((source_height * width / height) // 2) * 2
+    if crop_width < 80 or crop_width >= source_width:
+        report["reason"] = "Moving crop geometry would be too narrow"
+        return existing, complex_graph, report
+    from .subject_reframe import MAX_TRACK_SECONDS, track_crop, crop_expression
+    if source_width < 320:
+        if mode == "follow":
+            raise ValueError("Tracking requires at least 320 source pixels horizontally")
+        report["reason"] = "Not enough horizontal pixels for reliable optical tracking"
+        return existing, complex_graph, report
+    if not math.isfinite(seconds) or not 1 <= seconds <= MAX_TRACK_SECONDS:
+        if mode == "follow":
+            raise ValueError(
+                f"Tracking requires real clips of 1–{MAX_TRACK_SECONDS:g} seconds")
+        report["reason"] = "Shot length outside fully sampled tracking window"
+        return existing, complex_graph, report
+
+    tracking = track_crop(source=source, start=0, seconds=seconds,
+                          source_width=source_width, crop_width=crop_width)
+    report["tracking"] = tracking
+    samples = tracking["sampledFrames"]
+    if mode == "auto" and tracking["lowInformationFrames"] * 2 >= samples:
+        report["reason"] = "Insufficient image information: keep full original frame"
+        return existing, complex_graph, report
+    expression = crop_expression(tracking)
+    graph = (
+        "setpts=PTS-STARTPTS,"
+        f"crop={crop_width}:{source_height}:x='{expression}':y=0,"
+        f"scale={width}:{height}:flags=lanczos,"
+        f"fps={fps},setsar=1,format=yuv420p"
+    )
+    report["applied"] = "follow"
+    report["reason"] = "Bounded image-activity tracking on decoded source frames"
+    return graph, False, report
+
+
 def normalize_video(source: Path, dest: Path, poster: Path, *,
                     start: float, seconds: float) -> dict:
     """Cut a single real clip to scene length, re-encode deterministically.
