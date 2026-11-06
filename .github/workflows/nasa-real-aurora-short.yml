@@ -6,6 +6,8 @@ on:
       - .github/workflows/nasa-real-aurora-short.yml
       - automate_ytb/mobile_subtitles.py
       - automate_ytb/shot_diversity.py
+      - automate_ytb/auto_edit.py
+      - tests/test_auto_edit.py
       - tests/test_shot_diversity.py
       - tests/test_mobile_subtitles.py
 permissions:
@@ -160,7 +162,16 @@ jobs:
               raise SystemExit("Both authentic NASA footage sources must be edited")
           if a["sourceAudioIncluded"] or a["publicationApproved"]:
               raise SystemExit("Original camera audio or implicit upload prohibited")
-          print("Real NASA two-source video and voice validated")
+          diversity=json.loads(Path("build/nasa-short/render/shot-diversity-qa.json").read_text())
+          if diversity["sceneCount"]!=a["sceneCount"] or diversity["distinctSourceFiles"]!=2:
+              raise SystemExit("Optical audit did not inspect every authored scene and both NASA sources")
+          if diversity["semanticMatchingPerformed"] or diversity["publicationApproved"]:
+              raise SystemExit("Optical audit must not claim semantic matching or release approval")
+          if not a.get("opticalDiversityAwareSelection"):
+              raise SystemExit("Real NASA workflow did not use M2 pre-render diversity selection")
+          if not all("diversityAdjustedScore" in shot["technicalReview"] for shot in a["shots"]):
+              raise SystemExit("M2 optical candidate selection evidence missing")
+          print("Real NASA two-source video, M2 optical candidate selection and voice validated")
           PY
       - name: Deliver the actual media and provenance, never a fake upload
         if: always()
