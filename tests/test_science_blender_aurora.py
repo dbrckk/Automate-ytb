@@ -139,16 +139,31 @@ class BlenderAuroraTests(unittest.TestCase):
                     "incomingElectrons":10 if beat in ("collisions","emission") else 0,
                     "emittedPhotons":10 if beat=="emission" else 0,
                     "curtainSurfaceVertices":13056 if beat=="curtains" else 0,
+                    "lagoonSurfaceVertices":2176 if beat=="curtains" else 0,
                 }
             file.write_text(json.dumps(doc),encoding="utf8")
             source=BlenderAuroraStage(folder)
             self.assertEqual(source.scene_details["curtains"]["curtainSurfaceVertices"],13056)
+            self.assertEqual(source.scene_details["curtains"]["lagoonSurfaceVertices"],2176)
             result=review(folder,folder/"review.jpg")
             self.assertTrue(result["geometryVerified"])
             self.assertEqual(result["actualBlenderSceneGeometry"]["emission"]["emittedPhotons"],10)
             doc["sceneDetails"]["curtains"]["curtainSurfaceVertices"]=2
             file.write_text(json.dumps(doc),encoding="utf8")
             with self.assertRaisesRegex(ValueError,"curtain mesh"):
+                BlenderAuroraStage(folder)
+            # The water must be an actual sufficiently detailed Cycles
+            # surface; claims of water in metadata cannot hide missing mesh.
+            doc["sceneDetails"]["curtains"]["curtainSurfaceVertices"]=13056
+            doc["sceneDetails"]["curtains"]["lagoonSurfaceVertices"]=120
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"glacial lagoon"):
+                BlenderAuroraStage(folder)
+            # Surface geometry is allowed only in the true 3D final shot.
+            doc["sceneDetails"]["curtains"]["lagoonSurfaceVertices"]=2176
+            doc["sceneDetails"]["collisions"]["lagoonSurfaceVertices"]=2176
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"glacial lagoon"):
                 BlenderAuroraStage(folder)
 
     def test_missing_scene_geometry_evidence_is_rejected_if_declared(self):
