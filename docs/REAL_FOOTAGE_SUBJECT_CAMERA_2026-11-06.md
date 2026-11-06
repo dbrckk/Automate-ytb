@@ -11,8 +11,8 @@ progressif puis applique un crop 9:16 *image par image* dans FFmpeg.
 - Énergie de contraste et de mouvement sur la zone utile, avec exclusion
   relative des bandes de sous-titres et du bord supérieur.
 - Choix d'une fenêtre verticale privilégiant l'activité détectée.
-- Pénalité contre les changements de cible injustifiés, inertie et limite
-  de vitesse pour empêcher les panoramiques brusques.
+- Pénalité contre les changements de cible injustifiés, inertie et limites
+  de vitesse et d'accélération pour empêcher les panoramiques brusques.
 - Fallback centré si une scène est sombre ou dépourvue de détails.
 - Interpolation linéaire avec `crop` FFmpeg sur les *images réelles*
   ; aucun déplacement fictif ou répétition d'un fond statique.
@@ -56,7 +56,7 @@ des durées mot par mot.
 ## Commande de vérification
 
 ```bash
-python -m unittest tests.test_subject_reframe -v
+python -m unittest discover -s tests -p 'test_subject_reframe.py' -v
 ```
 
 Le workflow produit le MP4 et son rapport JSON de `portraitTracking`;
