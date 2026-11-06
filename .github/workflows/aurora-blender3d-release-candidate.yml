@@ -1,4 +1,4 @@
-name: Verify real Blender 3D aurora science Short
+name: Produce original Aurora Alive 3D narrated Short
 
 # Runs the real CPU Cycles renderer and full Kokoro/FFmpeg QA on one run.
 on:
@@ -27,24 +27,24 @@ jobs:
     name: Original 3D aurora, actual English Kokoro MP4 and independent QA
     uses: ./.github/workflows/one-click-preview.yml
     with:
-      topic: "Why Do Northern Lights Dance?"
+      topic: "Aurora: The Night Sky Comes Alive"
       original_script: >-
-        The Sun constantly releases a stream of charged particles called the solar wind, flowing out through space.
-        Earth's invisible magnetic field guides some of them toward the northern and southern polar skies.
-        High above us, those particles collide with oxygen and nitrogen in the atmosphere.
-        Excited gases emit colored light, usually green, sometimes red or violet.
-        These glowing regions stretch into rippling curtains: the northern lights dancing across the sky.
+        The sky can suddenly glow with moving color, but the story begins with solar wind rushing away from the Sun.
+        When that invisible storm reaches Earth, our magnetic field steers charged particles toward the poles.
+        High in the atmosphere, these particles collide with oxygen and nitrogen atoms.
+        Excited atoms release green, violet, and sometimes red light into the darkness.
+        The colors become rippling curtains: the northern lights dancing above a silent landscape.
       character: "Original cinematic aurora: real 3D particles, polar sky and glowing curtains"
       style: science
       language: en
       voice: kokoro
       voice_name: af_heart
-      voice_style: natural
+      voice_style: expressive
       soundtrack: ambient
-      transition: dissolve
+      transition: adaptive
       caption_timing: audio
-      duration_seconds: 31
-      shot_seconds: 6.2
+      duration_seconds: 35
+      shot_seconds: 7
       resolution: shorts
       render_profile: high
       cinematic_3d: true
