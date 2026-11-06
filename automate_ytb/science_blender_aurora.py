@@ -17,7 +17,7 @@ from PIL import Image
 from .science_aurora import BEATS, STAGE_SIZE
 
 ENV_VAR = "AUTOMATE_YTB_AURORA_3D_DIR"
-VERSION = "cycles-aurora-stage-v2-heldout-motion"
+VERSION = "cycles-aurora-stage-v3-reflective-lagoon"
 
 
 class BlenderAuroraStage:
@@ -75,10 +75,20 @@ class BlenderAuroraStage:
                 required=("terrainVertices","totalMeshObjects","earthShaderNodes",
                           "diatomicMolecules","incomingElectrons",
                           "emittedPhotons","curtainSurfaceVertices")
-                if (not isinstance(row,dict) or set(row)!=set(required)
-                        or any(type(row[key]) is not int or row[key]<0
-                               for key in required)):
+                allowed=set(required)|{"lagoonSurfaceVertices"}
+                if (not isinstance(row,dict)
+                        or not set(required).issubset(row)
+                        or not set(row).issubset(allowed)
+                        or any(type(value) is not int or value < 0
+                               for value in row.values())):
                     raise ValueError(f"Invalid source 3D geometry metrics: {beat}")
+                # Pre-lagoon Blender manifests without this optional field
+                # remain playable; newly declared lake geometry is verified
+                # rather than accepted as decorative metadata.
+                if "lagoonSurfaceVertices" in row:
+                    if ((beat=="curtains" and row["lagoonSurfaceVertices"] < 2000)
+                            or (beat!="curtains" and row["lagoonSurfaceVertices"] != 0)):
+                        raise ValueError("Missing or misplaced physical glacial lagoon mesh")
                 if row["terrainVertices"] < 2000 or row["totalMeshObjects"] < 40:
                     raise ValueError(f"3D polar environment is under-detailed: {beat}")
                 if beat in ("solar_wind","magnetic_field") and row["earthShaderNodes"] < 10:
