@@ -131,10 +131,17 @@ def track_crop(*, source: Path, start: float, seconds: float,
         previous = frame
     if not samples:
         raise ValueError("No frames available for portrait tracking")
-    # Guarantee a final constant hold after the last decoded sample.
+    # Ease the optical pan into the final scene cut. A fixed hold after
+    # the last 2fps sample would abruptly drop camera velocity to zero.
     if seconds > samples[-1]["timeSeconds"]:
+        sample_dt = (seconds - samples[-1]["timeSeconds"]) * ANALYSIS_FPS
+        tail_left = max(0.0, min(float(max_left),
+                                 smooth_left + .5 * velocity * sample_dt))
+        tail_x = round(tail_left * (source_width - crop_width) /
+                       max(1, max_left) / 2) * 2
+        tail_x = max(0, min(source_width - crop_width, tail_x))
         samples.append({"timeSeconds": round(seconds, 3),
-                        "cropX": samples[-1]["cropX"]})
+                        "cropX": int(tail_x)})
     return {
         "method": "decoded-grayscale-activity-salience-smoothed-v1",
         "sourceWidth": source_width,
