@@ -365,8 +365,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Supported resolutions: 720p/1080p/shorts, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
-    if transition not in {"cut", "dissolve"}:
-        raise ValueError("Transition must be cut or dissolve")
+    if transition not in {"cut", "dissolve", "adaptive"}:
+        raise ValueError("Transition must be adaptive, cut or dissolve")
     if caption_timing == "audio" and audio is None:
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
@@ -612,7 +612,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         clips, cache=cache, fps=fps,
         durations=[(s["endMs"] - s["startMs"]) / 1000 for s in scenes],
         mode=transition, render_profile=render_profile,
-        preserve_science_ui=(resolution == "shorts"))
+        # Only authored science scenes have protected title/caption UI.
+        # Licensed 9:16 footage must transition across its full moving frame.
+        preserve_science_ui=(resolution == "shorts" and any(
+            scene.get("renderStyle") == "science" for scene in scenes)))
     concat = output / "clips.ffconcat"
     concat.write_text("ffconcat version 1.0\n" +
                       "".join(f"file {_quoted(c)}\n" for c in edited_clips), encoding="utf-8")
@@ -837,7 +840,7 @@ def main(argv=None) -> int:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--resolution", choices=["720p", "1080p", "shorts"], default="720p")
     p.add_argument("--fps", type=int, choices=[24, 30], default=24)
-    p.add_argument("--transition", choices=["dissolve", "cut"], default="dissolve")
+    p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"], default="dissolve")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
