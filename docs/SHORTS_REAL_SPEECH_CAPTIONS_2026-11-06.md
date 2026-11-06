@@ -11,7 +11,7 @@ synchronisés, sans redevenir un montage de diapositives.
 
 1. Chaque ligne du script reste un **beat narratif** et un vrai plan filmé.
 2. Les lignes sont découpées en petits **groupes de mots prononçables**
-   (44 caractères et 8 mots maximum, ponctuation conservée).
+   (48 caractères et 8 mots maximum, ponctuation conservée).
 3. Kokoro synthétise chaque groupe; les blancs excessifs de début et de fin
    sont raccourcis sans détruire les pauses intérieures.
 4. Le début/la fin de chaque sous-titre provient **du nombre exact d'échantillons
