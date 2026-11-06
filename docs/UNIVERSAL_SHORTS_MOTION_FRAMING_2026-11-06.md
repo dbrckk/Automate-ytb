@@ -78,7 +78,7 @@ sur une vidéo noire et rejets des paramètres non autorisés.
   `preserve` ou enregistrer nativement en portrait.
 - Le fallback se déclenche sur faible information visuelle,
   **pas** sur une qualité artistique jugée par IA.
-- Au-delà de 60 s par plan, le mode `auto` conserve le cadre ;
+- Au-delà de 36 s par plan, le mode `auto` conserve le cadre ;
   `follow` refuse ce cas.
 - Les fichiers source trop faibles restent trop faibles en 1080p
   même après mise à l'échelle.
