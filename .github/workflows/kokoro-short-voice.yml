@@ -6,6 +6,10 @@ on:
       - ".github/workflows/kokoro-short-voice.yml"
       - "automate_ytb/short_voice.py"
       - "automate_ytb/deepsea_short.py"
+      - "automate_ytb/subject_reframe.py"
+      - "automate_ytb/soundtrack.py"
+      - "automate_ytb/media_qa.py"
+      - "tests/test_subject_reframe.py"
       - "examples/deep-ocean-jellyfish-short.en.txt"
   workflow_dispatch:
 
