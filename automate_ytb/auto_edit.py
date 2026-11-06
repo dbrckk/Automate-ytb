@@ -19,8 +19,9 @@ import tempfile
 from .footage import VIDEO_SUFFIXES, probe_video
 from .production import _sha, _write_json, PROVIDER, ingest_video, load_plan, render
 from .scene_plan import plan as create_plan
+from .shot_diversity import _signature, compare_signatures
 
-VERSION = "licensed-multivideo-autoedit-v1-optical-portrait"
+VERSION = "licensed-multivideo-autoedit-v2-optical-diversity"
 MAX_SOURCES = 32
 PIXELS = 96 * 54
 MAX_SAMPLE_FRAMES = 6
@@ -124,7 +125,11 @@ def _sample_quality(source: Path, start: float, seconds: float) -> dict:
                     +.27*exposure)
     if luma < 22 or luma > 234:
         visual_score -= .65
+    # Midpoint signature is computed from already-decoded real frames.
+    # No extra video decoding, GPU, paid models or semantic claims.
+    signature=_signature(bytes(images[len(images)//2]))
     return {
+        "spatialSignature":signature["blocks"],
         "sampledFrames":len(images),
         "meanLuminance":round(luma,2),
         "contrastStdDev":round(contrast,2),
@@ -166,10 +171,26 @@ def select_excerpts(
                     min(latest,max(cursor,ideal+delta))/100))*100))
                 for delta in (-spread,0,spread)))
             evaluated=[]
+            previous=result[-1]["technicalReview"] if result else None
             for start_ms in candidate_ms:
                 metrics=_sample_quality(
                     source,start_ms/1000,length/1000)
-                evaluated.append((metrics["technicalSelectionScore"],
+                # Penalize visually near-identical consecutive shots only
+                # when a real alternative exists in the permitted source
+                # window. Preserve source chronology and exposure quality.
+                optical=None
+                penalty=0.
+                if previous is not None:
+                    optical=compare_signatures(
+                        {"blocks":previous["spatialSignature"]},
+                        {"blocks":metrics["spatialSignature"]})
+                    if optical["nearDuplicateOpticalComposition"]:
+                        penalty=.22
+                adjusted=round(metrics["technicalSelectionScore"]-penalty,5)
+                metrics["adjacentOpticalComparison"]=optical
+                metrics["diversitySelectionPenalty"]=penalty
+                metrics["diversityAdjustedScore"]=adjusted
+                evaluated.append((adjusted,
                                   -abs(start_ms-ideal),start_ms,metrics))
             score, _, start_ms, metrics=max(evaluated)
             result.append({
@@ -342,6 +363,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "sourceOrderPreserved":True,
             "sourceSegmentsNonoverlapping":True,
             "semanticMatchingPerformed":False,
+            "opticalDiversityAwareSelection":True,
+            "opticalDiversityThreshold":9,
             "voiceGenerated":narration_info is not None,
             "hasUserProvidedNarration":audio is not None,
             "narrationEngine":(
@@ -366,6 +389,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "warnings":warnings,
             "limitations":[
                 "Only technical exposure/contrast/motion indicators; no subject understanding.",
+                "Spatial-block diversity cannot infer narration-image coherence.",
                 "Footage stays in provided order; no semantic script-to-footage matching.",
                 "Synthesized speech requires an explicitly selected local voice engine.",
                 "Speech-derived subtitle timing is not word-level forced alignment.",
