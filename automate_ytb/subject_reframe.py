@@ -15,6 +15,7 @@ ANALYSIS_WIDTH = 160
 ANALYSIS_HEIGHT = 90
 ANALYSIS_FPS = 2
 MAX_FRAMES = 72
+MAX_TRACK_SECONDS = MAX_FRAMES / ANALYSIS_FPS
 BYTES_PER_FRAME = ANALYSIS_WIDTH * ANALYSIS_HEIGHT
 
 
@@ -68,7 +69,7 @@ def track_crop(*, source: Path, start: float, seconds: float,
     Cropping is full-frame height. Times are local to the extracted shot;
     all x positions are even to preserve YUV420 pixel alignment.
     """
-    if not math.isfinite(start) or start < 0 or not math.isfinite(seconds) or not 1 <= seconds <= 60:
+    if not math.isfinite(start) or start < 0 or not math.isfinite(seconds) or not 1 <= seconds <= MAX_TRACK_SECONDS:
         raise ValueError("Invalid footage start or tracking duration")
     if (type(source_width) is not int or type(crop_width) is not int or
             source_width < 320 or crop_width < 80 or crop_width > source_width or
