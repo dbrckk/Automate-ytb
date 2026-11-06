@@ -17,6 +17,7 @@ import tempfile
 import wave
 
 from .soundtrack import _loop, SAMPLERATE
+from .subject_reframe import track_crop, crop_expression
 
 SOURCES = {
     "crossota": "72053267ced4a58c9c28e865937d00c0a35bb667da010b9b115558fbcfd12595",
@@ -102,19 +103,29 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
     with tempfile.TemporaryDirectory(prefix="deepsea-master-",dir=output.parent) as td:
         work = Path(td)
         clips = []
-        font = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-        for i, ((name, offset, x, title), length) in enumerate(zip(SHOTS,lengths),1):
+        shot_tracking = []
+        for i, ((name, offset, _old_x, _old_title), length) in enumerate(zip(SHOTS,lengths),1):
             w,h = (1920,1080) if name=="crossota" else (1280,720)
             cw = (608 if name=="crossota" else 406)
-            x = max(0,min(w-cw,int(x)//2*2))
+            # Inspect only the footage used by this sentence. The moving
+            # vertical window is synchronized to *measured* speech beats.
+            # No fake animated creatures or full-screen PowerPoint headings.
+            track = track_crop(
+                source=paths[name], start=offset, seconds=length,
+                source_width=w, crop_width=cw)
+            x_expr = crop_expression(track)
+            shot_tracking.append({
+                "sceneIndex": i, "footage": name,
+                "startSeconds": round(offset, 3),
+                "durationSeconds": round(length, 3),
+                **track,
+            })
             vf = ",".join([
-                f"crop={cw}:{h}:{x}:0",
+                "setpts=PTS-STARTPTS",
+                f"crop={cw}:{h}:x='{x_expr}':y=0",
                 "scale=1080:1920:flags=lanczos",
                 "fps=30",
                 "eq=contrast=1.045:saturation=1.06:brightness=-0.005",
-                f"drawtext=fontfile={font}:text='{title}':fontsize=47:"
-                f"fontcolor=white:borderw=3:bordercolor=black@0.83:"
-                f"x=(w-text_w)/2:y=h*0.76:enable='between(t,0.55,{max(.9,length-.35):.3f})'",
                 "format=yuv420p",
             ])
             clip=work/f"scene-{i:02}.mp4"
@@ -177,6 +188,10 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
             "voice": data.get("voice"),
             "sceneCount": len(SHOTS),
             "footageType": "real-recorded-jellyfish",
+            "portraitTracking": shot_tracking,
+            "staticTitleCards": False,
+            "opticalSubjectDetection": False,
+            "captionMode": "external-srt-no-burned-in-slides",
             "bioluminescenceActuallyRecorded": False,
             "copyrightedMusic": False,
             "publicationApproved": False,
