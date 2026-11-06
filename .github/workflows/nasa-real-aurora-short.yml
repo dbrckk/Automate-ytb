@@ -5,6 +5,8 @@ on:
     paths:
       - .github/workflows/nasa-real-aurora-short.yml
       - automate_ytb/mobile_subtitles.py
+      - automate_ytb/shot_diversity.py
+      - tests/test_shot_diversity.py
       - tests/test_mobile_subtitles.py
 permissions:
   contents: read
@@ -114,6 +116,13 @@ jobs:
             --mobile-srt build/nasa-short/render/mobile-captions.srt \
             --out build/nasa-short/render/preview-captioned.mp4 \
             --report build/nasa-short/render/mobile-captions-qa.json
+      - name: M2 audit actual scene-to-scene visual diversity on decoded video
+        run: |
+          python -m automate_ytb.shot_diversity \
+            --video build/nasa-short/render/preview-captioned.mp4 \
+            --plan build/nasa-short/scene-plan.json \
+            --edit-report build/nasa-short/auto-edit-report.json \
+            --out build/nasa-short/render/shot-diversity-qa.json
       - name: Validate decoded final MP4, audible Kokoro and subtitles
         run: |
           set -euo pipefail
@@ -163,6 +172,7 @@ jobs:
             build/nasa-short/render/preview-captioned.mp4
             build/nasa-short/render/mobile-captions.srt
             build/nasa-short/render/mobile-captions-qa.json
+            build/nasa-short/render/shot-diversity-qa.json
             build/nasa-short/render/captioned-media-qa.json
             build/nasa-short/render/captioned-shorts-qa.json
             build/nasa-short/render/draft-captions.srt
