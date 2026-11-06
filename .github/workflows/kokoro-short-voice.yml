@@ -158,7 +158,9 @@ jobs:
           audio=[s for s in streams if s["codec_type"]=="audio"]
           assert len(vids)==1 and len(audio)==1
           assert vids[0]["codec_name"]=="h264" and vids[0]["width"]==1080 and vids[0]["height"]==1920
-          assert vids[0]["avg_frame_rate"]=="30/1" and audio[0]["codec_name"]=="aac"
+          from fractions import Fraction
+          actual_fps=float(Fraction(vids[0]["avg_frame_rate"]))
+          assert abs(actual_fps-30) < 0.1 and audio[0]["codec_name"]=="aac"
           print("Real fully narrated NOAA jellyfish MP4 passed 9:16 30 FPS H264 AAC checks")
           PY
       - name: Upload complete narrated Short, rights, subtitles and QC
