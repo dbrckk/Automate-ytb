@@ -126,7 +126,7 @@ jobs:
           import json
           from pathlib import Path
           a=json.loads(Path("build/nasa-short/auto-edit-report.json").read_text())
-          if not a["voiceGenerated"] or a["narrationEngine"]!="kokoro":
+          if not a["voiceGenerated"] or a["narrationEngine"]!="kokoro-natural":
               raise SystemExit("Missing real English Kokoro voice")
           if a["sourcesUsed"]!=2 or a["sceneCount"]<4:
               raise SystemExit("Both authentic NASA footage sources must be edited")
