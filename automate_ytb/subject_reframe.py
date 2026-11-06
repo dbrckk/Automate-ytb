@@ -80,7 +80,9 @@ def track_crop(*, source: Path, start: float, seconds: float,
     central = max_left // 2
     prev_left = central
     smooth_left = float(central)
+    velocity = 0.0
     max_step = max(1.6, max_left / (ANALYSIS_FPS * 5.0))
+    max_acceleration = max(1.0, max_step * .25)
     samples = []
     low_information = 0
     previous = None
@@ -107,8 +109,17 @@ def track_crop(*, source: Path, start: float, seconds: float,
         if i == 0:
             smooth_left = float(candidate)
         else:
-            desired = smooth_left + .58 * (candidate - smooth_left)
-            smooth_left += max(-max_step, min(max_step, desired - smooth_left))
+            # Second-order camera inertia: cap both velocity and its change.
+            # A suddenly changing optical target cannot whip the camera in
+            # the opposite direction from one sample to the next.
+            wanted_velocity = max(-max_step, min(max_step,
+                                                .48 * (candidate - smooth_left)))
+            velocity += max(-max_acceleration,
+                            min(max_acceleration, wanted_velocity - velocity))
+            next_left = max(0.0, min(float(max_left), smooth_left + velocity))
+            if abs(next_left - (smooth_left + velocity)) > 1e-6:
+                velocity = 0.0
+            smooth_left = next_left
         prev_left = int(round(smooth_left))
         source_left = round(smooth_left * (source_width - crop_width) /
                             max(1, max_left) / 2) * 2
