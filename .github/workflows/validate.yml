@@ -18,18 +18,27 @@ concurrency:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install FFmpeg, speech and project
+      - name: Install bounded FFmpeg, speech and project dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
-          python -m pip install -e .
-          python -m pip install -e '.[motion]'
+          set -euo pipefail
+          # Ubuntu hosted runners often already ship FFmpeg, espeak and
+          # DejaVu. Avoid unconditional apt update: it has hung until the
+          # 20-minute job timeout in multiple unrelated PR checks.
+          if ! command -v ffmpeg >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core; then
+              sudo timeout -k 10s 120s apt-get update -qq
+              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+            fi
+          fi
+          python -m pip install --disable-pip-version-check -e '.[motion]'
+          ffmpeg -version | head -n 1
+          espeak-ng --version
       - name: Unit and safety tests
         run: python -m unittest discover -s tests -v
       - name: Generate sourced example video
