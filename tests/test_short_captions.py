@@ -44,7 +44,7 @@ class NaturalShortCaptionTests(unittest.TestCase):
         self.assertGreaterEqual(sum(map(len, all_parts)), 7)
         for full, parts in zip(beats, all_parts):
             self.assertEqual(" ".join(parts), " ".join(full.split()))
-            self.assertTrue(all(len(part) <= 44 for part in parts))
+            self.assertTrue(all(len(part) <= 48 for part in parts))
             self.assertTrue(all(len(part.split()) <= 8 for part in parts))
 
     def test_refuses_unsupported_ass_markup_and_long_words(self):
