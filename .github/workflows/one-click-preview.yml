@@ -204,11 +204,11 @@ jobs:
           python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install -e '.[speech]'
       - name: Measure true PCM narration and enforce strict pacing BEFORE Blender
-        if: ${ inputs.cinematic_3d && inputs.voice == 'kokoro' && inputs.caption_timing == 'audio' }}
+        if: ${{ inputs.cinematic_3d && inputs.voice == 'kokoro' && inputs.caption_timing == 'audio' }}
         env:
-          YT_LANGUAGE: ${ inputs.language }}
-          YT_VOICE_STYLE: ${ inputs.voice_style }}
-          YT_VOICE_NAME: ${ inputs.voice_name }}
+          YT_LANGUAGE: ${{ inputs.language }}
+          YT_VOICE_STYLE: ${{ inputs.voice_style }}
+          YT_VOICE_NAME: ${{ inputs.voice_name }}
         run: |
           set -euo pipefail
           VOICE_ARGS=()
