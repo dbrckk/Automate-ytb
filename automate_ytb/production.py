@@ -357,7 +357,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
            limit: int | None = None, resolution: str = "720p", fps: int = 24,
            music: Path | None = None, caption_timing: str = "estimated",
            transition: str = "dissolve",
-           render_profile: str = "preview") -> dict:
+           render_profile: str = "preview",
+           portrait_framing: str = "preserve") -> dict:
     from .encoding_profiles import (settings, video_args, aac_args,
                                     VERSION as ENCODING_VERSION)
     codec = settings(render_profile)
@@ -365,6 +366,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Supported resolutions: 720p/1080p/shorts, FPS: 24/30")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
+    if portrait_framing not in {"auto", "follow", "preserve"}:
+        raise ValueError("Portrait framing must be auto, follow or preserve")
     if transition not in {"cut", "dissolve", "adaptive"}:
         raise ValueError("Transition must be adaptive, cut or dissolve")
     if caption_timing == "audio" and audio is None:
@@ -409,6 +412,7 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         if audio is not None else None for scene in scenes
     ]
     clips = []
+    framing_reports = []
     for scene_index, scene in enumerate(scenes):
         # Posters remain bound to the narration and character-specific rig.
         rig_tag = scene.get("motionRig")
@@ -449,6 +453,22 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             if actual != scene["artBriefSha256"]:
                 raise ValueError(f"Artwork brief changed for {scene['id']}; reapproval required")
         seconds = (scene["endMs"] - scene["startMs"]) / 1000
+        # Follow the normalized, approved, hash-bound footage so optical
+        # samples and the exported video use identical source bytes.
+        framing_graph, framing_complex = None, False
+        if "videoAsset" in scene:
+            from .footage import smart_framing_filter
+            details = scene.get("videoDetails")
+            if not isinstance(details, dict):
+                raise ValueError("Missing validated original video dimensions")
+            framing_graph, framing_complex, framing_review = smart_framing_filter(
+                source=_video_path(plan_path, scene),
+                seconds=seconds,
+                source_width=details.get("normalizedWidth"),
+                source_height=details.get("normalizedHeight"),
+                width=dims[0], height=dims[1], fps=fps,
+                mode=portrait_framing if resolution == "shorts" else "preserve")
+            framing_reports.append({"sceneId": scene["id"], **framing_review})
         uses_owl_rig = (rig_tag == "original-owl-v1" and local_art)
         uses_forest_rig = (expected_forest_rig is not None
                            and rig_tag == expected_forest_rig and local_art)
@@ -457,7 +477,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "assetSha": scene["assetSha256"], "seconds": seconds,
             "sourceVideoSha": scene.get("videoSha256"),
             "sourceVideoDetails": scene.get("videoDetails"),
-            "videoFramingVersion": "owned-footage-auto-matte-v1",
+            "videoFramingVersion": "owned-footage-motion-framing-v1",
+            "portraitFramingMode": portrait_framing,
             "sourceType": "real-footage" if "videoAsset" in scene else "image",
             "dimensions": dims, "fps": fps, "renderer": VERSION,
             "universalCameraVersion": "universal-shot-camera-v1",
@@ -562,23 +583,13 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         render_profile=render_profile,
                     )
                 elif "videoAsset" in scene:
-                    # Preserve the real recorded scene on portrait/landscape
-                    # conversion; never crop away most of a landscape video.
-                    # Both blurred background and foreground come from the
-                    # SAME approved moving clip, not synthetic AI content.
-                    from .footage import framing_filter
-                    details = scene.get("videoDetails")
-                    if not isinstance(details,dict):
-                        raise ValueError("Missing validated original video dimensions")
-                    graph,complex_graph = framing_filter(
-                        source_width=details.get("normalizedWidth"),
-                        source_height=details.get("normalizedHeight"),
-                        width=w,height=h,fps=fps)
+                    if framing_graph is None:
+                        raise RuntimeError("Missing calculated original-footage framing")
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                           "-i", str(_video_path(plan_path, scene)),
                           "-t", f"{seconds:.3f}",
-                          *(["-filter_complex",graph,"-map","[v]"]
-                            if complex_graph else ["-vf",graph]),
+                          *(["-filter_complex",framing_graph,"-map","[v]"]
+                            if framing_complex else ["-vf",framing_graph]),
                           *video_args(render_profile), "-an", str(tmp)])
                 else:
                     _run(["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
@@ -705,7 +716,14 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
         "realFootageSourceAudioIncluded": False,
-        "realFootageFramingVersion": "auto-contained-original-motion-blur-v1",
+        "realFootageFramingVersion": "owned-footage-motion-framing-v1",
+        "realFootageFraming": {
+            "requested": portrait_framing,
+            "trackedScenes": sum(x["applied"] == "follow" for x in framing_reports),
+            "preservedScenes": sum(x["applied"] == "preserve" for x in framing_reports),
+            "scenes": framing_reports,
+            "humanReviewRequired": True,
+        },
         "renderProfile": render_profile,
         "videoEncodingPreset": codec["preset"],
         "videoEncodingCrf": codec["crf"],
