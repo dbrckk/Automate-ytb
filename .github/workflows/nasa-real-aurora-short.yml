@@ -1,9 +1,11 @@
-name: Real NASA ISS aurora footage with English Kokoro Short
+name: Real ISS aurora Short with Kokoro and burned mobile captions
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - .github/workflows/nasa-real-aurora-short.yml
+      - automate_ytb/mobile_subtitles.py
+      - tests/test_mobile_subtitles.py
 permissions:
   contents: read
 jobs:
@@ -104,6 +106,14 @@ jobs:
             --portrait-framing follow --voice-engine kokoro \
             --language en --voice-name af_heart --narration-style natural \
             --music build/nasa/original-ambient.wav
+      - name: Burn measured Kokoro subtitles on real ISS footage without slide cards
+        run: |
+          python -m automate_ytb.mobile_subtitles \
+            --video build/nasa-short/render/preview.mp4 \
+            --srt build/nasa-short/render/draft-captions.srt \
+            --mobile-srt build/nasa-short/render/mobile-captions.srt \
+            --out build/nasa-short/render/preview-captioned.mp4 \
+            --report build/nasa-short/render/mobile-captions-qa.json
       - name: Validate decoded final MP4, audible Kokoro and subtitles
         run: |
           set -euo pipefail
@@ -116,6 +126,15 @@ jobs:
           python -m automate_ytb.shorts_delivery \
             --video build/nasa-short/render/preview.mp4 \
             --report build/nasa-short/render/shorts-qa.json \
+            --require-audio
+          python -m automate_ytb.media_qa \
+            --video build/nasa-short/render/preview-captioned.mp4 \
+            --srt build/nasa-short/render/mobile-captions.srt \
+            --report build/nasa-short/render/captioned-media-qa.json \
+            --require-audio
+          python -m automate_ytb.shorts_delivery \
+            --video build/nasa-short/render/preview-captioned.mp4 \
+            --report build/nasa-short/render/captioned-shorts-qa.json \
             --require-audio
           ffmpeg -nostdin -v error -i build/nasa-short/render/preview.mp4 -f null -
           python -m automate_ytb.review_board \
@@ -141,6 +160,11 @@ jobs:
           name: real-nasa-iss-aurora-short
           path: |
             build/nasa-short/render/preview.mp4
+            build/nasa-short/render/preview-captioned.mp4
+            build/nasa-short/render/mobile-captions.srt
+            build/nasa-short/render/mobile-captions-qa.json
+            build/nasa-short/render/captioned-media-qa.json
+            build/nasa-short/render/captioned-shorts-qa.json
             build/nasa-short/render/draft-captions.srt
             build/nasa-short/render/draft-captions.vtt
             build/nasa-short/render/media-qa.json
