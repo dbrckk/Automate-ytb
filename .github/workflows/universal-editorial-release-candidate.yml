@@ -11,6 +11,11 @@ on:
       - automate_ytb/editorial_cuts.py
       - automate_ytb/camera_motion.py
       - automate_ytb/auto_edit.py
+      - automate_ytb/footage.py
+      - automate_ytb/subject_reframe.py
+      - tests/test_subject_reframe.py
+      - tests/test_real_footage.py
+      - tests/test_auto_edit.py
       - automate_ytb/quality.py
       - automate_ytb/transitions.py
       - automate_ytb/production.py
