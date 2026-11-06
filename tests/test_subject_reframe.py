@@ -62,6 +62,11 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
         self.assertGreater(frames[-1]["cropX"] - frames[0]["cropX"], 60)
         self.assertTrue(all(0 <= f["cropX"] <= 328
                             and f["cropX"] % 2 == 0 for f in frames))
+        # Camera acceleration is limited, not merely its absolute speed:
+        # a moving subject must not cause one-frame reverse whip pans.
+        steps = [b["cropX"] - a["cropX"] for a, b in zip(frames, frames[1:])]
+        self.assertTrue(all(abs(b - a) <= 18
+                            for a, b in zip(steps, steps[1:])))
         self.assertTrue(all(a["timeSeconds"] < b["timeSeconds"]
                             for a, b in zip(frames, frames[1:])))
         self.assertTrue(report["requiresVisualReview"])
