@@ -273,6 +273,87 @@ def mountain_floor(material, *, snow, stone, grid=63):
                 poly.material_index=0
     return obj
 
+
+def glacial_lagoon_material():
+    """Original dark reflective Cycles water with small real wave normals.
+
+    This uses actual Cycles reflection from the 3D aurora sheets. It does
+    not paste an image of the curtains onto the lake or claim to simulate
+    fluid dynamics. Works with the Principled BSDF in Blender 3.x/4.x.
+    """
+    mat=bpy.data.materials.new("Polar lagoon reflective cold-water shader")
+    mat.use_nodes=True
+    nodes=mat.node_tree.nodes
+    nodes.clear()
+    links=mat.node_tree.links
+    output=nodes.new("ShaderNodeOutputMaterial")
+    principled=nodes.new("ShaderNodeBsdfPrincipled")
+    principled.inputs["Base Color"].default_value=(.015,.045,.073,1)
+    principled.inputs["Roughness"].default_value=.075
+    principled.inputs["Metallic"].default_value=.38
+    texture=nodes.new("ShaderNodeTexNoise")
+    texture.inputs["Scale"].default_value=23
+    texture.inputs["Detail"].default_value=2.5
+    texture.inputs["Roughness"].default_value=.54
+    coord=nodes.new("ShaderNodeTexCoord")
+    bump=nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value=.14
+    bump.inputs["Distance"].default_value=.028
+    links.new(coord.outputs["Generated"],texture.inputs["Vector"])
+    links.new(texture.outputs["Fac"],bump.inputs["Height"])
+    links.new(bump.outputs["Normal"],principled.inputs["Normal"])
+    links.new(principled.outputs[0],output.inputs["Surface"])
+    return mat
+
+
+LAGOON_NX=68
+LAGOON_NY=32
+
+
+def glacial_lagoon(material):
+    """Bounded true 3D water surface with a tapered shoreline, not a 2D plate."""
+    vertices=[]
+    faces=[]
+    for row in range(LAGOON_NY):
+        v=row/(LAGOON_NY-1)
+        y=-3.45+v*5.12
+        # Recede behind the real mountain geometry with a non-rectangular bank.
+        half_width=4.48-.94*v+.11*math.sin(v*6.1)
+        for col in range(LAGOON_NX):
+            u=col/(LAGOON_NX-1)
+            x=(u-.5)*2*half_width
+            vertices.append((x,y,-1.21))
+    for row in range(LAGOON_NY-1):
+        for col in range(LAGOON_NX-1):
+            a=row*LAGOON_NX+col
+            faces.append((a,a+1,a+LAGOON_NX+1,a+LAGOON_NX))
+    mesh=bpy.data.meshes.new("2180-vertex moving polar water mesh")
+    mesh.from_pydata(vertices,[],faces)
+    mesh.update()
+    lagoon=bpy.data.objects.new("Real 3D aurora-reflecting glacial lagoon",mesh)
+    bpy.context.collection.objects.link(lagoon)
+    lagoon.data.materials.append(material)
+    for poly in mesh.polygons:
+        poly.use_smooth=True
+    return lagoon
+
+
+def animate_lagoon(lagoon,q):
+    """Continuous layered surface waves; the reflections are ray traced."""
+    phase=q*math.tau
+    for row in range(LAGOON_NY):
+        for col in range(LAGOON_NX):
+            vertex=lagoon.data.vertices[row*LAGOON_NX+col]
+            x,y=vertex.co.x,vertex.co.y
+            # Low amplitudes keep the water coherent and expose reflections;
+            # wave-front velocity is smooth across the whole source shot.
+            wave=.025*math.sin(2.9*x+1.25*y+phase*1.2)
+            micro=.012*math.sin(7.7*x-2.6*y-phase*1.6)
+            vertex.co.z=-1.21+wave+micro
+    lagoon.data.update()
+
+
+
 def curtain(name, material, *, index=0, nx=64, nz=34):
     verts, faces=[],[]
     for row in range(nz):
@@ -381,6 +462,7 @@ def setup(beat, width, height, samples):
         "veil_cyan":surface("Translucent physical blue aurora",(.24,.81,1),glow=1.45,translucent=True),
         "veil_magenta":surface("Translucent physical nitrogen aurora",(.64,.18,1),glow=1.45,translucent=True),
         "veil_red":surface("Translucent physical red aurora",(1,.18,.22),glow=1.42,translucent=True),
+        "lagoon":glacial_lagoon_material() if beat=="curtains" else None,
     }
     mountain_floor(mats["snow"],snow=mats["snowcap"],stone=mats["granite"])
     rng=random.Random(2071+BEATS.index(beat)*53)
@@ -405,7 +487,7 @@ def setup(beat, width, height, samples):
         sphere("3D star depth layer %02d"%i,x,y,z,
                rng.uniform(.012,.027),mats["star"],low=True)
     dynamic={"sheets":[],"fields":[],"streams":[],"particles":[],
-             "electrons":[],"photons":[]}
+             "electrons":[],"photons":[],"lagoon":None,"ice":[]}
     if beat in ("solar_wind","magnetic_field"):
         globe_x=2.50 if beat=="solar_wind" else .22
         globe=sphere("Detailed Earth: raised ocean-continent shader",
@@ -463,6 +545,21 @@ def setup(beat, width, height, samples):
                               0,0,1,.092,source,low=True)
                 dynamic["photons"].append((photon,target,impact,i))
     if beat=="curtains":
+        # The final spectacle replaces flat explanatory ground with a
+        # physically modeled lagoon reflecting the genuinely moving
+        # translucent 3D auroral curtains above it.
+        dynamic["lagoon"]=glacial_lagoon(mats["lagoon"])
+        for i in range(11):
+            x=rng.uniform(-3.6,3.6)
+            y=rng.uniform(-2.6,.5)
+            bpy.ops.mesh.primitive_ico_sphere_add(
+                subdivisions=1 if i%3 else 2,radius=rng.uniform(.11,.24),
+                location=(x,y,-1.15))
+            floe=bpy.context.object
+            floe.name="Independently floating real polar ice %02d"%i
+            floe.scale=(rng.uniform(1.3,2.8),rng.uniform(.8,1.65),rng.uniform(.17,.38))
+            floe.data.materials.append(mats["snowcap"])
+            dynamic["ice"].append((floe,i))
         for i in range(6):
             mat=(mats["veil_green"],mats["veil_cyan"],mats["veil_magenta"],mats["veil_green"],mats["veil_red"],mats["veil_cyan"])[i]
             dynamic["sheets"].append(curtain(
@@ -483,17 +580,22 @@ def setup(beat, width, height, samples):
     rim.data.size=4.0
     rim.data.color=(.35,1,.73)
     aim(rim,(0,0,1.7))
-    bpy.ops.object.camera_add(location=(.1,-10.8,4.3))
+    bpy.ops.object.camera_add(location=(.08,-9.6,3.5) if beat=="curtains" else (.1,-10.8,4.3))
     camera=bpy.context.object
     camera.name="Dolly camera with physical parallax"
-    camera.data.lens=43
+    camera.data.lens=38 if beat=="curtains" else 43
     camera.data.clip_end=150
-    aim(camera,(0,.4,2.0))
+    aim(camera,(0,.4,1.65) if beat=="curtains" else (0,.4,2.0))
     scene.camera=camera
     return scene,dynamic,camera
 
 
 def animate(beat,dynamic,camera,q):
+    if dynamic["lagoon"] is not None:
+        animate_lagoon(dynamic["lagoon"],q)
+        for floe,i in dynamic["ice"]:
+            floe.location.z=-1.15+.027*math.sin(q*math.tau*.91+i*.7)
+            floe.rotation_euler.z=.038*math.sin(q*math.tau*.64+i*.9)
     for i,sheet in enumerate(dynamic["sheets"]):
         animate_curtain(sheet,i,q)
     for i,line in enumerate(dynamic["fields"]):
@@ -552,10 +654,18 @@ def animate(beat,dynamic,camera,q):
                          z+direction[2]*fraction*2.40)
         visible=0.001 if q < hit else max(.001,1-fraction*.72)
         photon.scale=(visible,)*3
-    camera.location.x=.1+.37*math.sin(q*math.pi*.88)
-    camera.location.y=-10.8+.25*q
-    camera.location.z=4.3+.18*math.sin(q*math.pi)
-    aim(camera,(0,.4,2.0))
+    if beat=="curtains":
+        # The final shot sees both real 3D ribbons and their moving
+        # water reflections, with a restrained cinematic dolly/pan.
+        camera.location.x=.08+.28*math.sin(q*math.pi*.7)
+        camera.location.y=-9.6+.45*q
+        camera.location.z=3.5-.18*q+.08*math.sin(q*math.pi)
+        aim(camera,(0,.4,1.65))
+    else:
+        camera.location.x=.1+.37*math.sin(q*math.pi*.88)
+        camera.location.y=-10.8+.25*q
+        camera.location.z=4.3+.18*math.sin(q*math.pi)
+        aim(camera,(0,.4,2.0))
 
 
 def main():
@@ -596,13 +706,18 @@ def main():
             "emittedPhotons":len(dynamic["photons"]),
             "curtainSurfaceVertices":sum(
                 len(obj.data.vertices) for obj in dynamic["sheets"]),
+            "lagoonSurfaceVertices":(
+                len(dynamic["lagoon"].data.vertices)
+                if dynamic["lagoon"] is not None else 0),
         }
         if (evidence["terrainVertices"] < 2000 or
                 (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 10) or
                 (beat in ("collisions","emission") and
                  (evidence["diatomicMolecules"] < 12 or evidence["incomingElectrons"] < 8)) or
                 (beat=="emission" and evidence["emittedPhotons"] < 8) or
-                (beat=="curtains" and evidence["curtainSurfaceVertices"] < 10000)):
+                (beat=="curtains" and (
+                    evidence["curtainSurfaceVertices"] < 10000 or
+                    evidence["lagoonSurfaceVertices"] < 2000))):
             raise RuntimeError(f"3D environment is incomplete: {beat}, {evidence}")
         manifest["sceneDetails"][beat]=evidence
         records=[]
