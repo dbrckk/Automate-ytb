@@ -193,6 +193,17 @@ class RealFootageTests(unittest.TestCase):
         self.assertEqual(manual["applied"], "follow")
         self.assertFalse(complex_graph)
         self.assertIn("crop=", graph)
+        # A clip longer than the bounded optical sample must never be
+        # advertised as wholly followed if only its first part was read.
+        _, _, overlong = smart_framing_filter(
+            source=black, seconds=45, source_width=480, source_height=320,
+            width=1080, height=1920, fps=24, mode="auto")
+        self.assertEqual(overlong["applied"], "preserve")
+        self.assertIn("fully sampled", overlong["reason"])
+        with self.assertRaisesRegex(ValueError, "Tracking requires real clips"):
+            smart_framing_filter(
+                source=black, seconds=45, source_width=480, source_height=320,
+                width=1080, height=1920, fps=24, mode="follow")
         with self.assertRaisesRegex(ValueError, "Portrait framing"):
             smart_framing_filter(source=black, seconds=2,
                                  source_width=480, source_height=320,
