@@ -82,6 +82,28 @@ jobs:
             --voice build/shorts-narrator/narration.wav \
             --report build/shorts-narrator/narration.json \
             --output build/shorts-narrator/deep-sea-short.mp4
+      - name: Verify subject-guided camera track and no static title cards
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("build/shorts-narrator/deep-sea-short.json").read_text())
+          shots=report["portraitTracking"]
+          assert len(shots)==4
+          assert report["staticTitleCards"] is False
+          assert report["opticalSubjectDetection"] is False
+          for shot in shots:
+              assert shot["sampledFrames"] >= 2
+              assert shot["requiresVisualReview"] is True
+              frames=shot["keyframes"]
+              assert len(frames) >= 2
+              ceiling=shot["sourceWidth"]-shot["cropWidth"]
+              assert all(0 <= frame["cropX"] <= ceiling and
+                         frame["cropX"] % 2 == 0 for frame in frames)
+              assert all(a["timeSeconds"] < b["timeSeconds"]
+                         for a,b in zip(frames,frames[1:]))
+          print("Real decoded source frames guided all four portrait camera paths")
+          PY
       - name: Independently verify real H264 MP4 audio and subtitle timing
         run: |
           python -m automate_ytb.media_qa \
