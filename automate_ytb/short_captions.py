@@ -12,7 +12,7 @@ import re
 
 from .captions import srt_time
 
-MAX_CAPTION_CHARS = 44
+MAX_CAPTION_CHARS = 48
 MAX_CAPTION_WORDS = 8
 MAX_CAPTIONS = 80
 
@@ -44,6 +44,21 @@ def caption_fragments(text: str) -> list[str]:
             current = []
     if current:
         parts.append(" ".join(current))
+    # Avoid synthesizing a solitary last word, which creates unnatural
+    # pronunciation and one-word subtitles. Rejoin where legibility allows;
+    # otherwise borrow a non-punctuated word from the previous phrase.
+    if len(parts) > 1 and len(parts[-1].split()) == 1:
+        joined = parts[-2] + " " + parts[-1]
+        if (len(joined) <= MAX_CAPTION_CHARS and
+                len(joined.split()) <= MAX_CAPTION_WORDS):
+            parts[-2:] = [joined]
+        else:
+            words = parts[-2].split()
+            if len(words) >= 3 and not words[-1].endswith((".", "!", "?", "…")):
+                expanded = words[-1] + " " + parts[-1]
+                if len(expanded) <= MAX_CAPTION_CHARS:
+                    parts[-2] = " ".join(words[:-1])
+                    parts[-1] = expanded
     if not parts or " ".join(parts) != plain:
         raise RuntimeError("Short caption segmentation changed the original script")
     return parts
