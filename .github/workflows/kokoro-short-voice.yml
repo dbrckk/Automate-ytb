@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
-          ffmpeg -hide_banner -filters 2>&1 | grep -Eq '[[:space:]]ass[[:space:]]'
+          ffmpeg -hide_banner -filters 2>&1 | grep -E '[[:space:]]ass[[:space:]]' > /dev/null
           python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install -e '.[speech]'
       - name: Generate original English narrator and beat timings
