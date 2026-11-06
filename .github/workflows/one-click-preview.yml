@@ -191,6 +191,40 @@ jobs:
           python -m automate_ytb.science_preflight \
             --plan build/scene-plan.json --style "$YT_STYLE" \
             --resolution "$YT_RESOLUTION" --output build/scene-preflight.json
+      - name: Cache open Kokoro voice assets
+        if: ${{ inputs.voice == 'kokoro' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install optional Kokoro natural speech model runner
+        if: ${{ inputs.voice == 'kokoro' }}
+        run: |
+          # CPU-only PyTorch avoids large CUDA-only libraries on GitHub Actions.
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install -e '.[speech]'
+      - name: Measure true PCM narration and enforce strict pacing BEFORE Blender
+        if: ${ inputs.cinematic_3d && inputs.voice == 'kokoro' && inputs.caption_timing == 'audio' }}
+        env:
+          YT_LANGUAGE: ${ inputs.language }}
+          YT_VOICE_STYLE: ${ inputs.voice_style }}
+          YT_VOICE_NAME: ${ inputs.voice_name }}
+        run: |
+          set -euo pipefail
+          VOICE_ARGS=()
+          if [ "$YT_VOICE_NAME" != "auto" ]; then
+            VOICE_ARGS+=(--voice-name "$YT_VOICE_NAME")
+          fi
+          python -m automate_ytb.voice_preflight \
+            --plan build/scene-plan.json \
+            --output-dir build/voice-preflight \
+            --language "$YT_LANGUAGE" \
+            --voice-style "$YT_VOICE_STYLE" "${VOICE_ARGS[@]}"
+          # The file now holds measured speech boundaries; preserve exact
+          # original speech in the bundle and do not regenerate it after 3D.
+          cp build/voice-preflight/plan.json build/scene-plan.json
+          test -s build/voice-preflight/narration.wav
+          test -s build/voice-preflight/manifest.json
       - name: Generate authored ocean or aurora scenes with Blender Cycles CPU
         if: ${{ inputs.cinematic_3d }}
         env:
@@ -239,18 +273,6 @@ jobs:
             python -m automate_ytb.blender_stage_review \
               --folder build/ocean-3d --out build/ocean-3d/review.jpg
           fi
-      - name: Cache open Kokoro voice assets
-        if: ${{ inputs.voice == 'kokoro' }}
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface/hub
-          key: kokoro-82m-voice-${{ runner.os }}-v1
-      - name: Install optional Kokoro natural speech model runner
-        if: ${{ inputs.voice == 'kokoro' }}
-        run: |
-          # CPU-only PyTorch avoids large CUDA-only libraries on GitHub Actions.
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
-          python -m pip install -e '.[speech]'
       - name: Plan scenes, graphics and narration
         env:
           YT_TOPIC: ${{ inputs.topic }}
@@ -289,6 +311,10 @@ jobs:
                 exit 2 ;;
             esac
           fi
+          PREFLIGHT_ARGS=()
+          if [ -f build/voice-preflight/manifest.json ]; then
+            PREFLIGHT_ARGS=(--voice-preflight build/voice-preflight/manifest.json)
+          fi
           # Scene plan and domain semantics were checked before heavy Kokoro downloads.
           # Keep the exact checked plan; no second scene split is allowed.
           python -m automate_ytb.production prepare \
@@ -301,7 +327,7 @@ jobs:
             --soundtrack "$YT_SOUNDTRACK" \
             --caption-timing "$YT_CAPTION_TIMING" \
             --transition "$YT_TRANSITION" \
-            --render-profile "$YT_RENDER_PROFILE"
+            --render-profile "$YT_RENDER_PROFILE" "${PREFLIGHT_ARGS[@]}"
       - name: Package Kokoro voice attribution for editorial review
         if: ${{ inputs.voice == 'kokoro' }}
         run: cp docs/VOICE_CREDITS.md build/video/VOICE_CREDITS.md
@@ -392,6 +418,10 @@ jobs:
             build/video/preview.mp4
             build/video/narration.wav
             build/video/narration-pacing.json
+            build/voice-preflight/manifest.json
+            build/voice-preflight/plan.json
+            build/voice-preflight/narration.wav
+            build/voice-preflight/narration-pacing.json
             build/video/voice-sample.mp3
             build/video/voice-auditions/
             build/ocean-3d/manifest.json
