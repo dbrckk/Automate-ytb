@@ -1,0 +1,182 @@
+name: Real ISS aurora Short with Kokoro and burned mobile captions
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/nasa-real-aurora-short.yml
+      - automate_ytb/mobile_subtitles.py
+      - tests/test_mobile_subtitles.py
+permissions:
+  contents: read
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install video editor and free CPU neural narrator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          python -m pip install -e .
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install -e '.[speech]'
+      - name: Obtain two original NASA ISS photo timelapses
+        run: |
+          set -euo pipefail
+          mkdir -p build/nasa
+          curl --fail --location --retry 3 --max-time 240 \
+            'https://svs.gsfc.nasa.gov/vis/a030000/a031200/a031281/ISS067_20220817_aurora_1080p25.webm' \
+            --output build/nasa/iss-2022.webm
+          curl --fail --location --retry 3 --max-time 240 \
+            'https://svs.gsfc.nasa.gov/vis/a030000/a031300/a031375/ISS_20251112_071350-20251112_073549_1080p30.webm' \
+            --output build/nasa/iss-2025.webm
+          sha256sum build/nasa/*.webm > build/nasa/source-sha256.txt
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          evidence = {}
+          for name in ("iss-2022.webm","iss-2025.webm"):
+              file=Path("build/nasa")/name
+              if not 4_000_000 < file.stat().st_size < 80_000_000:
+                  raise SystemExit("Truncated/oversized NASA footage: "+name)
+              probe=json.loads(subprocess.check_output(["ffprobe","-v","error",
+                  "-show_entries","format=duration:stream=codec_type,width,height",
+                  "-of","json",str(file)],timeout=30))
+              videos=[s for s in probe["streams"] if s["codec_type"]=="video"]
+              if len(videos)!=1 or (videos[0]["width"],videos[0]["height"])!=(1920,1080):
+                  raise SystemExit("Unexpected NASA source dimensions")
+              duration=float(probe["format"]["duration"])
+              if duration<12:
+                  raise SystemExit("NASA source has insufficient moving footage")
+              evidence[name]={"seconds":duration,"source":"NASA SVS",
+                              "credit":"Earth Science and Remote Sensing Unit, NASA Johnson Space Center"}
+          Path("build/nasa/source-evidence.json").write_text(json.dumps(evidence,indent=2)+"\n")
+          print(evidence)
+          PY
+      - name: Prepare factual five-scene English narration and royalty-free ambient audio
+        run: |
+          cat > build/aurora-script.txt <<'TEXT'
+          These luminous waves are real auroras, seen in time-lapse photographs from the International Space Station.
+          Charged particles from the Sun are guided toward Earth's polar regions by its magnetic field.
+          High above us, particles collide with gases in the atmosphere and release energy as visible light.
+          Oxygen commonly glows green or red, while nitrogen can contribute violet and blue hues.
+          The shifting colors ripple above the dark curve of our planet, as seen from orbit.
+          TEXT
+          python - <<'PY'
+          import wave
+          from array import array
+          from automate_ytb.soundtrack import _loop, SAMPLERATE
+          loop=_loop("night")
+          frames=75*SAMPLERATE
+          pcm=array("h")
+          for i in range(frames):
+              fade=min(1.,i/(SAMPLERATE*.5),(frames-i)/(SAMPLERATE*.8))
+              pcm.append(int(loop[i%len(loop)]*max(0,fade)))
+          with wave.open("build/nasa/original-ambient.wav","wb") as out:
+              out.setnchannels(1);out.setsampwidth(2);out.setframerate(SAMPLERATE)
+              out.writeframes(pcm.tobytes())
+          PY
+          cat > build/nasa/SOURCE_CREDITS.md <<'TEXT'
+          Original ISS photography time-lapse, not simulated footage or real-time video.
+          2022 NASA SVS https://svs.gsfc.nasa.gov/31281/
+          2025 NASA SVS https://svs.gsfc.nasa.gov/31375/
+          Credit: Earth Science and Remote Sensing Unit, NASA Johnson Space Center.
+          Processing/editor: Marit Jentoft-Nilsen (Global Science and Technology, Inc.).
+          Usage: https://www.nasa.gov/nasa-brand-center/images-and-media/
+          No endorsement, NASA logo, or agency affiliation claimed.
+          Locally created ambient audio and Kokoro narration are not NASA audio.
+          Final editorial rights/factual approval and platform publication remain manual.
+          TEXT
+      - name: Montage from two actual moving ISS source files with real English voice
+        run: |
+          python -m automate_ytb.auto_edit \
+            --script build/aurora-script.txt \
+            --topic 'Real auroras from the International Space Station' \
+            --duration 35 --shot-seconds 7 \
+            --videos build/nasa/iss-2022.webm build/nasa/iss-2025.webm \
+            --output build/nasa-short \
+            --genre documentary --provider nasa-svs \
+            --rights-note 'Factual NASA SVS ISS photography for informational use, with original author credit and no endorsement' \
+            --confirm-rights --resolution shorts --fps 30 \
+            --transition adaptive --render-profile high \
+            --portrait-framing follow --voice-engine kokoro \
+            --language en --voice-name af_heart --narration-style natural \
+            --music build/nasa/original-ambient.wav
+      - name: Burn measured Kokoro subtitles on real ISS footage without slide cards
+        run: |
+          python -m automate_ytb.mobile_subtitles \
+            --video build/nasa-short/render/preview.mp4 \
+            --srt build/nasa-short/render/draft-captions.srt \
+            --mobile-srt build/nasa-short/render/mobile-captions.srt \
+            --out build/nasa-short/render/preview-captioned.mp4 \
+            --report build/nasa-short/render/mobile-captions-qa.json
+      - name: Validate decoded final MP4, audible Kokoro and subtitles
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.media_qa \
+            --video build/nasa-short/render/preview.mp4 \
+            --srt build/nasa-short/render/draft-captions.srt \
+            --vtt build/nasa-short/render/draft-captions.vtt \
+            --report build/nasa-short/render/media-qa.json \
+            --require-audio
+          python -m automate_ytb.shorts_delivery \
+            --video build/nasa-short/render/preview.mp4 \
+            --report build/nasa-short/render/shorts-qa.json \
+            --require-audio
+          python -m automate_ytb.media_qa \
+            --video build/nasa-short/render/preview-captioned.mp4 \
+            --srt build/nasa-short/render/mobile-captions.srt \
+            --report build/nasa-short/render/captioned-media-qa.json \
+            --require-audio
+          python -m automate_ytb.shorts_delivery \
+            --video build/nasa-short/render/preview-captioned.mp4 \
+            --report build/nasa-short/render/captioned-shorts-qa.json \
+            --require-audio
+          ffmpeg -nostdin -v error -i build/nasa-short/render/preview.mp4 -f null -
+          python -m automate_ytb.review_board \
+            --plan build/nasa-short/scene-plan.json \
+            --video build/nasa-short/render/preview.mp4 \
+            --output build/nasa-short/render/review --max-samples 12
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("build/nasa-short/auto-edit-report.json").read_text())
+          if not a["voiceGenerated"] or a["narrationEngine"]!="kokoro-natural":
+              raise SystemExit("Missing real English Kokoro voice")
+          if a["sourcesUsed"]!=2 or a["sceneCount"]<4:
+              raise SystemExit("Both authentic NASA footage sources must be edited")
+          if a["sourceAudioIncluded"] or a["publicationApproved"]:
+              raise SystemExit("Original camera audio or implicit upload prohibited")
+          print("Real NASA two-source video and voice validated")
+          PY
+      - name: Deliver the actual media and provenance, never a fake upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-nasa-iss-aurora-short
+          path: |
+            build/nasa-short/render/preview.mp4
+            build/nasa-short/render/preview-captioned.mp4
+            build/nasa-short/render/mobile-captions.srt
+            build/nasa-short/render/mobile-captions-qa.json
+            build/nasa-short/render/captioned-media-qa.json
+            build/nasa-short/render/captioned-shorts-qa.json
+            build/nasa-short/render/draft-captions.srt
+            build/nasa-short/render/draft-captions.vtt
+            build/nasa-short/render/media-qa.json
+            build/nasa-short/render/shorts-qa.json
+            build/nasa-short/render/review/
+            build/nasa-short/narration.wav
+            build/nasa-short/voice-report.json
+            build/nasa-short/auto-edit-report.json
+            build/nasa-short/scene-plan.json
+            build/nasa/source-sha256.txt
+            build/nasa/source-evidence.json
+            build/nasa/SOURCE_CREDITS.md
+            build/aurora-script.txt
+          retention-days: 7
+          if-no-files-found: warn
