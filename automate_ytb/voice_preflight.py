@@ -34,6 +34,36 @@ def _sha(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _voice_timeline_sha(path: Path) -> str:
+    """Hash only author text, PCM boundaries and caption phrases.
+
+    Art generation and production.prepare may legitimately add provenance,
+    render statuses, images or prompts to the storyboard. Those changes
+    must never invalidate *audio* evidence. Editing speech or timestamps
+    must still fail closed.
+    """
+    plan = production.load_plan(path)
+    rows = [
+        {
+            "id": scene["id"],
+            "narration": scene["narration"],
+            "startMs": scene["startMs"],
+            "endMs": scene["endMs"],
+            "captionSegments": scene.get("captionSegments"),
+        }
+        for scene in plan["scenes"]
+    ]
+    payload = {
+        "topic": plan["topic"],
+        "targetDurationSeconds": plan["targetDurationSeconds"],
+        "sourceScriptSha256": plan.get("sourceScriptSha256"),
+        "scenes": rows,
+    }
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
 def _measured_wav_ms(path: Path) -> int:
     if not path.is_file() or not 2048 <= path.stat().st_size <= MAX_WAV_BYTES:
         raise ValueError("Preflight narration WAV is missing or outside bounds")
@@ -111,6 +141,7 @@ def prepare(*, plan: Path, output_dir: Path, language: str,
         "originalRequestedDurationMs": original_ms,
         "originalPlanSha256": _sha(source),
         "preparedPlanSha256": _sha(adjusted),
+        "preparedVoiceTimelineSha256": _voice_timeline_sha(adjusted),
         "narrationSha256": _sha(audio),
         "pacingSha256": _sha(output_dir / "narration-pacing.json"),
         "speechDurationMs": wav_ms,
@@ -153,7 +184,7 @@ def consume(*, manifest: Path, plan: Path, language: str,
     audio = directory / "narration.wav"
     diagnostic = directory / "narration-pacing.json"
     if (not adjusted.is_file() or not diagnostic.is_file() or
-            _sha(adjusted) != data.get("preparedPlanSha256") or
+            _voice_timeline_sha(adjusted) != data.get("preparedVoiceTimelineSha256") or
             _sha(audio) != data.get("narrationSha256") or
             _sha(diagnostic) != data.get("pacingSha256")):
         raise ValueError("Preflight WAV, plan or diagnostics changed after synthesis")
