@@ -31,7 +31,7 @@ jobs:
       original_script: >-
         The sky can suddenly glow with moving color, but the story begins with solar wind rushing away from the Sun.
         When that invisible storm reaches Earth, our magnetic field steers charged particles toward the poles.
-        High in the atmosphere, these particles collide with oxygen and nitrogen atoms.
+        High above the clouds, fast-moving particles collide with oxygen and nitrogen atoms, one after another.
         Excited atoms release green, violet, and sometimes red light into the darkness.
         The colors become rippling curtains: the northern lights dancing above a silent landscape.
       character: "Original cinematic aurora: real 3D particles, polar sky and glowing curtains"
@@ -43,8 +43,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 35
-      shot_seconds: 7
+      duration_seconds: 32
+      shot_seconds: 6.4
       resolution: shorts
       render_profile: high
       cinematic_3d: true
