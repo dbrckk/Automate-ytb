@@ -71,4 +71,6 @@ Les fichiers attendus dans l'artefact sont :
 `deep-sea-short.mp4`, `deep-sea-short.srt`,
 `narration.wav`, `narration.json`,
 `deep-sea-short.json`, `deep-sea-media-qa.json`,
-`platform-shorts-report.json` et les crédits de source.
+`platform-shorts-report.json`, **`caption-review.jpg`** (quatre vraies
+captures extraites du MP4 final pour une revue rapide sur Android)
+et les crédits de source.
