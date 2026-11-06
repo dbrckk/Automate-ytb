@@ -147,13 +147,19 @@ def smart_framing_filter(*, source: Path, seconds: float,
     if crop_width < 80 or crop_width >= source_width:
         report["reason"] = "Moving crop geometry would be too narrow"
         return existing, complex_graph, report
-    if not 1 <= seconds <= 60 or not math.isfinite(seconds):
+    from .subject_reframe import MAX_TRACK_SECONDS, track_crop, crop_expression
+    if source_width < 320:
         if mode == "follow":
-            raise ValueError("Tracking requires real clips of 1–60 seconds")
-        report["reason"] = "Shot length outside bounded tracking window"
+            raise ValueError("Tracking requires at least 320 source pixels horizontally")
+        report["reason"] = "Not enough horizontal pixels for reliable optical tracking"
+        return existing, complex_graph, report
+    if not math.isfinite(seconds) or not 1 <= seconds <= MAX_TRACK_SECONDS:
+        if mode == "follow":
+            raise ValueError(
+                f"Tracking requires real clips of 1–{MAX_TRACK_SECONDS:g} seconds")
+        report["reason"] = "Shot length outside fully sampled tracking window"
         return existing, complex_graph, report
 
-    from .subject_reframe import track_crop, crop_expression
     tracking = track_crop(source=source, start=0, seconds=seconds,
                           source_width=source_width, crop_width=crop_width)
     report["tracking"] = tracking
