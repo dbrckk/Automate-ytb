@@ -141,10 +141,26 @@ class VoiceBeforeBlenderTests(unittest.TestCase):
             consume(manifest=manifest, plan=ready, language="en",
                     voice_style="natural", voice_name="af_heart")
         (self.bundle / "narration.wav").write_bytes(initial)
-        ready.write_text(ready.read_text() + " ", encoding="utf-8")
+        changed = json.loads(ready.read_text(encoding="utf-8"))
+        changed["scenes"][0]["narration"] = "Someone replaced the original narration."
+        ready.write_text(json.dumps(changed), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "changed"):
             consume(manifest=manifest, plan=ready, language="en",
                     voice_style="natural", voice_name="af_heart")
+
+    def test_visual_metadata_is_allowed_without_weakening_speech_integrity(self):
+        self._prepare()
+        ready = self.bundle / "plan.json"
+        payload = json.loads(ready.read_text(encoding="utf-8"))
+        payload["scenes"][0]["status"] = "rendered"
+        payload["scenes"][0]["visualPrompt"] = "Real original aurora scene"
+        ready.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        details, ms, wav = consume(
+            manifest=self.bundle / "manifest.json", plan=ready,
+            language="en", voice_style="natural", voice_name="af_heart")
+        self.assertEqual(ms, 30000)
+        self.assertEqual(details["engine"], "kokoro-natural")
+        self.assertTrue(wav.is_file())
 
     def test_forbids_legacy_espeak_or_partial_episode_preflight(self):
         self._prepare()
