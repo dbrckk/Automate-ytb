@@ -291,7 +291,8 @@ def build_preview(*, plan_path: Path, output: Path,
                   caption_timing: str = "estimated",
                   transition: str = "dissolve",
                   voice_style: str = "natural",
-                  render_profile: str = "preview") -> dict:
+                  render_profile: str = "preview",
+                  voice_preflight: Path | None = None) -> dict:
     from .voice_pacing import speaking_speed
     from .encoding_profiles import settings as export_settings
     export_settings(render_profile)
@@ -306,6 +307,9 @@ def build_preview(*, plan_path: Path, output: Path,
         raise ValueError("Transition must be adaptive, cut or dissolve")
     if resolution == "shorts" and style != "science":
         raise ValueError("Native 9:16 Shorts currently require science style")
+    if voice_preflight is not None and (voice != "kokoro" or caption_timing != "audio" or
+                                        limit is not None):
+        raise ValueError("Preflight WAV reuse requires full Kokoro audio-timed episode")
     plan_path = plan_path.resolve()
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -330,17 +334,26 @@ def build_preview(*, plan_path: Path, output: Path,
     details = {"engine": "none", "wordAlignment": False}
     if voice in {"espeak", "kokoro"}:
         voice_file = output / "narration.wav"
-        details = _narrate_scenes(plan_path, voice_file, language, limit,
-                                  engine=voice, voice_name=voice_name,
-                                  caption_timing=caption_timing,
-                                  narration_style=voice_style)
+        original_ms = round(data["targetDurationSeconds"] * 1000)
+        if voice_preflight is not None:
+            from .voice_preflight import consume
+            details, original_ms, cached_wav = consume(
+                manifest=voice_preflight, plan=plan_path, language=language,
+                voice_style=voice_style, voice_name=voice_name)
+            if cached_wav.resolve() != voice_file.resolve():
+                shutil.copyfile(cached_wav, voice_file)
+        else:
+            details = _narrate_scenes(plan_path, voice_file, language, limit,
+                                      engine=voice, voice_name=voice_name,
+                                      caption_timing=caption_timing,
+                                      narration_style=voice_style)
         from .narration_pacing import inspect as inspect_narration_pacing
         strict = (style == "science" and resolution == "shorts"
                   and voice == "kokoro" and caption_timing == "audio"
                   and limit is None)
         pacing = inspect_narration_pacing(
             details["measuredScenePacing"], strict=strict,
-            requested_duration_ms=round(data["targetDurationSeconds"] * 1000))
+            requested_duration_ms=original_ms)
         production._write_json(output / "narration-pacing.json", pacing)
         if pacing["status"] == "failed":
             raise ValueError(
@@ -430,6 +443,8 @@ def main(argv=None) -> int:
     p.add_argument("--render-profile", choices=["preview", "high"],
                    default="preview", help="H.264/AAC encoding: fast preview or higher-quality 30fps")
     p.add_argument("--limit", type=int)
+    p.add_argument("--voice-preflight", type=Path,
+                   help="Verified pre-render Kokoro PCM bundle, reused without resynthesis")
     args = p.parse_args(argv)
     try:
         result = build_preview(plan_path=args.plan, output=args.output,
@@ -439,7 +454,8 @@ def main(argv=None) -> int:
                                soundtrack=args.soundtrack, limit=args.limit,
                                caption_timing=args.caption_timing,
                                transition=args.transition,
-                               render_profile=args.render_profile)
+                               render_profile=args.render_profile,
+                               voice_preflight=args.voice_preflight)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],
