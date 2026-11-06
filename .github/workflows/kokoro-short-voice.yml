@@ -6,6 +6,9 @@ on:
       - ".github/workflows/kokoro-short-voice.yml"
       - "automate_ytb/short_voice.py"
       - "automate_ytb/deepsea_short.py"
+      - "automate_ytb/short_captions.py"
+      - "automate_ytb/speech_pcm.py"
+      - "tests/test_short_captions.py"
       - "automate_ytb/subject_reframe.py"
       - "automate_ytb/soundtrack.py"
       - "automate_ytb/media_qa.py"
@@ -33,7 +36,8 @@ jobs:
       - name: Install free open-source neural speech
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg espeak-ng
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          ffmpeg -hide_banner -filters 2>&1 | grep -Eq '[[:space:]]ass[[:space:]]'
           python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install -e '.[speech]'
       - name: Generate original English narrator and beat timings
@@ -61,6 +65,13 @@ jobs:
           assert len(report["beats"]) == 4
           assert all(0<=x["startMs"]<x["endMs"] for x in report["beats"])
           assert report["engine"] == "kokoro-natural"
+          assert report["captionCount"] >= 7
+          assert report["wordLevelAligned"] is False
+          assert all(len(b["captionSegments"]) >= 1 for b in report["beats"])
+          from automate_ytb.short_captions import verify_measured_beats
+          cues=verify_measured_beats(
+              report["beats"],duration_ms=round(report["durationSeconds"]*1000))
+          assert len(cues)==report["captionCount"]
           print("Verified true neural voice, non-silent PCM and actual beat timecodes")
           PY
       - name: Acquire attributed real-world jellyfish footage for the final edit
@@ -110,11 +121,16 @@ jobs:
           PY
       - name: Independently verify real H264 MP4 audio and subtitle timing
         run: |
+          EXPECTED_DURATION=$(python -c "import json; print(json.load(open('build/shorts-narrator/narration.json'))['durationSeconds'])")
           python -m automate_ytb.media_qa \
             --video build/shorts-narrator/deep-sea-short.mp4 \
             --srt build/shorts-narrator/deep-sea-short.srt \
-            --duration 22.05 --require-audio --target-lufs -16 \
+            --duration "$EXPECTED_DURATION" --require-audio --target-lufs -16 \
             --report build/shorts-narrator/deep-sea-media-qa.json
+          python -m automate_ytb.shorts_delivery \
+            --video build/shorts-narrator/deep-sea-short.mp4 \
+            --require-audio \
+            --report build/shorts-narrator/platform-shorts-report.json
           python - <<'PY'
           import json, subprocess
           from pathlib import Path
@@ -122,6 +138,10 @@ jobs:
           assert media["voiceEngine"]=="kokoro-natural"
           assert media["resolution"]==[1080,1920]
           assert not media["publicationApproved"]
+          assert media["burnedInCaptions"] is True
+          assert media["wordLevelAligned"] is False
+          assert media["captionCount"] >= 7
+          assert media["captionTimingMethod"] == "individual-Kokoro-PCM-phrase-samples"
           raw=subprocess.check_output([
               "ffprobe","-v","error","-show_entries",
               "stream=codec_type,codec_name,width,height,avg_frame_rate",
@@ -146,6 +166,7 @@ jobs:
             build/shorts-narrator/deep-sea-short.srt
             build/shorts-narrator/deep-sea-short.json
             build/shorts-narrator/deep-sea-media-qa.json
+            build/shorts-narrator/platform-shorts-report.json
             examples/deep-ocean-jellyfish-short.en.txt
             docs/VOICE_CREDITS.md
             build/shorts-footage/*.webm
