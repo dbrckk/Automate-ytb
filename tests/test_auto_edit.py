@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from automate_ytb.auto_edit import (
     GENRES, VERSION, assign_sources, auto_edit, select_excerpts,
@@ -41,11 +42,39 @@ class SourceAllocationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             assign_sources([499], [10000])
 
+    def test_selection_prefers_distinct_optical_scene_when_candidates_exist(self):
+        # All source windows are real chronological candidates. Simulate
+        # already decoded optical measurements to isolate the scoring rule.
+        calls=[]
+        def measured(_source, start, _duration):
+            calls.append(start)
+            # Scene one is always a flat composition; on the next scene
+            # the latest candidate has a different spatial composition.
+            distinctive = start >= 7.0
+            return {
+                "sampledFrames":3,
+                "meanLuminance":100,
+                "contrastStdDev":25,
+                "meanFrameChange":10,
+                "technicalSelectionScore":.70 if not distinctive else .64,
+                "requiresVisualReview":False,
+                "spatialSignature":[190 if distinctive else 60]*48,
+            }
+        with patch("automate_ytb.auto_edit._sample_quality",side_effect=measured):
+            selected=select_excerpts([Path("owned.mp4")],[4000,4000],
+                                     [16000],(2,))
+        self.assertEqual(len(selected),2)
+        self.assertTrue(all(s["candidateCount"] >= 2 for s in selected))
+        self.assertGreaterEqual(selected[1]["startSeconds"],7)
+        self.assertFalse(selected[1]["technicalReview"]["adjacentOpticalComparison"]["nearDuplicateOpticalComposition"])
+        self.assertLessEqual(selected[0]["startSeconds"]+4,selected[1]["startSeconds"])
+        self.assertGreater(len(calls),2)
+
     def test_genres_are_explicit_not_llm_semantic_inference(self):
         self.assertIn("documentary", GENRES)
         self.assertIn("fitness", GENRES)
         self.assertIn("product", GENRES)
-        self.assertIn("v1", VERSION)
+        self.assertIn("v2", VERSION)
 
 
 @unittest.skipUnless(FFMPEG_AVAILABLE, "Real local FFmpeg required")
