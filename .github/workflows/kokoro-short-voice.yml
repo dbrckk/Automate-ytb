@@ -163,6 +163,42 @@ jobs:
           assert abs(actual_fps-30) < 0.1 and audio[0]["codec_name"]=="aac"
           print("Real fully narrated NOAA jellyfish MP4 passed 9:16 30 FPS H264 AAC checks")
           PY
+      - name: Export actual mobile subtitle contact sheet for visual review
+        run: |
+          python - <<'PY'
+          import json, subprocess, tempfile
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          root=Path("build/shorts-narrator")
+          beats=json.loads((root/"narration.json").read_text())["beats"]
+          movie=root/"deep-sea-short.mp4"
+          board=Image.new("RGB",(780,1390),(18,24,34))
+          draw=ImageDraw.Draw(board)
+          with tempfile.TemporaryDirectory(prefix="real-caption-frames-") as temp:
+              for index,beat in enumerate(beats):
+                  caption=beat["captionSegments"][0]
+                  second=(caption["startMs"]+caption["endMs"])/2000
+                  frame=Path(temp)/f"frame-{index}.png"
+                  subprocess.run([
+                      "ffmpeg","-nostdin","-v","error","-y",
+                      "-ss",f"{second:.3f}","-i",str(movie),
+                      "-vf","scale=360:640:flags=fast_bilinear",
+                      "-frames:v","1","-update","1",str(frame),
+                  ],check=True,timeout=90)
+                  with Image.open(frame) as opened:
+                      opened.load()
+                      assert opened.size==(360,640)
+                      x=20+(index%2)*390
+                      y=30+(index//2)*690
+                      board.paste(opened.convert("RGB"),(x,y))
+                      draw.text((x,y+647),
+                                f"SCENE {index+1} / {second:.1f}s",
+                                fill=(240,245,250))
+          destination=root/"caption-review.jpg"
+          board.save(destination,quality=90,optimize=True)
+          assert destination.stat().st_size > 25000
+          print("Actual 1080x1920 MP4 mobile caption samples:",destination)
+          PY
       - name: Upload complete narrated Short, rights, subtitles and QC
         uses: actions/upload-artifact@v4
         with:
@@ -175,6 +211,7 @@ jobs:
             build/shorts-narrator/deep-sea-short.json
             build/shorts-narrator/deep-sea-media-qa.json
             build/shorts-narrator/platform-shorts-report.json
+            build/shorts-narrator/caption-review.jpg
             examples/deep-ocean-jellyfish-short.en.txt
             docs/VOICE_CREDITS.md
             build/shorts-footage/*.webm
