@@ -134,7 +134,9 @@ class VoiceBeforeBlenderTests(unittest.TestCase):
             consume(manifest=manifest, plan=ready, language="fr",
                     voice_style="natural", voice_name="ff_siwis")
         initial = (self.bundle / "narration.wav").read_bytes()
-        (self.bundle / "narration.wav").write_bytes(initial[:-4] + b"\x00\x00\x00\x00")
+        tampered = bytearray(initial)
+        tampered[48] ^= 0x01
+        (self.bundle / "narration.wav").write_bytes(tampered)
         with self.assertRaisesRegex(ValueError, "changed"):
             consume(manifest=manifest, plan=ready, language="en",
                     voice_style="natural", voice_name="af_heart")
