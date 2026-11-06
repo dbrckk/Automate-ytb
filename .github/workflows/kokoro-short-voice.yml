@@ -19,6 +19,12 @@ on:
 permissions:
   contents: read
 
+# A superseded PR commit must not keep rendering the same 1080p NOAA
+# documentary and downloading the same model/footage repeatedly.
+concurrency:
+  group: kokoro-documentary-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   voice:
     runs-on: ubuntu-latest
