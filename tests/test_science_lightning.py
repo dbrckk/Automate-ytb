@@ -120,6 +120,13 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
         leader_early=second.frame(.3,7.).crop(top)
         leader_late=second.frame(5.,7.).crop(top)
         self.assertNotEqual(title_crop.tobytes(),action_crop.tobytes())
+        # Source-MP4 visual audit caught a collision between the long title
+        # and the right-side step counter during the opening shot. The
+        # counter is suppressed while the title is on screen; the uncovered
+        # right edge of the header must now be darker than the later badge.
+        self.assertLess(
+            sum(title_crop.getpixel((906, 93))[:3]),
+            sum(action_crop.getpixel((906, 93))[:3]))
         self.assertNotEqual(action_crop.tobytes(),leader_early.tobytes())
         self.assertEqual(leader_early.tobytes(),leader_late.tobytes())
 
