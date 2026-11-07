@@ -165,9 +165,14 @@ def track_crop(*, source: Path, start: float, seconds: float,
     mean_tracked = sum(measured_coverage) / relevant if relevant else 0.
     mean_centered = sum(centered_coverage) / relevant if relevant else 0.
     concentrated_fraction = focused_frames / relevant if relevant else 0.
+    # In particular, reject a camera that starts correctly but loses the
+    # principal source of activity before the end of the shot. This catches
+    # quickly traveling subjects that outrun a cinematographically smooth pan.
     confident = (len(frames) >= 3 and relevant >= max(2, len(frames) // 2)
                  and mean_tracked >= focus_threshold
-                 and concentrated_fraction >= .60)
+                 and concentrated_fraction >= .60
+                 and measured_coverage[0] >= focus_threshold
+                 and measured_coverage[-1] >= focus_threshold)
     return {
         "method": "decoded-grayscale-activity-salience-smoothed-v2-coverage-gated",
         "sourceWidth": source_width,
@@ -179,6 +184,8 @@ def track_crop(*, source: Path, start: float, seconds: float,
         "meaningfulActivityThreshold": round(focus_threshold, 4),
         "informativeFrameCount": relevant,
         "meanTrackedActivityFraction": round(mean_tracked, 4),
+        "startTrackedActivityFraction": round(measured_coverage[0], 4) if relevant else 0.,
+        "endTrackedActivityFraction": round(measured_coverage[-1], 4) if relevant else 0.,
         "meanCenteredActivityFraction": round(mean_centered, 4),
         "focusedInformativeFrameFraction": round(concentrated_fraction, 4),
         "portraitActivityConcentrated": confident,
