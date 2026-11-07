@@ -10,6 +10,7 @@ on:
       - automate_ytb/source_scheduler.py
       - tests/test_source_scheduler.py
       - tests/test_auto_edit.py
+      - tests/test_motion_preselection.py
       - tests/test_shot_diversity.py
       - tests/test_mobile_subtitles.py
 permissions:
@@ -194,6 +195,15 @@ jobs:
               raise SystemExit("Real NASA workflow did not use M2 pre-render diversity selection")
           if not all("diversityAdjustedScore" in shot["technicalReview"] for shot in a["shots"]):
               raise SystemExit("M2 optical candidate selection evidence missing")
+          if not a.get("temporalMotionAwareSelection"):
+              raise SystemExit("M2 source motion-aware preselection is missing")
+          if a.get("nearStaticSelectedSceneCount") != sum(
+                  bool(s["technicalReview"].get("temporalNearStaticSource")) for s in a["shots"]):
+              raise SystemExit("M2 source near-static accounting mismatch")
+          if not all(s["technicalReview"].get("sampledFrames") == 3
+                  and len(s["technicalReview"].get("temporalSourcePixelDeltas", [])) == 2
+                  for s in a["shots"]):
+              raise SystemExit("M2 real source full-shot motion evidence missing")
           print("Real NASA two-source video, M2 optical candidate selection and voice validated")
           PY
       - name: Deliver the actual media and provenance, never a fake upload
