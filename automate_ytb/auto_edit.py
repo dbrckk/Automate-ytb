@@ -104,13 +104,43 @@ def _sample_quality(source: Path, start: float, seconds: float) -> dict:
     try:
         response = subprocess.run(
             cmd, capture_output=True, check=False, timeout=35)
-    except subprocess.TimeoutExpired as exc:
-        raise ValueError("Timed out inspecting real source footage") from exc
-    raw=response.stdout
-    if response.returncode or len(raw) != MAX_SAMPLE_FRAMES * PIXELS:
-        raise ValueError(
-            "Could not decode bounded real footage sample: " +
-            response.stderr.decode("utf-8","replace")[-300:])
+    except subprocess.TimeoutExpired:
+        response = None
+    raw = response.stdout if response is not None else b""
+    sampling_method = "bounded-fps"
+    if (response is None or response.returncode
+            or len(raw) != MAX_SAMPLE_FRAMES * PIXELS):
+        # WebM/variable-timestamp recordings sometimes yield only 1-2
+        # frames with the FPS filter, even though all three instants exist.
+        # Seek to each exact fractional instant instead of rejecting the
+        # original licensed recording or silently reusing a source frame.
+        frames = []
+        for fraction in (.2, .5, .8):
+            second = start + seconds * fraction
+            precise = [
+                "ffmpeg","-nostdin","-hide_banner","-loglevel","error",
+                "-threads","1","-filter_threads","1",
+                "-protocol_whitelist","file,pipe",
+                "-ss",f"{second:.3f}","-i",str(source),"-frames:v","1",
+                "-vf","scale=96:54:flags=fast_bilinear,format=gray",
+                "-an","-c:v","rawvideo","-pix_fmt","gray",
+                "-f","rawvideo","pipe:1",
+            ]
+            try:
+                result = subprocess.run(
+                    precise,capture_output=True,check=False,timeout=35)
+            except subprocess.TimeoutExpired as exc:
+                raise ValueError(
+                    f"Timed out sampling original footage at {second:.3f}s"
+                ) from exc
+            if result.returncode or len(result.stdout) != PIXELS:
+                raise ValueError(
+                    f"Missing real source frame at {second:.3f}s "
+                    f"(decoded {len(result.stdout)} bytes): " +
+                    result.stderr.decode("utf-8","replace")[-300:])
+            frames.append(result.stdout)
+        raw = b"".join(frames)
+        sampling_method = "precise-seeks"
     images = [memoryview(raw)[i:i+PIXELS]
               for i in range(0,len(raw),PIXELS)]
     means = [sum(row) / PIXELS for row in images]
@@ -146,6 +176,7 @@ def _sample_quality(source: Path, start: float, seconds: float) -> dict:
     return {
         "spatialSignature":signature["blocks"],
         "sampledFrames":len(images),
+        "temporalSamplingMethod":sampling_method,
         "temporalSourceSamplingFractions":[.2,.5,.8],
         "temporalSourcePixelDeltas":temporal_deltas,
         "temporalNearStaticSource":near_static,
