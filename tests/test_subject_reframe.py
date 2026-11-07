@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 import shutil
 import subprocess
@@ -9,6 +10,7 @@ import tempfile
 import unittest
 
 from automate_ytb.subject_reframe import crop_expression, track_crop
+from automate_ytb.footage import smart_framing_filter
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"),
@@ -91,6 +93,75 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
         subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(dynamic),
                         "-f", "null", "-"],
                        check=True, timeout=60)
+
+    def test_genuine_moving_subject_is_confidently_cropped_in_auto_mode(self):
+        video = self.make_moving_subject()
+        graph, complex_graph, decision = smart_framing_filter(
+            source=video, seconds=3.0, source_width=480,
+            source_height=270, width=180, height=320,
+            fps=24, mode="auto")
+        self.assertEqual(decision["applied"], "follow")
+        self.assertFalse(complex_graph)
+        self.assertIn("crop=", graph)
+        data = decision["tracking"]
+        self.assertTrue(data["salienceCoverageAudited"])
+        self.assertTrue(data["portraitActivityConcentrated"])
+        self.assertGreater(
+            data["meanTrackedActivityFraction"],
+            data["uniformActivityBaseline"] + .1)
+        self.assertGreaterEqual(data["focusedInformativeFrameFraction"], .6)
+
+    def test_diffuse_motion_keeps_all_content_in_auto_mode(self):
+        # Real encoded video containing moving detail spread across the
+        # entire panorama. No single bright column group is a plausible
+        # automatically followable subject.
+        from PIL import Image, ImageDraw
+        output = self.root / "diffuse-original.mp4"
+        process = subprocess.Popen([
+            "ffmpeg","-nostdin","-v","error","-y",
+            "-f","rawvideo","-pix_fmt","rgb24",
+            "-s","480x270","-r","12","-i","pipe:0",
+            "-c:v","libx264","-preset","ultrafast",
+            "-pix_fmt","yuv420p",str(output),
+        ],stdin=subprocess.PIPE,stderr=subprocess.PIPE)
+        try:
+            for i in range(36):
+                picture = Image.new("RGB", (480,270), (5,12,20))
+                painter = ImageDraw.Draw(picture)
+                rng = random.Random(9061 + i)
+                for _ in range(460):
+                    x = rng.randrange(0,474)
+                    y = rng.randrange(48,216)
+                    painter.ellipse((x,y,x+5,y+5),fill=(187,223,235))
+                assert process.stdin is not None
+                process.stdin.write(picture.tobytes())
+            process.stdin.close()
+            assert process.stderr is not None
+            errors = process.stderr.read().decode("utf8","replace")
+            self.assertEqual(process.wait(timeout=30),0,errors[-600:])
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+        graph, complex_graph, decision = smart_framing_filter(
+            source=output,seconds=3.0,source_width=480,source_height=270,
+            width=180,height=320,fps=24,mode="auto")
+        self.assertEqual(decision["applied"], "preserve")
+        self.assertTrue(complex_graph)
+        self.assertIn("overlay=",graph)
+        self.assertIn("Diffuse",decision["reason"])
+        self.assertFalse(decision["tracking"]["portraitActivityConcentrated"])
+        self.assertLess(
+            decision["tracking"]["meanTrackedActivityFraction"],
+            decision["tracking"]["meaningfulActivityThreshold"])
+        # Manual override remains possible, but never relabels tracking
+        # as verified object detection.
+        graph, complex_graph, forced = smart_framing_filter(
+            source=output,seconds=3.0,source_width=480,source_height=270,
+            width=180,height=320,fps=24,mode="follow")
+        self.assertFalse(complex_graph)
+        self.assertEqual(forced["applied"],"follow")
+        self.assertIn("crop=",graph)
 
     def test_near_black_fallback_stays_centered(self):
         dark = self.root / "dark.mp4"
