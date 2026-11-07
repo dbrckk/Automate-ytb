@@ -32,6 +32,9 @@ Créer des vidéos réellement regardables sur TikTok/YouTube Shorts, depuis un 
 
 ### P1 — Événements réellement animés
 
+**Actualisation au 7 novembre :** PR #210 et #211 fusionnées après workflows et véritables rendus verts. Le MP4 Lightning #211 a été contrôlé sur dix images décodées : titre trop répété, suivi caméra vertical absent. Correction P1 en cours : cinq mouvements caméra suivant les événements en Y, en-tête mobile minimal et tests de bornage, détaillés dans `docs/P1_LIGHTNING_CINEMATIC_V2_2026-11-07.md`. Conserver la validation entière des MP4 comme condition de fusion.
+
+
 **Avancement technique au 7 novembre :** PR #209 fusionnée (cinq caméras Blender/Cycles dirigées par l'action, rendus et tests vérifiés). Upgrade suivant en branche : éclairage local synchronisé aux impacts électroniques/moléculaires, avec vingt véritables sources Blender animées. Critère de fusion : voir la validation et le vrai MP4 de la PR, puis inspection humaine du scintillement et de la lisibilité. Documentation : `docs/M3_REACTIVE_MOLECULAR_LIGHTING_2026-11-07.md`.
 
 - Passer d'un défilement visuel à des mouvements causaux par shot (entrée, action, interaction, conséquence).
