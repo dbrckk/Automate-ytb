@@ -32,6 +32,8 @@ Créer des vidéos réellement regardables sur TikTok/YouTube Shorts, depuis un 
 
 ### P1 — Événements réellement animés
 
+**Avancement technique au 7 novembre :** PR #209 fusionnée (cinq caméras Blender/Cycles dirigées par l'action, rendus et tests vérifiés). Upgrade suivant en branche : éclairage local synchronisé aux impacts électroniques/moléculaires, avec vingt véritables sources Blender animées. Critère de fusion : voir la validation et le vrai MP4 de la PR, puis inspection humaine du scintillement et de la lisibilité. Documentation : `docs/M3_REACTIVE_MOLECULAR_LIGHTING_2026-11-07.md`.
+
 - Passer d'un défilement visuel à des mouvements causaux par shot (entrée, action, interaction, conséquence).
 - Benchmark sur 3 types : réel documentaire, 3D scientifique, original narratif.
 - Pour la 3D : plan de caméra, éclairage et matériaux cohérents; comparer interpolation existante à davantage de poses **seulement après mesure du coût CPU et de la qualité**.
