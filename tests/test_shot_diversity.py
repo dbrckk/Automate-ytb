@@ -2,7 +2,8 @@
 import unittest
 
 from automate_ytb.shot_diversity import (
-    PIXELS, _signature, analyze_frames, compare_signatures,
+    PIXELS, UPPER_PIXELS, _signature, _temporal_pixel_change,
+    analyze_frames, compare_signatures,
 )
 
 
@@ -32,6 +33,44 @@ class DiversityTests(unittest.TestCase):
             analyze_frames([bytes(PIXELS)],source_names=["one"])
         with self.assertRaises(ValueError):
             _signature(bytes(PIXELS-1))
+
+    def test_temporal_audit_flags_frozen_content_and_measures_motion(self):
+        still=bytes([90])*PIXELS
+        early=bytes([60 if i%96 < 48 else 200 for i in range(PIXELS)])
+        middle=bytes([200 if i%96 < 48 else 60 for i in range(PIXELS)])
+        result=analyze_frames(
+            [still,middle],source_names=["still.mp4","moving.mp4"],
+            temporal_frames=[(still,still),(early,early)],
+        )
+        self.assertTrue(result["temporalMotionAudited"])
+        self.assertEqual(result["temporalSamplesPerScene"],3)
+        self.assertEqual(result["temporalAuditedSceneCount"],2)
+        self.assertEqual(result["nearStaticSceneCount"],1)
+        self.assertTrue(result["scenes"][0]["temporalPixelActivity"]["nearStaticOpticalActivity"])
+        self.assertFalse(result["scenes"][1]["temporalPixelActivity"]["nearStaticOpticalActivity"])
+        self.assertGreater(result["scenes"][1]["temporalPixelActivity"]["meanPixelDelta"],100)
+        self.assertTrue(any("near-static" in w for w in result["warnings"]))
+
+    def test_pixel_motion_ignores_bottom_caption_region(self):
+        first=bytes([80])*PIXELS
+        last=bytearray(first)
+        last[UPPER_PIXELS:]=bytes([250])*(PIXELS-UPPER_PIXELS)
+        self.assertEqual(_temporal_pixel_change(first,bytes(last)),0)
+        with self.assertRaises(ValueError):
+            _temporal_pixel_change(bytes(PIXELS-1),first)
+
+    def test_temporal_samples_must_match_scene_count_and_dimensions(self):
+        frame=bytes([90])*PIXELS
+        with self.assertRaisesRegex(ValueError,"align"):
+            analyze_frames(
+                [frame,frame],source_names=["a.mp4","b.mp4"],
+                temporal_frames=[(frame,frame)],
+            )
+        with self.assertRaisesRegex(ValueError,"dimensions"):
+            analyze_frames(
+                [frame,frame],source_names=["a.mp4","b.mp4"],
+                temporal_frames=[(frame,bytes(PIXELS-1)),(frame,frame)],
+            )
 
     def test_near_black_scene_warns_instead_of_claiming_semantic_failure(self):
         result=analyze_frames(

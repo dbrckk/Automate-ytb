@@ -16,6 +16,10 @@ import subprocess
 WIDTH, HEIGHT = 96, 54
 PIXELS = WIDTH * HEIGHT
 MAX_SCENES = 150
+# Compare the upper portion of each decoded shot so caption overlays near the
+# bottom are less likely to masquerade as motion in a stationary scene.
+UPPER_PIXELS = WIDTH * (HEIGHT * 3 // 4)
+NEAR_STATIC_PIXEL_DELTA = 1.5
 
 
 def _frame(video: Path, second: float) -> bytes:
@@ -67,10 +71,47 @@ def compare_signatures(left: dict, right: dict) -> dict:
             "nearDuplicateOpticalComposition":distance < 9}
 
 
-def analyze_frames(frames: list[bytes], *, source_names: list[str]) -> dict:
+def _temporal_pixel_change(first: bytes, second: bytes) -> float:
+    """Mean grayscale pixel delta above the caption region (not optical flow).
+
+    This measures a change in final rendered pixels. Camera pans, exposure
+    changes and moving content can ALL contribute; it is not a semantic or
+    physical-animation classifier.
+    """
+    if len(first) != PIXELS or len(second) != PIXELS:
+        raise ValueError("Unexpected temporal frame dimensions")
+    change = sum(abs(a-b) for a, b in zip(
+        memoryview(first)[:UPPER_PIXELS],
+        memoryview(second)[:UPPER_PIXELS],
+    )) / UPPER_PIXELS
+    return round(change, 3)
+
+
+def analyze_frames(
+    frames: list[bytes], *, source_names: list[str],
+    temporal_frames: list[tuple[bytes, bytes]] | None = None,
+) -> dict:
     if not 2 <= len(frames) <= MAX_SCENES or len(frames) != len(source_names):
         raise ValueError("At least two aligned, distinct authored scenes required")
+    if temporal_frames is not None and (
+        len(temporal_frames) != len(frames)
+        or any(not isinstance(pair, tuple) or len(pair) != 2
+               for pair in temporal_frames)
+    ):
+        raise ValueError("Temporal samples must align with every authored scene")
     signatures = [_signature(frame) for frame in frames]
+    activity = None
+    if temporal_frames is not None:
+        activity = []
+        for midpoint, (early, late) in zip(frames, temporal_frames):
+            left = _temporal_pixel_change(early, midpoint)
+            right = _temporal_pixel_change(midpoint, late)
+            activity.append({
+                "earlyToMiddlePixelDelta": left,
+                "middleToLatePixelDelta": right,
+                "meanPixelDelta": round((left + right) / 2, 3),
+                "nearStaticOpticalActivity": max(left, right) < NEAR_STATIC_PIXEL_DELTA,
+            })
     comparisons = []
     for i in range(1,len(frames)):
         measure = compare_signatures(signatures[i-1],signatures[i])
@@ -88,17 +129,33 @@ def analyze_frames(frames: list[bytes], *, source_names: list[str]) -> dict:
         for i,s in enumerate(signatures)
         if s["meanLuminance"] < 15 or s["contrastStdDev"] < 7
     )
+    if activity is not None:
+        warnings.extend(
+            f"Scene {i+1} has near-static decoded pixels across 20%, 50%, 80% of its duration; review for a frozen or slide-like image"
+            for i, measure in enumerate(activity)
+            if measure["nearStaticOpticalActivity"]
+        )
     return {
         "schemaVersion":1,
         "method":"decoded-final-mp4-grayscale-spatial-blocks-v1",
         "sceneCount":len(frames),
+        "temporalMotionAudited": activity is not None,
+        "temporalSamplesPerScene": 3 if activity is not None else 1,
+        "temporalAuditedSceneCount": len(activity) if activity is not None else 0,
+        "nearStaticSceneCount": (
+            sum(a["nearStaticOpticalActivity"] for a in activity)
+            if activity is not None else None
+        ),
+        "temporalSampleFractions": [0.2,0.5,0.8] if activity is not None else None,
+        "temporalUpperImageFraction": 0.75 if activity is not None else None,
         "distinctSourceFiles":len(set(source_names)),
         "adjacentNearDuplicateCount":sum(x["nearDuplicateOpticalComposition"] for x in comparisons),
         "adjacentSourceChangeCount":sum(not x["sameSourceFile"] for x in comparisons),
         "scenes":[{
             "scene":i+1,
             "sourceName":source_names[i],
-            **{k:v for k,v in s.items() if k!="blocks"}
+            **{k:v for k,v in s.items() if k!="blocks"},
+            **({"temporalPixelActivity":activity[i]} if activity is not None else {}),
         } for i,s in enumerate(signatures)],
         "adjacentComparisons":comparisons,
         "warnings":warnings,
@@ -110,6 +167,8 @@ def analyze_frames(frames: list[bytes], *, source_names: list[str]) -> dict:
             "Different spatial blocks do not prove a different narrative event.",
             "Subtitles and camera motion can affect measured differences.",
             "No speech-to-image semantic alignment is inferred.",
+            "Temporal pixel changes may be camera movement, lighting, or overlays, not animated subject action.",
+            "Three sparse frames per scene can miss short freezes and movements between samples.",
         ],
     }
 
@@ -131,15 +190,27 @@ def audit(video: Path, plan: Path, edit_report: Path) -> dict:
     if not math.isfinite(duration) or duration>180:
         raise ValueError("Unsupported final duration")
     times=[]
+    temporal_times=[]
     previous=0
     for scene in scenes:
         start,end=scene["startMs"],scene["endMs"]
         if not previous <= start < end <= 180_000:
             raise ValueError("Invalid scene timing")
         times.append((start+end)/2000)
+        length=(end-start)/1000
+        temporal_times.append((start/1000+length*.2,start/1000+length*.8))
         previous=end
     frames=[_frame(video,second) for second in times]
-    result=analyze_frames(frames,source_names=[s["sourceName"] for s in shots])
+    temporal_frames=[(_frame(video,first),_frame(video,last))
+                     for first,last in temporal_times]
+    result=analyze_frames(
+        frames,source_names=[s["sourceName"] for s in shots],
+        temporal_frames=temporal_frames,
+    )
+    result["temporalSampleSeconds"]=[
+        [round(first,3),round(mid,3),round(last,3)]
+        for (first,last),mid in zip(temporal_times,times)
+    ]
     result["videoSHA256"]=hashlib.sha256(video.read_bytes()).hexdigest()
     result["sampleSeconds"]=times
     return result
@@ -157,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     args.out.write_text(json.dumps(result,indent=2)+"\n",encoding="utf-8")
     print(json.dumps({"scenes":result["sceneCount"],
                       "adjacentNearDuplicates":result["adjacentNearDuplicateCount"],
+                      "nearStaticScenes":result["nearStaticSceneCount"],
                       "warnings":result["warnings"],
                       "semanticMatchingPerformed":False}))
     return 0
