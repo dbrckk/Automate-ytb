@@ -267,8 +267,34 @@ def _thunder(d,t,duration,english):
         d.line((x,y,x+44,y),fill=(116,204,230,130),width=3)
 
 
+def _narrated_action_clock(t: float, duration: float,
+                           event_progress: float | None) -> float:
+    """Re-time the physical action to the synthesized phrase, not the weather.
+
+    The animation starts and ends at the original frames. Its midpoint now
+    lands on the first actual spoken action phrase, with smooth derivatives
+    and no jump at scene boundaries. No audio alignment is fabricated.
+    """
+    if event_progress is None:
+        return t
+    if (type(event_progress) not in (float, int) or
+            not math.isfinite(event_progress) or
+            not 0 <= event_progress <= 1):
+        raise ValueError("Invalid spoken lightning action timing")
+    anchor=max(.15,min(.85,event_progress))
+    q=t/duration
+    if q <= anchor:
+        u=q/anchor
+        fraction=.5*u*u*(3-2*u)
+    else:
+        u=(q-anchor)/(1-anchor)
+        fraction=.5+.5*u*u*(3-2*u)
+    return duration*fraction
+
+
 def draw_lightning(picture: Image.Image, beat: str, t: float,
-                   duration: float, english: bool) -> None:
+                   duration: float, english: bool, *,
+                   event_progress: float | None = None) -> None:
     if (picture.mode!="RGBA" or picture.size!=(1080,1920) or beat not in BEATS
             or type(t) not in (float,int) or type(duration) not in (float,int)
             or not math.isfinite(t) or not math.isfinite(duration)
@@ -288,19 +314,20 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     # darkening cloud faces and producing opaque-looking flat artifacts.
     actions=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     d=ImageDraw.Draw(actions,"RGBA")
+    action_t=_narrated_action_clock(t,duration,event_progress)
     if beat=="charge":
-        _charges(d,t,english)
+        _charges(d,action_t,english)
     elif beat=="leader":
-        _leader(d,t,duration,english)
+        _leader(d,action_t,duration,english)
     elif beat=="connection":
-        _connection(d,t,duration,english)
+        _connection(d,action_t,duration,english)
     elif beat=="return":
-        _return(d,t,duration,english)
+        _return(d,action_t,duration,english)
     else:
-        _thunder(d,t,duration,english)
+        _thunder(d,action_t,duration,english)
     layer.alpha_composite(actions)
     bloom_electric_channel(
-        layer,beat,t,duration,
+        layer,beat,action_t,duration,
         CONNECTED_CHANNEL if beat in ("return","thunder")
         else LEADER_CHANNEL)
     paint_foreground_weather(layer,t,beat)
