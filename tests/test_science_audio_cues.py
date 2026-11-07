@@ -25,6 +25,30 @@ class ScienceAudioCueTests(unittest.TestCase):
         self.assertAlmostEqual(audio_event_fraction(
             "aurora","collisions",seg,0),(1850+5700)/2/5700)
 
+    def test_lightning_action_uses_real_narration_phrase_midpoint(self):
+        from automate_ytb.science_lightning import _narrated_action_clock
+        segments=[
+            {"text":"The storm grows dark.","startMs":1000,"endMs":2800},
+            {"text":"A branching stepped leader begins descending.","startMs":2800,"endMs":6200},
+        ]
+        event=audio_event_fraction("lightning","leader",segments,1000)
+        self.assertAlmostEqual(event,(2800+6200-2000)/2/5200)
+        scene=PortraitScienceScene(
+            topic="The Secret Life of a Lightning Bolt",
+            narration="The storm grows dark. A branching stepped leader begins descending.",
+            scene_index=2,scene_start_ms=1000,caption_segments=segments)
+        self.assertAlmostEqual(scene._narrated_event_fraction,event)
+        duration=7.2
+        self.assertAlmostEqual(_narrated_action_clock(0,duration,event),0)
+        self.assertAlmostEqual(_narrated_action_clock(duration,duration,event),duration)
+        self.assertAlmostEqual(_narrated_action_clock(duration*event,duration,event),duration/2)
+        self.assertAlmostEqual(_narrated_action_clock(3.1,duration,None),3.1)
+        samples=[_narrated_action_clock(duration*i/100,duration,event)
+                 for i in range(101)]
+        self.assertTrue(all(a<=b for a,b in zip(samples,samples[1:])))
+        with self.assertRaises(ValueError):
+            _narrated_action_clock(1,duration,float("nan"))
+
     def test_missing_phrase_keeps_authored_camera_and_missing_audio_is_safe(self):
         self.assertIsNone(audio_event_fraction("volcano","eruption",None,0))
         self.assertIsNone(audio_event_fraction("volcano","eruption",[
