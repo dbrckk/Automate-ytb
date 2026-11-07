@@ -75,13 +75,29 @@ class BlenderAuroraStage:
                 required=("terrainVertices","totalMeshObjects","earthShaderNodes",
                           "diatomicMolecules","incomingElectrons",
                           "emittedPhotons","curtainSurfaceVertices")
-                allowed=set(required)|{"lagoonSurfaceVertices"}
+                tracer_fields={"movingTracerParticles","animatedTracerParticles"}
+                allowed=set(required)|{"lagoonSurfaceVertices"}|tracer_fields
                 if (not isinstance(row,dict)
                         or not set(required).issubset(row)
                         or not set(row).issubset(allowed)
                         or any(type(value) is not int or value < 0
                                for value in row.values())):
                     raise ValueError(f"Invalid source 3D geometry metrics: {beat}")
+                # Pre-M3 manifests remain readable. Any new tracer metrics
+                # must come together and prove movement measured in bpy world
+                # space, not just counts of static decorative spheres.
+                if tracer_fields.intersection(row):
+                    if not tracer_fields.issubset(row):
+                        raise ValueError("Incomplete Blender charged tracer evidence")
+                    total = row["movingTracerParticles"]
+                    moving = row["animatedTracerParticles"]
+                    if moving > total:
+                        raise ValueError("Impossible Blender charged tracer movement")
+                    if beat in ("solar_wind","magnetic_field"):
+                        if total < 20 or moving < 18:
+                            raise ValueError(f"Insufficient moving 3D charged particles: {beat}")
+                    elif total != 0 or moving != 0:
+                        raise ValueError("3D charged tracers assigned to wrong action")
                 # Pre-lagoon Blender manifests without this optional field
                 # remain playable; newly declared lake geometry is verified
                 # rather than accepted as decorative metadata.

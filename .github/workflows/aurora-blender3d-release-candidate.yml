@@ -9,11 +9,13 @@ on:
       - .github/workflows/one-click-preview.yml
       - scripts/blender_aurora_stage.py
       - automate_ytb/science_blender_aurora.py
+      - automate_ytb/aurora_tracer_motion.py
       - automate_ytb/aurora_stage_review.py
       - automate_ytb/science_aurora.py
       - automate_ytb/science_portrait.py
       - automate_ytb/production.py
       - tests/test_science_blender_aurora.py
+      - tests/test_aurora_tracer_motion.py
 
 permissions:
   contents: read
