@@ -11,6 +11,7 @@ on:
       - automate_ytb/science_blender_aurora.py
       - automate_ytb/aurora_tracer_motion.py
       - automate_ytb/aurora_camera_choreography.py
+      - automate_ytb/aurora_impact_lighting.py
       - automate_ytb/aurora_stage_review.py
       - automate_ytb/science_aurora.py
       - automate_ytb/science_portrait.py
@@ -18,6 +19,7 @@ on:
       - tests/test_science_blender_aurora.py
       - tests/test_aurora_tracer_motion.py
       - tests/test_aurora_camera_choreography.py
+      - tests/test_aurora_impact_lighting.py
 
 permissions:
   contents: read
