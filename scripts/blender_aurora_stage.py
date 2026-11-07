@@ -30,6 +30,9 @@ from automate_ytb.aurora_tracer_motion import (
 from automate_ytb.aurora_camera_choreography import (
     pose as camera_story_pose, evidence as camera_story_evidence,
 )
+from automate_ytb.aurora_impact_lighting import (
+    impact_light_energy, impact_light_color,
+)
 
 BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 SIZE_LIMIT = (1080, 1380)
@@ -498,7 +501,7 @@ def setup(beat, width, height, samples):
                rng.uniform(.012,.027),mats["star"],low=True)
     dynamic={"sheets":[],"fields":[],"streams":[],"particles":[],
              "electrons":[],"photons":[],"lagoon":None,"ice":[],
-             "tracers":[]}
+             "tracers":[],"impactLights":[]}
     if beat in ("solar_wind","magnetic_field"):
         globe_x=2.50 if beat=="solar_wind" else .22
         globe=sphere("Detailed Earth: raised ocean-continent shader",
@@ -549,6 +552,17 @@ def setup(beat, width, height, samples):
             electron=sphere("Incoming charged collision particle %02d"%i,
                             -4.2,0,2,.058,mats["cyan"],low=True)
             dynamic["electrons"].append((electron,target,impact))
+            # True Blender POINT lights illuminate nearby molecule surfaces
+            # only when the real animated electron arrives at this target.
+            # This is scene lighting in Cycles, not a postproduction overlay.
+            px,py,pz=gases[target][3:6]
+            bpy.ops.object.light_add(type="POINT",location=(px,py,pz))
+            flash=bpy.context.object
+            flash.name="Collision-synchronized local 3D light %02d"%i
+            flash.data.energy=0.0
+            flash.data.shadow_soft_size=.38
+            flash.data.color=impact_light_color(beat,i)
+            dynamic["impactLights"].append((flash,target,impact,i))
             if beat=="emission":
                 source=mats["red"] if i%4==0 else (
                     mats["green"] if i%4 != 1 else mats["magenta"])
@@ -662,6 +676,12 @@ def animate(beat,dynamic,camera,q):
         atom_b.scale=(1+.33*pulse,)*3
         bond.points[0].co=(x-.15+dx,y+dy,z+dz,1)
         bond.points[1].co=(x+.15+dx,y+dy,z+dz,1)
+    # The actual Cycles light follows the molecule's current 3D position,
+    # flares after its corresponding electron impact and then decays.
+    for lamp,target,hit,index in dynamic["impactLights"]:
+        atom_a,atom_b=dynamic["particles"][target][:2]
+        lamp.location=(atom_a.location+atom_b.location)*.5
+        lamp.data.energy=impact_light_energy(beat,q,hit)
     for i,(obj,target,hit) in enumerate(dynamic["electrons"]):
         gas=dynamic["particles"][target]
         x,y,z=gas[3:6]
@@ -739,7 +759,30 @@ def main():
                 len(dynamic["lagoon"].data.vertices)
                 if dynamic["lagoon"] is not None else 0),
             "movingTracerParticles":len(dynamic["tracers"]),
+            "localImpactLights":len(dynamic["impactLights"]),
         }
+        # Measure actual bpy light energy and location, not fabricated light
+        # descriptors. All lamps must be off before their target is struck,
+        # illuminate that target at the collision instant, and fade afterwards.
+        verified_lamps=0
+        if dynamic["impactLights"]:
+            animate(beat,dynamic,camera,0.0)
+            initially_off=[
+                lamp.data.energy < .001
+                for lamp,*_ in dynamic["impactLights"]]
+            for ix,(lamp,target,hit,_) in enumerate(dynamic["impactLights"]):
+                animate(beat,dynamic,camera,hit)
+                a,b=dynamic["particles"][target][:2]
+                at_target=math.dist(
+                    tuple(lamp.location),
+                    tuple((a.location+b.location)*.5)) < 1e-5
+                bright=lamp.data.energy > 150.0
+                peak=lamp.data.energy
+                animate(beat,dynamic,camera,min(1.0,hit+.25))
+                faded=lamp.data.energy < peak*.15
+                verified_lamps+=int(
+                    initially_off[ix] and at_target and bright and faded)
+        evidence["reactiveImpactLightEvents"]=verified_lamps
         if dynamic["tracers"]:
             animate(beat,dynamic,camera,0.)
             first=[tuple(bead.location) for bead,*_ in dynamic["tracers"]]
@@ -762,6 +805,11 @@ def main():
                 (beat in ("collisions","emission") and
                  (evidence["diatomicMolecules"] < 12 or evidence["incomingElectrons"] < 8)) or
                 (beat=="emission" and evidence["emittedPhotons"] < 8) or
+                (beat in ("collisions","emission") and (
+                    evidence["localImpactLights"] < 8 or
+                    evidence["reactiveImpactLightEvents"] < 8)) or
+                (beat not in ("collisions","emission") and
+                    evidence["localImpactLights"] != 0) or
                 (beat=="curtains" and (
                     evidence["curtainSurfaceVertices"] < 10000 or
                     evidence["lagoonSurfaceVertices"] < 2000)) or
