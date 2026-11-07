@@ -474,10 +474,38 @@ class PortraitScienceScene:
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            # UI is composited after the cinematographic camera, so the
-            # moving image cannot overwrite or displace readable typography.
+        if self.lightning_beat is not None:
+            # Mobile-first documentary framing: the full episode title is
+            # revealed at the opening only, rather than sitting in a large,
+            # repeated PowerPoint-style card during every animated action.
+            # The beat heading and progress are independently composited
+            # after the moving storm, without covering the electric channel.
+            header = Image.new("RGBA", picture.size)
+            ui = ImageDraw.Draw(header)
+            beat_number = list(LIGHTNING_BADGES).index(self.lightning_beat)
+            intro = beat_number == 0 and t < min(2.0, duration*.3)
+            ui.rounded_rectangle((66, 116, 1017, 252), radius=21,
+                                 fill=(3, 13, 28, 141))
+            if intro:
+                for i, row in enumerate(title):
+                    ui.text((92, 136 + 48*i), row,
+                            font=_font(title_size, bold=True), fill=INK)
+            else:
+                ui.text((92, 161),
+                        science_badge[0 if self.english else 1],
+                        font=_font(38, bold=True), fill=INK)
+            ui.rounded_rectangle((830, 151, 997, 218), radius=17,
+                                 fill=(14, 47, 67, 172))
+            ui.text((857, 168), f"{beat_number+1:02d} / 05",
+                    font=_font(30, bold=True), fill=GOLD+(255,))
+            ui.line((77, 286, 1003, 286),
+                    fill=(125, 171, 197, 87), width=3)
+            ui.line((77, 286, 77+926*(beat_number+1)//5, 286),
+                    fill=(148, 229, 249, 206), width=4)
+            picture.alpha_composite(header)
+        elif self.aurora_beat is not None or self.volcano_beat is not None:
+            # Keep the independently validated Aurora/Volcano overlays
+            # unchanged; the lightning-specific staging is not global.
             header = Image.new("RGBA", picture.size)
             ui = ImageDraw.Draw(header)
             ui.rounded_rectangle((61, 109, 1019, 243), radius=25,
@@ -490,12 +518,11 @@ class PortraitScienceScene:
                                  fill=(10, 38, 58, 156))
             ui.text((99, 273), science_badge[0 if self.english else 1],
                     font=_font(31, bold=True), fill=GOLD+(255,))
-            beat_number = (list(LIGHTNING_BADGES).index(self.lightning_beat)
-                           if self.lightning_beat is not None else
-                           list(AURORA_BADGES).index(self.aurora_beat)
+            beat_number = (list(AURORA_BADGES).index(self.aurora_beat)
                            if self.aurora_beat is not None else
                            list(VOLCANO_BADGES).index(self.volcano_beat))
-            ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)
+            ui.line((75, 327, 1005, 327),
+                    fill=(128, 177, 199, 89), width=3)
             ui.line((75, 327, 75 + 930*(beat_number+1)//5, 327),
                     fill=(143, 225, 248, 204), width=4)
             picture.alpha_composite(header)
