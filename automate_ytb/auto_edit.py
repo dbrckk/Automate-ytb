@@ -19,13 +19,16 @@ import tempfile
 from .footage import VIDEO_SUFFIXES, probe_video
 from .production import _sha, _write_json, PROVIDER, ingest_video, load_plan, render
 from .scene_plan import plan as create_plan
-from .shot_diversity import _signature, compare_signatures
+from .shot_diversity import (
+    NEAR_STATIC_PIXEL_DELTA, _signature, _temporal_pixel_change,
+    compare_signatures,
+)
 from .source_scheduler import interleave_sources, counts_for_schedule
 
-VERSION = "licensed-multivideo-autoedit-v2-optical-diversity"
+VERSION = "licensed-multivideo-autoedit-v2-temporal-motion-preselection"
 MAX_SOURCES = 32
 PIXELS = 96 * 54
-MAX_SAMPLE_FRAMES = 6
+MAX_SAMPLE_FRAMES = 3
 
 GENRES = frozenset((
     "documentary", "cinematic", "product", "fitness", "education",
@@ -84,28 +87,60 @@ def assign_sources(scene_ms: list[int], capacity_ms: list[int]) -> tuple[int, ..
 
 
 def _sample_quality(source: Path, start: float, seconds: float) -> dict:
-    """Bounded local FFmpeg sample: diagnostics, never a beauty/semantic score."""
-    duration = min(1.60, seconds * .65)
-    offset = start + (seconds - duration) / 2
+    """Decode real source frames near 20%, 50%, 80% of the whole shot."""
+    if (not math.isfinite(start) or not math.isfinite(seconds)
+            or start < 0 or not .5 <= seconds <= 180):
+        raise ValueError("Invalid bounded real footage candidate")
+    duration = seconds * .68
+    offset = start + seconds * .20
     cmd = [
         "ffmpeg","-nostdin","-hide_banner","-loglevel","error",
         "-threads","1","-filter_threads","1",
         "-protocol_whitelist","file,pipe",
         "-ss",f"{offset:.3f}","-i",str(source),"-t",f"{duration:.3f}",
-        "-vf","fps=3,scale=96:54:flags=fast_bilinear,format=gray",
+        "-vf",f"fps={1/(seconds*.30):.6f},scale=96:54:flags=fast_bilinear,format=gray",
         "-frames:v",str(MAX_SAMPLE_FRAMES),"-an",
         "-c:v","rawvideo","-pix_fmt","gray","-f","rawvideo","pipe:1"]
     try:
         response = subprocess.run(
             cmd, capture_output=True, check=False, timeout=35)
-    except subprocess.TimeoutExpired as exc:
-        raise ValueError("Timed out inspecting real source footage") from exc
-    raw=response.stdout
-    if response.returncode or not raw or len(raw) % PIXELS or (
-            len(raw) > MAX_SAMPLE_FRAMES * PIXELS):
-        raise ValueError(
-            "Could not decode bounded real footage sample: " +
-            response.stderr.decode("utf-8","replace")[-300:])
+    except subprocess.TimeoutExpired:
+        response = None
+    raw = response.stdout if response is not None else b""
+    sampling_method = "bounded-fps"
+    if (response is None or response.returncode
+            or len(raw) != MAX_SAMPLE_FRAMES * PIXELS):
+        # WebM/variable-timestamp recordings sometimes yield only 1-2
+        # frames with the FPS filter, even though all three instants exist.
+        # Seek to each exact fractional instant instead of rejecting the
+        # original licensed recording or silently reusing a source frame.
+        frames = []
+        for fraction in (.2, .5, .8):
+            second = start + seconds * fraction
+            precise = [
+                "ffmpeg","-nostdin","-hide_banner","-loglevel","error",
+                "-threads","1","-filter_threads","1",
+                "-protocol_whitelist","file,pipe",
+                "-ss",f"{second:.3f}","-i",str(source),"-frames:v","1",
+                "-vf","scale=96:54:flags=fast_bilinear,format=gray",
+                "-an","-c:v","rawvideo","-pix_fmt","gray",
+                "-f","rawvideo","pipe:1",
+            ]
+            try:
+                result = subprocess.run(
+                    precise,capture_output=True,check=False,timeout=35)
+            except subprocess.TimeoutExpired as exc:
+                raise ValueError(
+                    f"Timed out sampling original footage at {second:.3f}s"
+                ) from exc
+            if result.returncode or len(result.stdout) != PIXELS:
+                raise ValueError(
+                    f"Missing real source frame at {second:.3f}s "
+                    f"(decoded {len(result.stdout)} bytes): " +
+                    result.stderr.decode("utf-8","replace")[-300:])
+            frames.append(result.stdout)
+        raw = b"".join(frames)
+        sampling_method = "precise-seeks"
     images = [memoryview(raw)[i:i+PIXELS]
               for i in range(0,len(raw),PIXELS)]
     means = [sum(row) / PIXELS for row in images]
@@ -117,7 +152,12 @@ def _sample_quality(source: Path, start: float, seconds: float) -> dict:
         sum(abs(x-y) for x,y in zip(a,b))/PIXELS
         for a,b in zip(images,images[1:])
     ]
-    change = sum(differences)/len(differences) if differences else 0.
+    change = sum(differences)/len(differences)
+    temporal_deltas = [
+        _temporal_pixel_change(bytes(a),bytes(b))
+        for a,b in zip(images,images[1:])
+    ]
+    near_static = max(temporal_deltas) < NEAR_STATIC_PIXEL_DELTA
     # Optical quality proxies only. Excessive motion saturates rather than
     # winning forever; near-black or clipped-white scenes are penalized.
     exposure = max(0,1-abs(luma-120)/120)
@@ -126,12 +166,21 @@ def _sample_quality(source: Path, start: float, seconds: float) -> dict:
                     +.27*exposure)
     if luma < 22 or luma > 234:
         visual_score -= .65
+    # A still excerpt loses to a comparably exposed moving alternative.
+    # If every source window is static, the editor still renders with warnings.
+    motion_penalty = .35 if near_static else 0.
+    visual_score -= motion_penalty
     # Midpoint signature is computed from already-decoded real frames.
     # No extra video decoding, GPU, paid models or semantic claims.
     signature=_signature(bytes(images[len(images)//2]))
     return {
         "spatialSignature":signature["blocks"],
         "sampledFrames":len(images),
+        "temporalSamplingMethod":sampling_method,
+        "temporalSourceSamplingFractions":[.2,.5,.8],
+        "temporalSourcePixelDeltas":temporal_deltas,
+        "temporalNearStaticSource":near_static,
+        "temporalSelectionPenalty":motion_penalty,
         "meanLuminance":round(luma,2),
         "contrastStdDev":round(contrast,2),
         "meanFrameChange":round(change,3),
@@ -441,6 +490,12 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             f"Scene {item['sceneId']}: poor exposure/low-contrast source requires review"
             for item in imported if item["technicalReview"]["requiresVisualReview"]
         ]
+        warnings.extend(
+            f"Scene {item['sceneId']}: source footage seems near-static across "
+            "the sampled shot; review the visible action or choose new footage"
+            for item in imported
+            if item["technicalReview"]["temporalNearStaticSource"]
+        )
         report={
             "schemaVersion":1,"algorithm":VERSION,
             "status":"rendered-for-human-review",
@@ -456,6 +511,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "semanticMatchingPerformed":False,
             "opticalDiversityAwareSelection":True,
             "opticalDiversityThreshold":9,
+            "temporalMotionAwareSelection":True,
+            "nearStaticSelectedSceneCount":sum(
+                item["technicalReview"]["temporalNearStaticSource"]
+                for item in imported),
             "voiceGenerated":narration_info is not None,
             "hasUserProvidedNarration":audio is not None,
             "narrationEngine":(
@@ -481,6 +540,7 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "limitations":[
                 "Only technical exposure/contrast/motion indicators; no subject understanding.",
                 "Spatial-block diversity cannot infer narration-image coherence.",
+                "Three sparse frames can miss short freezes; camera/lighting changes can mimic real subject motion.",
                 "Footage stays in provided order; no semantic script-to-footage matching.",
                 "Synthesized speech requires an explicitly selected local voice engine.",
                 "Speech-derived subtitle timing is not word-level forced alignment.",
