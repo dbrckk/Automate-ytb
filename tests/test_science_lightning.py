@@ -79,6 +79,50 @@ class OriginalLightningEpisodeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             camera_frame(Image.new("RGB",(1080,930)),"charge",0,7)
 
+    def test_cinematic_camera_follows_electrical_event_in_both_directions(self):
+        # The authored leader descends toward the mast; the return stroke
+        # travels upward again. Focus Y must actually follow these events,
+        # not remain fixed like a graphic slide with a lateral wobble.
+        self.assertIn("vertical-action-follow", CAMERA_VERSION)
+        descending_start=camera_pose("leader",0.,7.)
+        descending_end=camera_pose("leader",7.,7.)
+        upward_start=camera_pose("return",0.,7.)
+        upward_end=camera_pose("return",7.,7.)
+        self.assertGreater(descending_end[2]-descending_start[2],130)
+        self.assertGreater(upward_start[2]-upward_end[2],100)
+        self.assertGreater(descending_end[0],descending_start[0])
+        self.assertGreater(upward_end[0],upward_start[0])
+        # Camera movement is continuous even at 30fps and never crops
+        # outside the true 930px moving source-space storm.
+        for beat in BEATS:
+            for frame in range(210):
+                t=frame/30
+                zoom,x,y=camera_pose(beat,t,7.)
+                self.assertGreaterEqual(zoom,1.5)
+                self.assertGreaterEqual(x-540/zoom,-.001)
+                self.assertLessEqual(x+540/zoom,1080.001)
+                self.assertGreaterEqual(y-690/zoom,-.001)
+                self.assertLessEqual(y+690/zoom,930.001)
+                if frame:
+                    previous=camera_pose(beat,(frame-1)/30,7.)
+                    self.assertLess(abs(x-previous[1]),8)
+                    self.assertLess(abs(y-previous[2]),8)
+
+    def test_lightning_episode_title_does_not_repeat_over_every_action(self):
+        # Top-of-frame is independent from the rendered channel and captions.
+        # Title appears for the first 2 seconds only, while later shots have
+        # compact unique beat labels and unobtrusive step progress.
+        first=PortraitScienceScene(topic=TOPIC,narration=SCRIPT[0],scene_index=1)
+        second=PortraitScienceScene(topic=TOPIC,narration=SCRIPT[1],scene_index=2)
+        top=(68,117,1017,290)
+        title_crop=first.frame(.3,7.).crop(top)
+        action_crop=first.frame(4.,7.).crop(top)
+        leader_early=second.frame(.3,7.).crop(top)
+        leader_late=second.frame(5.,7.).crop(top)
+        self.assertNotEqual(title_crop.tobytes(),action_crop.tobytes())
+        self.assertNotEqual(action_crop.tobytes(),leader_early.tobytes())
+        self.assertEqual(leader_early.tobytes(),leader_late.tobytes())
+
     def test_new_episode_has_no_globe_and_five_distinct_frames(self):
         signatures=[]
         for i,(beat,phrase) in enumerate(zip(BEATS,SCRIPT),1):
