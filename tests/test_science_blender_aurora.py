@@ -263,6 +263,55 @@ class BlenderAuroraTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"Invalid or stationary"):
                 BlenderAuroraStage(folder)
 
+    def test_authored_3d_impact_lights_are_verified_and_scene_specific(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            fixture(folder)
+            manifest=folder/"manifest.json"
+            doc=json.loads(manifest.read_text(encoding="utf8"))
+            details={}
+            for beat in BEATS:
+                reactive=beat in ("collisions","emission")
+                details[beat]={
+                    "terrainVertices":4096,"totalMeshObjects":125,
+                    "earthShaderNodes":12,
+                    "diatomicMolecules":18 if reactive else 0,
+                    "incomingElectrons":10 if reactive else 0,
+                    "emittedPhotons":10 if beat=="emission" else 0,
+                    "curtainSurfaceVertices":13056 if beat=="curtains" else 0,
+                    "lagoonSurfaceVertices":2176 if beat=="curtains" else 0,
+                    "localImpactLights":10 if reactive else 0,
+                    "reactiveImpactLightEvents":10 if reactive else 0,
+                }
+            doc["sceneDetails"]=details
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            stage=BlenderAuroraStage(folder)
+            self.assertEqual(stage.scene_details["collisions"]["reactiveImpactLightEvents"],10)
+            self.assertEqual(stage.scene_details["emission"]["localImpactLights"],10)
+
+            # Must not accept a decorative/static lamp as an impact.
+            doc["sceneDetails"]["collisions"]["reactiveImpactLightEvents"]=0
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Missing reactive"):
+                BlenderAuroraStage(folder)
+
+            doc["sceneDetails"]["collisions"]["reactiveImpactLightEvents"]=11
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Impossible 3D impact"):
+                BlenderAuroraStage(folder)
+
+            doc["sceneDetails"]["collisions"]["reactiveImpactLightEvents"]=10
+            del doc["sceneDetails"]["emission"]["reactiveImpactLightEvents"]
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Incomplete real 3D impact"):
+                BlenderAuroraStage(folder)
+
+            doc["sceneDetails"]["emission"]["reactiveImpactLightEvents"]=10
+            doc["sceneDetails"]["curtains"]["localImpactLights"]=5
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"wrong action"):
+                BlenderAuroraStage(folder)
+
     def test_contact_sheet_does_not_falsely_approve(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
