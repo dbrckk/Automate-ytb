@@ -23,7 +23,7 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def make_moving_subject(self) -> Path:
+    def make_moving_subject(self, *, travel: int = 290) -> Path:
         # A genuine moving encoded MP4, not mocked decoded frames.
         from PIL import Image, ImageDraw
         frames = 36
@@ -39,7 +39,7 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
             for frame in range(frames):
                 img = Image.new("RGB", (480, 270), (3, 10, 19))
                 pen = ImageDraw.Draw(img)
-                x = round(82 + 290 * frame / (frames - 1))
+                x = round(82 + travel * frame / (frames - 1))
                 pen.ellipse((x - 27, 96, x + 27, 152),
                             fill=(205, 245, 245))
                 assert p.stdin is not None
@@ -95,7 +95,8 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
                        check=True, timeout=60)
 
     def test_genuine_moving_subject_is_confidently_cropped_in_auto_mode(self):
-        video = self.make_moving_subject()
+        # A subject with movement that the inertial camera can retain.
+        video = self.make_moving_subject(travel=170)
         graph, complex_graph, decision = smart_framing_filter(
             source=video, seconds=3.0, source_width=480,
             source_height=270, width=180, height=320,
@@ -110,6 +111,19 @@ class PortraitTrackingIntegrationTests(unittest.TestCase):
             data["meanTrackedActivityFraction"],
             data["uniformActivityBaseline"] + .1)
         self.assertGreaterEqual(data["focusedInformativeFrameFraction"], .6)
+
+    def test_fast_subject_that_outpaces_safe_camera_keeps_full_frame(self):
+        # Keep a quickly moving object on screen, rather than cropping
+        # to a place it occupied early in the shot.
+        video = self.make_moving_subject()
+        graph, complex_graph, decision = smart_framing_filter(
+            source=video, seconds=3.0, source_width=480,
+            source_height=270, width=180, height=320,
+            fps=24, mode="auto")
+        self.assertEqual(decision["applied"], "preserve")
+        self.assertTrue(complex_graph)
+        self.assertIn("overlay=", graph)
+        self.assertFalse(decision["tracking"]["portraitActivityConcentrated"])
 
     def test_diffuse_motion_keeps_all_content_in_auto_mode(self):
         # Real encoded video containing moving detail spread across the
