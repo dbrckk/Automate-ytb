@@ -191,6 +191,77 @@ def _flash_intensity(beat,t,duration):
     return 0.
 
 
+
+@lru_cache(maxsize=1)
+def _storm_flash_masks() -> tuple[Image.Image, Image.Image]:
+    """Spatially uneven light transport into cloud banks and wet terrain.
+
+    Low-resolution soft masks are built once and upscaled with bicubic
+    filtering. They preserve visible cloud texture instead of replacing the
+    physical landscape with an opaque white flash card.
+    """
+    cloud = Image.new("L", (270, 233))
+    draw = ImageDraw.Draw(cloud)
+    # A close, powerful cloud response around the original conductive path;
+    # the faint distant bank gets a smaller fraction of the light.
+    draw.ellipse((62, 5, 206, 118), fill=215)
+    draw.ellipse((17, 16, 258, 144), fill=113)
+    draw.ellipse((87, 34, 202, 99), fill=242)
+    cloud = cloud.filter(ImageFilter.GaussianBlur(18))
+    water = Image.new("L", (270, 233))
+    draw = ImageDraw.Draw(water)
+    draw.ellipse((94, 176, 252, 255), fill=172)
+    draw.ellipse((21, 194, 261, 264), fill=85)
+    draw.ellipse((141, 187, 216, 240), fill=202)
+    water = water.filter(ImageFilter.GaussianBlur(9))
+    return (cloud.resize(SIZE, Image.Resampling.BICUBIC),
+            water.resize(SIZE, Image.Resampling.BICUBIC))
+
+
+def paint_reactive_storm_light(stage: Image.Image, beat: str, t: float,
+                               duration: float) -> None:
+    """Physically motivated *illustrative* flash light across 3D-like layers.
+
+    The existing electrical discharge timeline drives the **same** light
+    response in cloudy air, wet ground and distant city silhouette. This is
+    a real per-frame pixel lighting pass on authored moving atmosphere, not
+    an unrelated white-screen cut or a static title animation.
+    """
+    if (stage.mode != "RGBA" or stage.size != SIZE
+            or beat not in ("charge", "leader", "connection", "return", "thunder")
+            or type(t) not in (int, float)
+            or type(duration) not in (int, float)
+            or not math.isfinite(t) or not math.isfinite(duration)
+            or not 0 < duration <= 180 or not 0 <= t <= duration):
+        raise ValueError("Invalid responsive storm light frame")
+    power = _flash_intensity(beat, t, duration)
+    if power < .012:
+        return
+    # Cloud banks reflect more blue/violet light; ground is darker and
+    # reflects locally through the wet surfaces. Both share one pulse.
+    cloud_mask, ground_mask = _storm_flash_masks()
+    for mask, rgb, gain in (
+            (cloud_mask, (172, 213, 251), .86),
+            (ground_mask, (150, 212, 249), .78)):
+        layer = Image.new("RGBA", SIZE, (*rgb, 0))
+        layer.putalpha(mask.point(lambda value: min(225, round(value * gain * power))))
+        stage.alpha_composite(layer)
+
+    # In the bright return stroke, a few coherent wet-ground glints track
+    # the radio-mast contact point. They are not a duplicated bolt effect.
+    if beat == "return":
+        glints = Image.new("RGBA", SIZE)
+        d = ImageDraw.Draw(glints)
+        for i in range(22):
+            y = 804 + i*6
+            wiggle = 18*math.sin(i*1.27 + t*.9)
+            width = 18 + (i%5)*18
+            x = round(687 + wiggle - width/2)
+            alpha = round(138*power*(1-i/38))
+            d.line((x, y, x+width, y),
+                   fill=(190, 228, 251, alpha), width=2+i%2)
+        stage.alpha_composite(glints)
+
 def bloom_electric_channel(stage: Image.Image,beat:str,t:float,
                            duration:float,path) -> None:
     if stage.mode!="RGBA" or stage.size!=SIZE:
