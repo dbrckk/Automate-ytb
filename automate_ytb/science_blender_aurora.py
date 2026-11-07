@@ -80,7 +80,9 @@ class BlenderAuroraStage:
                     "cameraKeyframeCount","cameraPathSampleCount",
                     "cameraTravelMilliunits","cameraFocusTravelMilliunits",
                 }
-                allowed=set(required)|{"lagoonSurfaceVertices"}|tracer_fields|camera_fields
+                light_fields={"localImpactLights","reactiveImpactLightEvents"}
+                allowed=(set(required)|{"lagoonSurfaceVertices"}|
+                         tracer_fields|camera_fields|light_fields)
                 if (not isinstance(row,dict)
                         or not set(required).issubset(row)
                         or not set(row).issubset(allowed)
@@ -114,6 +116,21 @@ class BlenderAuroraStage:
                             or not 650 <= row["cameraTravelMilliunits"] <= 5000
                             or not 280 <= row["cameraFocusTravelMilliunits"] <= 5000):
                         raise ValueError("Invalid or stationary 3D action camera path")
+                # Older verified renders need not carry M3 impact
+                # evidence. Newly declared lamps must be coupled to actual
+                # collision events and absent from unrelated shots.
+                if light_fields.intersection(row):
+                    if not light_fields.issubset(row):
+                        raise ValueError("Incomplete real 3D impact lighting evidence")
+                    total=row["localImpactLights"]
+                    responsive=row["reactiveImpactLightEvents"]
+                    if responsive > total:
+                        raise ValueError("Impossible 3D impact lighting response")
+                    if beat in ("collisions","emission"):
+                        if total < 8 or responsive < 8:
+                            raise ValueError("Missing reactive 3D molecule lights")
+                    elif total != 0 or responsive != 0:
+                        raise ValueError("3D impact light assigned to wrong action")
                 # Pre-lagoon Blender manifests without this optional field
                 # remain playable; newly declared lake geometry is verified
                 # rather than accepted as decorative metadata.
