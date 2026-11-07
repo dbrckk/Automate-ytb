@@ -8,15 +8,20 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-CAMERA_VERSION = "science-stage-camera-v1"
+CAMERA_VERSION = "science-stage-camera-v2-vertical-action-follow"
 SOURCE_SIZE = (1080, 930)
 OUTPUT_SIZE = (1080, 1380)
+# Zoom, X and Y targets refer to the same authored lightning geometry.
+# Charge separation stays wide; the descending leader pans toward the mast;
+# connection holds contact in frame; return tracks the bolt upward and thunder
+# pulls back to reveal its expanding shock wave. All motion is smooth, bounded
+# and applied to the original moving content, not an artificially frozen card.
 SHOT_PATHS = {
-    "charge": (1.57, 1.69, 495.0, 540.0),
-    "leader": (1.72, 1.53, 535.0, 575.0),
-    "connection": (1.59, 1.65, 610.0, 650.0),
-    "return": (1.58, 1.68, 665.0, 555.0),
-    "thunder": (1.68, 1.51, 640.0, 575.0),
+    "charge": (1.57, 1.69, 495.0, 535.0, 415.0, 460.0),
+    "leader": (1.73, 1.92, 505.0, 602.0, 350.0, 560.0),
+    "connection": (1.78, 1.90, 600.0, 655.0, 532.0, 565.0),
+    "return": (1.82, 1.91, 677.0, 520.0, 570.0, 395.0),
+    "thunder": (1.79, 1.56, 650.0, 570.0, 550.0, 470.0),
 }
 
 
@@ -29,16 +34,17 @@ def camera_pose(beat: str, t: float, duration: float) -> tuple[float, float, flo
         raise ValueError("Invalid cinematic stage clock or beat")
     p = t / duration
     ease = p*p*(3-2*p)
-    start_zoom, stop_zoom, x0, x1 = SHOT_PATHS[beat]
+    start_zoom, stop_zoom, x0, x1, y0, y1 = SHOT_PATHS[beat]
     zoom = start_zoom + (stop_zoom-start_zoom)*ease
     focus_x = x0 + (x1-x0)*ease
+    focus_y = y0 + (y1-y0)*ease
     if beat == "return":
         envelope = math.exp(-((p-.23)/.09)**2)
         focus_x += 3.5*envelope*math.sin(t*27)
     half_w = OUTPUT_SIZE[0]/zoom/2
     half_h = OUTPUT_SIZE[1]/zoom/2
     focus_x = max(half_w, min(SOURCE_SIZE[0]-half_w,focus_x))
-    focus_y = max(half_h, min(SOURCE_SIZE[1]-half_h,SOURCE_SIZE[1]/2))
+    focus_y = max(half_h, min(SOURCE_SIZE[1]-half_h,focus_y))
     return zoom, focus_x, focus_y
 
 
