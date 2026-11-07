@@ -21,6 +21,13 @@ import sys
 import bpy
 from mathutils import Vector
 
+# Blender starts this script from scripts/, not necessarily from repo root.
+# Keep the deterministic tracer math shared with normal Python regression CI.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from automate_ytb.aurora_tracer_motion import (
+    TRACERS_PER_PATH, interpolate as tracer_at, progress as tracer_progress,
+)
+
 BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 SIZE_LIMIT = (1080, 1380)
 
@@ -487,7 +494,8 @@ def setup(beat, width, height, samples):
         sphere("3D star depth layer %02d"%i,x,y,z,
                rng.uniform(.012,.027),mats["star"],low=True)
     dynamic={"sheets":[],"fields":[],"streams":[],"particles":[],
-             "electrons":[],"photons":[],"lagoon":None,"ice":[]}
+             "electrons":[],"photons":[],"lagoon":None,"ice":[],
+             "tracers":[]}
     if beat in ("solar_wind","magnetic_field"):
         globe_x=2.50 if beat=="solar_wind" else .22
         globe=sphere("Detailed Earth: raised ocean-continent shader",
@@ -544,6 +552,20 @@ def setup(beat, width, height, samples):
                 photon=sphere("Emitted colored 3D photon %02d"%i,
                               0,0,1,.092,source,low=True)
                 dynamic["photons"].append((photon,target,impact,i))
+    if beat in ("solar_wind", "magnetic_field"):
+        # Charged particle beads move along the real 3D spline locations,
+        # rather than implying solar-wind motion with wiggling lines alone.
+        # Every bead remains separate, shaded Cycles geometry with a unique
+        # phase. Green/teal flares echo the next atmospheric-excitation beat.
+        tracks = dynamic["streams"] if beat == "solar_wind" else dynamic["fields"]
+        for index, spline in enumerate(tracks):
+            for slot in range(TRACERS_PER_PATH):
+                color = mats["cyan"] if (index+slot)%3 else (
+                    mats["magenta"] if beat == "solar_wind" else mats["green"])
+                bead = sphere(
+                    "Moving 3D charged tracer %s-%02d-%02d" % (beat,index,slot),
+                    0,0,-15,.075 if beat=="solar_wind" else .064,color,low=True)
+                dynamic["tracers"].append((bead,spline,index,slot))
     if beat=="curtains":
         # The final spectacle replaces flat explanatory ground with a
         # physically modeled lagoon reflecting the genuinely moving
@@ -610,6 +632,15 @@ def animate(beat,dynamic,camera,q):
                 p.co=(x,y,z,1)
         else:
             animate_stream(line,index=i,q=q,bend=beat=="magnetic_field")
+    # A particle advances along an already updated world-space line. These
+    # visible moving 3D objects are NOT static line shader highlights.
+    for bead,spline,path_index,slot in dynamic["tracers"]:
+        t,visibility=tracer_progress(beat,q,path_index,slot)
+        coords = [point.co for point in spline.points]
+        bead.location=tracer_at(coords,t)
+        pulse=1.0+.18*math.sin(q*math.tau*2.1+slot*.8+path_index*.31)
+        s=visibility*pulse
+        bead.scale=(s,s,s)
     # Coherent 3D gas-molecule vibration and genuine electron impacts.
     # Animation is continuous, deterministic and evaluated in object space
     # before Cycles renders each new camera pose.
@@ -709,7 +740,17 @@ def main():
             "lagoonSurfaceVertices":(
                 len(dynamic["lagoon"].data.vertices)
                 if dynamic["lagoon"] is not None else 0),
+            "movingTracerParticles":len(dynamic["tracers"]),
         }
+        if dynamic["tracers"]:
+            animate(beat,dynamic,camera,0.)
+            first=[tuple(bead.location) for bead,*_ in dynamic["tracers"]]
+            animate(beat,dynamic,camera,.43)
+            evidence["animatedTracerParticles"]=sum(
+                math.dist(origin,bead.location) > .28
+                for origin,(bead,*_) in zip(first,dynamic["tracers"]))
+        else:
+            evidence["animatedTracerParticles"]=0
         if (evidence["terrainVertices"] < 2000 or
                 (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 10) or
                 (beat in ("collisions","emission") and
@@ -717,7 +758,12 @@ def main():
                 (beat=="emission" and evidence["emittedPhotons"] < 8) or
                 (beat=="curtains" and (
                     evidence["curtainSurfaceVertices"] < 10000 or
-                    evidence["lagoonSurfaceVertices"] < 2000))):
+                    evidence["lagoonSurfaceVertices"] < 2000)) or
+                (beat in ("solar_wind","magnetic_field") and (
+                    evidence["movingTracerParticles"] < 20 or
+                    evidence["animatedTracerParticles"] < 18)) or
+                (beat not in ("solar_wind","magnetic_field") and
+                    evidence["movingTracerParticles"] != 0)):
             raise RuntimeError(f"3D environment is incomplete: {beat}, {evidence}")
         manifest["sceneDetails"][beat]=evidence
         records=[]
