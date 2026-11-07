@@ -7,6 +7,8 @@ on:
       - automate_ytb/mobile_subtitles.py
       - automate_ytb/shot_diversity.py
       - automate_ytb/auto_edit.py
+      - automate_ytb/source_scheduler.py
+      - tests/test_source_scheduler.py
       - tests/test_auto_edit.py
       - tests/test_shot_diversity.py
       - tests/test_mobile_subtitles.py
@@ -107,6 +109,7 @@ jobs:
             --rights-note 'Factual NASA SVS ISS photography for informational use, with original author credit and no endorsement' \
             --confirm-rights --resolution shorts --fps 30 \
             --transition adaptive --render-profile high \
+            --source-order interleave \
             --portrait-framing follow --voice-engine kokoro \
             --language en --voice-name af_heart --narration-style natural \
             --music build/nasa/original-ambient.wav
@@ -167,6 +170,18 @@ jobs:
               raise SystemExit("Optical audit did not inspect every authored scene and both NASA sources")
           if diversity["semanticMatchingPerformed"] or diversity["publicationApproved"]:
               raise SystemExit("Optical audit must not claim semantic matching or release approval")
+          if a.get("sourceOrderingStrategy") != "interleave" or a.get("sourceOrderPreserved"):
+              raise SystemExit("Actual short did not use the new interleaved source schedule")
+          if not a.get("sourceChronologyPreserved") or not a["sourceSegmentsNonoverlapping"]:
+              raise SystemExit("Real footage source chronology or non-overlap not guaranteed")
+          if diversity["adjacentSourceChangeCount"] < 3:
+              raise SystemExit("Interleaved edit did not substantially diversify consecutive sources")
+          seen={}
+          for shot in a["shots"]:
+              previous=seen.get(shot["sourceName"])
+              if previous is not None and shot["startSeconds"] < previous - .005:
+                  raise SystemExit("Real NASA input frames were duplicated by an interleaving edit")
+              seen[shot["sourceName"]]=shot["startSeconds"]+shot["durationSeconds"]
           if not a.get("opticalDiversityAwareSelection"):
               raise SystemExit("Real NASA workflow did not use M2 pre-render diversity selection")
           if not all("diversityAdjustedScore" in shot["technicalReview"] for shot in a["shots"]):
