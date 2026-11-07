@@ -227,7 +227,8 @@ def bloom_electric_channel(stage: Image.Image,beat:str,t:float,
         # perspective. They are never independent decorative flashes.
         reflections=Image.new("RGBA",SIZE)
         d=ImageDraw.Draw(reflections)
-        foot_x=round(path[-1][0])
+        # CONNECTED_CHANNEL starts at the grounded tower and ends in sky.
+        foot_x=round(path[0][0])
         for j in range(20):
             depth=j/19
             y=812+j*6
