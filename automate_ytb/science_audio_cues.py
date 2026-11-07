@@ -23,6 +23,13 @@ PATTERNS={
         "sinking":r"\b(sink(?:s|ing)?|cold|salty|dense|density|poles?)\b",
         "heat":r"\b(heat|warm(?:ing)?|climate|redistribut(?:e|es|ing)|transport)\b",
     },
+    "lightning":{
+        "charge":r"\\b(charges?|collid(?:e|es|ing)|separat(?:e|ion|ing)|ice particles?)\\b",
+        "leader":r"\\b(stepped leader|descending|descends?|electric field|branching)\\b",
+        "connection":r"\\b(upward streamers?|connect(?:s|ion|ed|ing)?|reach toward)\\b",
+        "return":r"\\b(return stroke|bright flash|surging|lighting the sky)\\b",
+        "thunder":r"\\b(thunder|sound wave|pressure wave|heats? nearby air)\\b",
+    },
     "aurora":{
         "solar_wind":r"\b(solar wind|sun|particles?|releases?|sends?)\b",
         "magnetic_field":r"\b(magnetic|field|magnetosphere|poles?)\b",
