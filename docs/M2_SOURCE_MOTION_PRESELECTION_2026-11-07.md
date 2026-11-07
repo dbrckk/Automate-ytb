@@ -6,7 +6,7 @@ Le contrôle final (PR #205) repère les plans figés après leur encodage. Le c
 
 ## Mise en œuvre
 
-- Un seul décodage FFmpeg borné par candidat échantillonne trois images réelles à environ 20 %, 50 % et 80 % de la fenêtre source.
+- Un décodage FFmpeg borné échantillonne trois images réelles à environ 20 %, 50 % et 80 % de la fenêtre source. Lorsque les horodatages WebM/variables empêchent de récupérer les trois images, trois recherches temporelles précises sont utilisées en secours (sans duplication d'image).
 - Les variations de pixels dans les 75 % supérieurs sont mesurées avec le seuil optique de 1,5 niveau de gris de l'audit du MP4 final.
 - Un candidat quasi immobile reçoit une pénalité de 0,35 dans son score de sélection. Un passage réellement plus vivant est donc favorisé à exposition et contraste comparables, sous réserve de la chronologie, de la capacité et de l'absence de réutilisation des rushes.
 - Lorsque toutes les fenêtres restent statiques, la vidéo reste produisible mais le rapport signale cette limite : aucune fausse animation n'est inventée.
