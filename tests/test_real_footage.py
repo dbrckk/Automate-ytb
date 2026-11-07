@@ -148,13 +148,20 @@ class RealFootageTests(unittest.TestCase):
                         transition="cut", portrait_framing="auto")
         details = result["realFootageFraming"]
         self.assertEqual(details["requested"], "auto")
-        self.assertEqual(details["trackedScenes"], 1)
-        self.assertEqual(details["preservedScenes"], 0)
+        # Testsrc footage contains patterns spread over the full landscape.
+        # The new safe automatic mode may preserve it instead of inventing
+        # a single subject worth cropping. Both decisions remain auditable.
+        self.assertEqual(details["trackedScenes"] + details["preservedScenes"], 1)
         shot = details["scenes"][0]
         self.assertEqual(shot["version"], SMART_FRAMING_VERSION)
-        self.assertEqual(shot["applied"], "follow")
+        self.assertIn(shot["applied"], ("follow", "preserve"))
         self.assertTrue(shot["humanReviewRequired"])
+        self.assertTrue(shot["tracking"]["salienceCoverageAudited"])
         self.assertGreaterEqual(shot["tracking"]["sampledFrames"], 2)
+        if shot["applied"] == "follow":
+            self.assertTrue(shot["tracking"]["portraitActivityConcentrated"])
+        else:
+            self.assertFalse(shot["tracking"]["portraitActivityConcentrated"])
         positions = shot["tracking"]["keyframes"]
         self.assertTrue(all(
             0 <= p["cropX"] <=
