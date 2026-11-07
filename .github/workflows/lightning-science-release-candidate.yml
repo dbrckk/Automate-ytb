@@ -8,14 +8,18 @@ on:
       - ".github/workflows/lightning-science-release-candidate.yml"
       - "automate_ytb/science_lightning.py"
       - "automate_ytb/science_lightning_fx.py"
+      - "automate_ytb/cinematic_stage.py"
       - "automate_ytb/science_portrait.py"
+      - "tests/test_science_lightning.py"
   push:
     branches: [main]
     paths:
       - ".github/workflows/lightning-science-release-candidate.yml"
       - "automate_ytb/science_lightning.py"
       - "automate_ytb/science_lightning_fx.py"
+      - "automate_ytb/cinematic_stage.py"
       - "automate_ytb/science_portrait.py"
+      - "tests/test_science_lightning.py"
 
 permissions:
   contents: read
