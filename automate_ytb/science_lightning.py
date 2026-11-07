@@ -17,7 +17,7 @@ from .science_motion import _font
 from .cinematic_stage import camera_frame
 from .science_lightning_fx import (
     paint_environment, paint_terrain, bloom_electric_channel,
-    paint_foreground_weather,
+    paint_foreground_weather, paint_reactive_storm_light,
 )
 
 BEATS=("charge","leader","connection","return","thunder")
@@ -283,6 +283,10 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     td=ImageDraw.Draw(terrain,"RGBA")
     paint_terrain(td,t)
     layer.alpha_composite(terrain)
+    # Illuminate the MOVING, already composited cloud volumes and wet ground
+    # *before* painting the actual electric channel; the bolt keeps its
+    # original full-brightness highlight as the atmosphere reacts.
+    paint_reactive_storm_light(layer,beat,t,duration)
     # Actions must be blended on a separate transparent overlay. Drawing a
     # low-alpha glow directly onto opaque RGBA would overwrite its alpha,
     # darkening cloud faces and producing opaque-looking flat artifacts.
