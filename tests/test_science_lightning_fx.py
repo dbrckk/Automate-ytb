@@ -9,6 +9,7 @@ from PIL import Image, ImageChops, ImageDraw
 from automate_ytb.science_lightning_fx import (
     SIZE, cloud_volume, paint_environment, paint_terrain,
     bloom_electric_channel, paint_foreground_weather,
+    paint_reactive_storm_light, _storm_flash_masks,
 )
 from automate_ytb.science_lightning import PATH
 
@@ -54,6 +55,59 @@ class LightningCinematicFXTests(unittest.TestCase):
             a.convert("RGB"),first.convert("RGB")).getbbox())
         self.assertEqual(a.getchannel("A").getextrema(),(255,255))
         self.assertEqual(b.getchannel("A").getextrema(),(255,255))
+
+    def test_lightning_actually_relights_clouds_and_wet_ground_at_strike(self):
+        baseline=Image.new("RGBA",SIZE,(8,20,36,255))
+        start=baseline.copy()
+        light=baseline.copy()
+        repeat=baseline.copy()
+        finish=baseline.copy()
+        paint_reactive_storm_light(start,"return",0,7.0)
+        paint_reactive_storm_light(light,"return",1.4,7.0)
+        paint_reactive_storm_light(repeat,"return",1.4,7.0)
+        paint_reactive_storm_light(finish,"return",7.0,7.0)
+        self.assertEqual(start.tobytes(),baseline.tobytes())
+        self.assertEqual(finish.tobytes(),baseline.tobytes())
+        self.assertEqual(light.tobytes(),repeat.tobytes())
+        # Light must be visible away from the stroke itself, in BOTH
+        # upper cloud banks and actual wet surfaces near the radio mast.
+        self.assertGreater(light.getpixel((600,240))[0],
+                           baseline.getpixel((600,240))[0]+38)
+        self.assertGreater(light.getpixel((730,835))[1],
+                           baseline.getpixel((730,835))[1]+28)
+        self.assertEqual(light.getchannel("A").getextrema(),(255,255))
+        cloud,ground=_storm_flash_masks()
+        self.assertIs(cloud,_storm_flash_masks()[0])
+        self.assertIs(ground,_storm_flash_masks()[1])
+        self.assertGreater(cloud.getpixel((600,240)),cloud.getpixel((600,830)))
+        self.assertGreater(ground.getpixel((730,830)),ground.getpixel((730,240)))
+
+    def test_faint_leader_and_connection_dont_create_false_white_screen(self):
+        baseline=Image.new("RGBA",SIZE,(9,19,42,255))
+        charge=baseline.copy()
+        leader=baseline.copy()
+        connection=baseline.copy()
+        paint_reactive_storm_light(charge,"charge",3.5,7.)
+        paint_reactive_storm_light(leader,"leader",5.46,7.)
+        paint_reactive_storm_light(connection,"connection",6.16,7.)
+        self.assertEqual(charge.tobytes(),baseline.tobytes())
+        self.assertIsNotNone(ImageChops.difference(
+            leader.convert("RGB"),baseline.convert("RGB")).getbbox())
+        self.assertLess(leader.getpixel((600,240))[0],85)
+        self.assertLess(connection.getpixel((600,240))[0],105)
+        self.assertEqual(connection.getchannel("A").getextrema(),(255,255))
+
+    def test_flash_rejects_invalid_size_mode_or_timing(self):
+        for image,beat,t,duration in (
+            (Image.new("RGB",SIZE),"return",1.,7.),
+            (Image.new("RGBA",(800,600)),"return",1.,7.),
+            (Image.new("RGBA",SIZE),"bad",1.,7.),
+            (Image.new("RGBA",SIZE),"return",float("nan"),7.),
+            (Image.new("RGBA",SIZE),"return",1.,0.),
+            (Image.new("RGBA",SIZE),"return",9.,7.),
+        ):
+            with self.assertRaises(ValueError):
+                paint_reactive_storm_light(image,beat,t,duration)
 
     def test_invalid_scene_dimensions_are_rejected(self):
         with self.assertRaises(ValueError):
