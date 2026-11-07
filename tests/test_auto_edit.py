@@ -231,6 +231,34 @@ class EndToEndAutoEditTests(unittest.TestCase):
         self.assertAlmostEqual(float(probe["format"]["duration"]),
                                scenes[-1]["endMs"]/1000,delta=.35)
 
+    def test_interleaved_real_camera_clips_are_distinct_and_retain_no_source_audio(self):
+        request=self.kwargs()
+        request["destination"]=self.root/"interleaved-documentary"
+        request["source_order"]="interleave"
+        final=auto_edit(**request)
+        shots=final["shots"]
+        self.assertEqual(final["sceneCount"],5)
+        self.assertEqual(final["sourcesUsed"],3)
+        self.assertEqual(final["sourceOrderingStrategy"],"interleave")
+        self.assertFalse(final["sourceOrderPreserved"])
+        self.assertTrue(final["sourceChronologyPreserved"])
+        self.assertTrue(final["sourceSegmentsNonoverlapping"])
+        self.assertFalse(final["sourceAudioIncluded"])
+        self.assertEqual(len(final["sourceSchedule"]),5)
+        source_order=[shot["sourceName"] for shot in shots]
+        self.assertGreaterEqual(
+            sum(source_order[i]!=source_order[i-1]
+                for i in range(1,len(shots))),3)
+        for source in set(source_order):
+            chosen=[s for s in shots if s["sourceName"]==source]
+            self.assertTrue(all(
+                a["startSeconds"] + a["durationSeconds"] <= b["startSeconds"]+.005
+                for a,b in zip(chosen,chosen[1:])))
+        output=request["destination"]/"render"/"preview.mp4"
+        self.assertTrue(output.stat().st_size > 10000)
+        command("ffmpeg","-nostdin","-v","error","-i",str(output),"-f","null","-",
+                timeout=130)
+
     def test_narration_configuration_conflicts_fail_without_output(self):
         args=self.kwargs()
         args["voice_engine"]="espeak"
