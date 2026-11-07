@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 import shutil
 import subprocess
 import tempfile
@@ -9,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from automate_ytb.auto_edit import _sample_quality, select_excerpts
-from automate_ytb.shot_diversity import NEAR_STATIC_PIXEL_DELTA
+from automate_ytb.shot_diversity import NEAR_STATIC_PIXEL_DELTA, PIXELS
 
 
 class MotionSelectionTests(unittest.TestCase):
@@ -32,6 +33,29 @@ class MotionSelectionTests(unittest.TestCase):
         self.assertGreater(shots[0]["startSeconds"], 7)
         self.assertFalse(shots[0]["technicalReview"]["temporalNearStaticSource"])
         self.assertTrue(all(0 <= start <= 10 for start in candidates))
+
+    def test_fallback_decodes_three_independent_real_source_instants(self):
+        observed = []
+        def ffmpeg(cmd, **_kwargs):
+            observed.append(cmd)
+            if len(observed) == 1:
+                # This is the real-world variable-timestamp failure class:
+                # the single FFmpeg FPS pass returns too few images.
+                return SimpleNamespace(returncode=0, stdout=bytes(PIXELS),
+                                       stderr=b"")
+            return SimpleNamespace(
+                returncode=0,
+                stdout=bytes([20 + 60 * (len(observed) - 2)]) * PIXELS,
+                stderr=b"",
+            )
+        with patch("automate_ytb.auto_edit.subprocess.run", side_effect=ffmpeg):
+            score = _sample_quality(Path("owned.webm"), 1., 4.)
+        self.assertEqual(len(observed), 4)
+        self.assertEqual(score["temporalSamplingMethod"], "precise-seeks")
+        self.assertEqual(score["sampledFrames"], 3)
+        self.assertEqual(len(score["temporalSourcePixelDeltas"]), 2)
+        self.assertFalse(score["temporalNearStaticSource"])
+        self.assertTrue(all("-frames:v" in x and "1" in x for x in observed[1:]))
 
     def test_still_only_sources_preserve_nonoverlap_and_review_flag(self):
         def measured(_source, _start, _seconds):
