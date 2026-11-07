@@ -20,6 +20,7 @@ from .footage import VIDEO_SUFFIXES, probe_video
 from .production import _sha, _write_json, PROVIDER, ingest_video, load_plan, render
 from .scene_plan import plan as create_plan
 from .shot_diversity import _signature, compare_signatures
+from .source_scheduler import interleave_sources, counts_for_schedule
 
 VERSION = "licensed-multivideo-autoedit-v2-optical-diversity"
 MAX_SOURCES = 32
@@ -209,6 +210,81 @@ def select_excerpts(
         raise ValueError("Automatic edit did not fill the complete story")
     return result
 
+def select_interleaved_excerpts(
+    sources: list[Path], scene_ms: list[int], capacities: list[int],
+    schedule: tuple[int, ...],
+) -> list[dict]:
+    """Select real, non-overlapping source windows in alternating edit order.
+
+    Each recording keeps its own forward-moving cursor. An earlier scene
+    must never reuse bytes later assigned to another scene from that source.
+    Exact candidates still pass the same original FFmpeg quality and M2
+    optical diversity analysis as the chronological path.
+    """
+    if (len(sources) != len(capacities) or len(schedule) != len(scene_ms)
+            or not sources or any(type(i) is not int or
+                                  not 0 <= i < len(sources) for i in schedule)):
+        raise ValueError("Interleaved scene/source provenance mismatch")
+    source_scenes = [
+        [j for j, index in enumerate(schedule) if index == i]
+        for i in range(len(sources))
+    ]
+    for i, assigned in enumerate(source_scenes):
+        if sum(scene_ms[j] for j in assigned) > capacities[i]:
+            raise ValueError("Interleaved source lacks continuous footage")
+    offsets = [0] * len(sources)
+    cursors = [0] * len(sources)
+    local_positions = [0] * len(sources)
+    results = []
+    for scene_index, source_index in enumerate(schedule):
+        source, length = sources[source_index], scene_ms[scene_index]
+        assigned = source_scenes[source_index]
+        local_index = local_positions[source_index]
+        remaining = sum(scene_ms[j] for j in assigned[local_index + 1:])
+        reserved = sum(scene_ms[j] for j in assigned)
+        slack = capacities[source_index] - reserved
+        latest = capacities[source_index] - length - remaining
+        cursor = cursors[source_index]
+        ideal = offsets[source_index] + slack * (local_index + 1) / (len(assigned) + 1)
+        ideal = min(latest, max(cursor, ideal))
+        spread = min(10000, slack / (len(assigned) + 1) * .75)
+        candidate_ms = sorted(set(
+            max(cursor, min(latest, int(round(
+                min(latest, max(cursor, ideal + delta)) / 100)) * 100))
+            for delta in (-spread, 0, spread)
+        ))
+        evaluated = []
+        previous = results[-1]["technicalReview"] if results else None
+        for start_ms in candidate_ms:
+            metrics = _sample_quality(source, start_ms / 1000, length / 1000)
+            optical, penalty = None, 0.
+            if previous is not None:
+                optical = compare_signatures(
+                    {"blocks": previous["spatialSignature"]},
+                    {"blocks": metrics["spatialSignature"]},
+                )
+                if optical["nearDuplicateOpticalComposition"]:
+                    penalty = .22
+            score = round(metrics["technicalSelectionScore"] - penalty, 5)
+            metrics["adjacentOpticalComparison"] = optical
+            metrics["diversitySelectionPenalty"] = penalty
+            metrics["diversityAdjustedScore"] = score
+            evaluated.append((score, -abs(start_ms - ideal), start_ms, metrics))
+        score, _, start_ms, metrics = max(evaluated)
+        results.append({
+            "sceneIndex": scene_index,
+            "source": source,
+            "startSeconds": round(start_ms / 1000, 3),
+            "durationSeconds": round(length / 1000, 3),
+            "sourceCapacitySeconds": round(capacities[source_index] / 1000, 3),
+            "candidateCount": len(evaluated),
+            "technicalReview": metrics,
+        })
+        cursors[source_index] = start_ms + length
+        offsets[source_index] += length
+        local_positions[source_index] += 1
+    return results
+
 
 def auto_edit(*, video_paths: list[Path], destination: Path,
               script_path: Path | None = None, plan_path: Path | None = None,
@@ -222,7 +298,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
               voice_engine: str = "none", language: str = "en",
               voice_name: str | None = None,
               narration_style: str = "natural",
-              portrait_framing: str = "auto") -> dict:
+              portrait_framing: str = "auto",
+              source_order: str = "chronological") -> dict:
     """Publish an inspectable project folder only after actual MP4 succeeds."""
     if not rights_confirmed:
         raise ValueError("Explicit --confirm-rights required for every source")
@@ -244,6 +321,8 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
         raise ValueError("Unsupported narration engine/language")
     if narration_style not in ("natural", "gentle", "lively", "expressive"):
         raise ValueError("Unsupported narration delivery style")
+    if source_order not in ("chronological", "interleave"):
+        raise ValueError("Source order must be chronological or interleave")
     if portrait_framing not in ("auto", "follow", "preserve"):
         raise ValueError("Portrait framing must be auto, follow or preserve")
     if audio is not None and voice_engine != "none":
@@ -289,7 +368,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
     # Bind rendered excerpts to exact source bytes, not just filenames.
     source_hashes={source:_sha(source) for source in sources}
     # Reject obviously impossible edit requests before loading a TTS model.
-    assign_sources(durations, capacities)
+    if source_order == "interleave":
+        interleave_sources(durations, capacities)
+    else:
+        assign_sources(durations, capacities)
     staging=Path(tempfile.mkdtemp(
         prefix=".automate-ytb-autoedit-",dir=destination.parent))
     try:
@@ -315,8 +397,14 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             _write_json(staging/"voice-report.json",voice_report)
         # Speech may be longer than authored timeboxes: fail closed rather
         # than speeding up speech, duplicating footage or truncating phrases.
-        groups=assign_sources(durations,capacities)
-        excerpts=select_excerpts(sources,durations,capacities,groups)
+        if source_order == "interleave":
+            schedule = interleave_sources(durations, capacities)
+            groups = counts_for_schedule(schedule, len(sources))
+            excerpts = select_interleaved_excerpts(sources,durations,capacities,schedule)
+        else:
+            groups = assign_sources(durations,capacities)
+            schedule = tuple(i for i,count in enumerate(groups) for _ in range(count))
+            excerpts = select_excerpts(sources,durations,capacities,groups)
         imported=[]
         for item in excerpts:
             scene_id=storyboard["scenes"][item["sceneIndex"]]["id"]
@@ -360,7 +448,10 @@ def auto_edit(*, video_paths: list[Path], destination: Path,
             "sceneCount":len(excerpts),"sourcesProvided":len(sources),
             "sourcesUsed":sum(k>0 for k in groups),
             "sourceAllocationCounts":list(groups),
-            "sourceOrderPreserved":True,
+            "sourceOrderPreserved":source_order == "chronological",
+            "sourceChronologyPreserved":True,
+            "sourceOrderingStrategy":source_order,
+            "sourceSchedule":list(schedule),
             "sourceSegmentsNonoverlapping":True,
             "semanticMatchingPerformed":False,
             "opticalDiversityAwareSelection":True,
@@ -435,6 +526,9 @@ def main(argv: list[str] | None = None) -> int:
                         default="adaptive")
     parser.add_argument("--render-profile",choices=("preview","high"),
                         default="preview")
+    parser.add_argument("--source-order", choices=("chronological","interleave"),
+                        default="chronological",
+                        help="Interleave approved recordings without repeating their footage")
     parser.add_argument("--portrait-framing",
                         choices=("auto","follow","preserve"),default="auto",
                         help="Real-footage Shorts: track motion, or preserve the full frame")
@@ -461,7 +555,8 @@ def main(argv: list[str] | None = None) -> int:
             audio=args.audio,music=args.music,
             voice_engine=args.voice_engine,language=args.language,
             voice_name=args.voice_name,narration_style=args.narration_style,
-            portrait_framing=args.portrait_framing)
+            portrait_framing=args.portrait_framing,
+            source_order=args.source_order)
         print(json.dumps({
             "status":report["status"],"video":report["outputVideo"],
             "scenes":report["sceneCount"],"warnings":report["warnings"],
