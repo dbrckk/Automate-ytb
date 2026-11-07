@@ -210,20 +210,34 @@ def bloom_electric_channel(stage: Image.Image,beat:str,t:float,
                    width=34 if offset==0 else 14,joint="curve")
     blurred=fx.filter(ImageFilter.GaussianBlur(19))
     stage.alpha_composite(blurred)
-    # Lightning illuminates the surrounding atmosphere and wet horizon.
-    veil=Image.new("RGBA",SIZE)
-    v=ImageDraw.Draw(veil)
-    v.ellipse((80,8,1040,825),
-              fill=(105,165,226,round(46*intensity)))
-    stage.alpha_composite(veil.filter(ImageFilter.GaussianBlur(112)))
+    # A low-resolution soft lighting field follows the *actual* branching
+    # channel, instead of brightening an unrelated fixed oval. It illuminates
+    # the existing cloud/rain composites with spatially local light.
+    field=Image.new("RGBA",(270,233))
+    fd=ImageDraw.Draw(field)
+    scaled=[(round(x/4),round(y/4)) for x,y in nodes]
+    if len(scaled)>=2:
+        fd.line(scaled,fill=(139,194,245,round(85*intensity)),
+                width=35,joint="curve")
+    field=field.filter(ImageFilter.GaussianBlur(19))
+    stage.alpha_composite(field.resize(SIZE,Image.Resampling.BILINEAR))
     if beat=="return" and intensity>.3:
+        # The channel terminates above the radio mast; specular streaks on
+        # wet ground follow that same horizontal position and shift with
+        # perspective. They are never independent decorative flashes.
         reflections=Image.new("RGBA",SIZE)
         d=ImageDraw.Draw(reflections)
-        for j in range(15):
-            y=824+j*7
-            x=400+j%4*53
-            d.line((x,y,x+130-j%3*19,y),
-                   fill=(155,223,249,round(82*intensity)),width=3)
+        foot_x=round(path[-1][0])
+        for j in range(20):
+            depth=j/19
+            y=812+j*6
+            ripple=round(9*math.sin(t*4.3+j*.81))
+            spread=round((15+depth*165)*(1 if j%2 else -1))
+            x=foot_x+spread+ripple
+            width=round(17+depth*77)
+            alpha=round((108-58*depth)*intensity)
+            d.line((x-width//2,y,x+width//2,y),
+                   fill=(166,225,253,alpha),width=2+(j%3==0))
         stage.alpha_composite(reflections)
 
 
