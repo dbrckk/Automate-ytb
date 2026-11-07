@@ -221,6 +221,48 @@ class BlenderAuroraTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"wrong action"):
                 BlenderAuroraStage(folder)
 
+    def test_authored_cinematic_camera_evidence_is_complete_and_bounded(self):
+        from automate_ytb.aurora_camera_choreography import evidence
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            fixture(folder)
+            manifest = folder / "manifest.json"
+            doc = json.loads(manifest.read_text(encoding="utf8"))
+            details = {}
+            for beat in BEATS:
+                details[beat] = {
+                    "terrainVertices":4096,"totalMeshObjects":125,
+                    "earthShaderNodes":12,
+                    "diatomicMolecules":18 if beat in ("collisions","emission") else 0,
+                    "incomingElectrons":10 if beat in ("collisions","emission") else 0,
+                    "emittedPhotons":10 if beat=="emission" else 0,
+                    "curtainSurfaceVertices":13056 if beat=="curtains" else 0,
+                    "lagoonSurfaceVertices":2176 if beat=="curtains" else 0,
+                    **evidence(beat),
+                }
+            doc["sceneDetails"] = details
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            stage = BlenderAuroraStage(folder)
+            self.assertEqual(
+                stage.scene_details["emission"]["cameraKeyframeCount"], 3)
+            self.assertGreater(
+                stage.scene_details["curtains"]["cameraTravelMilliunits"], 650)
+            # Missing one field cannot silently turn this into old metadata.
+            del doc["sceneDetails"]["solar_wind"]["cameraFocusTravelMilliunits"]
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Incomplete authored Blender 3D camera"):
+                BlenderAuroraStage(folder)
+            doc["sceneDetails"]["solar_wind"].update(evidence("solar_wind"))
+            doc["sceneDetails"]["curtains"]["cameraTravelMilliunits"]=0
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Invalid or stationary"):
+                BlenderAuroraStage(folder)
+            doc["sceneDetails"]["curtains"].update(evidence("curtains"))
+            doc["sceneDetails"]["emission"]["cameraKeyframeCount"]=120
+            manifest.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Invalid or stationary"):
+                BlenderAuroraStage(folder)
+
     def test_contact_sheet_does_not_falsely_approve(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)

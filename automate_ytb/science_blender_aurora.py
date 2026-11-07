@@ -76,7 +76,11 @@ class BlenderAuroraStage:
                           "diatomicMolecules","incomingElectrons",
                           "emittedPhotons","curtainSurfaceVertices")
                 tracer_fields={"movingTracerParticles","animatedTracerParticles"}
-                allowed=set(required)|{"lagoonSurfaceVertices"}|tracer_fields
+                camera_fields={
+                    "cameraKeyframeCount","cameraPathSampleCount",
+                    "cameraTravelMilliunits","cameraFocusTravelMilliunits",
+                }
+                allowed=set(required)|{"lagoonSurfaceVertices"}|tracer_fields|camera_fields
                 if (not isinstance(row,dict)
                         or not set(required).issubset(row)
                         or not set(row).issubset(allowed)
@@ -98,6 +102,18 @@ class BlenderAuroraStage:
                             raise ValueError(f"Insufficient moving 3D charged particles: {beat}")
                     elif total != 0 or moving != 0:
                         raise ValueError("3D charged tracers assigned to wrong action")
+                # Pre-camera manifests are compatible, but newly declared
+                # 3D camera choreography must provide complete measured path
+                # evidence. A static camera with decorative image drift is
+                # not sufficient for the M3 storytelling upgrade.
+                if camera_fields.intersection(row):
+                    if not camera_fields.issubset(row):
+                        raise ValueError("Incomplete authored Blender 3D camera evidence")
+                    if (row["cameraKeyframeCount"] != 3
+                            or row["cameraPathSampleCount"] != 31
+                            or not 650 <= row["cameraTravelMilliunits"] <= 5000
+                            or not 280 <= row["cameraFocusTravelMilliunits"] <= 5000):
+                        raise ValueError("Invalid or stationary 3D action camera path")
                 # Pre-lagoon Blender manifests without this optional field
                 # remain playable; newly declared lake geometry is verified
                 # rather than accepted as decorative metadata.
