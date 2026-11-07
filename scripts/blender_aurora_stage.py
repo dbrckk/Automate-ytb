@@ -27,6 +27,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from automate_ytb.aurora_tracer_motion import (
     TRACERS_PER_PATH, interpolate as tracer_at, progress as tracer_progress,
 )
+from automate_ytb.aurora_camera_choreography import (
+    pose as camera_story_pose, evidence as camera_story_evidence,
+)
 
 BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 SIZE_LIMIT = (1080, 1380)
@@ -604,7 +607,7 @@ def setup(beat, width, height, samples):
     aim(rim,(0,0,1.7))
     bpy.ops.object.camera_add(location=(.08,-9.6,3.5) if beat=="curtains" else (.1,-10.8,4.3))
     camera=bpy.context.object
-    camera.name="Dolly camera with physical parallax"
+    camera.name="Story-directed original 3D action tracking camera"
     camera.data.lens=38 if beat=="curtains" else 43
     camera.data.clip_end=150
     aim(camera,(0,.4,1.65) if beat=="curtains" else (0,.4,2.0))
@@ -685,18 +688,13 @@ def animate(beat,dynamic,camera,q):
                          z+direction[2]*fraction*2.40)
         visible=0.001 if q < hit else max(.001,1-fraction*.72)
         photon.scale=(visible,)*3
-    if beat=="curtains":
-        # The final shot sees both real 3D ribbons and their moving
-        # water reflections, with a restrained cinematic dolly/pan.
-        camera.location.x=.08+.28*math.sin(q*math.pi*.7)
-        camera.location.y=-9.6+.45*q
-        camera.location.z=3.5-.18*q+.08*math.sin(q*math.pi)
-        aim(camera,(0,.4,1.65))
-    else:
-        camera.location.x=.1+.37*math.sin(q*math.pi*.88)
-        camera.location.y=-10.8+.25*q
-        camera.location.z=4.3+.18*math.sin(q*math.pi)
-        aim(camera,(0,.4,2.0))
+    # Each original Cycles action has its own continuous composed
+    # camera path and focus arc (wide -> demonstrated action -> consequence).
+    # Crucially this moves the actual Blender camera before rendering, not a
+    # 2D pan/crop after rendering. All motions preserve authored shot bounds.
+    camera_position, camera_focus = camera_story_pose(beat, q)
+    camera.location = camera_position
+    aim(camera, camera_focus)
 
 
 def main():
@@ -751,6 +749,14 @@ def main():
                 for origin,(bead,*_) in zip(first,dynamic["tracers"]))
         else:
             evidence["animatedTracerParticles"]=0
+        evidence.update(camera_story_evidence(beat))
+        # Verify the render stage uses the very same authored camera path,
+        # rather than reporting a path disconnected from the actual scene.
+        for timestamp in (0.0, 1.0):
+            animate(beat, dynamic, camera, timestamp)
+            expected, _ = camera_story_pose(beat, timestamp)
+            if math.dist(tuple(camera.location), expected) > 1e-5:
+                raise RuntimeError("Blender camera deviated from reviewed action path")
         if (evidence["terrainVertices"] < 2000 or
                 (beat in ("solar_wind","magnetic_field") and evidence["earthShaderNodes"] < 10) or
                 (beat in ("collisions","emission") and
