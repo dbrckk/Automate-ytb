@@ -86,6 +86,14 @@ def track_crop(*, source: Path, start: float, seconds: float,
     max_acceleration = max(1.0, max_step * .25)
     samples = []
     low_information = 0
+    # Compare retained activity against a uniformly active landscape of
+    # identical width. Bright detail spread across the whole panorama should
+    # not be mistaken for one followable 9:16 subject.
+    uniform_fraction = sample_crop / ANALYSIS_WIDTH
+    focus_threshold = min(.70, max(.48, uniform_fraction + .13))
+    measured_coverage = []
+    centered_coverage = []
+    focused_frames = 0
     previous = None
     for i, frame in enumerate(frames):
         energy = _score_columns(frame, previous)
@@ -122,6 +130,14 @@ def track_crop(*, source: Path, start: float, seconds: float,
                 velocity = 0.0
             smooth_left = next_left
         prev_left = int(round(smooth_left))
+        if total >= 1800:
+            actual_left = max(0, min(max_left, prev_left))
+            tracked_fraction = sum(energy[actual_left:actual_left + sample_crop]) / total
+            center_fraction = sum(energy[central:central + sample_crop]) / total
+            measured_coverage.append(tracked_fraction)
+            centered_coverage.append(center_fraction)
+            if tracked_fraction >= focus_threshold:
+                focused_frames += 1
         source_left = round(smooth_left * (source_width - crop_width) /
                             max(1, max_left) / 2) * 2
         source_left = max(0, min(source_width - crop_width, source_left))
@@ -143,18 +159,43 @@ def track_crop(*, source: Path, start: float, seconds: float,
         tail_x = max(0, min(source_width - crop_width, tail_x))
         samples.append({"timeSeconds": round(seconds, 3),
                         "cropX": int(tail_x)})
+    relevant = len(measured_coverage)
+    # Missing samples or diffusely moving backgrounds are not reliable
+    # evidence that the subject will survive the portrait crop.
+    mean_tracked = sum(measured_coverage) / relevant if relevant else 0.
+    mean_centered = sum(centered_coverage) / relevant if relevant else 0.
+    concentrated_fraction = focused_frames / relevant if relevant else 0.
+    # In particular, reject a camera that starts correctly but loses the
+    # principal source of activity before the end of the shot. This catches
+    # quickly traveling subjects that outrun a cinematographically smooth pan.
+    confident = (len(frames) >= 3 and relevant >= max(2, len(frames) // 2)
+                 and mean_tracked >= focus_threshold
+                 and concentrated_fraction >= .60
+                 and measured_coverage[0] >= focus_threshold
+                 and measured_coverage[-1] >= focus_threshold)
     return {
-        "method": "decoded-grayscale-activity-salience-smoothed-v1",
+        "method": "decoded-grayscale-activity-salience-smoothed-v2-coverage-gated",
         "sourceWidth": source_width,
         "cropWidth": crop_width,
         "sampledFrames": len(frames),
         "lowInformationFrames": low_information,
+        "salienceCoverageAudited": True,
+        "uniformActivityBaseline": round(uniform_fraction, 4),
+        "meaningfulActivityThreshold": round(focus_threshold, 4),
+        "informativeFrameCount": relevant,
+        "meanTrackedActivityFraction": round(mean_tracked, 4),
+        "startTrackedActivityFraction": round(measured_coverage[0], 4) if relevant else 0.,
+        "endTrackedActivityFraction": round(measured_coverage[-1], 4) if relevant else 0.,
+        "meanCenteredActivityFraction": round(mean_centered, 4),
+        "focusedInformativeFrameFraction": round(concentrated_fraction, 4),
+        "portraitActivityConcentrated": confident,
         "keyframes": samples,
         "requiresVisualReview": True,
         "limitations": [
             "Tracks visual activity, not species or human-verified animals",
             "Can prioritize moving particles or camera motion over the subject",
-            "Fails back toward center when the video is almost featureless",
+            "High measured concentration does not establish semantic subject identity",
+            "Diffuse activity, insufficient frames or dark footage can be preserved in automatic mode",
         ],
     }
 
