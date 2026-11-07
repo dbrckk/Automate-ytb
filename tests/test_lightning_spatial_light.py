@@ -19,7 +19,7 @@ class LightningSpatialLightTests(unittest.TestCase):
 
         left=render(190)
         right=render(880)
-        self.assertIsNotNone(ImageChops.difference(left,right).getbbox())
+        self.assertIsNotNone(ImageChops.difference(left.convert("RGB"),right.convert("RGB")).getbbox())
         # A true spatially localized light should move with the strike.
         left_near=sum(left.getpixel((190,y))[:3][i]
                       for y in (240,360,490) for i in range(3))
@@ -39,7 +39,7 @@ class LightningSpatialLightTests(unittest.TestCase):
         # The grounded tower is at x=700, not at the sky endpoint x=485.
         wet=stage.crop((560,810,840,930))
         self.assertIsNotNone(ImageChops.difference(
-            wet,Image.new("RGBA",wet.size,(10,18,30,255))).getbbox())
+            wet.convert("RGB"),Image.new("RGB",wet.size,(10,18,30))).getbbox())
 
     def test_other_storm_actions_have_no_false_return_stroke_reflections(self):
         for beat in ("charge","thunder"):
