@@ -7,7 +7,12 @@ on:
       - automate_ytb/mobile_subtitles.py
       - automate_ytb/shot_diversity.py
       - automate_ytb/auto_edit.py
+      - automate_ytb/footage.py
+      - automate_ytb/subject_reframe.py
+      - automate_ytb/production.py
       - automate_ytb/source_scheduler.py
+      - tests/test_subject_reframe.py
+      - tests/test_real_footage.py
       - tests/test_source_scheduler.py
       - tests/test_auto_edit.py
       - tests/test_motion_preselection.py
