@@ -177,6 +177,50 @@ class BlenderAuroraTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"Incomplete verified Blender"):
                 BlenderAuroraStage(folder)
 
+    def test_new_real_charged_particle_manifest_requires_world_motion(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)
+            fixture(folder)
+            file=folder/"manifest.json"
+            doc=json.loads(file.read_text(encoding="utf8"))
+            details={}
+            for beat in BEATS:
+                active=beat in ("solar_wind","magnetic_field")
+                details[beat]={
+                    "terrainVertices":4096,"totalMeshObjects":180,
+                    "earthShaderNodes":11,
+                    "diatomicMolecules":18 if beat in ("collisions","emission") else 0,
+                    "incomingElectrons":10 if beat in ("collisions","emission") else 0,
+                    "emittedPhotons":10 if beat=="emission" else 0,
+                    "curtainSurfaceVertices":13056 if beat=="curtains" else 0,
+                    "lagoonSurfaceVertices":2176 if beat=="curtains" else 0,
+                    "movingTracerParticles":36 if beat=="solar_wind" else (24 if active else 0),
+                    "animatedTracerParticles":36 if beat=="solar_wind" else (24 if active else 0),
+                }
+            doc["sceneDetails"]=details
+            file.write_text(json.dumps(doc),encoding="utf8")
+            stage=BlenderAuroraStage(folder)
+            self.assertEqual(stage.scene_details["solar_wind"]["movingTracerParticles"],36)
+            self.assertEqual(stage.scene_details["magnetic_field"]["animatedTracerParticles"],24)
+            doc["sceneDetails"]["magnetic_field"]["animatedTracerParticles"]=0
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Insufficient moving 3D charged"):
+                BlenderAuroraStage(folder)
+            doc["sceneDetails"]["magnetic_field"]["animatedTracerParticles"]=24
+            del doc["sceneDetails"]["solar_wind"]["animatedTracerParticles"]
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Incomplete Blender charged"):
+                BlenderAuroraStage(folder)
+            doc["sceneDetails"]["solar_wind"]["animatedTracerParticles"]=37
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"Impossible Blender charged"):
+                BlenderAuroraStage(folder)
+            doc["sceneDetails"]["solar_wind"]["animatedTracerParticles"]=36
+            doc["sceneDetails"]["curtains"]["movingTracerParticles"]=3
+            file.write_text(json.dumps(doc),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"wrong action"):
+                BlenderAuroraStage(folder)
+
     def test_contact_sheet_does_not_falsely_approve(self):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)
