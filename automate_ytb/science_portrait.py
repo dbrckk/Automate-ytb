@@ -247,10 +247,12 @@ class PortraitScienceScene:
         self.caption_segments = caption_segments
         # Reuse PCM-derived *phrase* boundaries for the physical camera beat.
         # No word timing is invented; scenes lacking a cue keep authored timing.
-        domain=("volcano" if self.volcano_beat is not None else
+        domain=("lightning" if self.lightning_beat is not None else
+                "volcano" if self.volcano_beat is not None else
                 "aurora" if self.aurora_beat is not None else
                 "ocean" if self.beat is not None else None)
-        action=(self.volcano_beat if domain=="volcano" else
+        action=(self.lightning_beat if domain=="lightning" else
+                self.volcano_beat if domain=="volcano" else
                 self.aurora_beat if domain=="aurora" else
                 self.beat if domain=="ocean" else None)
         self._narrated_event_fraction=(
@@ -374,7 +376,8 @@ class PortraitScienceScene:
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.lightning_beat is not None:
             draw_lightning(picture, self.lightning_beat, t, duration,
-                           self.english)
+                           self.english,
+                           event_progress=self._narrated_event_fraction)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.aurora_beat is not None:
             draw_aurora(picture, self.aurora_beat, t, duration,
