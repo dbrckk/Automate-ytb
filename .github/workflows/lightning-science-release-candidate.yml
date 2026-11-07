@@ -29,21 +29,21 @@ jobs:
     name: Original English lightning science with Kokoro and five actions
     uses: ./.github/workflows/one-click-preview.yml
     with:
-      topic: "How Does Lightning Form?"
+      topic: "The Secret Life of a Lightning Bolt"
       original_script: >-
-        Inside thunderclouds, colliding ice crystals and water droplets separate positive and negative electrical charges.
-        As the electric field grows stronger, a faint stepped leader branches downward through the air toward the ground.
-        Near the surface, upward streamers rise from tall objects, and one can connect with the descending leader.
-        A powerful return stroke races upward along the connected channel, producing the brilliant flash we call lightning.
-        The lightning channel superheats surrounding air, causing rapid expansion and a pressure wave that we hear as thunder.
-      character: "Original authored animated storm-cloud charges, stepped leader, upward streamer, return stroke and pressure wave, no globe or repeated planet footage"
+        Inside a thundercloud, colliding ice particles separate electrical charges, building an enormous hidden imbalance.
+        When the electric field becomes strong enough, a branching stepped leader begins descending through the stormy air.
+        From the ground, upward streamers reach toward the approaching channel until one of these streamers connects with the descending leader.
+        That connection triggers a brilliant return stroke, surging along the channel and lighting the entire sky.
+        The lightning channel heats nearby air so rapidly that a powerful sound wave spreads outward as thunder.
+      character: "Original animated lightning storm with physical cloud charge separation, branching leader, rising streamer, bright return stroke, thunder shock wave, moving clouds and rain"
       style: science
       language: en
       voice: kokoro
       voice_name: af_heart
       voice_style: natural
       soundtrack: ambient
-      transition: dissolve
+      transition: adaptive
       caption_timing: audio
       duration_seconds: 36
       shot_seconds: 7.2
