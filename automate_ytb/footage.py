@@ -108,7 +108,7 @@ def framing_filter(*, source_width: int, source_height: int,
     return filter_graph,True
 
 
-SMART_FRAMING_VERSION = "owned-footage-motion-reframing-v1"
+SMART_FRAMING_VERSION = "owned-footage-motion-reframing-v2-salience-coverage"
 
 
 def smart_framing_filter(*, source: Path, seconds: float,
@@ -166,6 +166,14 @@ def smart_framing_filter(*, source: Path, seconds: float,
     samples = tracking["sampledFrames"]
     if mode == "auto" and tracking["lowInformationFrames"] * 2 >= samples:
         report["reason"] = "Insufficient image information: keep full original frame"
+        return existing, complex_graph, report
+    if mode == "auto" and not tracking["portraitActivityConcentrated"]:
+        # A bright or moving panorama is not necessarily one followable
+        # subject. Preserve all of the original material instead of making
+        # an unsupported, tight 9:16 crop. Forced follow remains explicit.
+        report["reason"] = (
+            "Diffuse or insufficiently retained visual activity across the "
+            "portrait window; preserve the full source frame")
         return existing, complex_graph, report
     expression = crop_expression(tracking)
     graph = (
