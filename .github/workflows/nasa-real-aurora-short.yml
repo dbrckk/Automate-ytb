@@ -170,6 +170,14 @@ jobs:
               raise SystemExit("Optical audit did not inspect every authored scene and both NASA sources")
           if diversity["semanticMatchingPerformed"] or diversity["publicationApproved"]:
               raise SystemExit("Optical audit must not claim semantic matching or release approval")
+          if (not diversity.get("temporalMotionAudited")
+                  or diversity.get("temporalSamplesPerScene") != 3
+                  or diversity.get("temporalAuditedSceneCount") != a["sceneCount"]):
+              raise SystemExit("Every finished NASA scene must receive three real temporal frame samples")
+          if not isinstance(diversity.get("nearStaticSceneCount"), int):
+              raise SystemExit("Missing frozen-shot activity evidence")
+          if not all("temporalPixelActivity" in s for s in diversity["scenes"]):
+              raise SystemExit("Per-scene measured temporal pixel activity missing")
           if a.get("sourceOrderingStrategy") != "interleave" or a.get("sourceOrderPreserved"):
               raise SystemExit("Actual short did not use the new interleaved source schedule")
           if not a.get("sourceChronologyPreserved") or not a["sourceSegmentsNonoverlapping"]:
