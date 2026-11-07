@@ -494,10 +494,14 @@ class PortraitScienceScene:
                 ui.text((92, 161),
                         science_badge[0 if self.english else 1],
                         font=_font(38, bold=True), fill=INK)
-            ui.rounded_rectangle((830, 151, 997, 218), radius=17,
-                                 fill=(14, 47, 67, 172))
-            ui.text((857, 168), f"{beat_number+1:02d} / 05",
-                    font=_font(30, bold=True), fill=GOLD+(255,))
+            # The first-shot long title needs the full header width.
+            # Show the step number only after the title's opening reveal,
+            # otherwise the counter physically covers the last title word.
+            if not intro:
+                ui.rounded_rectangle((830, 151, 997, 218), radius=17,
+                                     fill=(14, 47, 67, 172))
+                ui.text((857, 168), f"{beat_number+1:02d} / 05",
+                        font=_font(30, bold=True), fill=GOLD+(255,))
             ui.line((77, 286, 1003, 286),
                     fill=(125, 171, 197, 87), width=3)
             ui.line((77, 286, 77+926*(beat_number+1)//5, 286),
