@@ -1,0 +1,77 @@
+name: Verify original 2.5D grounded animal animation pilot
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/rig25d.py"
+      - "automate_ytb/forest25d.py"
+      - "automate_ytb/scene25d.py"
+      - "automate_ytb/animated_forest.py"
+      - "scripts/render_25d_character_pilot.py"
+      - "tests/test_rig25d.py"
+      - ".github/workflows/p3-25d-character-pilot.yml"
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/rig25d.py"
+      - "automate_ytb/forest25d.py"
+      - "scripts/render_25d_character_pilot.py"
+      - ".github/workflows/p3-25d-character-pilot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p3-grounded-25d-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  render-grounded-fox:
+    name: Genuine two-bone IK, zero-sliding contacts and native vertical MP4
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install open-source Pillow and FFmpeg
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 180s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq ffmpeg
+          fi
+          python -m pip install --disable-pip-version-check -e .
+      - name: Verify two-bone IK, actual foot locks and alpha compositing
+        run: |
+          python -m unittest discover -s tests -p test_rig25d.py -v
+          python -m unittest discover -s tests -p test_scene25d.py -v
+      - name: Encode genuine 1080x1920 30fps original 2.5D fox pilot
+        run: |
+          python scripts/render_25d_character_pilot.py --output out/p3-fox-25d/fox-grounded.mp4
+      - name: Independently inspect real MP4 and physical-contact proof
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          qa=json.loads(Path("out/p3-fox-25d/pilot-qa.json").read_text())
+          assert qa["status"]=="passed"
+          assert qa["fps"]==30 and qa["size"]==[1080,1920]
+          assert qa["maximumPlantedFootWorldDriftPx"]<=.001
+          assert qa["maximumBoneLengthErrorPx"]<=.001
+          assert qa["frames"]>=200
+          assert not qa["publicationApproved"]
+          print("P3_GROUNDED_25D_VIDEO_AND_IK_QA_PASS", qa["videoSha256"])
+          PY
+      - name: Preserve reviewable motion video, keyframes and measurements
+        uses: actions/upload-artifact@v4
+        with:
+          name: automate-ytb-p3-25d-grounded-fox
+          path: |
+            out/p3-fox-25d/fox-grounded.mp4
+            out/p3-fox-25d/pilot-qa.json
+            out/p3-fox-25d/frame-*.jpg
+          if-no-files-found: error
+          retention-days: 7
