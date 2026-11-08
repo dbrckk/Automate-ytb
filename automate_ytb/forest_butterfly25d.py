@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 from .forest_contact25d import IMPACT_TIME, contact_at
 
 SIZE=(1080,1920)
-VERSION="forest-25d-causal-butterfly-v1"
+VERSION="forest-25d-causal-clear-silhouette-butterfly-p42-v1"
 
 
 @dataclass(frozen=True)
@@ -44,18 +44,24 @@ def butterfly_pose(t: float, *, origin_x: float, speed: float,
     tx=contact.x+30
     ty=contact.y-132+57*contact.deformation
     if dt<1.55:
+        # Arrive from the open right-hand sky and touch the real flower tip.
         q=_ease((dt-.12)/1.43)
-        x=tx+300*(1-q)
-        y=ty-140*(1-q)-18*math.sin(math.pi*q)
+        x=tx+320*(1-q)
+        y=ty-155*(1-q)-16*math.sin(math.pi*q)
         phase="approach"
     elif dt<2.55:
-        x=tx+9*math.sin((dt-1.55)*5)
-        y=ty-22-11*math.sin((dt-1.55)*9)
+        # On contact, rise toward the open space to the right of the face.
+        # The pose is continuous at the approach/hover boundary; the animal's
+        # eyes can follow it without the butterfly masking facial acting.
+        q=_ease((dt-1.55)/.70)
+        x=tx+165*q+8*math.sin(math.pi*q)
+        y=ty-155*q-12*math.sin(math.pi*q)
         phase="hover"
     else:
-        q=_ease((dt-2.55)/1.45)
-        x=tx+350*q
-        y=ty-24-160*q
+        # Leave from the exact final hover position, no teleport or cut.
+        q=_ease((dt-2.55)/1.65)
+        x=tx+165+360*q
+        y=ty-155-155*q
         phase="retreat"
     wing_open=.55+.45*math.sin(dt*2*math.pi*9)
     return ButterflyPose(True,x,y,wing_open,phase)
@@ -69,17 +75,28 @@ def butterfly_plate(t: float, *, origin_x: float, speed: float,
         return image
     d=ImageDraw.Draw(image)
     x,y=pose.x,pose.y
-    # Two independently drawn articulated wings (no flattened body sprite).
-    span=8+24*pose.wing_open
-    d.ellipse((x-span-8,y-23,x-4,y+9),
-              fill=(250,169,88,232),outline=(97,55,67,255),width=3)
-    d.ellipse((x+4,y-23,x+span+8,y+9),
-              fill=(252,198,113,235),outline=(97,55,67,255),width=3)
-    d.ellipse((x-span*.75-4,y+3,x-5,y+20),
-              fill=(241,139,110,227))
-    d.ellipse((x+5,y+3,x+span*.75+4,y+20),
-              fill=(241,139,110,227))
-    d.ellipse((x-5,y-16,x+5,y+19),fill=(54,48,62,255))
-    d.arc((x-11,y-25,x,y-9),210,325,fill=(54,48,62,255),width=2)
-    d.arc((x,y-25,x+11,y-9),210,325,fill=(54,48,62,255),width=2)
+    # Two independently animated original wing planes, layered for depth.
+    # A larger cool-hued silhouette remains legible against the orange actor.
+    span=16+34*pose.wing_open
+    d.ellipse((x-span*.88-10,y+1,x-7,y+30),
+              fill=(111,157,217,231),outline=(33,77,101,255),width=2)
+    d.ellipse((x+7,y+1,x+span*.88+10,y+30),
+              fill=(126,168,217,231),outline=(33,77,101,255),width=2)
+    d.ellipse((x-span-12,y-34,x-4,y+10),
+              fill=(90,215,216,240),outline=(29,78,102,255),width=3)
+    d.ellipse((x+4,y-34,x+span+12,y+10),
+              fill=(114,224,205,240),outline=(29,78,102,255),width=3)
+    for side in (-1,1):
+        mark_x=x+side*(span*.49+7)
+        d.ellipse((mark_x-7,y-18,mark_x+7,y-3),
+                  fill=(248,239,192,240))
+        d.ellipse((mark_x-3,y-14,mark_x+3,y-7),
+                  fill=(47,102,126,237))
+        d.line(((x+side*4,y+6),
+                (x+side*(span*.73+5),y-13)),
+               fill=(232,250,221,155),width=2)
+    d.ellipse((x-6,y-17,x+6,y+21),fill=(43,57,76,255))
+    d.ellipse((x-4,y-21,x+4,y-12),fill=(53,68,76,255))
+    d.arc((x-15,y-32,x,y-11),206,323,fill=(43,57,76,255),width=2)
+    d.arc((x,y-32,x+15,y-11),215,333,fill=(43,57,76,255),width=2)
     return image
