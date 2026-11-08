@@ -44,10 +44,10 @@ def butterfly_pose(t: float, *, origin_x: float, speed: float,
     tx=contact.x+30
     ty=contact.y-132+57*contact.deformation
     if dt<1.55:
-        # Arrive from the open right-hand sky and touch the real flower tip.
+        # Approach low beside the flower, safely beneath the fox face.
         q=_ease((dt-.12)/1.43)
         x=tx+320*(1-q)
-        y=ty-155*(1-q)-16*math.sin(math.pi*q)
+        y=ty+55*math.sin(math.pi*q)+60*(1-q)
         phase="approach"
     elif dt<2.55:
         # On contact, rise toward the open space to the right of the face.
@@ -75,26 +75,34 @@ def butterfly_plate(t: float, *, origin_x: float, speed: float,
         return image
     d=ImageDraw.Draw(image)
     x,y=pose.x,pose.y
-    # Two independently animated original wing planes, layered for depth.
-    # A larger cool-hued silhouette remains legible against the orange actor.
+    # Tapered four-wing butterfly silhouette: never resemble four googly eyes.
+    # Wing extension changes with real 9Hz flap; veining follows the shape.
     span=16+34*pose.wing_open
-    d.ellipse((x-span*.88-10,y+1,x-7,y+30),
-              fill=(111,157,217,231),outline=(33,77,101,255),width=2)
-    d.ellipse((x+7,y+1,x+span*.88+10,y+30),
-              fill=(126,168,217,231),outline=(33,77,101,255),width=2)
-    d.ellipse((x-span-12,y-34,x-4,y+10),
-              fill=(90,215,216,240),outline=(29,78,102,255),width=3)
-    d.ellipse((x+4,y-34,x+span+12,y+10),
-              fill=(114,224,205,240),outline=(29,78,102,255),width=3)
     for side in (-1,1):
-        mark_x=x+side*(span*.49+7)
-        d.ellipse((mark_x-7,y-18,mark_x+7,y-3),
-                  fill=(248,239,192,240))
-        d.ellipse((mark_x-3,y-14,mark_x+3,y-7),
-                  fill=(47,102,126,237))
-        d.line(((x+side*4,y+6),
-                (x+side*(span*.73+5),y-13)),
-               fill=(232,250,221,155),width=2)
+        back_wing=[
+            (x+side*6,y-1),
+            (x+side*(span*.72+9),y+7),
+            (x+side*(span*.56+11),y+32),
+            (x+side*12,y+22),
+        ]
+        d.polygon(back_wing,fill=(112,151,211,238),
+                  outline=(35,75,98,255),width=2)
+        front_wing=[
+            (x+side*4,y-8),
+            (x+side*(span*.65),y-43),
+            (x+side*(span+16),y-34),
+            (x+side*(span+11),y-4),
+            (x+side*7,y+13),
+        ]
+        d.polygon(front_wing,fill=(78,205,207,245) if side<0 else
+                  (107,216,197,245),outline=(32,83,101,255),width=3)
+        d.line(((x+side*5,y+5),(x+side*(span*.67+4),y-22)),
+               fill=(224,248,213,190),width=2)
+        d.line(((x+side*10,y+5),(x+side*(span*.85+3),y-4)),
+               fill=(33,107,119,150),width=2)
+        mark_x=x+side*(span*.68+5)
+        d.ellipse((mark_x-4,y-24,mark_x+4,y-16),
+                  fill=(242,233,188,237))
     d.ellipse((x-6,y-17,x+6,y+21),fill=(43,57,76,255))
     d.ellipse((x-4,y-21,x+4,y-12),fill=(53,68,76,255))
     d.arc((x-15,y-32,x,y-11),206,323,fill=(43,57,76,255),width=2)
