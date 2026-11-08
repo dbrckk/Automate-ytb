@@ -6,8 +6,6 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_contact25d.py"
-      - "tests/test_forest_contact25d.py"
-      - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/scene25d.py"
       - "automate_ytb/animated_forest.py"
       - "scripts/render_25d_character_pilot.py"
@@ -19,6 +17,8 @@ on:
     paths:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
+      - "automate_ytb/forest_contact25d.py"
+      - "tests/test_forest_contact25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
