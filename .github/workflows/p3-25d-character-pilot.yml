@@ -6,11 +6,13 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_contact25d.py"
+      - "automate_ytb/forest_butterfly25d.py"
       - "automate_ytb/scene25d.py"
       - "automate_ytb/animated_forest.py"
       - "scripts/render_25d_character_pilot.py"
       - "tests/test_rig25d.py"
       - "tests/test_forest_contact25d.py"
+      - "tests/test_forest_butterfly25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   push:
     branches: [main]
@@ -18,7 +20,9 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_contact25d.py"
+      - "automate_ytb/forest_butterfly25d.py"
       - "tests/test_forest_contact25d.py"
+      - "tests/test_forest_butterfly25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
@@ -56,6 +60,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_rig25d.py -v
           python -m unittest discover -s tests -p test_forest_contact25d.py -v
+          python -m unittest discover -s tests -p test_forest_butterfly25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
       - name: Encode real 1080x1920 30fps animated paw-to-flower scene
         run: |
@@ -72,6 +77,9 @@ jobs:
           assert qa["groundedFlowerContact"]["source"].startswith("verified right-foot")
           assert qa["groundedFlowerContact"]["pawGroundY"]==1361.0
           assert "released-petals" in qa["layers"]
+          assert "reactive-butterfly" in qa["layers"]
+          assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"
+          assert qa["causalButterfly"]["flightPhases"]==["approach","hover","retreat"]
           assert qa["status"]=="passed"
           assert qa["fps"]==30 and qa["size"]==[1080,1920]
           assert qa["maximumPlantedFootWorldDriftPx"]<=.001
