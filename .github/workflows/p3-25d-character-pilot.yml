@@ -7,12 +7,14 @@ on:
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/forest_butterfly25d.py"
+      - "automate_ytb/forest_story25d.py"
       - "automate_ytb/scene25d.py"
       - "automate_ytb/animated_forest.py"
       - "scripts/render_25d_character_pilot.py"
       - "tests/test_rig25d.py"
       - "tests/test_forest_contact25d.py"
       - "tests/test_forest_butterfly25d.py"
+      - "tests/test_forest_story25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   push:
     branches: [main]
@@ -21,8 +23,10 @@ on:
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/forest_butterfly25d.py"
+      - "automate_ytb/forest_story25d.py"
       - "tests/test_forest_contact25d.py"
       - "tests/test_forest_butterfly25d.py"
+      - "tests/test_forest_story25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
@@ -61,10 +65,11 @@ jobs:
           python -m unittest discover -s tests -p test_rig25d.py -v
           python -m unittest discover -s tests -p test_forest_contact25d.py -v
           python -m unittest discover -s tests -p test_forest_butterfly25d.py -v
+          python -m unittest discover -s tests -p test_forest_story25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
       - name: Encode real 1080x1920 30fps animated paw-to-flower scene
         run: |
-          python scripts/render_25d_character_pilot.py --interaction --animal "${{ matrix.animal }}" --output "out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-flower-contact.mp4"
+          python scripts/render_25d_character_pilot.py --interaction --story --animal "${{ matrix.animal }}" --output "out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-flower-contact.mp4"
       - name: Independently inspect real MP4 and physical-contact proof
         run: |
           python - <<'PY'
@@ -79,6 +84,8 @@ jobs:
           assert "released-petals" in qa["layers"]
           assert "reactive-butterfly" in qa["layers"]
           assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"
+          assert len(qa["eventDirectedStory"]["beats"])==4
+          assert qa["eventDirectedStory"]["narration"].startswith("not generated")
           assert qa["causalButterfly"]["flightPhases"]==["approach","hover","retreat"]
           assert qa["status"]=="passed"
           assert qa["fps"]==30 and qa["size"]==[1080,1920]
