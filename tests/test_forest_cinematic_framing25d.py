@@ -35,7 +35,7 @@ class PhysicalCinematicFramingTests(unittest.TestCase):
         wide=cinematic_reframe(im,t=2.,beat="discovery",body_x=300.)
         close=cinematic_reframe(im,t=2.,beat="contact",body_x=300.)
         self.assertEqual(wide.size,SIZE)
-        self.assertIsNotNone(ImageChops.difference(wide,close).getbbox())
+        self.assertIsNotNone(ImageChops.difference(wide.convert("RGB"),close.convert("RGB")).getbbox())
 
     def test_rejects_unbounded_clocks_subjects_and_fake_stages(self):
         for t in (math.nan,-1,8,True):
