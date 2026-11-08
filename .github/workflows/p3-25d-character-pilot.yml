@@ -121,6 +121,7 @@ jobs:
           assert qa["anatomicalLimbs"]["version"].startswith("original-p39")
           assert qa["anatomicalLimbs"]["originalIKUnchanged"] is True
           assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"
+          assert qa["causalButterfly"]["wingAndFlightVersion"].startswith("forest-25d-causal-clear-silhouette-butterfly-p42")
           assert len(qa["eventDirectedStory"]["beats"])==4
           assert qa["eventDirectedStory"]["narration"].startswith("not generated")
           assert qa["causalButterfly"]["flightPhases"]==["approach","hover","retreat"]
