@@ -22,6 +22,7 @@ import wave
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
+from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -57,7 +58,9 @@ def score(path: Path, *, interaction: bool = False) -> None:
 
 
 def render(output: Path, *, kind: str = "fox",
-           interaction: bool = False) -> dict:
+           interaction: bool = False, story: bool = False) -> dict:
+    if type(story) is not bool or (story and not interaction):
+        raise ValueError("Event-directed story requires interaction")
     if kind not in KINDS or type(interaction) is not bool:
         raise ValueError("Unsupported original 2.5D animal or interaction")
     if not isinstance(output,Path) or output.suffix.lower()!=".mp4":
@@ -92,11 +95,11 @@ def render(output: Path, *, kind: str = "fox",
             t=i/FPS
             if i in (30,99,171):
                 key=output.parent/f"frame-{i:03d}.jpg"
-                preview=frame(t,kind=kind,interaction=interaction)
+                preview=frame(t,kind=kind,interaction=interaction,story=story)
                 preview.resize((540,960)).save(key,quality=88)
                 rendered=preview
             else:
-                rendered=frame(t,kind=kind,interaction=interaction)
+                rendered=frame(t,kind=kind,interaction=interaction,story=story)
             for side in ("left","right"):
                 pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
                                  speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
@@ -168,6 +171,13 @@ def render(output: Path, *, kind: str = "fox",
              "target":"world-space responsive flower",
              "wings":"independently animated 9Hz original artwork"}
             if interaction else None),
+        "eventDirectedStory":(
+            {"version":STORY_VERSION,
+             "beats":[{"name":name,"startSeconds":start,
+                       "endSeconds":end,"title":title,"subtitle":subtitle}
+                      for name,start,end,title,subtitle in STORY],
+             "narration":"not generated — visual story preview only"}
+            if story else None),
         "groundedFlowerContact":(
             {"eventSeconds":round(event.time,5),
              "pawWorldX":round(event.x,3),
@@ -209,11 +219,13 @@ def main() -> None:
                         default=Path("out/p3-fox-25d/fox-grounded.mp4"))
     parser.add_argument("--animal",choices=KINDS,default="fox",
                         help="Original fox, rabbit or cat artwork with grounded IK")
+    parser.add_argument("--story",action="store_true",
+                        help="Event-directed four-shot original visual story; requires --interaction")
     parser.add_argument("--interaction",action="store_true",
                         help="Add authored paw-to-flower contact, moving petals and original chime")
     args=parser.parse_args()
     print(json.dumps(render(args.output,kind=args.animal,
-                            interaction=args.interaction),ensure_ascii=False))
+                            interaction=args.interaction,story=args.story),ensure_ascii=False))
 
 
 if __name__=="__main__":
