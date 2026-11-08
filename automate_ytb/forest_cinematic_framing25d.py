@@ -26,8 +26,8 @@ SHOTS={
 }
 DOLLY={"discovery":.055,"contact":.12,"arrival":-.08,"departure":-.05}
 # Camera lead preserves the animal and creates screen space for the butterfly.
-LEAD={"discovery":0.,"contact":12.,"arrival":62.,"departure":30.}
-PAN={"discovery":-20.,"contact":20.,"arrival":20.,"departure":-10.}
+LEAD={"discovery":0.,"contact":12.,"arrival":30.,"departure":30.}
+PAN={"discovery":-20.,"contact":20.,"arrival":10.,"departure":-10.}
 MOBILE_GROUND_Y=1375.0
 
 def shot_crop(t: float, *, beat: str, body_x: float) -> tuple[int,int,int,int]:
