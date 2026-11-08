@@ -15,8 +15,9 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font
 from .cinematic_stage import camera_frame
+from .scene25d import Layer25D, Scene25D
 from .science_lightning_fx import (
-    paint_environment, paint_terrain, bloom_electric_channel,
+    environment_plates, paint_terrain, bloom_electric_channel,
     paint_foreground_weather,
 )
 
@@ -301,14 +302,26 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
             or duration<=0 or duration>180 or not 0<=t<=duration
             or type(english) is not bool):
         raise ValueError("Invalid lightning science frame")
-    layer=Image.new("RGBA",(1080,SOURCE_HEIGHT))
-    # Original layered animated storm environment. Clouds, wet ground and
-    # near/far rain have distinct depth speeds, not a flat background image.
-    paint_environment(layer,t,beat,duration)
+    # True multi-Z composition: authored clouds at three independent
+    # depths, a separate rain field, opaque sky, then occluding terrain.
+    # Relative camera parallax is continuous and zero at both shot cuts.
+    stage=Scene25D((1080,SOURCE_HEIGHT))
+    depths={
+        "sky":(0,0.0),
+        "clouds-far":(10,0.20),
+        "clouds-middle":(20,0.53),
+        "clouds-near":(30,0.94),
+        "background-rain":(40,0.62),
+        "vignette":(50,0.0),
+    }
+    for name,plate in environment_plates(t,beat,duration):
+        z,parallax=depths[name]
+        stage.add(Layer25D(name,z,plate,parallax_x=parallax,
+                           parallax_y=parallax*.24))
     terrain=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     td=ImageDraw.Draw(terrain,"RGBA")
     paint_terrain(td,t)
-    layer.alpha_composite(terrain)
+    stage.add(Layer25D("terrain",60,terrain))
     # Actions must be blended on a separate transparent overlay. Drawing a
     # low-alpha glow directly onto opaque RGBA would overwrite its alpha,
     # darkening cloud faces and producing opaque-looking flat artifacts.
@@ -325,10 +338,20 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         _return(d,action_t,duration,english)
     else:
         _thunder(d,action_t,duration,english)
-    layer.alpha_composite(actions)
+    stage.add(Layer25D("electric-action",70,actions))
+    light=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     bloom_electric_channel(
-        layer,beat,action_t,duration,
+        light,beat,action_t,duration,
         CONNECTED_CHANNEL if beat in ("return","thunder")
         else LEADER_CHANNEL)
-    paint_foreground_weather(layer,t,beat)
-    picture.alpha_composite(camera_frame(layer,beat,t,duration), (0,STAGE_TOP))
+    stage.add(Layer25D("lighting-and-reflections",80,light))
+    foreground=Image.new("RGBA",(1080,SOURCE_HEIGHT))
+    paint_foreground_weather(foreground,t,beat)
+    stage.add(Layer25D("rain-foreground",90,foreground))
+    # Physical cloud positions vary continuously at 30fps. Depth-specific
+    # shifts create actual relative motion; this is not panning a flat image.
+    camera_x=24.0*math.sin(math.pi*t/duration)
+    camera_y=5.0*math.sin(math.pi*t/duration)
+    composite=stage.render(camera_x=camera_x,camera_y=camera_y)
+    picture.alpha_composite(camera_frame(composite,beat,t,duration),
+                            (0,STAGE_TOP))
