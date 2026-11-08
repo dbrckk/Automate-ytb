@@ -24,6 +24,7 @@ from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at, VERSION as FLOWER_VERSION
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
+from automate_ytb.forest_cinematic_framing25d import VERSION as CAMERA_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
@@ -212,6 +213,7 @@ def render(output: Path, *, kind: str = "fox",
             "exactIKWorldContact":True,
             "expressions":["body","look-down","surprise","follow","blink"],
             "animatedScarfTip":True},
+        "cinematicFraming":{"version":CAMERA_VERSION,"mobileGroundClearOfCaptions":True,"actorAndButterflyTracking":True},
         "artDirection":{"version":ART_VERSION,
                         "staticPlates":9,"independentlyMovingAtmosphere":True,
                         "originalAssets":True,"layeredSunlight":True,
