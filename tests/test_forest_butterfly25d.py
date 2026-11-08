@@ -48,6 +48,12 @@ class Butterfly25DTests(unittest.TestCase):
         self.assertGreater(p.x,contact_at(IMPACT_TIME+2.15,
             origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y).x+175)
 
+    def test_approach_stays_low_beside_flower_not_across_fox_face(self):
+        t=IMPACT_TIME+1.10
+        hit=contact_at(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)
+        lower_flower_tip=hit.y-132+57*hit.deformation
+        self.assertGreater(pose(t).y,lower_flower_tip+30)
+
     def test_wings_move_in_real_independent_rgba_frames(self):
         a=butterfly_plate(IMPACT_TIME+.8,origin_x=ORIGIN_X,
                           speed=SPEED,torso_y=TORSO_Y)
