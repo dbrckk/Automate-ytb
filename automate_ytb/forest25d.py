@@ -20,6 +20,7 @@ from .animated_forest import _sprite_body, _sprite_tail, _sprite_ear, COLORS
 from .scene25d import Layer25D, Scene25D
 from .rig25d import walking_leg, GROUND, PERIOD
 from .forest_contact25d import IMPACT_TIME, flower_plates
+from .forest_butterfly25d import butterfly_plate
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -231,6 +232,9 @@ def frame(t: float, *, kind: str = "fox",
     scene.add(Layer25D("contact-reactions",70,ground_fx))
     if interaction:
         scene.add(Layer25D("released-petals",75,petals))
+        scene.add(Layer25D(
+            "reactive-butterfly",80,
+            butterfly_plate(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)))
     scene.add(Layer25D("grass-foreground",90,landscape["foreground"],
                        parallax_x=1.15))
     # Soft continuous camera excursion, zero at opening/ending cuts.

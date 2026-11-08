@@ -161,6 +161,13 @@ def render(output: Path, *, kind: str = "fox",
         "schemaVersion":3,"type":"original-25d-animated-animal-ik-motion-pilot",
         "status":"passed","scene":f"{kind}-meadow-grounded-walk",
         "animal":kind,"interactionEnabled":interaction,
+        "causalButterfly":(
+            {"trigger":"rig-verified paw impact",
+             "firstVisibleSeconds":round(IMPACT_TIME+.12,3),
+             "flightPhases":["approach","hover","retreat"],
+             "target":"world-space responsive flower",
+             "wings":"independently animated 9Hz original artwork"}
+            if interaction else None),
         "groundedFlowerContact":(
             {"eventSeconds":round(event.time,5),
              "pawWorldX":round(event.x,3),
@@ -176,7 +183,8 @@ def render(output: Path, *, kind: str = "fox",
                   "grounded-shadow",
                   * (["responsive-flower"] if interaction else []),
                   "ik-"+kind,"contact-reactions",
-                  * (["released-petals"] if interaction else []),
+                  * (["released-petals","reactive-butterfly"]
+                     if interaction else []),
                   "grass-foreground"],
         "actualTwoBoneInverseKinematics":True,
         "maximumBoneLengthErrorPx":round(worst_bone_error,5),
