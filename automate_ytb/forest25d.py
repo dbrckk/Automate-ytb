@@ -26,22 +26,25 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "fox-25d-world-grounded-rig-meadow-v1"
+VERSION = "forest-25d-world-grounded-multispecies-v2"
+KINDS = ("fox", "rabbit", "cat")
 
 
 @lru_cache(maxsize=1)
-def _fox() -> dict[str, Image.Image]:
-    with tempfile.TemporaryDirectory(prefix="p3-fox-sprites-") as folder:
+def _animal(kind: str) -> dict[str, Image.Image]:
+    if kind not in KINDS:
+        raise ValueError("Unsupported original 2.5D forest animal")
+    with tempfile.TemporaryDirectory(prefix=f"p3-{kind}-sprites-") as folder:
         p = Path(folder)
         paths = {name: p / (name + ".png") for name in
                  ("body", "blink", "tail", "left", "right")}
-        _sprite_body(paths["body"], kind="fox", blink=False, emotion="happy",
+        _sprite_body(paths["body"], kind=kind, blink=False, emotion="happy",
                      gaze="forward", include_ears=False)
-        _sprite_body(paths["blink"], kind="fox", blink=True, emotion="happy",
+        _sprite_body(paths["blink"], kind=kind, blink=True, emotion="happy",
                      gaze="forward", include_ears=False)
-        _sprite_tail(paths["tail"], kind="fox")
+        _sprite_tail(paths["tail"], kind=kind)
         for side in ("left", "right"):
-            _sprite_ear(paths[side], kind="fox", side=side)
+            _sprite_ear(paths[side], kind=kind, side=side)
         return {name: Image.open(path).convert("RGBA").copy()
                 for name, path in paths.items()}
 
@@ -138,17 +141,19 @@ def _rotate_about(image: Image.Image, degrees: float,
                         expand=False)
 
 
-def character_plate(t: float) -> tuple[Image.Image, dict]:
+def character_plate(t: float, *, kind: str = "fox") -> tuple[Image.Image, dict]:
     """Real sprite rig; rear paws articulate beneath the original fox torso."""
     if type(t) not in (int,float) or not math.isfinite(t) or not 0<=t<=SECONDS:
         raise ValueError("Invalid original fox clock")
-    assets=_fox()
+    if kind not in KINDS:
+        raise ValueError("Unsupported original 2.5D forest animal")
+    assets=_animal(kind)
     canvas=Image.new("RGBA",SIZE)
     draw=ImageDraw.Draw(canvas)
     x=ORIGIN_X+SPEED*t
     y=TORSO_Y+3*math.cos(4*math.pi*t/PERIOD)
-    fur=COLORS["fox"]["fur"]
-    dark=COLORS["fox"]["dark"]
+    fur=COLORS[kind]["fur"]
+    dark=COLORS[kind]["dark"]
     legs={}
     for side in ("left","right"):
         pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
@@ -176,12 +181,12 @@ def character_plate(t: float) -> tuple[Image.Image, dict]:
     blink=(t%3.1)<.105
     canvas.alpha_composite(assets["blink" if blink else "body"],
                            (round(x),round(y)))
-    return canvas,dict(bodyX=round(x,3),bodyY=round(y,3),
+    return canvas,dict(kind=kind,bodyX=round(x,3),bodyY=round(y,3),
                        left=legs["left"],right=legs["right"])
 
 
-def frame(t: float) -> Image.Image:
-    actor,meta=character_plate(t)
+def frame(t: float, *, kind: str = "fox") -> Image.Image:
+    actor,meta=character_plate(t,kind=kind)
     landscape=_landscape()
     scene=Scene25D(SIZE)
     scene.add(Layer25D("sky",0,landscape["sky"]))
@@ -193,7 +198,7 @@ def frame(t: float) -> Image.Image:
     shadow.alpha_composite(_contact_shadow(),
                            (round(meta["bodyX"]-12),round(GROUND-37)))
     scene.add(Layer25D("grounded-shadow",50,shadow))
-    scene.add(Layer25D("ik-fox",60,actor))
+    scene.add(Layer25D("ik-"+kind,60,actor))
     # Ground reaction is driven by real contact, not arbitrary particles.
     ground_fx=Image.new("RGBA",SIZE)
     g=ImageDraw.Draw(ground_fx)
