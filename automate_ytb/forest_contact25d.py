@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 
 from .rig25d import GROUND, PERIOD, walking_leg
 
-VERSION = "25d-world-paw-grounded-spring-flower-v1"
+VERSION = "25d-world-paw-grounded-spring-flower-face-clear-p43-v1"
 IMPACT_TIME = 1.5 * PERIOD
 SIZE = (1080, 1920)
 
@@ -53,7 +53,7 @@ def contact_at(t: float, *, origin_x: float, speed: float,
     # rebound and smooth decay, with no animation before the paw lands.
     amplitude=(1-math.exp(-18*dt))*math.exp(-1.75*dt)
     deformation=max(0., min(1., amplitude * (0.6+0.4*abs(math.cos(8*dt)))))
-    count = 11 if .12 < dt < 3.25 else 0
+    count = 7 if .12 < dt < 3.25 else 0
     return FlowerContact(paw.foot[0], GROUND, IMPACT_TIME, True,
                          deformation, count)
 
@@ -86,7 +86,7 @@ def flower_plates(t: float, *, origin_x: float, speed: float,
                  fill=(63,174,110,245))
     # Petals deform with the actual impact; their centers remain attached
     # to the tip until released (then move on independent trajectories).
-    remaining = 7 if hit.planted and delta>.12 else 11
+    remaining = 4 if hit.planted and delta>.12 else 11
     for j in range(remaining):
         angle=2*math.pi*j/11+.20
         radius=24+9*math.sin(angle*.5)
@@ -103,9 +103,11 @@ def flower_plates(t: float, *, origin_x: float, speed: float,
             angle=(-.95+j*.19)
             # Released petals have independent horizontal velocities,
             # gravity, drag and a deterministic bounded lifetime.
-            vx=38*math.sin(j*2.1)+23
+            # Fan released petals to the right of the fox, not across its
+            # eyes and mouth. Origin remains the real flower tip at impact.
+            vx=150+18*j
             vy=-85-(j%4)*22
-            px=x+30+vx*age+22*math.sin(age*1.3+j)
+            px=x+30+vx*age+10*math.sin(age*1.3+j)
             py=y-112+vy*age+47*age*age
             alpha=round(210*max(0.,min(1.,(3.25-delta)/1.3)))
             rr=6+j%4
