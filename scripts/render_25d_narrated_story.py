@@ -19,6 +19,7 @@ from automate_ytb.forest_voice_timeline import (
 )
 from automate_ytb.short_voice import synthesize
 from automate_ytb.forest_captions25d import caption_plate,VERSION as CAPTION_VERSION
+from automate_ytb.forest_butterfly25d import VERSION as BUTTERFLY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
@@ -115,6 +116,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 "characterMaterials":CHARACTER_VERSION,
                 "organicSoftBody":ORGANIC_VERSION,
                 "anatomicalLimbs":ANATOMY_VERSION,
+                "causalButterfly":BUTTERFLY_VERSION,
                 "editorialTitles":False,
                 "fps":FPS,"size":list(SIZE),"frames":count,
                 "durationSeconds":round(duration,3),
