@@ -131,9 +131,10 @@ def character_plate(t: float, *, kind: str = "fox",
 
 
 def frame(t: float, *, kind: str = "fox",
-          interaction: bool = False, story: bool = False) -> Image.Image:
-    if type(story) is not bool:
-        raise ValueError("Story flag must be boolean")
+          interaction: bool = False, story: bool = False,
+          show_story_titles: bool = True) -> Image.Image:
+    if type(story) is not bool or type(show_story_titles) is not bool:
+        raise ValueError("Story and title flags must be boolean")
     if story and not interaction:
         raise ValueError("Causal story requires real paw-flower interaction")
     actor,meta=character_plate(t,kind=kind,interaction=interaction)
@@ -183,7 +184,8 @@ def frame(t: float, *, kind: str = "fox",
         rendered=scene.render(camera_x=shot.camera_x,camera_y=shot.camera_y)
         rendered=cinematic_reframe(rendered,t=t,beat=shot.beat,
                                    body_x=meta["bodyX"])
-        rendered.alpha_composite(story_overlay(t))
+        if show_story_titles:
+            rendered.alpha_composite(story_overlay(t))
     else:
         camera=30*math.sin(math.pi*t/SECONDS)
         rendered=scene.render(camera_x=camera,camera_y=4*camera/30)
