@@ -90,7 +90,7 @@ class PhysicalCinematicFramingTests(unittest.TestCase):
         self.assertGreater((opening[2]-opening[0])/
                            (contact[2]-contact[0]),1.13)
 
-    def test_arrival_keeps_real_butterfly_and_face_inside_frame(self):
+    def test_arrival_keeps_full_tail_and_real_butterfly_inside_frame(self):
         name,start,end,*_=STORY[2]
         for i in range(26):
             t=start+(end-start)*i/25
@@ -98,6 +98,8 @@ class PhysicalCinematicFramingTests(unittest.TestCase):
             pose=butterfly_pose(t,origin_x=ORIGIN_X,
                                 speed=SPEED,torso_y=TORSO_Y)
             self.assertTrue(pose.visible)
+            # Keep the entire world-space animated tail, not just the face.
+            self.assertGreaterEqual(ORIGIN_X+SPEED*t-141,crop[0])
             # Current authored wing span is <= 66 world pixels; reserve 72.
             self.assertGreater(pose.x-72,crop[0])
             self.assertLess(pose.x+72,crop[2])
