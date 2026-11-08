@@ -1,20 +1,24 @@
-name: Verify original 2.5D grounded animal animation pilot
+name: Verify real 2.5D animal ground contact and flower encounter
 
 on:
   pull_request:
     paths:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
+      - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/scene25d.py"
       - "automate_ytb/animated_forest.py"
       - "scripts/render_25d_character_pilot.py"
       - "tests/test_rig25d.py"
+      - "tests/test_forest_contact25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   push:
     branches: [main]
     paths:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
+      - "automate_ytb/forest_contact25d.py"
+      - "tests/test_forest_contact25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
@@ -51,10 +55,11 @@ jobs:
       - name: Verify two-bone IK, actual foot locks and alpha compositing
         run: |
           python -m unittest discover -s tests -p test_rig25d.py -v
+          python -m unittest discover -s tests -p test_forest_contact25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
-      - name: Encode genuine 1080x1920 30fps original 2.5D fox pilot
+      - name: Encode real 1080x1920 30fps animated paw-to-flower scene
         run: |
-          python scripts/render_25d_character_pilot.py --animal "${{ matrix.animal }}" --output "out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-grounded.mp4"
+          python scripts/render_25d_character_pilot.py --interaction --animal "${{ matrix.animal }}" --output "out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-flower-contact.mp4"
       - name: Independently inspect real MP4 and physical-contact proof
         run: |
           python - <<'PY'
@@ -63,6 +68,10 @@ jobs:
           animal="${{ matrix.animal }}"
           qa=json.loads(Path(f"out/p3-{animal}-25d/pilot-qa.json").read_text())
           assert qa["animal"]==animal
+          assert qa["interactionEnabled"] is True
+          assert qa["groundedFlowerContact"]["source"].startswith("verified right-foot")
+          assert qa["groundedFlowerContact"]["pawGroundY"]==1361.0
+          assert "released-petals" in qa["layers"]
           assert qa["status"]=="passed"
           assert qa["fps"]==30 and qa["size"]==[1080,1920]
           assert qa["maximumPlantedFootWorldDriftPx"]<=.001
@@ -74,9 +83,9 @@ jobs:
       - name: Preserve reviewable motion video, keyframes and measurements
         uses: actions/upload-artifact@v4
         with:
-          name: automate-ytb-p3-25d-grounded-${{ matrix.animal }}
+          name: automate-ytb-p3-25d-flower-contact-${{ matrix.animal }}
           path: |
-            out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-grounded.mp4
+            out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-flower-contact.mp4
             out/p3-${{ matrix.animal }}-25d/pilot-qa.json
             out/p3-${{ matrix.animal }}-25d/frame-*.jpg
           if-no-files-found: error

@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from .animated_forest import _sprite_body, _sprite_tail, _sprite_ear, COLORS
 from .scene25d import Layer25D, Scene25D
 from .rig25d import walking_leg, GROUND, PERIOD
+from .forest_contact25d import IMPACT_TIME, flower_plates
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -141,12 +142,13 @@ def _rotate_about(image: Image.Image, degrees: float,
                         expand=False)
 
 
-def character_plate(t: float, *, kind: str = "fox") -> tuple[Image.Image, dict]:
+def character_plate(t: float, *, kind: str = "fox",
+                    interaction: bool = False) -> tuple[Image.Image, dict]:
     """Real sprite rig; rear paws articulate beneath the original fox torso."""
     if type(t) not in (int,float) or not math.isfinite(t) or not 0<=t<=SECONDS:
         raise ValueError("Invalid original fox clock")
-    if kind not in KINDS:
-        raise ValueError("Unsupported original 2.5D forest animal")
+    if kind not in KINDS or type(interaction) is not bool:
+        raise ValueError("Unsupported original 2.5D forest animal or interaction")
     assets=_animal(kind)
     canvas=Image.new("RGBA",SIZE)
     draw=ImageDraw.Draw(canvas)
@@ -172,7 +174,10 @@ def character_plate(t: float, *, kind: str = "fox") -> tuple[Image.Image, dict]:
         for offset in (-11,0,11):
             draw.line((foot_x+offset,foot_y+2,foot_x+offset+2,foot_y+8),
                       fill=dark,width=2)
-    tail=_rotate_about(assets["tail"],8*math.sin(2.0*t-.7),(197,202))
+    reaction=(math.exp(-((t-IMPACT_TIME-.16)/.29)**2)
+              if interaction else 0.)
+    tail=_rotate_about(assets["tail"],
+                       8*math.sin(2.0*t-.7)+11*reaction,(197,202))
     if kind=="rabbit":
         # The legacy full-size rabbit tail is a very large detached disk in
         # this IK composition. Keep the species artwork but resize its plate
@@ -183,17 +188,19 @@ def character_plate(t: float, *, kind: str = "fox") -> tuple[Image.Image, dict]:
         canvas.alpha_composite(tail,(round(x-141),round(y+165)))
     for side,offset in (("left",0),("right",200)):
         tilt=(4.5 if side=="left" else -4.5)*math.sin(t*3.6+.4)
+        tilt+=(8 if side=="left" else -6)*reaction
         ear=_rotate_about(assets[side],tilt,(76,173))
         canvas.alpha_composite(ear,(round(x+offset),round(y)))
-    blink=(t%3.1)<.105
+    blink=(t%3.1)<.105 or (interaction and IMPACT_TIME+.22<t<IMPACT_TIME+.33)
     canvas.alpha_composite(assets["blink" if blink else "body"],
                            (round(x),round(y)))
     return canvas,dict(kind=kind,bodyX=round(x,3),bodyY=round(y,3),
                        left=legs["left"],right=legs["right"])
 
 
-def frame(t: float, *, kind: str = "fox") -> Image.Image:
-    actor,meta=character_plate(t,kind=kind)
+def frame(t: float, *, kind: str = "fox",
+          interaction: bool = False) -> Image.Image:
+    actor,meta=character_plate(t,kind=kind,interaction=interaction)
     landscape=_landscape()
     scene=Scene25D(SIZE)
     scene.add(Layer25D("sky",0,landscape["sky"]))
@@ -205,6 +212,10 @@ def frame(t: float, *, kind: str = "fox") -> Image.Image:
     shadow.alpha_composite(_contact_shadow(),
                            (round(meta["bodyX"]-12),round(GROUND-37)))
     scene.add(Layer25D("grounded-shadow",50,shadow))
+    if interaction:
+        behind,petals=flower_plates(
+            t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)
+        scene.add(Layer25D("responsive-flower",55,behind))
     scene.add(Layer25D("ik-"+kind,60,actor))
     # Ground reaction is driven by real contact, not arbitrary particles.
     ground_fx=Image.new("RGBA",SIZE)
@@ -218,6 +229,8 @@ def frame(t: float, *, kind: str = "fox") -> Image.Image:
             g.arc((xx-radius,yy-8,xx+radius,yy+8),190,350,
                   fill=(182,226,136,round(100*f)),width=3)
     scene.add(Layer25D("contact-reactions",70,ground_fx))
+    if interaction:
+        scene.add(Layer25D("released-petals",75,petals))
     scene.add(Layer25D("grass-foreground",90,landscape["foreground"],
                        parallax_x=1.15))
     # Soft continuous camera excursion, zero at opening/ending cuts.
