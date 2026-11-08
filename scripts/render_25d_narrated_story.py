@@ -73,7 +73,8 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
             for index in range(count):
                 source_t,beat=timeline.at(index/FPS)
                 # Real frame-by-frame animation, never duplicated still frames.
-                visual=frame(source_t,kind=animal,interaction=True,story=True)
+                visual=frame(source_t,kind=animal,interaction=True,story=True,
+                             show_story_titles=False)
                 captions=caption_plate(index/FPS,timeline)
                 visual.paste(captions,(0,0),captions)
                 proc.stdin.write(visual.tobytes())
@@ -107,6 +108,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 "voice":report["voice"],"voiceEngine":report["engine"],
                 "captions":"actual-PCM-timed mobile-safe original text",
                 "artDirection":ART_VERSION,
+                "editorialTitles":False,
                 "fps":FPS,"size":list(SIZE),"frames":count,
                 "durationSeconds":round(duration,3),
                 "beats":[{"name":b.name,"start":b.start,"end":b.end,
