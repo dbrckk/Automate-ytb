@@ -69,6 +69,7 @@ jobs:
           assert qa["characterMaterials"].startswith("original-p37")
           assert qa["organicSoftBody"].startswith("original-p38")
           assert qa["anatomicalLimbs"].startswith("original-p39")
+          assert qa["causalButterfly"].startswith("forest-25d-causal-clear-silhouette-butterfly-p42")
           assert qa["language"]=="en"
           assert qa["durationSeconds"]>=8
           assert len(qa["beats"])==4
