@@ -21,9 +21,10 @@ import wave
 
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
+from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
 
 
-def score(path: Path) -> None:
+def score(path: Path, *, interaction: bool = False) -> None:
     """Deterministic quiet wind-like tonal pad, original PCM no rights issues."""
     rate=48000
     pcm=array("h")
@@ -37,7 +38,15 @@ def score(path: Path) -> None:
         value=(math.sin(2*math.pi*note*t)*
                .55+math.sin(2*math.pi*note*1.5*t)*.19+
                math.sin(2*math.pi*note*.5*t)*.25)
-        pcm.append(round(max(-1.,min(1.,value*.10*envelope*pulse))*32767))
+        signal=value*.10*envelope*pulse
+        if interaction and 0 <= t-IMPACT_TIME <= .35:
+            # Original, quiet impact chime exactly when the real right paw
+            # plants on the flower; finite 48kHz PCM and no external media.
+            dt=t-IMPACT_TIME
+            signal+=.12*math.exp(-15*dt)*(
+                math.sin(2*math.pi*590*dt)
+                +.32*math.sin(2*math.pi*1180*dt))
+        pcm.append(round(max(-1.,min(1.,signal))*32767))
     with wave.open(str(path),"wb") as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
@@ -47,16 +56,17 @@ def score(path: Path) -> None:
         wav.writeframes(pcm.tobytes())
 
 
-def render(output: Path, *, kind: str = "fox") -> dict:
-    if kind not in KINDS:
-        raise ValueError("Unsupported original 2.5D animal")
+def render(output: Path, *, kind: str = "fox",
+           interaction: bool = False) -> dict:
+    if kind not in KINDS or type(interaction) is not bool:
+        raise ValueError("Unsupported original 2.5D animal or interaction")
     if not isinstance(output,Path) or output.suffix.lower()!=".mp4":
         raise ValueError("Motion-pilot output requires an MP4 path")
     if not 0 < SECONDS <= 20 or FPS != 30:
         raise ValueError("Invalid bounded 2.5D production profile")
     output.parent.mkdir(parents=True,exist_ok=True)
     pad=output.parent/"original-score.wav"
-    score(pad)
+    score(pad,interaction=interaction)
     command=[
         "ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
         "-f","rawvideo","-pixel_format","rgb24",
@@ -82,11 +92,11 @@ def render(output: Path, *, kind: str = "fox") -> dict:
             t=i/FPS
             if i in (30,99,171):
                 key=output.parent/f"frame-{i:03d}.jpg"
-                preview=frame(t,kind=kind)
+                preview=frame(t,kind=kind,interaction=interaction)
                 preview.resize((540,960)).save(key,quality=88)
                 rendered=preview
             else:
-                rendered=frame(t,kind=kind)
+                rendered=frame(t,kind=kind,interaction=interaction)
             for side in ("left","right"):
                 pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
                                  speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
@@ -141,22 +151,40 @@ def render(output: Path, *, kind: str = "fox") -> dict:
     subprocess.run(["ffmpeg","-nostdin","-v","error","-xerror","-i",
                     str(output),"-f","null","-"],check=True,
                    capture_output=True,timeout=180)
+    event=(contact_at(IMPACT_TIME+.01,origin_x=ORIGIN_X,
+                      speed=SPEED,torso_y=TORSO_Y) if interaction else None)
+    if event is not None and (not event.planted or
+                              event.y != GROUND or
+                              not 0 < event.x < SIZE[0]):
+        raise RuntimeError("Authored interaction lost real paw contact")
     report={
-        "schemaVersion":2,"type":"original-25d-animated-animal-ik-motion-pilot",
+        "schemaVersion":3,"type":"original-25d-animated-animal-ik-motion-pilot",
         "status":"passed","scene":f"{kind}-meadow-grounded-walk",
-        "animal":kind,
+        "animal":kind,"interactionEnabled":interaction,
+        "groundedFlowerContact":(
+            {"eventSeconds":round(event.time,5),
+             "pawWorldX":round(event.x,3),
+             "pawGroundY":event.y,
+             "source":"verified right-foot landing of real IK rig",
+             "synchronizedOriginalChime":True,
+             "independentWorldSpacePetals":True}
+            if event is not None else None),
         "frames":frames,"fps":FPS,"size":list(SIZE),
         "durationSeconds":round(duration,3),
         "animation":"fresh per-frame authored geometry; no image interpolation",
         "layers":["sky","clouds","ridges","trees","meadow",
-                  "grounded-shadow","ik-"+kind,"contact-reactions",
+                  "grounded-shadow",
+                  * (["responsive-flower"] if interaction else []),
+                  "ik-"+kind,"contact-reactions",
+                  * (["released-petals"] if interaction else []),
                   "grass-foreground"],
         "actualTwoBoneInverseKinematics":True,
         "maximumBoneLengthErrorPx":round(worst_bone_error,5),
         "maximumPlantedFootWorldDriftPx":round(planted_contact_drift,5),
         "renderSeconds":round(elapsed,2),
         "voice":"none — motion demonstration, not narrated final episode",
-        "audio":"original locally synthesized ambient score, AAC",
+        "audio":("original ambient score and rig-synchronized impact chime, AAC"
+                 if interaction else "original locally synthesized ambient score, AAC"),
         "videoSha256":hashlib.sha256(output.read_bytes()).hexdigest(),
         "publicationApproved":False,"humanVisualReviewRequired":True,
         "oneSecondMovementSamples":samples,
@@ -173,8 +201,11 @@ def main() -> None:
                         default=Path("out/p3-fox-25d/fox-grounded.mp4"))
     parser.add_argument("--animal",choices=KINDS,default="fox",
                         help="Original fox, rabbit or cat artwork with grounded IK")
+    parser.add_argument("--interaction",action="store_true",
+                        help="Add authored paw-to-flower contact, moving petals and original chime")
     args=parser.parse_args()
-    print(json.dumps(render(args.output,kind=args.animal),ensure_ascii=False))
+    print(json.dumps(render(args.output,kind=args.animal,
+                            interaction=args.interaction),ensure_ascii=False))
 
 
 if __name__=="__main__":
