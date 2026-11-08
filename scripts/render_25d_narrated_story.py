@@ -20,6 +20,7 @@ from automate_ytb.forest_voice_timeline import (
 from automate_ytb.short_voice import synthesize
 from automate_ytb.forest_captions25d import caption_plate
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
+from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 
 
 def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
@@ -108,6 +109,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 "voice":report["voice"],"voiceEngine":report["engine"],
                 "captions":"actual-PCM-timed mobile-safe original text",
                 "artDirection":ART_VERSION,
+                "characterMaterials":CHARACTER_VERSION,
                 "editorialTitles":False,
                 "fps":FPS,"size":list(SIZE),"frames":count,
                 "durationSeconds":round(duration,3),
