@@ -25,6 +25,7 @@ from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
+from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -188,6 +189,15 @@ def render(output: Path, *, kind: str = "fox",
              "synchronizedOriginalChime":True,
              "independentWorldSpacePetals":True}
             if event is not None else None),
+        "organicSoftBody":{
+            "version":ORGANIC_VERSION,
+            "source":"continuous inverse-mapped Pillow strip mesh",
+            "realBreathing":True,
+            "gaitMassTransfer":True,
+            "actualIKPawPositionsWarped":False,
+            "postContactDampedRecoil":bool(interaction),
+            "inertialTail":True,
+            "attachedScarfDeformedWithTorso":True},
         "characterMaterials":{
             "version":CHARACTER_VERSION,
             "originalFurLightWrap":True,

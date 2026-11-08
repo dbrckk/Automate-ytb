@@ -6,7 +6,9 @@ on:
       - "automate_ytb/forest_voice_timeline.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
+      - "automate_ytb/forest_organic_mesh25d.py"
       - "tests/test_forest_character_art25d.py"
+      - "tests/test_forest_organic_mesh25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
       - "automate_ytb/forest_cinematic_framing25d.py"
       - "tests/test_forest_cinematic_framing25d.py"
@@ -45,6 +47,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_cinematic_world25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
+          python -m unittest discover -s tests -p test_forest_organic_mesh25d.py -v
       - name: Render actual Kokoro English narrated Short (fox)
         run: |
           python scripts/render_25d_narrated_story.py --language en --animal fox --output out/p35/forest-narrated-en.mp4
@@ -60,6 +63,7 @@ jobs:
           assert qa["artDirection"].startswith("original-forest-cinematic")
           assert qa["editorialTitles"] is False
           assert qa["characterMaterials"].startswith("original-p37")
+          assert qa["organicSoftBody"].startswith("original-p38")
           assert qa["language"]=="en"
           assert qa["durationSeconds"]>=8
           assert len(qa["beats"])==4

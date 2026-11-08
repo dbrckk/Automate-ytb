@@ -28,6 +28,9 @@ from .forest_character_art25d import (
     VERSION as CHARACTER_ART_VERSION, finish_sprite, facial_pose,
     draw_plush_leg, scarf_tip,
 )
+from .forest_organic_mesh25d import (
+    VERSION as ORGANIC_VERSION, organic_pose, deform_body, deform_tail,
+)
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -35,7 +38,7 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "forest-25d-sculpted-animal-acting-p37-v1"
+VERSION = "forest-25d-organic-mesh-world-grounded-p38-v1"
 KINDS = ("fox", "rabbit", "cat")
 
 
@@ -108,10 +111,9 @@ def character_plate(t: float, *, kind: str = "fox",
                          speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
         legs[side]=pose
         draw_plush_leg(draw,pose=pose,kind=kind,side=side)
-    reaction=(math.exp(-((t-IMPACT_TIME-.16)/.29)**2)
-              if interaction else 0.)
-    tail=_rotate_about(assets["tail"],
-                       8*math.sin(2.0*t-.7)+11*reaction,(197,202))
+    response=organic_pose(t,interaction=interaction)
+    tail=_rotate_about(deform_tail(assets["tail"],response),
+                       4*math.sin(2.0*t-.7)+.40*response.tail_lag,(197,202))
     if kind=="rabbit":
         # The legacy full-size rabbit tail is a very large detached disk in
         # this IK composition. Keep the species artwork but resize its plate
@@ -122,18 +124,22 @@ def character_plate(t: float, *, kind: str = "fox",
         canvas.alpha_composite(tail,(round(x-141),round(y+165)))
     for side,offset in (("left",0),("right",200)):
         tilt=(4.5 if side=="left" else -4.5)*math.sin(t*3.6+.4)
-        tilt+=(8 if side=="left" else -6)*reaction
+        tilt+=.65*response.ear_lag
+        tilt+=(5 if side=="left" else -4)*response.recoil
         ear=_rotate_about(assets[side],tilt,(76,173))
         canvas.alpha_composite(ear,(round(x+offset),round(y)))
     expression=facial_pose(t,interaction=interaction)
-    canvas.alpha_composite(assets[expression],(round(x),round(y)))
-    # The scarf's old static tip remains the attachment point: only the
-    # fabric end moves independently with gusts and contact excitement.
-    canvas.alpha_composite(scarf_tip(t,x=x,y=y,kind=kind,
-                                    contact=interaction),
-                           (round(x),round(y)))
+    # Deform the entire face, torso and attached scarf as ONE local mesh:
+    # this prevents the animated cloth from drifting away from its mount.
+    hero=assets[expression].copy()
+    hero.alpha_composite(scarf_tip(t,x=x,y=y,kind=kind,
+                                  contact=interaction))
+    hero=deform_body(hero,response)
+    canvas.alpha_composite(hero,(round(x),round(y)))
     return canvas,dict(kind=kind,bodyX=round(x,3),bodyY=round(y,3),
                        expression=expression,art=CHARACTER_ART_VERSION,
+                       organicMesh=ORGANIC_VERSION,
+                       physicalRecoil=round(response.recoil,5),
                        left=legs["left"],right=legs["right"])
 
 
