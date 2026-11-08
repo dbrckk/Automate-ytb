@@ -110,6 +110,8 @@ jobs:
           assert qa["animal"]==animal
           assert qa["interactionEnabled"] is True
           assert qa["groundedFlowerContact"]["source"].startswith("verified right-foot")
+          assert qa["groundedFlowerContact"]["version"].startswith("25d-world-paw-grounded-spring-flower-face-clear-p43")
+          assert qa["groundedFlowerContact"]["releasedPetals"]==7
           assert qa["groundedFlowerContact"]["pawGroundY"]==1361.0
           assert "released-petals" in qa["layers"]
           assert "reactive-butterfly" in qa["layers"]
