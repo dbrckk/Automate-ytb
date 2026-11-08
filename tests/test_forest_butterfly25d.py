@@ -35,8 +35,24 @@ class Butterfly25DTests(unittest.TestCase):
                          ("approach","hover","retreat"))
         self.assertTrue(all(p.visible for p in (approach,hover,retreat)))
         self.assertGreater(approach.x,hit.x+30)
-        self.assertLess(abs(hover.x-(hit.x+30)),15)
+        self.assertGreater(hover.x,hit.x+130)
+        self.assertLess(hover.y,hit.y-195)
         self.assertGreater(retreat.x,hover.x+30)
+
+    def test_flight_phases_have_no_positional_teleport(self):
+        for t in (IMPACT_TIME+1.55,IMPACT_TIME+2.55):
+            a,b=pose(t-.0001),pose(t+.0001)
+            self.assertLess(math.hypot(a.x-b.x,a.y-b.y),2.)
+        # The hover must clear the fox's face, not paint over its eyes.
+        p=pose(IMPACT_TIME+2.15)
+        self.assertGreater(p.x,contact_at(IMPACT_TIME+2.15,
+            origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y).x+175)
+
+    def test_approach_stays_low_beside_flower_not_across_fox_face(self):
+        t=IMPACT_TIME+1.10
+        hit=contact_at(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)
+        lower_flower_tip=hit.y-132+57*hit.deformation
+        self.assertGreater(pose(t).y,lower_flower_tip+30)
 
     def test_wings_move_in_real_independent_rgba_frames(self):
         a=butterfly_plate(IMPACT_TIME+.8,origin_x=ORIGIN_X,
@@ -46,6 +62,7 @@ class Butterfly25DTests(unittest.TestCase):
         self.assertEqual(a.mode,"RGBA")
         self.assertEqual(a.size,(1080,1920))
         self.assertIsNotNone(a.getbbox())
+        self.assertGreater(a.getbbox()[2]-a.getbbox()[0],75)
         self.assertIsNotNone(ImageChops.difference(a,b).getbbox())
 
     def test_interaction_switch_preserves_legacy_default(self):
