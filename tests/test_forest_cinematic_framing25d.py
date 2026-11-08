@@ -6,6 +6,7 @@ from automate_ytb.forest_story25d import STORY
 from automate_ytb.forest_butterfly25d import butterfly_pose
 from automate_ytb.forest25d import ORIGIN_X, SPEED, TORSO_Y
 from automate_ytb.rig25d import GROUND
+from scripts.render_25d_character_pilot import framing_provenance
 
 from automate_ytb.forest_cinematic_framing25d import (
     SHOTS,SIZE,shot_crop,cinematic_reframe,VERSION,
@@ -103,6 +104,13 @@ class PhysicalCinematicFramingTests(unittest.TestCase):
             # Current authored wing span is <= 66 world pixels; reserve 72.
             self.assertGreater(pose.x-72,crop[0])
             self.assertLess(pose.x+72,crop[2])
+
+    def test_camera_qa_never_claims_unrendered_story_framing(self):
+        self.assertIsNone(framing_provenance(False))
+        self.assertEqual(framing_provenance(True)["version"],VERSION)
+        self.assertTrue(framing_provenance(True)["actorAndButterflyTracking"])
+        with self.assertRaises(ValueError):
+            framing_provenance(1)
 
     def test_rejects_unbounded_clocks_subjects_and_fake_stages(self):
         for t in (math.nan,-1,8,True):
