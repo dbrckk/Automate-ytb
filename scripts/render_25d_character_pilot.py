@@ -21,12 +21,13 @@ import wave
 
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
-from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
+from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at, VERSION as FLOWER_VERSION
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
+from automate_ytb.forest_head_sculpt25d import VERSION as HEAD_VERSION
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -184,13 +185,17 @@ def render(output: Path, *, kind: str = "fox",
              "narration":"not generated — visual story preview only"}
             if story else None),
         "groundedFlowerContact":(
-            {"eventSeconds":round(event.time,5),
+            {"version":FLOWER_VERSION,
+             "releasedPetals":7,
+             "motion":"outward fan avoids face",
+             "eventSeconds":round(event.time,5),
              "pawWorldX":round(event.x,3),
              "pawGroundY":event.y,
              "source":"verified right-foot landing of real IK rig",
              "synchronizedOriginalChime":True,
              "independentWorldSpacePetals":True}
             if event is not None else None),
+        "headSculpt":{"version":HEAD_VERSION,"originalEyeMouthPreserved":True,"worldFootIKUnchanged":True},
         "anatomicalLimbs":{"version":ANATOMY_VERSION,"curvedVolumes":True,"originalIKUnchanged":True},
         "organicSoftBody":{
             "version":ORGANIC_VERSION,

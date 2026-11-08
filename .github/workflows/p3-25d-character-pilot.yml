@@ -6,6 +6,7 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
+      - "automate_ytb/forest_head_sculpt25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
       - "automate_ytb/forest_anatomical_limb25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
@@ -23,6 +24,7 @@ on:
       - "tests/test_forest_cinematic_world25d.py"
       - "tests/test_forest_cinematic_framing25d.py"
       - "tests/test_forest_character_art25d.py"
+      - "tests/test_forest_head_sculpt25d.py"
       - "tests/test_forest_organic_mesh25d.py"
       - "tests/test_forest_anatomical_limb25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
@@ -32,6 +34,7 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
+      - "automate_ytb/forest_head_sculpt25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
       - "automate_ytb/forest_anatomical_limb25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
@@ -45,6 +48,7 @@ on:
       - "tests/test_forest_cinematic_world25d.py"
       - "tests/test_forest_cinematic_framing25d.py"
       - "tests/test_forest_character_art25d.py"
+      - "tests/test_forest_head_sculpt25d.py"
       - "tests/test_forest_organic_mesh25d.py"
       - "tests/test_forest_anatomical_limb25d.py"
       - "scripts/render_25d_character_pilot.py"
@@ -89,6 +93,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_cinematic_world25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
+          python -m unittest discover -s tests -p test_forest_head_sculpt25d.py -v
           python -m unittest discover -s tests -p test_forest_organic_mesh25d.py -v
           python -m unittest discover -s tests -p test_forest_anatomical_limb25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
@@ -105,6 +110,8 @@ jobs:
           assert qa["animal"]==animal
           assert qa["interactionEnabled"] is True
           assert qa["groundedFlowerContact"]["source"].startswith("verified right-foot")
+          assert qa["groundedFlowerContact"]["version"].startswith("25d-world-paw-grounded-spring-flower-face-clear-p43")
+          assert qa["groundedFlowerContact"]["releasedPetals"]==7
           assert qa["groundedFlowerContact"]["pawGroundY"]==1361.0
           assert "released-petals" in qa["layers"]
           assert "reactive-butterfly" in qa["layers"]
@@ -118,6 +125,8 @@ jobs:
           assert qa["organicSoftBody"]["version"].startswith("original-p38")
           assert qa["organicSoftBody"]["actualIKPawPositionsWarped"] is False
           assert qa["organicSoftBody"]["postContactDampedRecoil"] is True
+          assert qa["headSculpt"]["version"].startswith("original-p43")
+          assert qa["headSculpt"]["worldFootIKUnchanged"] is True
           assert qa["anatomicalLimbs"]["version"].startswith("original-p39")
           assert qa["anatomicalLimbs"]["originalIKUnchanged"] is True
           assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"

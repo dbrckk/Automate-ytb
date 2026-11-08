@@ -34,6 +34,9 @@ from .forest_organic_mesh25d import (
 from .forest_anatomical_limb25d import (
     VERSION as ANATOMY_VERSION, draw_anatomical_leg,
 )
+from .forest_head_sculpt25d import (
+    VERSION as HEAD_VERSION, sculpt_head,
+)
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -41,7 +44,7 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "forest-25d-anatomical-limbs-p39-v1"
+VERSION = "forest-25d-face-sculpt-p43-v1"
 KINDS = ("fox", "rabbit", "cat")
 
 
@@ -72,7 +75,9 @@ def _animal(kind: str) -> dict[str, Image.Image]:
                 raw=source.convert("RGBA")
             part=("ear" if name in ("left","right") else
                   "tail" if name=="tail" else "body")
-            art[name]=finish_sprite(raw,kind=kind,part=part)
+            finished=finish_sprite(raw,kind=kind,part=part)
+            art[name]=(sculpt_head(finished,kind=kind,expression=name)
+                       if part=="body" else finished)
         return art
 
 
@@ -143,6 +148,7 @@ def character_plate(t: float, *, kind: str = "fox",
                        expression=expression,art=CHARACTER_ART_VERSION,
                        organicMesh=ORGANIC_VERSION,
                        anatomicalLimbs=ANATOMY_VERSION,
+                       headSculpt=HEAD_VERSION,
                        physicalRecoil=round(response.recoil,5),
                        left=legs["left"],right=legs["right"])
 
