@@ -23,6 +23,7 @@ from .forest_butterfly25d import butterfly_plate
 from .forest_story25d import story_shot, story_overlay
 from .forest_cinematic_world25d import (plates as cinematic_plates,
                                        drifting_clouds, living_light)
+from .forest_cinematic_framing25d import cinematic_reframe
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -180,6 +181,8 @@ def frame(t: float, *, kind: str = "fox",
     if story:
         shot=story_shot(t)
         rendered=scene.render(camera_x=shot.camera_x,camera_y=shot.camera_y)
+        rendered=cinematic_reframe(rendered,t=t,beat=shot.beat,
+                                   body_x=meta["bodyX"])
         rendered.alpha_composite(story_overlay(t))
     else:
         camera=30*math.sin(math.pi*t/SECONDS)
