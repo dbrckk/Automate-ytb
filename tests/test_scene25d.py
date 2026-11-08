@@ -101,7 +101,12 @@ class RealLightningPlatesTests(unittest.TestCase):
         for name, layer in planes[1:]:
             with self.subTest(name=name):
                 self.assertIsNotNone(layer.getchannel("A").getbbox())
-                self.assertEqual(layer.getpixel((0, 0))[3], 0)
+                if name != "vignette":
+                    self.assertEqual(layer.getpixel((0, 0))[3], 0)
+                else:
+                    self.assertGreater(layer.getpixel((0, 0))[3], 0)
+                    self.assertEqual(layer.getpixel((SIZE[0]//2,
+                                                     SIZE[1]//2))[3], 0)
 
     def test_far_and_near_cloud_plates_move_independently(self):
         first = dict(environment_plates(.5, "leader", 7.2))
