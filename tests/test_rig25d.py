@@ -104,6 +104,15 @@ class GroundedTwoBoneTests(unittest.TestCase):
             with self.subTest(invalid=invalid),self.assertRaises(ValueError):
                 character_plate(.7,kind=invalid)
 
+    def test_rabbit_tail_is_small_and_attached_not_floating_disk(self):
+        image,meta=character_plate(.7,kind="rabbit")
+        x=round(meta["bodyX"])
+        y=round(meta["bodyY"])
+        # Old full-size rabbit disc occupied space ~70 px left of the
+        # torso; the new authored tail overlaps the torso edge instead.
+        self.assertEqual(image.getpixel((x-70,y+320))[3],0)
+        self.assertGreater(image.getpixel((x+35,y+320))[3],0)
+
     def test_species_are_composited_into_actual_foreground_and_camera(self):
         for kind in ("rabbit","cat"):
             with self.subTest(kind=kind):
