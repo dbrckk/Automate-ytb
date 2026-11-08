@@ -172,6 +172,7 @@ def render(output: Path, *, kind: str = "fox",
             {"trigger":"rig-verified paw impact",
              "firstVisibleSeconds":round(IMPACT_TIME+.12,3),
              "flightPhases":["approach","hover","retreat"],
+             "wingAndFlightVersion":"forest-25d-causal-clear-silhouette-butterfly-p42-v1",
              "target":"world-space responsive flower",
              "wings":"independently animated 9Hz original artwork"}
             if interaction else None),
