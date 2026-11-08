@@ -2,6 +2,7 @@
 import math
 import unittest
 from PIL import Image,ImageChops
+from automate_ytb.forest_story25d import STORY
 
 from automate_ytb.forest_cinematic_framing25d import (
     SHOTS,SIZE,shot_crop,cinematic_reframe,
@@ -36,6 +37,25 @@ class PhysicalCinematicFramingTests(unittest.TestCase):
         close=cinematic_reframe(im,t=2.,beat="contact",body_x=300.)
         self.assertEqual(wide.size,SIZE)
         self.assertIsNotNone(ImageChops.difference(wide.convert("RGB"),close.convert("RGB")).getbbox())
+
+    def test_event_camera_pushes_in_and_reveals_butterfly(self):
+        for beat,start,end,*_ in STORY:
+            center=(start+end)/2
+            initial=shot_crop(start,beat=beat,body_x=320.)
+            middle=shot_crop(center,beat=beat,body_x=320.)
+            width=lambda rect:rect[2]-rect[0]
+            if beat=="contact":
+                self.assertLess(width(middle),width(initial))
+            elif beat=="arrival":
+                self.assertGreater(width(middle),width(initial))
+            self.assertNotEqual(middle,initial)
+
+    def test_dolly_has_no_abrupt_internal_frame_jumps(self):
+        for beat,start,end,*_ in STORY:
+            samples=[shot_crop(start+(end-start)*i/60,
+                               beat=beat,body_x=320.) for i in range(61)]
+            for a,b in zip(samples,samples[1:]):
+                self.assertLessEqual(max(abs(x-y) for x,y in zip(a,b)),25)
 
     def test_rejects_unbounded_clocks_subjects_and_fake_stages(self):
         for t in (math.nan,-1,8,True):
