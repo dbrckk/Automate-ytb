@@ -1,0 +1,64 @@
+name: Verify narrated 2.5D forest short with real Kokoro PCM
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/forest_voice_timeline.py"
+      - "automate_ytb/forest_captions25d.py"
+      - "scripts/render_25d_narrated_story.py"
+      - "tests/test_forest_voice_timeline.py"
+      - "tests/test_forest_captions25d.py"
+      - ".github/workflows/p3-5-narrated-forest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  narrated-forest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real open-source neural voice and FFmpeg
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 180s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq ffmpeg
+          fi
+          python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Validate physical narration timing and rejection of fabricated PCM
+        run: |
+          python -m unittest discover -s tests -p test_forest_voice_timeline.py -v
+          python -m unittest discover -s tests -p test_forest_captions25d.py -v
+      - name: Render actual Kokoro English narrated Short (fox)
+        run: |
+          python scripts/render_25d_narrated_story.py --language en --animal fox --output out/p35/forest-narrated-en.mp4
+      - name: Validate decoded video and real voice manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("out/p35/forest-narrated-en.json")
+          qa=json.loads(p.read_text())
+          assert qa["voiceEngine"]=="kokoro-natural"
+          assert qa["captions"].startswith("actual-PCM-timed")
+          assert qa["language"]=="en"
+          assert qa["durationSeconds"]>=8
+          assert len(qa["beats"])==4
+          assert qa["publicationApproved"] is False
+          assert Path("out/p35/forest-narrated-en.mp4").stat().st_size>100000
+          print(json.dumps(qa,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p35-real-kokoro-narrated-forest-en
+          path: |
+            out/p35/forest-narrated-en.mp4
+            out/p35/forest-narrated-en.json
+          retention-days: 7
+          if-no-files-found: error
