@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 from .forest_contact25d import IMPACT_TIME, contact_at
 
 SIZE=(1080,1920)
-VERSION="forest-25d-causal-butterfly-v1"
+VERSION="forest-25d-articulated-butterfly-materials-p42-v1"
 
 
 @dataclass(frozen=True)
@@ -69,17 +69,30 @@ def butterfly_plate(t: float, *, origin_x: float, speed: float,
         return image
     d=ImageDraw.Draw(image)
     x,y=pose.x,pose.y
-    # Two independently drawn articulated wings (no flattened body sprite).
-    span=8+24*pose.wing_open
-    d.ellipse((x-span-8,y-23,x-4,y+9),
-              fill=(250,169,88,232),outline=(97,55,67,255),width=3)
-    d.ellipse((x+4,y-23,x+span+8,y+9),
-              fill=(252,198,113,235),outline=(97,55,67,255),width=3)
-    d.ellipse((x-span*.75-4,y+3,x-5,y+20),
-              fill=(241,139,110,227))
-    d.ellipse((x+5,y+3,x+span*.75+4,y+20),
-              fill=(241,139,110,227))
-    d.ellipse((x-5,y-16,x+5,y+19),fill=(54,48,62,255))
-    d.arc((x-11,y-25,x,y-9),210,325,fill=(54,48,62,255),width=2)
-    d.arc((x,y-25,x+11,y-9),210,325,fill=(54,48,62,255),width=2)
+    # Original wing silhouettes with layered pigmentation and structural veins.
+    # Their actual width varies with the causal 9 Hz wing flap.
+    span=10+38*pose.wing_open
+    for side in (-1,1):
+        center=x+side*(span*.53+5)
+        tip=x+side*(span+11)
+        inner=x+side*4
+        d.ellipse((min(inner,tip),y-37,max(inner,tip),y+8),
+                  fill=(243,156,79,244),outline=(83,48,57,255),width=3)
+        d.ellipse((min(center-12,center+12),y-30,
+                   max(center-12,center+12),y-4),
+                  fill=(255,205,117,227))
+        d.ellipse((min(x+side*5,x+side*(span*.77+5)),y+2,
+                   max(x+side*5,x+side*(span*.77+5)),y+27),
+                  fill=(225,111,108,242),outline=(90,49,64,255),width=2)
+        # Wing veins converge on the thorax, so articulation reads in motion.
+        for vertical in (-22,-9,4):
+            d.line(((x+side*5,y-5),(center,y+vertical)),
+                   fill=(139,76,63,185),width=2)
+        # Light dots travel with the wings, not with the background.
+        d.ellipse((center-5,y-24,center+5,y-14),
+                  fill=(255,243,181,237))
+    d.ellipse((x-6,y-18,x+6,y+21),fill=(50,43,56,255))
+    d.ellipse((x-5,y-21,x+5,y-10),fill=(69,54,61,255))
+    d.arc((x-13,y-31,x,y-10),205,326,fill=(45,39,52,255),width=2)
+    d.arc((x,y-31,x+13,y-10),215,335,fill=(45,39,52,255),width=2)
     return image
