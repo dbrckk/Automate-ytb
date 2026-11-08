@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import math
+import tempfile
+from pathlib import Path
 import unittest
+import wave
 
 from PIL import ImageChops
 
@@ -80,6 +83,24 @@ class PhysicalFlowerContactTests(unittest.TestCase):
         self.assertEqual(interacting.mode,"RGB")
         self.assertIsNotNone(ImageChops.difference(
             normal,interacting).getbbox())
+
+    def test_original_pcm_impact_chime_starts_only_after_actual_foot_contact(self):
+        from scripts.render_25d_character_pilot import score
+        with tempfile.TemporaryDirectory() as root:
+            plain=Path(root)/"base.wav"
+            active=Path(root)/"contact.wav"
+            score(plain,interaction=False)
+            score(active,interaction=True)
+            with wave.open(str(plain),"rb") as a, wave.open(str(active),"rb") as b:
+                self.assertEqual(a.getparams(),b.getparams())
+                self.assertEqual(a.getframerate(),48000)
+                first=round((IMPACT_TIME-.015)*48000)
+                a.setpos(0)
+                b.setpos(0)
+                self.assertEqual(a.readframes(first),b.readframes(first))
+                a.setpos(round((IMPACT_TIME+.03)*48000))
+                b.setpos(round((IMPACT_TIME+.03)*48000))
+                self.assertNotEqual(a.readframes(1000),b.readframes(1000))
 
     def test_rejects_unsafe_contact_and_unexpected_interaction_types(self):
         for t in (float("nan"),float("inf"),-1.,21.):
