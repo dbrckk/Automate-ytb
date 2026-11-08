@@ -19,8 +19,8 @@ import sys
 import time
 import wave
 
-from automate_ytb.forest25d import frame, character_plate, FPS, SECONDS, SIZE
-from automate_ytb.rig25d import UPPER, LOWER, PERIOD
+from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y
+from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 
 
 def score(path: Path) -> None:
@@ -85,8 +85,9 @@ def render(output: Path) -> dict:
                 rendered=preview
             else:
                 rendered=frame(t)
-            for side,pose in ((s,character_plate(t)[1][s])
-                              for s in ("left","right")):
+            for side in ("left","right"):
+                pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
+                                 speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
                 a=math.dist(pose.hip,pose.knee)
                 b=math.dist(pose.knee,pose.foot)
                 worst_bone_error=max(worst_bone_error,
@@ -104,7 +105,7 @@ def render(output: Path) -> dict:
                     last_contact[side]=None
             if i % FPS == 0:
                 samples.append(dict(second=i//FPS,
-                                    foxX=round(character_plate(t)[1]["bodyX"],2)))
+                                    foxX=round(ORIGIN_X+SPEED*t,2)))
             process.stdin.write(rendered.tobytes())
         process.stdin.close()
         code=process.wait(timeout=120)
