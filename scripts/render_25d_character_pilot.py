@@ -23,6 +23,7 @@ from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, T
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
+from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -186,16 +187,20 @@ def render(output: Path, *, kind: str = "fox",
              "synchronizedOriginalChime":True,
              "independentWorldSpacePetals":True}
             if event is not None else None),
+        "artDirection":{"version":ART_VERSION,
+                        "staticPlates":9,"independentlyMovingAtmosphere":True,
+                        "originalAssets":True,"layeredSunlight":True,
+                        "physicalOpticalCuts":bool(story)},
         "frames":frames,"fps":FPS,"size":list(SIZE),
         "durationSeconds":round(duration,3),
         "animation":"fresh per-frame authored geometry; no image interpolation",
-        "layers":["sky","clouds","ridges","trees","meadow",
-                  "grounded-shadow",
+        "layers":["sky","clouds","ridges","sunbeams","trees",
+                  "understory","meadow","grounded-shadow",
                   * (["responsive-flower"] if interaction else []),
                   "ik-"+kind,"contact-reactions",
                   * (["released-petals","reactive-butterfly"]
                      if interaction else []),
-                  "grass-foreground"],
+                  "living-light","grass-foreground","filmic-grade"],
         "actualTwoBoneInverseKinematics":True,
         "maximumBoneLengthErrorPx":round(worst_bone_error,5),
         "maximumPlantedFootWorldDriftPx":round(planted_contact_drift,5),

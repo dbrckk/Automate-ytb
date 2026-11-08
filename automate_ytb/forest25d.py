@@ -11,7 +11,6 @@ from __future__ import annotations
 from functools import lru_cache
 import math
 from pathlib import Path
-import random
 import tempfile
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -22,6 +21,9 @@ from .rig25d import walking_leg, GROUND, PERIOD
 from .forest_contact25d import IMPACT_TIME, flower_plates
 from .forest_butterfly25d import butterfly_plate
 from .forest_story25d import story_shot, story_overlay
+from .forest_cinematic_world25d import (plates as cinematic_plates,
+                                       drifting_clouds, living_light)
+from .forest_cinematic_framing25d import cinematic_reframe
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -29,7 +31,7 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "forest-25d-world-grounded-multispecies-v2"
+VERSION = "forest-25d-cinematic-living-meadow-p36-v1"
 KINDS = ("fox", "rabbit", "cat")
 
 
@@ -52,81 +54,9 @@ def _animal(kind: str) -> dict[str, Image.Image]:
                 for name, path in paths.items()}
 
 
-@lru_cache(maxsize=1)
 def _landscape() -> dict[str, Image.Image]:
-    """Nine independently authored depth elements, no borrowed footage."""
-    rng = random.Random(711)
-    sky=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(sky)
-    for y in range(1920):
-        q=min(1.,y/1490)
-        # Sapphire-blue cinematic sky fading to a hazy turquoise horizon.
-        d.line((0,y,1080,y),fill=(round(9+59*q),round(31+112*q),
-                                  round(66+113*q),255))
-    clouds=Image.new("RGBA",SIZE)
-    c=ImageDraw.Draw(clouds)
-    for j in range(9):
-        x=(j*197+37)%1250-150
-        y=190+(j*127)%470
-        rx=88+(j*29)%80
-        c.ellipse((x-rx,y-36,x+rx,y+36),
-                  fill=(211,239,244,53+(j%3)*11))
-        c.ellipse((x-rx*.55,y-61,x+rx*.6,y+35),
-                  fill=(237,249,255,37))
-    clouds=clouds.filter(ImageFilter.GaussianBlur(23))
-    ridges=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(ridges)
-    d.polygon([(0,1180),(100,1100),(190,1170),(315,1020),
-               (460,1110),(620,975),(810,1075),(945,1000),
-               (1080,1150),(1080,1920),(0,1920)],
-              fill=(56,105,126,240))
-    d.polygon([(0,1225),(130,1170),(290,1230),(440,1120),
-               (660,1200),(860,1115),(1080,1190),
-               (1080,1920),(0,1920)],fill=(38,102,105,255))
-    trees=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(trees)
-    for i in range(30):
-        x=rng.randrange(-50,1130)
-        y=1155+rng.randrange(0,180)
-        h=rng.randrange(115,255)
-        d.line((x,y,x+5,y-h),fill=(35,60,65,234),width=9)
-        crown=(31+i%4*7,86+i%3*8,79+i%5*4,227)
-        for k in range(4):
-            r=50-k*7
-            cx=x+(k%2)*21-12
-            cy=y-h+35+k*31
-            d.ellipse((cx-r,cy-r*.6,cx+r,cy+r*.6),fill=crown)
-    meadow=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(meadow)
-    d.polygon([(-80,1373),(140,1358),(250,1372),
-               (408,1348),(540,1372),(670,1356),
-               (855,1371),(1080,1340),(1180,1920),(-80,1920)],
-              fill=(39,95,67,255))
-    for j in range(74):
-        x=rng.randrange(0,1080)
-        y=rng.randrange(1420,1900)
-        length=rng.randrange(12,47)
-        d.line((x,y,x+14,y-length),
-               fill=(69+(j%4)*8,132+(j%5)*8,91,115),width=3)
-    for j in range(18):
-        x=rng.randrange(0,1080)
-        y=rng.randrange(1378,1820)
-        d.ellipse((x-7,y-4,x+7,y+4),fill=(220,190,111,165))
-    foreground=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(foreground)
-    for i in range(110):
-        x=rng.randrange(-30,1110)
-        y=rng.randrange(1440,1940)
-        length=rng.randrange(30,130)
-        alpha=116+rng.randrange(45)
-        tint=(49+i%3*15,119+i%4*10,87+i%5*7,alpha)
-        d.line((x,y,x-10+rng.randrange(-20,20),y-length),
-               fill=tint,width=4+i%3)
-        if i%7==0:
-            d.ellipse((x-8,y-length-9,x+8,y-length+8),
-                      fill=(240,194,106,178))
-    return dict(sky=sky,clouds=clouds,ridges=ridges,trees=trees,
-                meadow=meadow,foreground=foreground)
+    """Reuse cached, authored P3.6 plates across every frame and animal."""
+    return cinematic_plates()
 
 
 @lru_cache(maxsize=1)
@@ -201,18 +131,21 @@ def character_plate(t: float, *, kind: str = "fox",
 
 
 def frame(t: float, *, kind: str = "fox",
-          interaction: bool = False, story: bool = False) -> Image.Image:
-    if type(story) is not bool:
-        raise ValueError("Story flag must be boolean")
+          interaction: bool = False, story: bool = False,
+          show_story_titles: bool = True) -> Image.Image:
+    if type(story) is not bool or type(show_story_titles) is not bool:
+        raise ValueError("Story and title flags must be boolean")
     if story and not interaction:
         raise ValueError("Causal story requires real paw-flower interaction")
     actor,meta=character_plate(t,kind=kind,interaction=interaction)
     landscape=_landscape()
     scene=Scene25D(SIZE)
     scene.add(Layer25D("sky",0,landscape["sky"]))
-    scene.add(Layer25D("clouds",10,landscape["clouds"],parallax_x=.18))
+    scene.add(Layer25D("clouds",10,drifting_clouds(t),parallax_x=.18))
     scene.add(Layer25D("ridges",20,landscape["ridges"],parallax_x=.36))
+    scene.add(Layer25D("sunbeams",25,landscape["sunbeams"],parallax_x=.42))
     scene.add(Layer25D("trees",30,landscape["trees"],parallax_x=.58))
+    scene.add(Layer25D("understory",35,landscape["understory"],parallax_x=.67))
     scene.add(Layer25D("meadow",40,landscape["meadow"],parallax_x=.72))
     shadow=Image.new("RGBA",SIZE)
     shadow.alpha_composite(_contact_shadow(),
@@ -240,14 +173,19 @@ def frame(t: float, *, kind: str = "fox",
         scene.add(Layer25D(
             "reactive-butterfly",80,
             butterfly_plate(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)))
+    scene.add(Layer25D("living-light",85,living_light(t),parallax_x=.82))
     scene.add(Layer25D("grass-foreground",90,landscape["foreground"],
                        parallax_x=1.15))
+    scene.add(Layer25D("filmic-grade",95,landscape["grade"]))
     # Event-directed camera uses the same physical contact and butterfly
     # timeline as the animated world. Legacy motion preview is unchanged.
     if story:
         shot=story_shot(t)
         rendered=scene.render(camera_x=shot.camera_x,camera_y=shot.camera_y)
-        rendered.alpha_composite(story_overlay(t))
+        rendered=cinematic_reframe(rendered,t=t,beat=shot.beat,
+                                   body_x=meta["bodyX"])
+        if show_story_titles:
+            rendered.alpha_composite(story_overlay(t))
     else:
         camera=30*math.sin(math.pi*t/SECONDS)
         rendered=scene.render(camera_x=camera,camera_y=4*camera/30)
