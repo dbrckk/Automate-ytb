@@ -31,6 +31,18 @@ from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
 from automate_ytb.forest_head_sculpt25d import VERSION as HEAD_VERSION
 
 
+
+def framing_provenance(story: bool) -> dict | None:
+    """Never claim event-directed optical crops for a legacy-camera pilot."""
+    if type(story) is not bool:
+        raise ValueError("Story-mode camera provenance requires a real flag")
+    if not story:
+        return None
+    return {"version":CAMERA_VERSION,
+            "mobileGroundClearOfCaptions":True,
+            "actorAndButterflyTracking":True}
+
+
 def score(path: Path, *, interaction: bool = False) -> None:
     """Deterministic quiet wind-like tonal pad, original PCM no rights issues."""
     rate=48000
@@ -213,7 +225,7 @@ def render(output: Path, *, kind: str = "fox",
             "exactIKWorldContact":True,
             "expressions":["body","look-down","surprise","follow","blink"],
             "animatedScarfTip":True},
-        "cinematicFraming":({"version":CAMERA_VERSION,"mobileGroundClearOfCaptions":True,"actorAndButterflyTracking":True} if story else None),
+        "cinematicFraming":framing_provenance(story),
         "artDirection":{"version":ART_VERSION,
                         "staticPlates":9,"independentlyMovingAtmosphere":True,
                         "originalAssets":True,"layeredSunlight":True,
