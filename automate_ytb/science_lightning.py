@@ -363,7 +363,9 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         subject=point_on_path(CONNECTED_CHANNEL,
                               min(1.,action_progress*1.5))
     else:
-        subject=point_on_path(CONNECTED_CHANNEL,0.)
+        # The expanding pressure wave is drawn at the channel attachment,
+        # not at the radio mast footing.
+        subject=tuple(float(v) for v in LEADER_CHANNEL[-1])
     camera=shot_camera(beat,t,duration,
                        event_fraction=event_progress,subject=subject)
     composite=stage.render(camera_x=camera.parallax_x,
