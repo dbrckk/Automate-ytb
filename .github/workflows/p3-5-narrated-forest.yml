@@ -55,6 +55,7 @@ jobs:
           assert qa["voiceEngine"]=="kokoro-natural"
           assert qa["captions"].startswith("actual-PCM-timed")
           assert qa["artDirection"].startswith("original-forest-cinematic")
+          assert qa["editorialTitles"] is False
           assert qa["language"]=="en"
           assert qa["durationSeconds"]>=8
           assert len(qa["beats"])==4
