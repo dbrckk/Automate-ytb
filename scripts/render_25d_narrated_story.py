@@ -18,6 +18,7 @@ from automate_ytb.forest_voice_timeline import (
     ENGLISH_SCRIPT, FRENCH_SCRIPT, measured_timeline,
 )
 from automate_ytb.short_voice import synthesize
+from automate_ytb.forest_captions25d import caption_plate
 
 
 def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
@@ -71,8 +72,10 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
             for index in range(count):
                 source_t,beat=timeline.at(index/FPS)
                 # Real frame-by-frame animation, never duplicated still frames.
-                proc.stdin.write(frame(source_t,kind=animal,
-                                       interaction=True,story=True).tobytes())
+                visual=frame(source_t,kind=animal,interaction=True,story=True)
+                visual.paste(caption_plate(index/FPS,timeline),(0,0),
+                             caption_plate(index/FPS,timeline))
+                proc.stdin.write(visual.tobytes())
             proc.stdin.close()
             if proc.wait(timeout=120):
                 raise RuntimeError("FFmpeg narrated story encoding failed")
@@ -101,6 +104,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
         result={"type":"original-25d-measured-kokoro-narrated-short",
                 "language":language,"animal":animal,
                 "voice":report["voice"],"voiceEngine":report["engine"],
+                "captions":"actual-PCM-timed mobile-safe original text",
                 "fps":FPS,"size":list(SIZE),"frames":count,
                 "durationSeconds":round(duration,3),
                 "beats":[{"name":b.name,"start":b.start,"end":b.end,
