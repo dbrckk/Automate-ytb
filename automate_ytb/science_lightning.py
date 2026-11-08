@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font
 from .cinematic_stage import camera_frame
 from .scene25d import Layer25D, Scene25D
+from .camera25d import shot_camera, point_on_path
 from .science_lightning_fx import (
     environment_plates, paint_terrain, bloom_electric_channel,
     paint_foreground_weather,
@@ -348,10 +349,26 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     foreground=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     paint_foreground_weather(foreground,t,beat)
     stage.add(Layer25D("rain-foreground",90,foreground))
-    # Physical cloud positions vary continuously at 30fps. Depth-specific
-    # shifts create actual relative motion; this is not panning a flat image.
-    camera_x=24.0*math.sin(math.pi*t/duration)
-    camera_y=5.0*math.sin(math.pi*t/duration)
-    composite=stage.render(camera_x=camera_x,camera_y=camera_y)
-    picture.alpha_composite(camera_frame(composite,beat,t,duration),
-                            (0,STAGE_TOP))
+    # Direct the camera to the physical action, not a generic bounce.
+    # The narrated action uses its measured phrase clock, while the wind
+    # and rain remain continuous on real physical scene time.
+    action_progress=action_t/duration
+    if beat=="charge":
+        subject=(540.,280.)
+    elif beat=="leader":
+        subject=point_on_path(LEADER_CHANNEL,action_progress)
+    elif beat=="connection":
+        subject=point_on_path(UPWARD_STREAMER,action_progress)
+    elif beat=="return":
+        subject=point_on_path(CONNECTED_CHANNEL,
+                              min(1.,action_progress*1.5))
+    else:
+        subject=point_on_path(CONNECTED_CHANNEL,0.)
+    camera=shot_camera(beat,t,duration,
+                       event_fraction=event_progress,subject=subject)
+    composite=stage.render(camera_x=camera.parallax_x,
+                           camera_y=camera.parallax_y)
+    picture.alpha_composite(
+        camera_frame(composite,beat,t,duration,
+                     focus_offset=(camera.focus_dx,camera.focus_dy)),
+        (0,STAGE_TOP))
