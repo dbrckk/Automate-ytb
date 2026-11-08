@@ -10,7 +10,9 @@ import math
 
 from PIL import Image
 
-VERSION="forest-25d-physical-shot-scale-p36-v1"
+from .forest_story25d import STORY
+
+VERSION="forest-25d-event-directed-dolly-p41-v1"
 SIZE=(1080,1920)
 SHOTS={
     "discovery":(1.15,20.0),
@@ -27,12 +29,22 @@ def shot_crop(t: float, *, beat: str, body_x: float) -> tuple[int,int,int,int]:
             or not 150<=body_x<=600):
         raise ValueError("Invalid physical 2.5D cinematic camera")
     scale,down=SHOTS[beat]
+    # Continuous push-in / pull-out; the lens settles at shot boundaries.
+    start,end=next((a,b) for name,a,b,*_ in STORY if name==beat)
+    progress=max(0.,min(1.,(t-start)/(end-start)))
+    envelope=math.sin(math.pi*progress)**2
+    zoom={"discovery":.055,"contact":.19,"arrival":-.075,
+          "departure":-.055}[beat]
+    scale+=zoom*envelope
     w=round(SIZE[0]/scale)
     h=round(SIZE[1]/scale)
     # Keep the animal around the center-third while still framing the contact
     # and the butterfly. Shift follows the actual analytic world-space torso.
     cx=SIZE[0]/2+max(-65.,min(65.,(body_x+175-540)*.28))
-    cy=970.+down
+    cx+=({"discovery":-25.,"contact":80.,"arrival":-70.,
+          "departure":15.}[beat])*envelope
+    cy=970.+down+({"discovery":-14.,"contact":86.,"arrival":-65.,
+                   "departure":-12.}[beat])*envelope
     left=max(0,min(SIZE[0]-w,round(cx-w/2)))
     top=max(0,min(SIZE[1]-h,round(cy-h/2)))
     return left,top,left+w,top+h
