@@ -27,6 +27,7 @@ from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
+from automate_ytb.forest_head_sculpt25d import VERSION as HEAD_VERSION
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -191,6 +192,7 @@ def render(output: Path, *, kind: str = "fox",
              "synchronizedOriginalChime":True,
              "independentWorldSpacePetals":True}
             if event is not None else None),
+        "headSculpt":{"version":HEAD_VERSION,"originalEyeMouthPreserved":True,"worldFootIKUnchanged":True},
         "anatomicalLimbs":{"version":ANATOMY_VERSION,"curvedVolumes":True,"originalIKUnchanged":True},
         "organicSoftBody":{
             "version":ORGANIC_VERSION,
