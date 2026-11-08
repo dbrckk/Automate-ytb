@@ -182,7 +182,11 @@ def _meadow() -> Image.Image:
         hue=j%4
         d.polygon([(0,y+12*math.sin(j)),(270,y-17),(590,y+19),
                    (790,y-11),(1080,y+15),(1080,y+51),(0,y+51)],
-                  fill=(43+hue*3,98+hue*4,70+hue*2,74))
+                  fill=(43+hue*3,98+hue*4,70+hue*2,255))
+    # Paint translucent botanical texture in a separate overlay: drawing
+    # RGBA straight onto an opaque ground would punch alpha holes in it.
+    texture=Image.new("RGBA",SIZE)
+    d=ImageDraw.Draw(texture)
     rng=random.Random(11503)
     for j in range(1350):
         x=rng.randrange(0,1080)
@@ -202,6 +206,7 @@ def _meadow() -> Image.Image:
         d.ellipse((x-r,y-r*.35,x+r,y+r*.4),fill=(18,61,57,92))
         d.arc((x-r,y-r*.6,x+r,y+r*.3),170,333,
               fill=(189,181,136,123),width=2)
+    image.alpha_composite(texture)
     return image
 
 
