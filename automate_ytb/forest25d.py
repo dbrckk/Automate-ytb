@@ -24,6 +24,10 @@ from .forest_story25d import story_shot, story_overlay
 from .forest_cinematic_world25d import (plates as cinematic_plates,
                                        drifting_clouds, living_light)
 from .forest_cinematic_framing25d import cinematic_reframe
+from .forest_character_art25d import (
+    VERSION as CHARACTER_ART_VERSION, finish_sprite, facial_pose,
+    draw_plush_leg, scarf_tip,
+)
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -31,7 +35,7 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "forest-25d-cinematic-living-meadow-p36-v1"
+VERSION = "forest-25d-sculpted-animal-acting-p37-v1"
 KINDS = ("fox", "rabbit", "cat")
 
 
@@ -42,16 +46,28 @@ def _animal(kind: str) -> dict[str, Image.Image]:
     with tempfile.TemporaryDirectory(prefix=f"p3-{kind}-sprites-") as folder:
         p = Path(folder)
         paths = {name: p / (name + ".png") for name in
-                 ("body", "blink", "tail", "left", "right")}
-        _sprite_body(paths["body"], kind=kind, blink=False, emotion="happy",
-                     gaze="forward", include_ears=False)
-        _sprite_body(paths["blink"], kind=kind, blink=True, emotion="happy",
-                     gaze="forward", include_ears=False)
+                 ("body", "blink", "look-down", "surprise", "follow",
+                  "tail", "left", "right")}
+        for name, blink, emotion, gaze in (
+            ("body",False,"happy","forward"),
+            ("blink",True,"happy","forward"),
+            ("look-down",False,"happy","down-right"),
+            ("surprise",False,"surprised","down-right"),
+            ("follow",False,"happy","right"),
+        ):
+            _sprite_body(paths[name],kind=kind,blink=blink,
+                         emotion=emotion,gaze=gaze,include_ears=False)
         _sprite_tail(paths["tail"], kind=kind)
         for side in ("left", "right"):
             _sprite_ear(paths[side], kind=kind, side=side)
-        return {name: Image.open(path).convert("RGBA").copy()
-                for name, path in paths.items()}
+        art={}
+        for name,path in paths.items():
+            with Image.open(path) as source:
+                raw=source.convert("RGBA")
+            part=("ear" if name in ("left","right") else
+                  "tail" if name=="tail" else "body")
+            art[name]=finish_sprite(raw,kind=kind,part=part)
+        return art
 
 
 def _landscape() -> dict[str, Image.Image]:
@@ -86,26 +102,12 @@ def character_plate(t: float, *, kind: str = "fox",
     draw=ImageDraw.Draw(canvas)
     x=ORIGIN_X+SPEED*t
     y=TORSO_Y+3*math.cos(4*math.pi*t/PERIOD)
-    fur=COLORS[kind]["fur"]
-    dark=COLORS[kind]["dark"]
     legs={}
     for side in ("left","right"):
         pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
                          speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
         legs[side]=pose
-        line=(pose.hip,pose.knee,pose.foot)
-        draw.line(line,fill=dark,width=36,joint="curve")
-        draw.line(line,fill=fur,width=26,joint="curve")
-        for node,radius in ((pose.hip,13),(pose.knee,15)):
-            px,py=node
-            draw.ellipse((px-radius,py-radius,px+radius,py+radius),
-                         fill=fur,outline=dark,width=3)
-        foot_x,foot_y=pose.foot
-        draw.ellipse((foot_x-29,foot_y-10,foot_x+29,foot_y+9),
-                     fill=fur,outline=dark,width=3)
-        for offset in (-11,0,11):
-            draw.line((foot_x+offset,foot_y+2,foot_x+offset+2,foot_y+8),
-                      fill=dark,width=2)
+        draw_plush_leg(draw,pose=pose,kind=kind,side=side)
     reaction=(math.exp(-((t-IMPACT_TIME-.16)/.29)**2)
               if interaction else 0.)
     tail=_rotate_about(assets["tail"],
@@ -123,10 +125,15 @@ def character_plate(t: float, *, kind: str = "fox",
         tilt+=(8 if side=="left" else -6)*reaction
         ear=_rotate_about(assets[side],tilt,(76,173))
         canvas.alpha_composite(ear,(round(x+offset),round(y)))
-    blink=(t%3.1)<.105 or (interaction and IMPACT_TIME+.22<t<IMPACT_TIME+.33)
-    canvas.alpha_composite(assets["blink" if blink else "body"],
+    expression=facial_pose(t,interaction=interaction)
+    canvas.alpha_composite(assets[expression],(round(x),round(y)))
+    # The scarf's old static tip remains the attachment point: only the
+    # fabric end moves independently with gusts and contact excitement.
+    canvas.alpha_composite(scarf_tip(t,x=x,y=y,kind=kind,
+                                    contact=interaction),
                            (round(x),round(y)))
     return canvas,dict(kind=kind,bodyX=round(x,3),bodyY=round(y,3),
+                       expression=expression,art=CHARACTER_ART_VERSION,
                        left=legs["left"],right=legs["right"])
 
 
