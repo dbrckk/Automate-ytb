@@ -2,6 +2,8 @@
 
 **Plan directeur actualisé : [plan de production vidéo multi-genres — 5 novembre 2026](docs/VIDEO_PRODUCTION_MASTER_PLAN_2026-11-05.md).**
 
+**Évolution graphique 2.5D : [plan priorisé de profondeur, rigs, caméra, éclairage et animations — 7 novembre 2026](docs/ROADMAP_RENDER_PREMIUM_2_5D_2026-11-07.md).**
+
 **Montage de plusieurs vidéos en une seule commande : [mode d'emploi, sécurité et limites](docs/AUTO_MONTAGE_MULTI_SOURCES.md).** Permet de choisir des extraits réels de vidéos autorisées, les importer automatiquement, les assembler et produire un MP4 vertical/horizontal vérifiable ; ne génère pas encore de voix et ne comprend pas sémantiquement les scènes.
 
 **Feuille de route vérifiable : [plan de travail V2 et critères d'acceptation](docs/QUALITY_ROADMAP.md).**
