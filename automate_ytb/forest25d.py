@@ -31,6 +31,9 @@ from .forest_character_art25d import (
 from .forest_organic_mesh25d import (
     VERSION as ORGANIC_VERSION, organic_pose, deform_body, deform_tail,
 )
+from .forest_anatomical_limb25d import (
+    VERSION as ANATOMY_VERSION, draw_anatomical_leg,
+)
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -38,7 +41,7 @@ SECONDS = 7.2
 ORIGIN_X = 195.0
 SPEED = 44.0
 TORSO_Y = 915.0
-VERSION = "forest-25d-organic-mesh-world-grounded-p38-v1"
+VERSION = "forest-25d-anatomical-limbs-p39-v1"
 KINDS = ("fox", "rabbit", "cat")
 
 
@@ -110,7 +113,7 @@ def character_plate(t: float, *, kind: str = "fox",
         pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
                          speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
         legs[side]=pose
-        draw_plush_leg(draw,pose=pose,kind=kind,side=side)
+        draw_anatomical_leg(draw,pose=pose,kind=kind,side=side)
     response=organic_pose(t,interaction=interaction)
     tail=_rotate_about(deform_tail(assets["tail"],response),
                        4*math.sin(2.0*t-.7)+.40*response.tail_lag,(197,202))
@@ -139,6 +142,7 @@ def character_plate(t: float, *, kind: str = "fox",
     return canvas,dict(kind=kind,bodyX=round(x,3),bodyY=round(y,3),
                        expression=expression,art=CHARACTER_ART_VERSION,
                        organicMesh=ORGANIC_VERSION,
+                       anatomicalLimbs=ANATOMY_VERSION,
                        physicalRecoil=round(response.recoil,5),
                        left=legs["left"],right=legs["right"])
 
