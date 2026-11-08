@@ -7,6 +7,8 @@ on:
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
       - "automate_ytb/forest_head_sculpt25d.py"
+      - "automate_ytb/forest_contact25d.py"
+      - "tests/test_forest_contact25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
       - "automate_ytb/forest_anatomical_limb25d.py"
       - "tests/test_forest_character_art25d.py"
@@ -52,6 +54,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
           python -m unittest discover -s tests -p test_forest_head_sculpt25d.py -v
+          python -m unittest discover -s tests -p test_forest_contact25d.py -v
           python -m unittest discover -s tests -p test_forest_organic_mesh25d.py -v
           python -m unittest discover -s tests -p test_forest_anatomical_limb25d.py -v
       - name: Render actual Kokoro English narrated Short (fox)
@@ -73,6 +76,7 @@ jobs:
           assert qa["organicSoftBody"].startswith("original-p38")
           assert qa["anatomicalLimbs"].startswith("original-p39")
           assert qa["headSculpt"].startswith("original-p43")
+          assert qa["groundedFlower"].startswith("25d-world-paw-grounded-spring-flower-face-clear-p43")
           assert qa["causalButterfly"].startswith("forest-25d-causal-clear-silhouette-butterfly-p42")
           assert qa["language"]=="en"
           assert qa["durationSeconds"]>=8
