@@ -45,6 +45,17 @@ class CinematicForestTests(unittest.TestCase):
         self.assertNotEqual(shot.getpixel((50,50)),
                             shot.getpixel((1050,1490)))
 
+    def test_voice_led_short_omits_slide_like_title_banner(self):
+        clean=frame(3.3,kind="fox",interaction=True,story=True,
+                    show_story_titles=False)
+        titled=frame(3.3,kind="fox",interaction=True,story=True,
+                     show_story_titles=True)
+        self.assertIsNotNone(
+            ImageChops.difference(clean,titled).getbbox())
+        # The title is in the upper screen; the animal below must be identical.
+        self.assertEqual(clean.crop((0,800,1080,1600)).tobytes(),
+                         titled.crop((0,800,1080,1600)).tobytes())
+
     def test_lighting_rejects_nonfinite_and_out_of_bounds_clocks(self):
         for t in (math.nan,math.inf,-1.,7.3,True):
             with self.subTest(t=t):
