@@ -24,6 +24,7 @@ from .forest_story25d import story_shot, story_overlay
 from .forest_cinematic_world25d import (plates as cinematic_plates,
                                        drifting_clouds, living_light)
 from .forest_cinematic_framing25d import cinematic_reframe
+from .forest_reactive_meadow25d import meadow_plate
 from .forest_character_art25d import (
     VERSION as CHARACTER_ART_VERSION, finish_sprite, facial_pose,
     draw_plush_leg, scarf_tip,
@@ -170,7 +171,11 @@ def frame(t: float, *, kind: str = "fox",
     scene.add(Layer25D("trees",30,landscape["trees"],parallax_x=.58))
     scene.add(Layer25D("understory",35,landscape["understory"],parallax_x=.67))
     scene.add(Layer25D("meadow",40,landscape["meadow"],parallax_x=.72))
-    shadow=Image.new("RGBA",SIZE)
+    # Ground-rooted wind and paw waves live at z50, BEHIND the physical
+    # legs/animal at z60. The original ground shadow is then composited in
+    # this same reusable layer; we never exceed 16 depth layers.
+    shadow=meadow_plate(t,origin_x=ORIGIN_X,speed=SPEED,
+                        torso_y=TORSO_Y,interaction=interaction)
     shadow.alpha_composite(_contact_shadow(),
                            (round(meta["bodyX"]-12),round(GROUND-37)))
     scene.add(Layer25D("grounded-shadow",50,shadow))
@@ -180,6 +185,8 @@ def frame(t: float, *, kind: str = "fox",
         scene.add(Layer25D("responsive-flower",55,behind))
     scene.add(Layer25D("ik-"+kind,60,actor))
     # Ground reaction is driven by real contact, not arbitrary particles.
+    # Paw impact arcs remain in front of the feet; rooted moving plants
+    # remain behind them, avoiding accidental orange-foot occlusion.
     ground_fx=Image.new("RGBA",SIZE)
     g=ImageDraw.Draw(ground_fx)
     for side in ("left","right"):
