@@ -22,7 +22,6 @@ import wave
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
-from automate_ytb.forest_butterfly25d import butterfly_pose
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
