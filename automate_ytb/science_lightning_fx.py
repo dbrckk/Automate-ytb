@@ -102,33 +102,55 @@ def _vignette() -> Image.Image:
     return smaller.resize(SIZE,Image.Resampling.BICUBIC)
 
 
-def paint_environment(stage: Image.Image,t: float,beat: str,duration: float) -> None:
-    """Perspective atmosphere; actual rain/cloud movements have depth speeds."""
-    if stage.mode!="RGBA" or stage.size!=SIZE or not math.isfinite(t) or not 0<=t<=duration:
+def environment_plates(t: float, beat: str, duration: float
+                       ) -> tuple[tuple[str, Image.Image], ...]:
+    """Independently animated atmospheric planes, before perspective camera.
+
+    Returned layers are complete original RGBA plates with true transparency.
+    Nothing is inferred from a flattened screenshot; every cloud is authored
+    at its own depth and animated at its own physical wind velocity.
+    """
+    if (type(t) not in (int, float) or type(duration) not in (int, float)
+            or not math.isfinite(t) or not math.isfinite(duration)
+            or duration <= 0 or not 0 <= t <= duration):
         raise ValueError("Unsafe storm environment")
-    stage.alpha_composite(_sky())
-    for depth in (2,1,0):
+    result = [("sky", _sky())]
+    for depth, name in ((2, "clouds-far"),
+                        (1, "clouds-middle"),
+                        (0, "clouds-near")):
+        plate = Image.new("RGBA", SIZE)
         for variant in range(3):
-            sprite=cloud_volume(depth,variant)
-            width=sprite.width
-            base=(-300+variant*435)+(depth-1)*28
-            shift=round((16+depth*18)*math.sin(t*(.20+depth*.09)+variant))
-            y=round(10+depth*81+12*math.sin(t*.31+variant+depth))
-            stage.alpha_composite(sprite,(base+shift,y))
-    # Atmospheric rain behind subjects: deterministic movement at 3 depths.
-    back=Image.new("RGBA",SIZE)
-    d=ImageDraw.Draw(back)
-    for depth,count in ((0,42),(1,61)):
+            sprite = cloud_volume(depth, variant)
+            base = (-300 + variant * 435) + (depth - 1) * 28
+            shift = round((16 + depth * 18) *
+                          math.sin(t * (.20 + depth * .09) + variant))
+            y = round(10 + depth * 81 +
+                      12 * math.sin(t * .31 + variant + depth))
+            plate.alpha_composite(sprite, (base + shift, y))
+        result.append((name, plate))
+    rain = Image.new("RGBA", SIZE)
+    d = ImageDraw.Draw(rain)
+    for depth, count in ((0, 42), (1, 61)):
         for i in range(count):
-            speed=160+depth*125
-            x=(i*113+37*depth-t*(34+depth*12))%1240-80
-            y=(i*179+depth*81+t*speed)%960-45
-            length=(17+depth*27)+(i%4)*5
-            d.line((x,y,x-12-depth*7,y+length),
-                   fill=(137+depth*13,195+depth*11,227,
-                         49+depth*25),width=1+depth)
-    stage.alpha_composite(back)
-    stage.alpha_composite(_vignette())
+            speed = 160 + depth * 125
+            x = (i * 113 + 37 * depth - t * (34 + depth * 12)) % 1240 - 80
+            y = (i * 179 + depth * 81 + t * speed) % 960 - 45
+            length = (17 + depth * 27) + (i % 4) * 5
+            d.line((x, y, x - 12 - depth * 7, y + length),
+                   fill=(137 + depth * 13, 195 + depth * 11, 227,
+                         49 + depth * 25), width=1 + depth)
+    result.append(("background-rain", rain))
+    result.append(("vignette", _vignette()))
+    return tuple(result)
+
+
+def paint_environment(stage: Image.Image, t: float, beat: str,
+                      duration: float) -> None:
+    """Legacy flattened stage, identical ordering to new separated plates."""
+    if stage.mode != "RGBA" or stage.size != SIZE:
+        raise ValueError("Unsafe storm environment")
+    for _, plate in environment_plates(t, beat, duration):
+        stage.alpha_composite(plate)
 
 
 def paint_terrain(draw: ImageDraw.ImageDraw,t: float) -> None:
