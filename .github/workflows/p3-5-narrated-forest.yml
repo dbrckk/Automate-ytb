@@ -70,6 +70,7 @@ jobs:
           assert qa["voiceEngine"]=="kokoro-natural"
           assert qa["captions"].startswith("actual-PCM-timed")
           assert qa["captionPresentation"].startswith("forest-mobile-kinetic-compact-captions-p40")
+          assert qa["cinematicFraming"].startswith("forest-25d-mobile-hero-camera-p44")
           assert qa["artDirection"].startswith("original-forest-cinematic")
           assert qa["editorialTitles"] is False
           assert qa["characterMaterials"].startswith("original-p37")
