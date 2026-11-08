@@ -173,7 +173,14 @@ def character_plate(t: float, *, kind: str = "fox") -> tuple[Image.Image, dict]:
             draw.line((foot_x+offset,foot_y+2,foot_x+offset+2,foot_y+8),
                       fill=dark,width=2)
     tail=_rotate_about(assets["tail"],8*math.sin(2.0*t-.7),(197,202))
-    canvas.alpha_composite(tail,(round(x-141),round(y+165)))
+    if kind=="rabbit":
+        # The legacy full-size rabbit tail is a very large detached disk in
+        # this IK composition. Keep the species artwork but resize its plate
+        # and anchor the fluffy silhouette behind the lower left torso.
+        tail=tail.resize((138,144),Image.Resampling.LANCZOS)
+        canvas.alpha_composite(tail,(round(x-18),round(y+230)))
+    else:
+        canvas.alpha_composite(tail,(round(x-141),round(y+165)))
     for side,offset in (("left",0),("right",200)):
         tilt=(4.5 if side=="left" else -4.5)*math.sin(t*3.6+.4)
         ear=_rotate_about(assets[side],tilt,(76,173))
