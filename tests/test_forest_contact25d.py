@@ -69,6 +69,17 @@ class PhysicalFlowerContactTests(unittest.TestCase):
         self.assertEqual(state(IMPACT_TIME+4).particle_count,0)
         self.assertLess(state(IMPACT_TIME+4).deformation,.01)
 
+    def test_released_petals_fan_away_from_animal_face(self):
+        t=IMPACT_TIME+.7
+        hit=state(t)
+        self.assertEqual(hit.particle_count,7)
+        _,released=plates(t)
+        # Crop excludes the ground-level impact ring; only moving petals
+        # remain. Their trajectory must not cross the actor's face side.
+        face_side=released.crop((0,0,round(hit.x+35),round(GROUND-50)))
+        self.assertIsNone(face_side.getbbox())
+        self.assertIsNotNone(released.getbbox())
+
     def test_all_original_animals_react_at_same_grounded_foot_contact(self):
         t=IMPACT_TIME+.18
         for kind in KINDS:
