@@ -22,6 +22,7 @@ from automate_ytb.forest_captions25d import caption_plate
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
+from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
 
 
 def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
@@ -112,6 +113,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 "artDirection":ART_VERSION,
                 "characterMaterials":CHARACTER_VERSION,
                 "organicSoftBody":ORGANIC_VERSION,
+                "anatomicalLimbs":ANATOMY_VERSION,
                 "editorialTitles":False,
                 "fps":FPS,"size":list(SIZE),"frames":count,
                 "durationSeconds":round(duration,3),

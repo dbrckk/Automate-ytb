@@ -7,6 +7,7 @@ on:
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
+      - "automate_ytb/forest_anatomical_limb25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
       - "automate_ytb/forest_cinematic_framing25d.py"
       - "automate_ytb/forest_contact25d.py"
@@ -23,6 +24,7 @@ on:
       - "tests/test_forest_cinematic_framing25d.py"
       - "tests/test_forest_character_art25d.py"
       - "tests/test_forest_organic_mesh25d.py"
+      - "tests/test_forest_anatomical_limb25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   push:
     branches: [main]
@@ -31,6 +33,7 @@ on:
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
+      - "automate_ytb/forest_anatomical_limb25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
       - "automate_ytb/forest_cinematic_framing25d.py"
       - "automate_ytb/forest_contact25d.py"
@@ -43,6 +46,7 @@ on:
       - "tests/test_forest_cinematic_framing25d.py"
       - "tests/test_forest_character_art25d.py"
       - "tests/test_forest_organic_mesh25d.py"
+      - "tests/test_forest_anatomical_limb25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
@@ -86,6 +90,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
           python -m unittest discover -s tests -p test_forest_organic_mesh25d.py -v
+          python -m unittest discover -s tests -p test_forest_anatomical_limb25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
       - name: Encode real 1080x1920 30fps animated paw-to-flower scene
         run: |
@@ -113,6 +118,8 @@ jobs:
           assert qa["organicSoftBody"]["version"].startswith("original-p38")
           assert qa["organicSoftBody"]["actualIKPawPositionsWarped"] is False
           assert qa["organicSoftBody"]["postContactDampedRecoil"] is True
+          assert qa["anatomicalLimbs"]["version"].startswith("original-p39")
+          assert qa["anatomicalLimbs"]["originalIKUnchanged"] is True
           assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"
           assert len(qa["eventDirectedStory"]["beats"])==4
           assert qa["eventDirectedStory"]["narration"].startswith("not generated")
