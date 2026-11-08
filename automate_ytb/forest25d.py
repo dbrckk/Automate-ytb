@@ -21,6 +21,7 @@ from .scene25d import Layer25D, Scene25D
 from .rig25d import walking_leg, GROUND, PERIOD
 from .forest_contact25d import IMPACT_TIME, flower_plates
 from .forest_butterfly25d import butterfly_plate
+from .forest_story25d import story_shot, story_overlay
 
 SIZE = (1080, 1920)
 FPS = 30
@@ -200,7 +201,11 @@ def character_plate(t: float, *, kind: str = "fox",
 
 
 def frame(t: float, *, kind: str = "fox",
-          interaction: bool = False) -> Image.Image:
+          interaction: bool = False, story: bool = False) -> Image.Image:
+    if type(story) is not bool:
+        raise ValueError("Story flag must be boolean")
+    if story and not interaction:
+        raise ValueError("Causal story requires real paw-flower interaction")
     actor,meta=character_plate(t,kind=kind,interaction=interaction)
     landscape=_landscape()
     scene=Scene25D(SIZE)
@@ -237,6 +242,13 @@ def frame(t: float, *, kind: str = "fox",
             butterfly_plate(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)))
     scene.add(Layer25D("grass-foreground",90,landscape["foreground"],
                        parallax_x=1.15))
-    # Soft continuous camera excursion, zero at opening/ending cuts.
-    camera=30*math.sin(math.pi*t/SECONDS)
-    return scene.render(camera_x=camera,camera_y=4*camera/30).convert("RGB")
+    # Event-directed camera uses the same physical contact and butterfly
+    # timeline as the animated world. Legacy motion preview is unchanged.
+    if story:
+        shot=story_shot(t)
+        rendered=scene.render(camera_x=shot.camera_x,camera_y=shot.camera_y)
+        rendered.alpha_composite(story_overlay(t))
+    else:
+        camera=30*math.sin(math.pi*t/SECONDS)
+        rendered=scene.render(camera_x=camera,camera_y=4*camera/30)
+    return rendered.convert("RGB")
