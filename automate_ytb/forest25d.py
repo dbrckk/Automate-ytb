@@ -24,6 +24,7 @@ from .forest_story25d import story_shot, story_overlay
 from .forest_cinematic_world25d import (plates as cinematic_plates,
                                        drifting_clouds, living_light)
 from .forest_cinematic_framing25d import cinematic_reframe
+from .forest_reactive_meadow25d import meadow_plate
 from .forest_character_art25d import (
     VERSION as CHARACTER_ART_VERSION, finish_sprite, facial_pose,
     draw_plush_leg, scarf_tip,
@@ -180,7 +181,11 @@ def frame(t: float, *, kind: str = "fox",
         scene.add(Layer25D("responsive-flower",55,behind))
     scene.add(Layer25D("ik-"+kind,60,actor))
     # Ground reaction is driven by real contact, not arbitrary particles.
-    ground_fx=Image.new("RGBA",SIZE)
+    # P4.5: reuse the existing foreground-reaction layer instead of
+    # exceeding the strict 16-layer depth-compositor bound. Original grass
+    # textures remain beneath this continuously drawn, rooted vegetation.
+    ground_fx=meadow_plate(t,origin_x=ORIGIN_X,speed=SPEED,
+                           torso_y=TORSO_Y,interaction=interaction)
     g=ImageDraw.Draw(ground_fx)
     for side in ("left","right"):
         paw=meta[side]
