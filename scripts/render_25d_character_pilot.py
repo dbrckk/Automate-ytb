@@ -22,6 +22,7 @@ import wave
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at, VERSION as FLOWER_VERSION
+from automate_ytb.forest_butterfly25d import VERSION as BUTTERFLY_VERSION
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_cinematic_framing25d import VERSION as CAMERA_VERSION
@@ -186,7 +187,7 @@ def render(output: Path, *, kind: str = "fox",
             {"trigger":"rig-verified paw impact",
              "firstVisibleSeconds":round(IMPACT_TIME+.12,3),
              "flightPhases":["approach","hover","retreat"],
-             "wingAndFlightVersion":"forest-25d-causal-clear-silhouette-butterfly-p42-v1",
+             "wingAndFlightVersion":BUTTERFLY_VERSION,
              "target":"world-space responsive flower",
              "wings":"independently animated 9Hz original artwork"}
             if interaction else None),
