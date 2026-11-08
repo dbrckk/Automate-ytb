@@ -22,12 +22,26 @@ import wave
 from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at, VERSION as FLOWER_VERSION
+from automate_ytb.forest_butterfly25d import VERSION as BUTTERFLY_VERSION
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
+from automate_ytb.forest_cinematic_framing25d import VERSION as CAMERA_VERSION
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
 from automate_ytb.forest_head_sculpt25d import VERSION as HEAD_VERSION
+
+
+
+def framing_provenance(story: bool) -> dict | None:
+    """Never claim event-directed optical crops for a legacy-camera pilot."""
+    if type(story) is not bool:
+        raise ValueError("Story-mode camera provenance requires a real flag")
+    if not story:
+        return None
+    return {"version":CAMERA_VERSION,
+            "mobileGroundClearOfCaptions":True,
+            "actorAndButterflyTracking":True}
 
 
 def score(path: Path, *, interaction: bool = False) -> None:
@@ -173,7 +187,7 @@ def render(output: Path, *, kind: str = "fox",
             {"trigger":"rig-verified paw impact",
              "firstVisibleSeconds":round(IMPACT_TIME+.12,3),
              "flightPhases":["approach","hover","retreat"],
-             "wingAndFlightVersion":"forest-25d-causal-clear-silhouette-butterfly-p42-v1",
+             "wingAndFlightVersion":BUTTERFLY_VERSION,
              "target":"world-space responsive flower",
              "wings":"independently animated 9Hz original artwork"}
             if interaction else None),
@@ -212,6 +226,7 @@ def render(output: Path, *, kind: str = "fox",
             "exactIKWorldContact":True,
             "expressions":["body","look-down","surprise","follow","blink"],
             "animatedScarfTip":True},
+        "cinematicFraming":framing_provenance(story),
         "artDirection":{"version":ART_VERSION,
                         "staticPlates":9,"independentlyMovingAtmosphere":True,
                         "originalAssets":True,"layeredSunlight":True,

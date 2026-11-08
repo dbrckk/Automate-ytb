@@ -4,7 +4,7 @@ import unittest
 
 from PIL import ImageChops
 
-from automate_ytb.forest25d import frame, ORIGIN_X, SPEED, TORSO_Y
+from automate_ytb.forest25d import frame, ORIGIN_X, SPEED, TORSO_Y, FPS, SECONDS
 from automate_ytb.forest_contact25d import IMPACT_TIME, contact_at
 from automate_ytb.forest_butterfly25d import butterfly_pose, butterfly_plate
 
@@ -29,7 +29,8 @@ class Butterfly25DTests(unittest.TestCase):
                        speed=SPEED,torso_y=TORSO_Y)
         self.assertTrue(hit.planted)
         approach=pose(IMPACT_TIME+.5)
-        hover=pose(IMPACT_TIME+2.)
+        # After clearing the face horizontally, the butterfly completes its rise.
+        hover=pose(IMPACT_TIME+2.15)
         retreat=pose(IMPACT_TIME+3.1)
         self.assertEqual((approach.phase,hover.phase,retreat.phase),
                          ("approach","hover","retreat"))
@@ -53,6 +54,24 @@ class Butterfly25DTests(unittest.TestCase):
         hit=contact_at(t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)
         lower_flower_tip=hit.y-132+57*hit.deformation
         self.assertGreater(pose(t).y,lower_flower_tip+30)
+
+    def test_wing_silhouette_never_obscures_character_face_at_any_frame(self):
+        # Conservative world-space exclusion box for all existing animal
+        # cheeks/eyes/muzzle; 72px includes the full authored wing span.
+        for n in range(round(SECONDS*FPS)+1):
+            t=n/FPS
+            butterfly=pose(t)
+            if not butterfly.visible:
+                continue
+            body_x=ORIGIN_X+SPEED*t
+            face=(body_x+30,TORSO_Y+40,body_x+350,TORSO_Y+350)
+            wings=(butterfly.x-72,butterfly.y-48,
+                   butterfly.x+72,butterfly.y+36)
+            overlap=(wings[0]<face[2] and face[0]<wings[2]
+                     and wings[1]<face[3] and face[1]<wings[3])
+            with self.subTest(frame=n,phase=butterfly.phase):
+                self.assertFalse(overlap,
+                    "Butterfly wing mask crossed the hero face")
 
     def test_wings_move_in_real_independent_rgba_frames(self):
         a=butterfly_plate(IMPACT_TIME+.8,origin_x=ORIGIN_X,

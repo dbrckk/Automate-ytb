@@ -117,6 +117,8 @@ jobs:
           assert "reactive-butterfly" in qa["layers"]
           assert all(layer in qa["layers"] for layer in
                      ("sunbeams","understory","living-light","filmic-grade"))
+          assert qa["cinematicFraming"]["version"].startswith("forest-25d-mobile-hero-camera-p44")
+          assert qa["cinematicFraming"]["mobileGroundClearOfCaptions"] is True
           assert qa["artDirection"]["version"].startswith("original-forest-cinematic")
           assert qa["artDirection"]["physicalOpticalCuts"] is True
           assert qa["characterMaterials"]["version"].startswith("original-p37")
