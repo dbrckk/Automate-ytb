@@ -8,6 +8,8 @@ on:
       - "automate_ytb/forest_character_art25d.py"
       - "automate_ytb/forest_head_sculpt25d.py"
       - "automate_ytb/forest_contact25d.py"
+      - "automate_ytb/forest_butterfly25d.py"
+      - "tests/test_forest_butterfly25d.py"
       - "tests/test_forest_contact25d.py"
       - "automate_ytb/forest_organic_mesh25d.py"
       - "automate_ytb/forest_anatomical_limb25d.py"
@@ -55,6 +57,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
           python -m unittest discover -s tests -p test_forest_head_sculpt25d.py -v
           python -m unittest discover -s tests -p test_forest_contact25d.py -v
+          python -m unittest discover -s tests -p test_forest_butterfly25d.py -v
           python -m unittest discover -s tests -p test_forest_organic_mesh25d.py -v
           python -m unittest discover -s tests -p test_forest_anatomical_limb25d.py -v
       - name: Render actual Kokoro English narrated Short (fox)
