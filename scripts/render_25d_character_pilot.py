@@ -26,6 +26,7 @@ from automate_ytb.forest_butterfly25d import VERSION as BUTTERFLY_VERSION
 from automate_ytb.forest_story25d import STORY, VERSION as STORY_VERSION
 from automate_ytb.forest_cinematic_world25d import VERSION as ART_VERSION
 from automate_ytb.forest_cinematic_framing25d import VERSION as CAMERA_VERSION
+from automate_ytb.forest_reactive_meadow25d import VERSION as MEADOW_VERSION, ROOTS as MEADOW_ROOTS
 from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
@@ -226,6 +227,11 @@ def render(output: Path, *, kind: str = "fox",
             "exactIKWorldContact":True,
             "expressions":["body","look-down","surprise","follow","blink"],
             "animatedScarfTip":True},
+        "livingMeadow":{"version":MEADOW_VERSION,
+                        "worldSpaceRootedPlants":len(MEADOW_ROOTS),
+                        "windAlwaysAnimated":True,
+                        "causalPawWave":bool(interaction),
+                        "wavePropagationPxPerSecond":300},
         "cinematicFraming":framing_provenance(story),
         "artDirection":{"version":ART_VERSION,
                         "staticPlates":9,"independentlyMovingAtmosphere":True,
