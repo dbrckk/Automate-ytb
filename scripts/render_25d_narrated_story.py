@@ -73,8 +73,8 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 source_t,beat=timeline.at(index/FPS)
                 # Real frame-by-frame animation, never duplicated still frames.
                 visual=frame(source_t,kind=animal,interaction=True,story=True)
-                visual.paste(caption_plate(index/FPS,timeline),(0,0),
-                             caption_plate(index/FPS,timeline))
+                captions=caption_plate(index/FPS,timeline)
+                visual.paste(captions,(0,0),captions)
                 proc.stdin.write(visual.tobytes())
             proc.stdin.close()
             if proc.wait(timeout=120):
