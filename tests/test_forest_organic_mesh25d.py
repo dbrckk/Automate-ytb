@@ -49,7 +49,7 @@ class OrganicBodyMeshTests(unittest.TestCase):
         self.assertEqual(at_rest.tobytes(),
             deform_body(source,organic_pose(.5,interaction=False)).tobytes())
         # Source artwork stays immutable: deformation is a new physical image.
-        self.assertEqual(source.getpixel((175,195)),(238,145,79,255))
+        self.assertEqual(source.getpixel((130,245)),(238,145,79,255))
 
     def test_inertial_tail_has_anchor_near_rump(self):
         original=test_sprite(TAIL_SIZE)
@@ -58,7 +58,7 @@ class OrganicBodyMeshTests(unittest.TestCase):
         self.assertEqual(before.size,TAIL_SIZE)
         self.assertIsNotNone(
             ImageChops.difference(before.convert("RGB"),after.convert("RGB")).getbbox())
-        anchor=(190,205)
+        anchor=(155,182)
         self.assertEqual(before.getpixel(anchor)[3],after.getpixel(anchor)[3])
 
     def test_actual_rig_has_same_world_foot_targets_during_recoil(self):
