@@ -31,6 +31,10 @@ jobs:
     name: Genuine two-bone IK, zero-sliding contacts and native vertical MP4
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        animal: [fox, rabbit, cat]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,13 +54,15 @@ jobs:
           python -m unittest discover -s tests -p test_scene25d.py -v
       - name: Encode genuine 1080x1920 30fps original 2.5D fox pilot
         run: |
-          python scripts/render_25d_character_pilot.py --output out/p3-fox-25d/fox-grounded.mp4
+          python scripts/render_25d_character_pilot.py --animal "${{ matrix.animal }}" --output "out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-grounded.mp4"
       - name: Independently inspect real MP4 and physical-contact proof
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          qa=json.loads(Path("out/p3-fox-25d/pilot-qa.json").read_text())
+          animal="${{ matrix.animal }}"
+          qa=json.loads(Path(f"out/p3-{animal}-25d/pilot-qa.json").read_text())
+          assert qa["animal"]==animal
           assert qa["status"]=="passed"
           assert qa["fps"]==30 and qa["size"]==[1080,1920]
           assert qa["maximumPlantedFootWorldDriftPx"]<=.001
@@ -68,10 +74,10 @@ jobs:
       - name: Preserve reviewable motion video, keyframes and measurements
         uses: actions/upload-artifact@v4
         with:
-          name: automate-ytb-p3-25d-grounded-fox
+          name: automate-ytb-p3-25d-grounded-${{ matrix.animal }}
           path: |
-            out/p3-fox-25d/fox-grounded.mp4
-            out/p3-fox-25d/pilot-qa.json
-            out/p3-fox-25d/frame-*.jpg
+            out/p3-${{ matrix.animal }}-25d/${{ matrix.animal }}-grounded.mp4
+            out/p3-${{ matrix.animal }}-25d/pilot-qa.json
+            out/p3-${{ matrix.animal }}-25d/frame-*.jpg
           if-no-files-found: error
           retention-days: 7

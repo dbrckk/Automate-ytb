@@ -19,7 +19,7 @@ import sys
 import time
 import wave
 
-from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y
+from automate_ytb.forest25d import frame, FPS, SECONDS, SIZE, ORIGIN_X, SPEED, TORSO_Y, KINDS
 from automate_ytb.rig25d import UPPER, LOWER, PERIOD, GROUND, walking_leg
 
 
@@ -47,7 +47,9 @@ def score(path: Path) -> None:
         wav.writeframes(pcm.tobytes())
 
 
-def render(output: Path) -> dict:
+def render(output: Path, *, kind: str = "fox") -> dict:
+    if kind not in KINDS:
+        raise ValueError("Unsupported original 2.5D animal")
     if not isinstance(output,Path) or output.suffix.lower()!=".mp4":
         raise ValueError("Motion-pilot output requires an MP4 path")
     if not 0 < SECONDS <= 20 or FPS != 30:
@@ -80,11 +82,11 @@ def render(output: Path) -> dict:
             t=i/FPS
             if i in (30,99,171):
                 key=output.parent/f"frame-{i:03d}.jpg"
-                preview=frame(t)
+                preview=frame(t,kind=kind)
                 preview.resize((540,960)).save(key,quality=88)
                 rendered=preview
             else:
-                rendered=frame(t)
+                rendered=frame(t,kind=kind)
             for side in ("left","right"):
                 pose=walking_leg(t,side=side,origin_x=ORIGIN_X,
                                  speed=SPEED,torso_y=TORSO_Y,ground_y=GROUND)
@@ -105,7 +107,7 @@ def render(output: Path) -> dict:
                     last_contact[side]=None
             if i % FPS == 0:
                 samples.append(dict(second=i//FPS,
-                                    foxX=round(ORIGIN_X+SPEED*t,2)))
+                                    actorX=round(ORIGIN_X+SPEED*t,2)))
             process.stdin.write(rendered.tobytes())
         process.stdin.close()
         code=process.wait(timeout=120)
@@ -140,13 +142,14 @@ def render(output: Path) -> dict:
                     str(output),"-f","null","-"],check=True,
                    capture_output=True,timeout=180)
     report={
-        "schemaVersion":1,"type":"original-25d-animated-fox-ik-motion-pilot",
-        "status":"passed","scene":"fox-meadow-grounded-walk",
+        "schemaVersion":2,"type":"original-25d-animated-animal-ik-motion-pilot",
+        "status":"passed","scene":f"{kind}-meadow-grounded-walk",
+        "animal":kind,
         "frames":frames,"fps":FPS,"size":list(SIZE),
         "durationSeconds":round(duration,3),
         "animation":"fresh per-frame authored geometry; no image interpolation",
         "layers":["sky","clouds","ridges","trees","meadow",
-                  "grounded-shadow","ik-fox","contact-reactions",
+                  "grounded-shadow","ik-"+kind,"contact-reactions",
                   "grass-foreground"],
         "actualTwoBoneInverseKinematics":True,
         "maximumBoneLengthErrorPx":round(worst_bone_error,5),
@@ -168,8 +171,10 @@ def main() -> None:
     parser=argparse.ArgumentParser()
     parser.add_argument("--output",type=Path,
                         default=Path("out/p3-fox-25d/fox-grounded.mp4"))
+    parser.add_argument("--animal",choices=KINDS,default="fox",
+                        help="Original fox, rabbit or cat artwork with grounded IK")
     args=parser.parse_args()
-    print(json.dumps(render(args.output),ensure_ascii=False))
+    print(json.dumps(render(args.output,kind=args.animal),ensure_ascii=False))
 
 
 if __name__=="__main__":

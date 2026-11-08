@@ -10,7 +10,7 @@ from automate_ytb.rig25d import (
     solve_two_bone, walking_leg, GROUND, PERIOD, SUPPORT, UPPER, LOWER,
 )
 from automate_ytb.forest25d import (
-    frame, character_plate, FPS, SIZE, SECONDS, ORIGIN_X, SPEED, TORSO_Y,
+    frame, character_plate, FPS, SIZE, SECONDS, ORIGIN_X, SPEED, TORSO_Y, KINDS,
 )
 
 
@@ -83,6 +83,43 @@ class GroundedTwoBoneTests(unittest.TestCase):
         self.assertEqual(landing.foot[1],GROUND)
         self.assertAlmostEqual(landing.foot[0]-before.foot[0],
                                SPEED*PERIOD,places=6)
+
+    def test_original_species_share_ik_without_artwork_identity_leakage(self):
+        self.assertEqual(KINDS,("fox","rabbit","cat"))
+        signatures={}
+        for kind in KINDS:
+            with self.subTest(kind=kind):
+                image,meta=character_plate(.7,kind=kind)
+                self.assertEqual(image.size,SIZE)
+                self.assertEqual(meta["kind"],kind)
+                self.assertEqual(image.mode,"RGBA")
+                for side in ("left","right"):
+                    pose=meta[side]
+                    self.assertLess(abs(math.dist(pose.hip,pose.knee)-UPPER),1e-6)
+                    self.assertLess(abs(math.dist(pose.knee,pose.foot)-LOWER),1e-6)
+                # Same grounded motion, but truly different original species art.
+                signatures[kind]=image.crop((350,920,550,1240)).tobytes()
+        self.assertEqual(len(set(signatures.values())),3)
+        for invalid in ("owl","human","",None):
+            with self.subTest(invalid=invalid),self.assertRaises(ValueError):
+                character_plate(.7,kind=invalid)
+
+    def test_rabbit_tail_is_small_and_attached_not_floating_disk(self):
+        image,meta=character_plate(.7,kind="rabbit")
+        x=round(meta["bodyX"])
+        y=round(meta["bodyY"])
+        # Old full-size rabbit disc occupied space ~70 px left of the
+        # torso; the new authored tail overlaps the torso edge instead.
+        self.assertEqual(image.getpixel((x-70,y+320))[3],0)
+        self.assertGreater(image.getpixel((x+35,y+320))[3],0)
+
+    def test_species_are_composited_into_actual_foreground_and_camera(self):
+        for kind in ("rabbit","cat"):
+            with self.subTest(kind=kind):
+                first=frame(.3,kind=kind)
+                later=frame(1.3,kind=kind)
+                self.assertEqual(first.size,SIZE)
+                self.assertIsNotNone(ImageChops.difference(first,later).getbbox())
 
     def test_actual_foreground_and_actor_change_across_real_frames(self):
         first=frame(.3)
