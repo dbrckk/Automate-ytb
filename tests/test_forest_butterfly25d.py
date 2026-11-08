@@ -29,7 +29,8 @@ class Butterfly25DTests(unittest.TestCase):
                        speed=SPEED,torso_y=TORSO_Y)
         self.assertTrue(hit.planted)
         approach=pose(IMPACT_TIME+.5)
-        hover=pose(IMPACT_TIME+2.)
+        # After clearing the face horizontally, the butterfly completes its rise.
+        hover=pose(IMPACT_TIME+2.15)
         retreat=pose(IMPACT_TIME+3.1)
         self.assertEqual((approach.phase,hover.phase,retreat.phase),
                          ("approach","hover","retreat"))
