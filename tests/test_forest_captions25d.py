@@ -1,6 +1,6 @@
 """Captions are tied to measured Kokoro speech and safe on mobile."""
 import unittest
-from automate_ytb.forest_captions25d import caption_plate
+from automate_ytb.forest_captions25d import caption_plate,caption_chunks,VERSION
 from automate_ytb.forest_voice_timeline import ENGLISH_SCRIPT,measured_timeline
 
 
@@ -27,6 +27,26 @@ class CaptionTests(unittest.TestCase):
         self.assertGreater(bbox[1],1100)
         self.assertLess(bbox[3],1600)
         self.assertEqual(plate.getpixel((0,0))[3],0)
+
+    def test_compact_phrases_without_full_width_black_background(self):
+        beat=self.timeline.beats[0]
+        chunks=caption_chunks(beat.narration)
+        self.assertGreaterEqual(len(chunks),2)
+        self.assertIn("p40",VERSION)
+        first=caption_plate(beat.speech_start+
+                            .30*(beat.speech_end-beat.speech_start),self.timeline)
+        # Old subtitles filled a 940px-wide opaque rectangle at this row.
+        # New lettering cannot fill the empty side margins or entire width.
+        self.assertEqual(first.getpixel((80,1438))[3],0)
+        self.assertEqual(first.getpixel((1000,1438))[3],0)
+        self.assertEqual(first.getpixel((540,1550))[3],0)
+
+    def test_measured_caption_chunks_change_within_a_beat(self):
+        beat=self.timeline.beats[0]
+        duration=beat.speech_end-beat.speech_start
+        a=caption_plate(beat.speech_start+.2*duration,self.timeline)
+        b=caption_plate(beat.speech_start+.8*duration,self.timeline)
+        self.assertNotEqual(a.tobytes(),b.tobytes())
 
     def test_rejects_missing_pcm_timeline(self):
         with self.assertRaises(ValueError):
