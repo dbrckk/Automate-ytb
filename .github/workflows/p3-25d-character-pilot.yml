@@ -6,6 +6,7 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
+      - "automate_ytb/forest_cinematic_framing25d.py"
       - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/forest_butterfly25d.py"
       - "automate_ytb/forest_story25d.py"
@@ -17,6 +18,7 @@ on:
       - "tests/test_forest_butterfly25d.py"
       - "tests/test_forest_story25d.py"
       - "tests/test_forest_cinematic_world25d.py"
+      - "tests/test_forest_cinematic_framing25d.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   push:
     branches: [main]
@@ -24,6 +26,7 @@ on:
       - "automate_ytb/rig25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
+      - "automate_ytb/forest_cinematic_framing25d.py"
       - "automate_ytb/forest_contact25d.py"
       - "automate_ytb/forest_butterfly25d.py"
       - "automate_ytb/forest_story25d.py"
@@ -31,6 +34,7 @@ on:
       - "tests/test_forest_butterfly25d.py"
       - "tests/test_forest_story25d.py"
       - "tests/test_forest_cinematic_world25d.py"
+      - "tests/test_forest_cinematic_framing25d.py"
       - "scripts/render_25d_character_pilot.py"
       - ".github/workflows/p3-25d-character-pilot.yml"
   workflow_dispatch:
@@ -71,6 +75,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_butterfly25d.py -v
           python -m unittest discover -s tests -p test_forest_story25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_world25d.py -v
+          python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_scene25d.py -v
       - name: Encode real 1080x1920 30fps animated paw-to-flower scene
         run: |
@@ -91,6 +96,7 @@ jobs:
           assert all(layer in qa["layers"] for layer in
                      ("sunbeams","understory","living-light","filmic-grade"))
           assert qa["artDirection"]["version"].startswith("original-forest-cinematic")
+          assert qa["artDirection"]["physicalOpticalCuts"] is True
           assert qa["causalButterfly"]["trigger"]=="rig-verified paw impact"
           assert len(qa["eventDirectedStory"]["beats"])==4
           assert qa["eventDirectedStory"]["narration"].startswith("not generated")
