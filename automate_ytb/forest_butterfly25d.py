@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw
 from .forest_contact25d import IMPACT_TIME, contact_at
 
 SIZE=(1080,1920)
-VERSION="forest-25d-causal-clear-silhouette-butterfly-p42-v1"
+VERSION="forest-25d-causal-clear-silhouette-butterfly-p42-v2"
 
 
 @dataclass(frozen=True)
@@ -44,23 +44,26 @@ def butterfly_pose(t: float, *, origin_x: float, speed: float,
     tx=contact.x+30
     ty=contact.y-132+57*contact.deformation
     if dt<1.55:
-        # Approach low beside the flower, safely beneath the fox face.
+        # Visit the real impacted flower from BELOW the character's muzzle.
+        # Wing tips remain beneath the face during the entire approach.
         q=_ease((dt-.12)/1.43)
         x=tx+320*(1-q)
-        y=ty+55*math.sin(math.pi*q)+60*(1-q)
+        y=ty+95+12*math.sin(math.pi*q)
         phase="approach"
     elif dt<2.55:
-        # On contact, rise toward the open space to the right of the face.
-        # The pose is continuous at the approach/hover boundary; the animal's
-        # eyes can follow it without the butterfly masking facial acting.
+        # Two continuous parts of one causal orbit: first travel RIGHT
+        # into safe space, THEN rise. Ascending immediately at the flower
+        # would move the large wing silhouette across the fox's face.
         q=_ease((dt-1.55)/.70)
-        x=tx+165*q+8*math.sin(math.pi*q)
-        y=ty-155*q-12*math.sin(math.pi*q)
+        side=_ease(q/.44)
+        rise=_ease((q-.44)/.56)
+        x=tx+270*side
+        y=ty+95-250*rise
         phase="hover"
     else:
-        # Leave from the exact final hover position, no teleport or cut.
+        # Exit from the exact hover endpoint, without a phase teleport.
         q=_ease((dt-2.55)/1.65)
-        x=tx+165+360*q
+        x=tx+270+360*q
         y=ty-155-155*q
         phase="retreat"
     wing_open=.55+.45*math.sin(dt*2*math.pi*9)
