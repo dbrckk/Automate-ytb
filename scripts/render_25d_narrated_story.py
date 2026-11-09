@@ -29,6 +29,8 @@ from automate_ytb.forest_character_art25d import VERSION as CHARACTER_VERSION
 from automate_ytb.forest_organic_mesh25d import VERSION as ORGANIC_VERSION
 from automate_ytb.forest_anatomical_limb25d import VERSION as ANATOMY_VERSION
 from automate_ytb.forest_head_sculpt25d import VERSION as HEAD_VERSION
+from automate_ytb.forest_soundscape25d import render_soundscape, VERSION as SOUND_VERSION
+from automate_ytb.forest_editorial_lens25d import editorial_focus, VERSION as LENS_VERSION
 
 
 def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
@@ -66,11 +68,16 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
             wav.setsampwidth(2)
             wav.setframerate(24000)
             wav.writeframes(target)
+        # Build the final audio from the *actual* synthesized Kokoro samples.
+        # Foley and ambience follow physical world events mapped into the
+        # measured speech-driven edit, not guessed seconds on a fixed cut.
+        soundscape=folder/"original-forest-soundscape.wav"
+        sound_qa=render_soundscape(soundscape,bytes(target),timeline)
         command=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
                  "-f","rawvideo","-pixel_format","rgb24",
                  "-video_size",f"{SIZE[0]}x{SIZE[1]}",
                  "-framerate",str(FPS),"-i","pipe:0",
-                 "-i",str(aligned),"-map","0:v:0","-map","1:a:0",
+                 "-i",str(soundscape),"-map","0:v:0","-map","1:a:0",
                  "-c:v","libx264","-preset","veryfast","-crf","22",
                  "-pix_fmt","yuv420p","-r",str(FPS),"-g","60",
                  "-c:a","aac","-b:a","128k","-ar","48000",
@@ -84,6 +91,7 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 # Real frame-by-frame animation, never duplicated still frames.
                 visual=frame(source_t,kind=animal,interaction=True,story=True,
                              show_story_titles=False)
+                visual=editorial_focus(visual,t=index/FPS,beat=beat)
                 captions=caption_plate(index/FPS,timeline)
                 visual.paste(captions,(0,0),captions)
                 proc.stdin.write(visual.tobytes())
@@ -117,6 +125,8 @@ def render(destination: Path, *, language: str="en", animal: str="fox") -> dict:
                 "voice":report["voice"],"voiceEngine":report["engine"],
                 "captions":"actual-PCM-timed mobile-safe original text",
                 "captionPresentation":CAPTION_VERSION,
+                "soundscape":sound_qa,
+                "cinematicLens":LENS_VERSION,
                 "artDirection":ART_VERSION,
                 "cinematicFraming":CAMERA_VERSION,
                 "livingCanopy":{"version":CANOPY_VERSION,
