@@ -22,6 +22,7 @@ from .science_blender_aurora import stage_from_environment as aurora_blender_fro
 from .science_blender_3d import stage_from_environment
 from .captions import timed_cues_for_scene
 from .finish25d import finish_world, science_look
+from .editorial25d import paint_header, paint_caption, VERSION as EDITORIAL25D_VERSION
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
                               daylight_background, BADGES as RAINBOW_BADGES)
@@ -42,7 +43,7 @@ from .science_earth_stop import (classify as classify_earth_stop,
                                  draw as draw_earth_stop, LABELS as EARTH_STOP_LABELS)
 
 PORTRAIT_SIZE = (1080, 1920)
-PORTRAIT_VERSION = "original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions-depth-v1-blender-cycles-opt-in-v1-aurora3d-v1-motion-heldout-v1"
+PORTRAIT_VERSION = "p56-open-2p5d-science-editorial-original-science-shorts-v20-1080x1920-lossless-text-fluid-planet-ocean-flow-kinetic-volcano-magma-pressure-causal-camera-v21-ocean-phrase-driven-causal-interactions-depth-v1-blender-cycles-opt-in-v1-aurora3d-v1-motion-heldout-v1"
 INK = (238, 247, 250, 255)
 
 
@@ -357,21 +358,7 @@ class PortraitScienceScene:
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            # Render the stable editorial interface after scene animation.
-            pass
-        else:
-            d.rounded_rectangle((55, 190, 1025, 407), radius=34,
-                                fill=(7, 20, 41, 232),
-                                outline=CYAN+(125,), width=3)
-            for i, row in enumerate(title):
-                d.text((104, 234 + 68*i), row,
-                       font=_font(title_size, bold=True), fill=INK)
-            d.rounded_rectangle((80, 477, 750, 537), radius=22,
-                                fill=(12, 47, 72, 234))
-            d.text((113, 488), science_badge[0 if self.english else 1],
-                   font=_font(36, bold=True), fill=GOLD+(255,))
+        # All shared title typography is painted after physical 2.5D world art.
         if self.earth_stop_beat is not None:
             draw_earth_stop(picture, self.earth_stop_beat, t, duration,
                             self.english, self._planet_at)
@@ -500,47 +487,20 @@ class PortraitScienceScene:
                 picture,beat=self.lightning_beat,
                 scene_index=self.scene_index,t=t,duration=duration,
                 english=self.english,title_lines=title,title_size=title_size)
-        elif self.aurora_beat is not None or self.volcano_beat is not None:
-            # Keep independently validated Aurora and Volcano UI unchanged.
-            header = Image.new("RGBA", picture.size)
-            ui = ImageDraw.Draw(header)
-            ui.rounded_rectangle((61, 109, 1019, 243), radius=25,
-                                 fill=(4, 15, 30, 163),
-                                 outline=(121, 185, 214, 92), width=2)
-            for i, row in enumerate(title):
-                ui.text((91, 130 + 51*i), row,
-                        font=_font(title_size, bold=True), fill=INK)
-            ui.rounded_rectangle((70, 265, 793, 319), radius=18,
-                                 fill=(10, 38, 58, 156))
-            ui.text((99, 273), science_badge[0 if self.english else 1],
-                    font=_font(31, bold=True), fill=GOLD+(255,))
-            beat_number = (list(AURORA_BADGES).index(self.aurora_beat)
-                           if self.aurora_beat is not None else
-                           list(VOLCANO_BADGES).index(self.volcano_beat))
-            ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)
-            ui.line((75, 327, 75 + 930*(beat_number+1)//5, 327),
-                    fill=(143, 225, 248, 204), width=4)
-            picture.alpha_composite(header)
-        # Compact subtitle excerpt in a dedicated lower-middle safe band.
-        # Resolve speech-synthesized cues before drawing, not guessed timing.
-        active_text = self.active_caption(t, duration)
-        summary, summary_size = self._caption_layouts[active_text]
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            captions = Image.new("RGBA", picture.size)
-            cd = ImageDraw.Draw(captions)
-            cd.rounded_rectangle((65, 1586, 1015, 1782), radius=24,
-                                 fill=(4, 14, 30, 211),
-                                 outline=(110, 187, 218, 94), width=2)
-            for i, line in enumerate(summary):
-                cd.text((108, 1619 + 47*i), line,
-                        font=_font(summary_size, True), fill=INK)
-            picture.alpha_composite(captions)
         else:
-            d.rounded_rectangle((65, 1522, 1015, 1722), radius=31,
-                                fill=(5, 17, 37, 240),
-                                outline=(84, 165, 190, 150), width=2)
-            for i, line in enumerate(summary):
-                d.text((111, 1551 + 46*i), line,
-                       font=_font(summary_size, True), fill=INK)
+            paint_header(
+                picture,title=title,font_size=title_size,
+                badge=science_badge[0 if self.english else 1],
+                compact=(self.aurora_beat is not None or
+                         self.volcano_beat is not None))
+            if self.aurora_beat is not None or self.volcano_beat is not None:
+                index=(list(AURORA_BADGES).index(self.aurora_beat)
+                       if self.aurora_beat is not None else
+                       list(VOLCANO_BADGES).index(self.volcano_beat))
+                marker=ImageDraw.Draw(picture,"RGBA")
+                marker.line((108,353,108+180*(index+1)//5,353),
+                            fill=(158,227,245,185),width=3)
+        active_text=self.active_caption(t,duration)
+        summary,summary_size=self._caption_layouts[active_text]
+        paint_caption(picture,lines=summary,font_size=summary_size)
         return picture.convert("RGB")
