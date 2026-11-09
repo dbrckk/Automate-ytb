@@ -19,6 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps, ImageStat, 
 from .media_qa import probe_media
 from .production import _sha, _write_json, load_plan
 from .studio import font
+from .finish25d import artwork_diagnostics
 
 PAGE_W, PAGE_H = 1120, 2030
 TILE_W, TILE_H = 520, 418
@@ -241,6 +242,15 @@ def generate(*, plan: Path, video: Path, destination: Path,
             errors.append(f"Unable to decode middle of scene {idx+1}")
             continue
         metrics = _metrics(image)
+        # New source-agnostic 2.5D art-direction diagnostics run on the
+        # REAL decoded MP4 frame, not on an idealized source sprite.
+        # Avoid the permanent title and subtitle bands on vertical clips.
+        cx,cy=image.size
+        hero=(round(cx*.08),round(cy*.29),
+              round(cx*.92),round(cy*.77)) if portrait else (
+              round(cx*.08),round(cy*.16),
+              round(cx*.92),round(cy*.85))
+        art_signals=artwork_diagnostics(image,bounds=hero)
         composition = _portrait_band_metrics(image) if portrait else None
         if composition and composition["suspectedBandedComposition"]:
             suspect_banded += 1
@@ -288,6 +298,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "sceneIndex": idx+1, "second": second,
             "narration": scene["narration"],
             "frame": image, "metrics": metrics,
+            "artDirection": art_signals,
             "portraitComposition": composition,
             "lateTimeSeconds": late_second,
             "lateMetrics": late_metrics, "motion": scene_motion,
@@ -337,6 +348,22 @@ def generate(*, plan: Path, video: Path, destination: Path,
         "nearDuplicateNeighborCount": duplicates,
         "motionPairsCompared": motion_compared,
         "frozenAnimatedSceneCount": frozen_animated,
+        "artDirectionDiagnostics": {
+            "version": entries[0]["artDirection"]["version"],
+            "reviewOnly": True,
+            "scope": "all decoded video types: portrait and landscape",
+            "sampledFrameCount": len(entries),
+            "limitedColorSeparation": sum(
+                "limited-color-separation" in x["artDirection"]["reviewSignals"]
+                for x in entries),
+            "lowFineDetail": sum(
+                "low-fine-detail" in x["artDirection"]["reviewSignals"]
+                for x in entries),
+            "flatGeometry": sum(
+                "flat-color-geometry" in x["artDirection"]["reviewSignals"]
+                for x in entries),
+            "notAnAutomaticAestheticApproval": True,
+        },
         "suspectedBandedPortraitSceneCount": suspect_banded,
         "pages": pages,
         # SHA of the actual JPEG artifacts, not just the source MP4: QA
@@ -350,6 +377,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "frozenMotionDetected": x["frozen"],
             "motion": x["motion"],
             "portraitComposition": x["portraitComposition"],
+            "artDirection": x["artDirection"],
             "laterNearBlackFraction": (
                 x["lateMetrics"]["nearBlackFraction"]
                 if x["lateMetrics"] is not None else None),
@@ -362,6 +390,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
             "Dark scenes and repeated compositions may be artistically intentional.",
             "Banded sharpness may be intentional; this heuristic only requests visual review.",
             "No fact-checking, copyright assessment or automatic approval to publish.",
+            "Art signals cannot measure objective artistic quality or reconstruct missing assets.",
         ],
     }
     _write_json(destination/"visual-review.json", report)
