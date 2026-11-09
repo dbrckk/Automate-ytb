@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 118,
+  "count": 119,
   "videos": [
+    {
+      "id": "science-preview-lightning-storm-42712311450/lightning-storm.mp4",
+      "topic": "lightning-storm",
+      "category": "science",
+      "releaseTag": "science-preview-lightning-storm-42712311450",
+      "publishedAt": "2026-11-09T22:35:36Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-lightning-storm-42712311450/lightning-storm.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-lightning-storm-42712311450",
+      "bytes": 19448842,
+      "sha256": "sha256:c223b140a7dd37f586dd75275d0e5437114cf8a13e8206c6afee0cbdf3017fcb"
+    },
     {
       "id": "science-preview-aurora-dance-42712311453/aurora-dance.mp4",
       "topic": "aurora-dance",
