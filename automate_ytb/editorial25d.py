@@ -52,7 +52,8 @@ def paint_header(picture:Image.Image, *, title:tuple[str,...],
     from .science_motion import _font
     top,height,strength=(70,330,138) if compact else (165,430,160)
     picture.alpha_composite(_atmospheric_scrim(top,height,strength),(0,top))
-    d=ImageDraw.Draw(picture,"RGBA")
+    lettering=Image.new("RGBA",SIZE)
+    d=ImageDraw.Draw(lettering,"RGBA")
     # One fine unilateral narrative accent, never paired full-height rails.
     y0=134 if compact else 230
     d.line((91,y0+4,91,y0+(108 if len(title)>1 else 51)),
@@ -67,6 +68,7 @@ def paint_header(picture:Image.Image, *, title:tuple[str,...],
            font=_font(30 if compact else 34,True),
            fill=(253,201,115,255),
            stroke_width=1,stroke_fill=(2,8,17,195))
+    picture.alpha_composite(lettering)
 
 
 def paint_caption(picture:Image.Image, *, lines:tuple[str,...],
@@ -78,9 +80,11 @@ def paint_caption(picture:Image.Image, *, lines:tuple[str,...],
     _lines(lines,font_size,maximum=3)
     from .science_motion import _font
     picture.alpha_composite(_atmospheric_scrim(1490,318,172),(0,1490))
-    d=ImageDraw.Draw(picture,"RGBA")
+    lettering=Image.new("RGBA",SIZE)
+    d=ImageDraw.Draw(lettering,"RGBA")
     d.line((91,1550,91,1718),fill=(152,226,244,210),width=4)
     for i,line in enumerate(lines):
         d.text((108,1564+48*i),line,
                font=_font(font_size,True),fill=(245,249,252,255),
                stroke_width=3,stroke_fill=(3,10,20,245))
+    picture.alpha_composite(lettering)
