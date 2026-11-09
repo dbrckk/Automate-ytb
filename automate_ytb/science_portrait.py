@@ -21,6 +21,7 @@ from .science_ocean_depth import draw_depth
 from .science_blender_aurora import stage_from_environment as aurora_blender_from_environment
 from .science_blender_3d import stage_from_environment
 from .captions import timed_cues_for_scene
+from .finish25d import finish_world, science_look
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
                               daylight_background, BADGES as RAINBOW_BADGES)
@@ -478,6 +479,19 @@ class PortraitScienceScene:
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
+        # Shared 2.5D production finishing for ALL native science topics:
+        # ocean, Earth, rainbow, aurora, volcano and lightning. This is
+        # deliberately restricted to the world area before time-coded
+        # captions, editorial overlays, chapter markers or mobile UI.
+        finish_world(
+            picture, bounds=(65, 585, 1015, 1495),
+            look=science_look(
+                lightning=self.lightning_beat is not None,
+                aurora=self.aurora_beat is not None,
+                volcano=self.volcano_beat is not None,
+                rainbow=self.rainbow_beat is not None,
+                mode=self.mode),
+            t=t, duration=duration)
         if self.lightning_beat is not None:
             # P4.9 only changes the final editorial layer. Every actual
             # original science scene remains rendered beforehand, including
