@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "automate_ytb/forest_voice_timeline.py"
+      - "automate_ytb/forest_soundscape25d.py"
+      - "automate_ytb/forest_editorial_lens25d.py"
+      - "tests/test_forest_soundscape25d.py"
+      - "tests/test_forest_editorial_lens25d.py"
       - "automate_ytb/forest25d.py"
       - "automate_ytb/forest_character_art25d.py"
       - "automate_ytb/forest_head_sculpt25d.py"
@@ -55,6 +59,8 @@ jobs:
       - name: Validate physical narration timing and rejection of fabricated PCM
         run: |
           python -m unittest discover -s tests -p test_forest_voice_timeline.py -v
+          python -m unittest discover -s tests -p test_forest_soundscape25d.py -v
+          python -m unittest discover -s tests -p test_forest_editorial_lens25d.py -v
           python -m unittest discover -s tests -p test_forest_captions25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_world25d.py -v
           python -m unittest discover -s tests -p test_forest_canopy_wind25d.py -v
@@ -77,6 +83,14 @@ jobs:
           p=Path("out/p35/forest-narrated-en.json")
           qa=json.loads(p.read_text())
           assert qa["voiceEngine"]=="kokoro-natural"
+          assert qa["soundscape"]["version"].startswith("forest-original-voice-ducked-causal-soundscape-p47")
+          assert qa["soundscape"]["originalLocallySynthesized"] is True
+          assert qa["soundscape"]["causalIKEvents"] is True
+          assert qa["soundscape"]["speechDucking"] is True
+          assert qa["soundscape"]["clippedSamples"]==0
+          assert qa["soundscape"]["footstepCount"]>=8
+          assert qa["soundscape"]["contactVideoSeconds"] < qa["soundscape"]["butterflyVideoSeconds"]
+          assert qa["cinematicLens"].startswith("forest-25d-measured-cut-rack-focus-p47")
           assert qa["captions"].startswith("actual-PCM-timed")
           assert qa["captionPresentation"].startswith("forest-mobile-kinetic-compact-captions-p40")
           assert qa["cinematicFraming"].startswith("forest-25d-mobile-hero-camera-p44")
