@@ -1,0 +1,103 @@
+name: Verify original moving 3D storm with free Blender CPU
+
+# Experimental, low-resolution five-action visual proof. Not a published
+# narrated YouTube/TikTok Short; the stable 2.5D production path stays live.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/storm-blender-motion-pilot.yml"
+      - "scripts/blender_lightning_motion_pilot.py"
+      - "scripts/blender_lightning_pilot.py"
+      - "scripts/verify_lightning_3d_motion.py"
+      - "tests/test_lightning_3d_motion.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/storm-blender-motion-pilot.yml"
+      - "scripts/blender_lightning_motion_pilot.py"
+      - "scripts/blender_lightning_pilot.py"
+      - "scripts/verify_lightning_3d_motion.py"
+      - "tests/test_lightning_3d_motion.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: storm-3d-causal-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-real-3d-motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free open-source Cycles renderer, encoder and QA
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq blender ffmpeg
+          python -m pip install Pillow
+      - name: Check P5.4 source syntax and evidence validator
+        run: |
+          python -m py_compile scripts/blender_lightning_motion_pilot.py scripts/blender_lightning_pilot.py scripts/verify_lightning_3d_motion.py
+          python -m unittest discover -s tests -p test_lightning_3d_motion.py -v
+      - name: Render 20 individual genuine animated 3D frames with Cycles CPU
+        run: |
+          set -euo pipefail
+          blender --background --factory-startup -t 2 --python-exit-code 1 \
+            --python scripts/blender_lightning_motion_pilot.py -- \
+            --out build/storm-3d-motion --width 320 --height 400 \
+            --frames-per-beat 4 --fps 8 --samples 8
+      - name: Encode actual changing 3D frames into portable H264 MP4
+        run: |
+          set -euo pipefail
+          ffmpeg -nostdin -hide_banner -loglevel error -y -framerate 8 \
+            -i build/storm-3d-motion/frame-%04d.png \
+            -c:v libx264 -crf 19 -preset medium -pix_fmt yuv420p \
+            -movflags +faststart build/storm-3d-motion/storm-3d-motion-proof.mp4
+      - name: Verify every source image, five physical beats and full video decode
+        run: |
+          set -euo pipefail
+          python scripts/verify_lightning_3d_motion.py --folder build/storm-3d-motion \
+            | tee build/storm-3d-motion/visual-review.json
+          test -s build/storm-3d-motion/visual-review.json
+          echo "### Bounded experimental 3D motion QA passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Five physically distinct beats from true Blender/Cycles mesh frames." >> "$GITHUB_STEP_SUMMARY"
+          echo "320x400, 8 fps, 2.5 seconds, SILENT PROOF; not the final Shorts quality or format." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p54-storm-3d-motion
+          path: |
+            build/storm-3d-motion/storm-3d-motion-proof.mp4
+            build/storm-3d-motion/manifest.json
+            build/storm-3d-motion/visual-review.json
+            build/storm-3d-motion/frame-0000.png
+            build/storm-3d-motion/frame-0004.png
+            build/storm-3d-motion/frame-0008.png
+            build/storm-3d-motion/frame-0012.png
+            build/storm-3d-motion/frame-0016.png
+          if-no-files-found: error
+          retention-days: 14
+      - name: Deliver a permanent direct MP4 link only on validated main
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="unreviewed-3d-storm-motion-${GITHUB_RUN_ID}"
+          gh release create "$tag" \
+            build/storm-3d-motion/storm-3d-motion-proof.mp4 \
+            build/storm-3d-motion/manifest.json \
+            build/storm-3d-motion/visual-review.json \
+            --title "UNREVIEWED P5.4 Blender 3D storm motion proof" \
+            --notes "Experimental SILENT 320x400 8fps 2.5-second PBR Cycles animation. Five authored physical beats. NOT an approved or completed 1080x1920 Kokoro Shorts video. No social publishing." \
+            --prerelease --latest=false
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/storm-3d-motion-proof.mp4"
+          curl --fail --location --silent --show-error --retry 5 --retry-all-errors \
+            --max-time 120 "$url" -o "$RUNNER_TEMP/public-3d-motion.mp4"
+          cmp build/storm-3d-motion/storm-3d-motion-proof.mp4 "$RUNNER_TEMP/public-3d-motion.mp4"
+          echo "Verified stable public direct original 3D MP4: $url" >> "$GITHUB_STEP_SUMMARY"
