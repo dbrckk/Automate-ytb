@@ -22,6 +22,7 @@ on:
       - "automate_ytb/forest_butterfly25d.py"
       - "automate_ytb/forest_captions25d.py"
       - "scripts/render_25d_narrated_story.py"
+      - "scripts/verify_release_video.py"
       - ".github/workflows/p3-5-narrated-forest.yml"
   pull_request:
     paths:
@@ -59,7 +60,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write  # required to publish permanent GitHub Release assets on main
 
 jobs:
   narrated-forest:
@@ -138,6 +139,36 @@ jobs:
           assert Path("out/p35/forest-narrated-en.mp4").stat().st_size>100000
           print(json.dumps(qa,indent=2))
           PY
+      - name: Publish durable HTTPS MP4 download (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          VIDEO="out/p35/forest-narrated-en.mp4"
+          REPORT="out/p35/forest-narrated-en.json"
+          TAG="short-${GITHUB_SHA:0:12}"
+          python scripts/verify_release_video.py "$VIDEO" "$REPORT"
+          sha256sum "$VIDEO" "$REPORT" > out/p35/SHA256SUMS.txt
+          gh release create "$TAG" "$VIDEO#forest-narrated-en.mp4" "$REPORT#forest-narrated-en.json" "out/p35/SHA256SUMS.txt#SHA256SUMS.txt" \
+            --title "Automate-ytb validated Short ${GITHUB_SHA:0:12}" \
+            --notes "Validated real Kokoro EN 2.5D forest Short. Public QA preview, NOT approved for social-platform publication. Permanent HTTPS MP4 and SHA-256 checksum. Built from commit ${GITHUB_SHA}." \
+            --target "$GITHUB_SHA" --latest=false
+          URL="https://github.com/${GH_REPO}/releases/download/${TAG}/forest-narrated-en.mp4"
+          # Do not claim delivery if the public link fails. Github release
+          # propagation can take a few seconds; bounded retries are deliberate.
+          for i in 1 2 3 4 5 6; do
+            if curl --fail --location --silent --show-error --range 0-1023 \
+                --max-time 30 --output /tmp/release-check.mp4 "$URL"; then
+              test -s /tmp/release-check.mp4
+              echo "VERIFIED_PERMANENT_VIDEO_URL=$URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Permanent GitHub Release MP4 URL not reachable"
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: p35-real-kokoro-narrated-forest-en
