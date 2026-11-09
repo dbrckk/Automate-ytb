@@ -87,7 +87,7 @@ class EventDirectedCameraTests(unittest.TestCase):
         self.assertLessEqual(y+690/zoom,930.)
 
     def test_cinematic_portrait_camera_tracks_downward_then_upward_action(self):
-        self.assertIn("vertical-p49",CAMERA_VERSION)
+        self.assertIn("vertical-p50-smooth",CAMERA_VERSION)
         initial_leader=camera_pose("leader",0.,7.)
         final_leader=camera_pose("leader",7.,7.)
         initial_return=camera_pose("return",0.,7.)
