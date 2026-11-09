@@ -20,11 +20,14 @@ DURATION=.18
 def focus_radius(t: float, beat: TimedBeat) -> float:
     if (type(t) not in (int,float) or not math.isfinite(t)
             or not isinstance(beat,TimedBeat)
-            or not beat.start<=t<=beat.end):
+            or not beat.start<=t<=beat.end+.50):
         raise ValueError("Invalid voice-paced cinematic lens clock")
     # Measured timeline beats use non-binary-exact decimal boundaries.
     # Snap the physically finished rack focus to exact zero at the cut end.
-    if beat.name=="discovery" or t-beat.start>=DURATION-1e-9:
+    # The measured narration leaves a natural 0.35s visual/audio tail
+    # after the final speech. Preserve a sharp held end without mistaking
+    # that intentional breathing room for an invalid shot clock.
+    if t>=beat.end or beat.name=="discovery" or t-beat.start>=DURATION-1e-9:
         return 0.
     q=max(0.,min(1.,(t-beat.start)/DURATION))
     # A smoothly decaying blur, strongest immediately AFTER the hard cut.
