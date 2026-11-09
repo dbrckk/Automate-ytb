@@ -29,12 +29,13 @@ def _smooth(q: float) -> float:
 
 
 @lru_cache(maxsize=24)
-def _intro_plate(lines: tuple[str, ...], font_size: int) -> Image.Image:
+def _intro_plate(lines: tuple[str, ...], font_size: int,
+                 english: bool = True) -> Image.Image:
     plate = Image.new("RGBA", PLATE_SIZE)
     d = ImageDraw.Draw(plate)
     d.rounded_rectangle((67, 112, 1013, 300), radius=24,
                         fill=(4, 14, 31, 183))
-    d.text((96, 130), "A CINEMATIC SCIENCE SHORT",
+    d.text((96, 130), "INSIDE THE STORM" if english else "DANS L'ORAGE",
            font=_font(25, True), fill=CYAN)
     for index, line in enumerate(lines):
         d.text((96, 177 + index*51), line,
@@ -111,7 +112,7 @@ def render_lightning_editorial(picture: Image.Image, *,
         release = 1.-_smooth((t-1.55)/.65)
         intro_opacity = reveal*release
         chapter_opacity = _smooth((t-1.63)/.65)
-        _overlay(picture, _intro_plate(title_lines, title_size), intro_opacity)
+        _overlay(picture, _intro_plate(title_lines, title_size, english), intro_opacity)
     else:
         chapter_opacity = .25+.75*_smooth(t/.27)
     _overlay(picture, _chapter_plate(beat, english), chapter_opacity)
