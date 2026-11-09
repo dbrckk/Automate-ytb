@@ -130,7 +130,7 @@ on:
         default: preview
       cinematic_3d:
         type: boolean
-        description: "Real Blender/Cycles CPU ocean or aurora stage; slower, for science Shorts only"
+        description: "Legacy disabled: this pipeline now produces 2.5D ONLY"
         default: false
 
 permissions:
@@ -157,8 +157,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
           python -m pip install -e .
+      - name: Validate shared 2.5D art-direction engine before costly rendering
+        run: |
+          python -m unittest discover -s tests -p test_shared_extreme25d.py -q
       - name: Prepare original script and validate authored science scene actions
         env:
+          YT_LEGACY_3D: ${{ inputs.cinematic_3d }}
           YT_SCRIPT: ${{ inputs.original_script }}
           YT_TOPIC: ${{ inputs.topic }}
           YT_CHARACTER: ${{ inputs.character }}
@@ -167,6 +171,13 @@ jobs:
           YT_STYLE: ${{ inputs.style }}
           YT_RESOLUTION: ${{ inputs.resolution }}
         run: |
+          # Production is strictly original 2.5D. Retain the old typed input
+          # only for backward-compatible workflow callers; reject use before
+          # Kokoro downloads or Blender installation.
+          if [ "$YT_LEGACY_3D" = "true" ]; then
+            echo "::error::3D has been retired. Select the 2.5D video pipeline." >&2
+            exit 2
+          fi
           mkdir -p build
           python - <<'PY'
           import os
