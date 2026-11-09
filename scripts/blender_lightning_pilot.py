@@ -260,7 +260,7 @@ def build():
     camera.data.lens=45
     scene.camera=camera
     scene.view_settings.view_transform='Standard'
-    return scene
+    return scene, cloud_vertices
 
 
 def main():
@@ -276,7 +276,7 @@ def main():
         parser.error('Unsafe pilot render dimensions or samples')
     dest=Path(config.out).resolve()
     dest.mkdir(parents=True,exist_ok=True)
-    scene=build()
+    scene, cloud_vertices=build()
     scene.cycles.samples=config.samples
     # Eight-sample Cycles previews were visibly grainy. Native Cycles
     # denoising is CPU/free and preserves authored geometry and lighting.
