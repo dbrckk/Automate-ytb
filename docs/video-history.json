@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 106,
+  "count": 107,
   "videos": [
+    {
+      "id": "science-preview-aurora-dance-42630444181/aurora-dance.mp4",
+      "topic": "aurora-dance",
+      "category": "science",
+      "releaseTag": "science-preview-aurora-dance-42630444181",
+      "publishedAt": "2026-11-09T14:05:33Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-aurora-dance-42630444181/aurora-dance.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-aurora-dance-42630444181",
+      "bytes": 9532612,
+      "sha256": "sha256:5a80ba6d7a1b0336ef217b222e2e635a07b1afad58e593425510997c61995f1b"
+    },
     {
       "id": "science-preview-rainbow-optics-42630443820/rainbow-optics.mp4",
       "topic": "rainbow-optics",
