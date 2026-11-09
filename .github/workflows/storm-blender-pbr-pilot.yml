@@ -1,0 +1,55 @@
+name: Prove original PBR 3D storm rendering with free Blender CPU
+
+# Isolated 3D feasibility gate. Produces a real image and evidence, NOT
+# a fake 3D screenshot or a replacement for the live Kokoro MP4 pipeline.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/storm-blender-pbr-pilot.yml"
+      - "scripts/blender_lightning_pilot.py"
+      - "scripts/verify_lightning_3d_pilot.py"
+      - "tests/test_lightning_3d_pilot.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-real-pbr-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free CPU Blender and Python image validator
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq blender
+          python -m pip install Pillow
+      - name: Compile Blender source and check evidence validator
+        run: |
+          python -m py_compile scripts/blender_lightning_pilot.py scripts/verify_lightning_3d_pilot.py
+          python -m unittest discover -s tests -p test_lightning_3d_pilot.py -v
+      - name: Actually render 3D clouds, metal, buildings and light in Cycles
+        run: |
+          blender --background --factory-startup -t 2 \
+            --python scripts/blender_lightning_pilot.py -- \
+            --out build/storm-pbr-3d --width 540 --height 690 --samples 8
+      - name: Verify Cycles manifest, 3D evidence and rendered pixels
+        run: |
+          python scripts/verify_lightning_3d_pilot.py \
+            --folder build/storm-pbr-3d | tee build/storm-pbr-3d/visual-review.json
+          echo "### Verified original Blender/Cycles PBR still" >> "$GITHUB_STEP_SUMMARY"
+          echo "Generated from actual meshes, PBR nodes and three lights." >> "$GITHUB_STEP_SUMMARY"
+          echo "The MP4 science pipeline was deliberately NOT switched to an unproven 3D renderer." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-storm-pbr-pilot
+          path: |
+            build/storm-pbr-3d/storm-pbr-pilot.png
+            build/storm-pbr-3d/manifest.json
+            build/storm-pbr-3d/visual-review.json
+          if-no-files-found: error
+          retention-days: 14
