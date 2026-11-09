@@ -1,7 +1,7 @@
 """Wind-deformed, rooted canopy and understory for the existing 2.5D forest.
 
 Warp the original authored RGBA tree/understory plates instead of painting
-floating duplicate foliage. Bicubic mesh deforms stems and leaves continuously;
+floating duplicate foliage. Bilinear mesh deforms stems and leaves continuously;
 the lower root zone remains still. Only the populated bands are transformed,
 and no additional compositor Z layer is required.
 """
@@ -89,7 +89,7 @@ def living_canopy(t: float, *, layer: str) -> Image.Image:
     original=_source(layer)
     deformed=original.transform(
         original.size, Image.Transform.MESH, _mesh(t,layer),
-        resample=Image.Resampling.BICUBIC)
+        resample=Image.Resampling.BILINEAR)
     image=Image.new("RGBA",SIZE)
     image.alpha_composite(deformed,(0,top))
     return image
