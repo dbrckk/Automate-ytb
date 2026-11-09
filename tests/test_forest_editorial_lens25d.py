@@ -42,6 +42,16 @@ class EditorialLensTests(unittest.TestCase):
         self.assertEqual(recovered.tobytes(),original.tobytes())
         self.assertEqual(original.getpixel((240,300)),(250,250,210))
 
+    def test_final_035s_voice_paced_tail_stays_sharp(self):
+        seq=story_timeline()
+        last=seq.beats[-1]
+        self.assertAlmostEqual(seq.duration-last.end,.35,places=5)
+        for t in (last.end,last.end+.02,seq.duration):
+            self.assertEqual(focus_radius(t,last),0.)
+        picture=Image.new("RGB",(1080,1920),(30,60,90))
+        self.assertEqual(editorial_focus(picture,t=seq.duration,beat=last).tobytes(),
+                         picture.tobytes())
+
     def test_bad_timestamps_and_non_rbg_frames_rejected(self):
         beat=story_timeline().beats[1]
         image=Image.new("RGB",(1080,1920))
