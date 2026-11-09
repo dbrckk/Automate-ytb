@@ -24,6 +24,9 @@ def catalog_from_releases(releases: list[dict]) -> dict:
     seen=set()
     for release in releases:
         tag=release.get("tag_name")
+        # Drafts may be visible to the token but not to public downloaders.
+        if release.get("draft") is True or not release.get("published_at"):
+            continue
         if not isinstance(tag,str) or tag in seen:
             continue
         videos=[a for a in release.get("assets",[])
@@ -99,25 +102,42 @@ def sync(repo: str, token: str) -> dict:
     catalog=catalog_from_releases(releases)
     if not catalog["videos"]:
         raise RuntimeError("Refusing to replace video history with empty list")
-    data=(json.dumps(catalog,ensure_ascii=False,indent=2)+"\n").encode("utf-8")
     for attempt in range(5):
+        # Concurrent forest/science deliveries can race. Preserve entries
+        # already committed by another job, rather than overwriting them
+        # with a stale release-list snapshot.
         try:
             existing=api("GET",f"contents/{CATALOG}?ref=main",token,repo)
             sha=existing["sha"]
             previous=base64.b64decode(existing["content"])
-            if previous==data:
-                return catalog
+            previous_catalog=json.loads(previous)
+            old=previous_catalog.get("videos",[])
+            if not isinstance(old,list):
+                raise ValueError("Existing video catalog has invalid entries")
+            by_id={e["id"]:e for e in old if isinstance(e,dict)
+                   and isinstance(e.get("id"),str)}
+            by_id.update({e["id"]:e for e in catalog["videos"]})
+            merged=dict(catalog)
+            merged["videos"]=sorted(by_id.values(),
+                                    key=lambda e:(e.get("publishedAt") or "",e["id"]),
+                                    reverse=True)
+            merged["count"]=len(merged["videos"])
         except urllib.error.HTTPError as exc:
             if exc.code!=404:
                 raise
             sha=None
+            previous=None
+            merged=catalog
+        data=(json.dumps(merged,ensure_ascii=False,indent=2)+"\\n").encode("utf-8")
+        if previous==data:
+            return merged
         payload={"message":"docs(video): refresh verified GitHub Releases history",
                  "branch":"main","content":base64.b64encode(data).decode("ascii")}
         if sha:
             payload["sha"]=sha
         try:
             api("PUT",f"contents/{CATALOG}",token,repo,payload)
-            return catalog
+            return merged
         except urllib.error.HTTPError as exc:
             if exc.code not in (409,422) or attempt==4:
                 raise
