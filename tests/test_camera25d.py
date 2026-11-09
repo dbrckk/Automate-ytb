@@ -87,7 +87,7 @@ class EventDirectedCameraTests(unittest.TestCase):
         self.assertLessEqual(y+690/zoom,930.)
 
     def test_cinematic_portrait_camera_tracks_downward_then_upward_action(self):
-        self.assertIn("vertical-p49",CAMERA_VERSION)
+        self.assertIn("vertical-p50-smooth",CAMERA_VERSION)
         initial_leader=camera_pose("leader",0.,7.)
         final_leader=camera_pose("leader",7.,7.)
         initial_return=camera_pose("return",0.,7.)
@@ -117,6 +117,22 @@ class EventDirectedCameraTests(unittest.TestCase):
                         self.assertLess(abs(y-previous[2]),8.)
                         self.assertLess(abs(zoom-previous[0]),.03)
                     previous=(zoom,x,y)
+
+    def test_return_stroke_camera_has_no_high_frequency_shake(self):
+        # Native 30 FPS output must not contain the previous 27 rad/s
+        # synthetic oscillation; this measures acceleration in source pixels.
+        for beat in ("return","connection","thunder"):
+            samples=[camera_pose(beat,frame/30.,7.)
+                     for frame in range(211)]
+            self.assertEqual(samples[0][1:],camera_pose(beat,0.,7.)[1:])
+            for axis in (1,2):
+                acceleration=[
+                    abs(samples[i+1][axis]-2*samples[i][axis]+samples[i-1][axis])
+                    for i in range(1,len(samples)-1)]
+                self.assertLess(max(acceleration),.35,
+                                f"{beat}: jerky optical camera axis {axis}")
+            self.assertLess(abs(samples[1][1]-samples[0][1]),.2)
+            self.assertLess(abs(samples[-1][1]-samples[-2][1]),.2)
 
     def test_invalid_script_timing_or_camera_subject_fails_closed(self):
         for bad in (math.nan,math.inf,-.01,1.01,True):

@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-CAMERA_VERSION = "science-stage-camera-v3-25d-action-follow-vertical-p49"
+CAMERA_VERSION = "science-stage-camera-v4-25d-action-follow-vertical-p50-smooth"
 SOURCE_SIZE = (1080, 930)
 OUTPUT_SIZE = (1080, 1380)
 # (start_zoom, end_zoom, start_x, end_x, start_y, end_y)
@@ -45,9 +45,19 @@ def camera_pose(beat: str, t: float, duration: float, *,
     zoom = start_zoom + (stop_zoom-start_zoom)*ease
     focus_x = x0 + (x1-x0)*ease + focus_offset[0]
     focus_y = y0 + (y1-y0)*ease + focus_offset[1]
+    # Preserve the established leader-down / return-up choreography.
+    # A small event-driven optical drift adds motion without the former
+    # 27 Hz return-stroke camera shake (visually perceived as frame jitter).
+    # Both the offset and its velocity are zero at shot boundaries.
+    drift = (p*p*(1-p)*(1-p))*16
     if beat == "return":
-        envelope = math.exp(-((p-.23)/.09)**2)
-        focus_x += 3.5*envelope*math.sin(t*27)
+        focus_x += 4.2*drift*math.sin(math.pi*p)
+        focus_y -= 1.4*drift*math.sin(math.pi*p)
+    elif beat == "connection":
+        focus_x -= 2.0*drift*math.sin(math.pi*p)
+        focus_y += 1.2*drift*math.sin(math.pi*p)
+    elif beat == "thunder":
+        focus_x += 1.6*drift*math.sin(math.pi*p)
     half_w = OUTPUT_SIZE[0]/zoom/2
     half_h = OUTPUT_SIZE[1]/zoom/2
     focus_x = max(half_w, min(SOURCE_SIZE[0]-half_w,focus_x))
