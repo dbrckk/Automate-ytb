@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 120,
+  "count": 121,
   "videos": [
+    {
+      "id": "forest-25d-42712311349/forest-discovery.mp4",
+      "topic": "forest-discovery",
+      "category": "animated-forest",
+      "releaseTag": "forest-25d-42712311349",
+      "publishedAt": "2026-11-09T22:36:06Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/forest-25d-42712311349/forest-discovery.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/forest-25d-42712311349",
+      "bytes": 6260664,
+      "sha256": "sha256:7867b3a2606be75bc98b450c6d8724329242501fd34c96b3c6ce3fa74d4b3d62"
+    },
     {
       "id": "science-preview-volcano-eruption-42712311803/volcano-eruption.mp4",
       "topic": "volcano-eruption",
