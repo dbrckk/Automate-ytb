@@ -18,11 +18,13 @@ on:
       - "tests/test_forest_organic_mesh25d.py"
       - "tests/test_forest_anatomical_limb25d.py"
       - "automate_ytb/forest_cinematic_world25d.py"
+      - "automate_ytb/forest_canopy_wind25d.py"
       - "automate_ytb/forest_cinematic_framing25d.py"
       - "automate_ytb/forest_reactive_meadow25d.py"
       - "tests/test_forest_cinematic_framing25d.py"
       - "tests/test_forest_reactive_meadow25d.py"
       - "tests/test_forest_cinematic_world25d.py"
+      - "tests/test_forest_canopy_wind25d.py"
       - "automate_ytb/forest_captions25d.py"
       - "scripts/render_25d_narrated_story.py"
       - "tests/test_forest_voice_timeline.py"
@@ -55,6 +57,7 @@ jobs:
           python -m unittest discover -s tests -p test_forest_voice_timeline.py -v
           python -m unittest discover -s tests -p test_forest_captions25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_world25d.py -v
+          python -m unittest discover -s tests -p test_forest_canopy_wind25d.py -v
           python -m unittest discover -s tests -p test_forest_cinematic_framing25d.py -v
           python -m unittest discover -s tests -p test_forest_reactive_meadow25d.py -v
           python -m unittest discover -s tests -p test_forest_character_art25d.py -v
@@ -80,6 +83,10 @@ jobs:
           assert qa["livingMeadow"]["version"].startswith("forest-25d-causal-living-meadow-p45")
           assert qa["livingMeadow"]["worldSpaceRootedPlants"]>=60
           assert qa["livingMeadow"]["causalPawWave"] is True
+          assert qa["livingCanopy"]["version"].startswith("forest-25d-rooted-mesh-canopy-wind-p46")
+          assert qa["livingCanopy"]["deformedLayers"]==["trees","understory"] or qa["livingCanopy"]["deformedLayers"]==["understory","trees"]
+          assert qa["livingCanopy"]["rootLocked"] is True
+          assert qa["livingCanopy"]["perFrameMeshResampling"] is True
           assert qa["artDirection"].startswith("original-forest-cinematic")
           assert qa["editorialTitles"] is False
           assert qa["characterMaterials"].startswith("original-p37")
