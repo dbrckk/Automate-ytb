@@ -23,6 +23,7 @@ on:
       - "automate_ytb/forest_captions25d.py"
       - "scripts/render_25d_narrated_story.py"
       - "scripts/verify_release_video.py"
+      - "tests/test_permanent_video_delivery.py"
       - ".github/workflows/p3-5-narrated-forest.yml"
   pull_request:
     paths:
@@ -81,6 +82,7 @@ jobs:
           python -m pip install --disable-pip-version-check -e '.[speech]'
       - name: Validate physical narration timing and rejection of fabricated PCM
         run: |
+          python -m unittest discover -s tests -p test_permanent_video_delivery.py -v
           python -m unittest discover -s tests -p test_forest_voice_timeline.py -v
           python -m unittest discover -s tests -p test_forest_soundscape25d.py -v
           python -m unittest discover -s tests -p test_forest_editorial_lens25d.py -v
