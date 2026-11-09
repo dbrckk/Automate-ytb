@@ -28,7 +28,7 @@ def overlay(beat: str, index: int, t: float, duration: float = 6.):
 
 class LightningEditorialTests(unittest.TestCase):
     def test_full_episode_hook_only_in_opening_not_each_scene(self):
-        self.assertIn("p49",VERSION)
+        self.assertIn("p51",VERSION)
         opening=overlay("charge",1,.4)
         chapter=overlay("charge",1,3.)
         next_shot=overlay("leader",2,3.)
@@ -38,10 +38,13 @@ class LightningEditorialTests(unittest.TestCase):
                             chapter.crop(band).tobytes())
         self.assertNotEqual(chapter.crop(band).tobytes(),
                             next_shot.crop(band).tobytes())
-        # Persistent chapter heading does not bounce or re-render differently
-        # inside an action. Camera moves, NOT the typography in the top band.
-        self.assertEqual(next_shot.crop(band).tobytes(),
-                         late_next_shot.crop(band).tobytes())
+        # Chapter headings are deliberately temporary, not frozen overlays.
+        # Once dismissed, the scene and audio-synced captions are unobstructed.
+        clean=Image.new("RGBA",(1080,1920),(7,18,38,255))
+        self.assertNotEqual(next_shot.crop(band).tobytes(),
+                            late_next_shot.crop(band).tobytes())
+        self.assertEqual(late_next_shot.crop(band).tobytes(),
+                         clean.crop(band).tobytes())
         self.assertEqual(overlay("leader",2,3.).tobytes(),
                          next_shot.tobytes())
 
@@ -56,7 +59,8 @@ class LightningEditorialTests(unittest.TestCase):
         self.assertNotEqual(intro.tobytes(),base.tobytes())
         self.assertNotEqual(before_crossfade.tobytes(),crossfade.tobytes())
         self.assertNotEqual(crossfade.tobytes(),after.tobytes())
-        self.assertEqual(after.tobytes(),overlay("charge",1,5.).tobytes())
+        self.assertNotEqual(after.tobytes(),overlay("charge",1,5.).tobytes())
+        self.assertEqual(overlay("charge",1,5.).tobytes(),base.tobytes())
 
     def test_real_world_and_subtitle_bands_are_byte_identical(self):
         for beat,idx,t in (("charge",1,.5),("leader",2,2.),
@@ -71,6 +75,23 @@ class LightningEditorialTests(unittest.TestCase):
             self.assertEqual(edited.crop((0,335,1080,1920)).tobytes(),
                              base.crop((0,335,1080,1920)).tobytes())
             self.assertEqual(edited.getchannel("A").getextrema(),(255,255))
+
+    def test_every_chapter_disappears_without_adding_a_hard_cut(self):
+        base=Image.new("RGBA",(1080,1920),(7,18,38,255))
+        band=(65,105,1020,305)
+        for i,beat in enumerate(BEATS,1):
+            with self.subTest(beat=beat):
+                early=overlay(beat,i,.7)
+                mid=overlay(beat,i,2.8)
+                end=overlay(beat,i,3.2)
+                last=overlay(beat,i,5.9)
+                self.assertNotEqual(early.crop(band).tobytes(),
+                                    base.crop(band).tobytes())
+                self.assertNotEqual(mid.crop(band).tobytes(),
+                                    base.crop(band).tobytes())
+                self.assertEqual(end.tobytes(),base.tobytes())
+                self.assertEqual(last.tobytes(),base.tobytes())
+                self.assertEqual(overlay(beat,i,0.).tobytes(),base.tobytes())
 
     def test_cached_plates_never_mutate_during_alpha_fades(self):
         intro=_intro_plate(TITLE,47)
