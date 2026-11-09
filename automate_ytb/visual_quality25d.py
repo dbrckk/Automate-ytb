@@ -47,12 +47,14 @@ def analyze_layer(image: Image.Image, *, name: str = "asset") -> dict:
     color=material.convert("RGB")
     highpass=ImageChops.difference(color,
              color.filter(ImageFilter.GaussianBlur(1.8))).convert("L")
-    total=count=0
+    # Clouds, fog, water and glass are legitimate semi-transparent
+    # authored materials: alpha-weighted detail must not discard them.
+    weighted_total=weighted_pixels=0
     for value,mask in zip(highpass.getdata(),interior.getdata()):
-        if mask>=192:
-            total+=value
-            count+=1
-    detail=round(total/count,3) if count else 0.
+        if mask>=20:
+            weighted_total+=value*mask
+            weighted_pixels+=mask
+    detail=round(weighted_total/weighted_pixels,3) if weighted_pixels else 0.
     channels=rgb.split()
     chroma=ImageChops.difference(channels[0],channels[2])
     chroma_variation=round(ImageStat.Stat(chroma).stddev[0],3)
