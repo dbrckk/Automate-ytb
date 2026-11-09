@@ -24,9 +24,9 @@ def validate(folder: Path) -> dict:
         raise ValueError("Wrong renderer or source domain")
     for name, minimum, maximum in (
         ("width", 320, 900), ("height", 400, 1380),
-        ("samples", 4, 16), ("meshObjects", 100, 2000),
+        ("samples", 4, 64), ("meshObjects", 100, 2000),
         ("lightObjects", 3, 16), ("proceduralMaterials", 8, 64),
-        ("actual3dCloudMeshes", 40, 100),
+        ("actual3dCloudMeshes", 3, 3),\n        ("actual3dCloudLobes", 42, 42),\n        ("actual3dCloudVertices", 1000, 500000),
     ):
         value = data.get(name)
         if type(value) is not int or not minimum <= value <= maximum:
