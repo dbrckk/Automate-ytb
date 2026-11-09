@@ -160,6 +160,7 @@ jobs:
       - name: Validate shared 2.5D art-direction engine before costly rendering
         run: |
           python -m unittest discover -s tests -p test_shared_extreme25d.py -q
+          python -m unittest discover -s tests -p test_shared_surface25d.py -q
       - name: Prepare original script and validate authored science scene actions
         env:
           YT_LEGACY_3D: ${{ inputs.cinematic_3d }}
