@@ -17,7 +17,7 @@ Nouvel outil `scripts/blender_lightning_pilot.py` :
   avec roughness/metallic/bump procédural, sol humide à microrelief.
 - Pylône construit en dizaines de barres et contreventements 3D ; l'éclair
   est une spline 3D à ramifications lumineuses.
-- **42 meshes de nuages** irréguliers, disposés dans trois profondeurs
+- **3 nuages-meshes fusionnés à partir de 42 lobes implicites** irréguliers, disposés dans trois profondeurs
   spatiales, éclairés par les mêmes sources que le terrain.
 - Image PNG originale 540 × 690, manifeste SHA256 et métriques d'objets.
   Aucun modèle ni texture importés, aucun service payant.
