@@ -52,6 +52,11 @@ def block(name, position, scale, mat):
     obj.dimensions = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     obj.data.materials.append(mat)
+    if name.startswith('Building'):
+        edges=obj.modifiers.new('Machined edge bevel','BEVEL')
+        edges.width=.034
+        edges.segments=2
+        obj.modifiers.new('Facet-weighted normals','WEIGHTED_NORMAL')
     return obj
 
 
@@ -124,13 +129,17 @@ def build():
     scene.render.engine='CYCLES'
     scene.cycles.device='CPU'
     scene.cycles.max_bounces=3
-    scene.world.color=(.025,.039,.095)
-    slate=shader('Coated slate terrain roughness microbump',(.045,.065,.090),rough=.27,metal=.21,bump=.027)
+    scene.world.use_nodes=True
+    world_bg=scene.world.node_tree.nodes.get('Background')
+    world_bg.inputs['Color'].default_value=(.012,.019,.058,1.)
+    world_bg.inputs['Strength'].default_value=.43
+    slate=shader('Coated slate terrain roughness microbump',(.045,.065,.090),rough=.23,metal=.28,bump=.019)
+    puddle=shader('Reflective puddles with smooth irregular margins',(.023,.043,.068),rough=.095,metal=.48,bump=.006)
     steel=shader('Brushed aluminium PBR',(.22,.30,.35),rough=.33,metal=.81,bump=.008)
     steel_dark=shader('Dark galvanized braces',(.067,.11,.14),rough=.44,metal=.72,bump=.009)
     building=shader('Wet concrete procedural bump',(.045,.067,.080),rough=.59,metal=.04,bump=.019)
-    cloud_mat=shader('Cumulonimbus illuminated textured microrelief',(.13,.19,.26),rough=.96,bump=.10)
-    cloud_shadow=shader('Storm-cloud self-shaded lower faces',(.078,.092,.15),rough=.98,bump=.08)
+    cloud_mat=shader('Cumulonimbus illuminated textured microrelief',(.12,.17,.25),rough=.92,bump=.045)
+    cloud_shadow=shader('Storm-cloud self-shaded lower faces',(.061,.082,.15),rough=.97,bump=.036)
     amber=shader('Warm amber industrial windows',(.95,.38,.12),emission=2.5)
     blue=shader('Cool industrial windows',(.24,.60,.85),emission=.95)
     hot=shader('Electrical plasma luminous core',(.72,.88,1.0),emission=8.0)
@@ -138,6 +147,18 @@ def build():
     red=shader('Mast aviation light',(.98,.16,.085),emission=2.0)
     # Actual 3D reflective terrain; not a 2D gradient or PNG plate.
     block('3D sea-level wet city substrate',(0,2,-.13),(36,26,.2),slate)
+    puddle_rng=random.Random(1772)
+    for j in range(30):
+        px=puddle_rng.uniform(-7.,7.)
+        py=puddle_rng.uniform(-3.4,3.5)
+        radius=puddle_rng.uniform(.22,.73)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16,radius=radius,
+                                            depth=.008,
+                                            location=(px,py,-.023))
+        pool=bpy.context.object
+        pool.name='Wet specular puddle %02d'%j
+        pool.scale.y=puddle_rng.uniform(.33,.83)
+        pool.data.materials.append(puddle)
     rng=random.Random(38017)
     for i in range(19):
         x=-8.+i*.84
@@ -145,6 +166,15 @@ def build():
         h=.85+rng.random()*2.9
         width=.48+rng.random()*.41
         block('Building %02d'%i,(x,y,h/2),(width,.76,h),building)
+        if i%3==0:
+            block('Rooftop ventilation duct %02d'%i,
+                  (x+.06,y,h+.17),(.24,.27,.29),steel_dark)
+            bar('Roof aerial %02d'%i,(x-.16,y,h),(x-.16,y,h+.65),.018,steel)
+        if i%4==1:
+            block('Industrial cantilever roof %02d'%i,
+                  (x,y-.09,h+.02),(width+.22,1.00,.09),steel_dark)
+            bar('Exhaust stack %02d'%i,
+                (x+.13,y+.12,h+.05),(x+.13,y+.12,h+.57),.055,steel)
         for floor in range(1,int(h/.36)):
             if (floor+i)%3==0:
                 block('Light %02d %02d'%(i,floor),
@@ -229,6 +259,11 @@ def main():
     dest.mkdir(parents=True,exist_ok=True)
     scene=build()
     scene.cycles.samples=config.samples
+    # Eight-sample Cycles previews were visibly grainy. Native Cycles
+    # denoising is CPU/free and preserves authored geometry and lighting.
+    for layer in scene.view_layers:
+        if hasattr(layer, 'cycles') and hasattr(layer.cycles, 'use_denoising'):
+            layer.cycles.use_denoising=True
     scene.render.resolution_x=config.width
     scene.render.resolution_y=config.height
     scene.render.resolution_percentage=100
