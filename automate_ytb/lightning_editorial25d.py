@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw
 from .science_motion import _font
 from .science_lightning import BADGES, BEATS
 
-VERSION = "lightning-cinematic-one-shot-hook-compact-chapters-p49-v1"
+VERSION = "lightning-cinematic-one-shot-hook-temporary-chapters-p51-v1"
 PLATE_SIZE = (1080, 335)
 WHITE = (239, 248, 252, 255)
 CYAN = (147, 222, 244, 255)
@@ -106,13 +106,19 @@ def render_lightning_editorial(picture: Image.Image, *,
             or type(title_size) is not int or not 22 <= title_size <= 48):
         raise ValueError("Invalid cinematic lightning editorial state")
     if scene_index == 1:
-        # Full hook exists ONLY in opening shot; crossfade into the chapter
-        # heading without a jump or a title overlay covering every shot.
+        # Full hook exists ONLY in opening shot. The chapter marker then
+        # disappears as well: the moving world gets an unobstructed hero shot.
         reveal = _smooth(t/.30)
         release = 1.-_smooth((t-1.55)/.65)
         intro_opacity = reveal*release
         chapter_opacity = _smooth((t-1.63)/.65)
         _overlay(picture, _intro_plate(title_lines, title_size, english), intro_opacity)
     else:
-        chapter_opacity = .25+.75*_smooth(t/.27)
+        # The physical scene, not a persistent title card, is the focus.
+        # Each shot opens with a brief location/context label, then a clean
+        # upper frame for the action. Never alter the audio-timed captions.
+        chapter_opacity = _smooth(t/.32)
+    # Softly dismiss chapter typography by 3.15 s, leaving most of each
+    # 6-second shot free of static boxes; use only bounded C1 transitions.
+    chapter_opacity *= 1.-_smooth((t-2.45)/.70)
     _overlay(picture, _chapter_plate(beat, english), chapter_opacity)
