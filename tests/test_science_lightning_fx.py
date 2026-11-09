@@ -9,6 +9,7 @@ from PIL import Image, ImageChops, ImageDraw
 from automate_ytb.science_lightning_fx import (
     SIZE, cloud_volume, paint_environment, paint_terrain,
     bloom_electric_channel, paint_foreground_weather,
+    paint_reactive_storm_light, _reactive_light_masks,
 )
 from automate_ytb.science_lightning import PATH
 
@@ -54,6 +55,67 @@ class LightningCinematicFXTests(unittest.TestCase):
             a.convert("RGB"),first.convert("RGB")).getbbox())
         self.assertEqual(a.getchannel("A").getextrema(),(255,255))
         self.assertEqual(b.getchannel("A").getextrema(),(255,255))
+
+    def test_original_flash_relights_both_clouds_and_ground(self):
+        dark=Image.new("RGBA",SIZE,(8,20,38,255))
+        flash=dark.copy()
+        paint_reactive_storm_light(flash,"return",1.4,7.)
+        self.assertGreater(flash.getpixel((600,240))[0],
+                           dark.getpixel((600,240))[0]+25)
+        self.assertGreater(flash.getpixel((700,845))[1],
+                           dark.getpixel((700,845))[1]+25)
+        self.assertEqual(flash.getchannel("A").getextrema(),(255,255))
+
+    def test_flash_reuses_exact_existing_bolt_pulses_and_is_deterministic(self):
+        dark=Image.new("RGBA",SIZE,(8,20,38,255))
+        before=dark.copy()
+        at_strike=dark.copy()
+        repeated=dark.copy()
+        after=dark.copy()
+        paint_reactive_storm_light(before,"return",0.,7.)
+        paint_reactive_storm_light(at_strike,"return",1.4,7.)
+        paint_reactive_storm_light(repeated,"return",1.4,7.)
+        paint_reactive_storm_light(after,"return",7.,7.)
+        self.assertEqual(before.tobytes(),dark.tobytes())
+        self.assertEqual(after.tobytes(),dark.tobytes())
+        self.assertEqual(at_strike.tobytes(),repeated.tobytes())
+
+    def test_non_bolt_beats_never_create_extra_flashes(self):
+        baseline=Image.new("RGBA",SIZE)
+        for beat in ("charge","thunder"):
+            frame=baseline.copy()
+            paint_reactive_storm_light(frame,beat,3.5,7.)
+            self.assertEqual(frame.tobytes(),baseline.tobytes())
+        # Our layer can be composited directly into the transparent 2.5D
+        # stage before the electric action without making it opaque.
+        layer=baseline.copy()
+        paint_reactive_storm_light(layer,"return",1.4,7.)
+        self.assertEqual(layer.getpixel((0,0))[3],0)
+        self.assertGreater(layer.getpixel((700,845))[3],0)
+
+    def test_spatial_flash_fields_are_cached_and_separated_by_depth(self):
+        clouds,wet=_reactive_light_masks()
+        self.assertIs(clouds,_reactive_light_masks()[0])
+        self.assertIs(wet,_reactive_light_masks()[1])
+        self.assertEqual(clouds.size,SIZE)
+        self.assertGreater(clouds.getpixel((600,240)),
+                           clouds.getpixel((600,845)))
+        self.assertGreater(wet.getpixel((700,845)),
+                           wet.getpixel((700,240)))
+
+    def test_flash_rejects_invalid_dimensions_and_clock(self):
+        cases=(
+            (Image.new("RGB",SIZE),"return",1.,7.),
+            (Image.new("RGBA",(720,1280)),"return",1.,7.),
+            (Image.new("RGBA",SIZE),"unknown",1.,7.),
+            (Image.new("RGBA",SIZE),"return",float("nan"),7.),
+            (Image.new("RGBA",SIZE),"return",1.,0.),
+            (Image.new("RGBA",SIZE),"return",8.,7.),
+        )
+        for frame,beat,t,duration in cases:
+            with self.subTest(beat=beat,t=t,duration=duration):
+                with self.assertRaises(ValueError):
+                    paint_reactive_storm_light(frame,beat,t,duration)
 
     def test_invalid_scene_dimensions_are_rejected(self):
         with self.assertRaises(ValueError):
