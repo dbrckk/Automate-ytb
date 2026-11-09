@@ -25,6 +25,7 @@ from .forest_cinematic_world25d import (plates as cinematic_plates,
                                        drifting_clouds, living_light)
 from .forest_cinematic_framing25d import cinematic_reframe
 from .forest_reactive_meadow25d import meadow_plate
+from .forest_canopy_wind25d import living_canopy
 from .forest_character_art25d import (
     VERSION as CHARACTER_ART_VERSION, finish_sprite, facial_pose,
     draw_plush_leg, scarf_tip,
@@ -168,8 +169,10 @@ def frame(t: float, *, kind: str = "fox",
     scene.add(Layer25D("clouds",10,drifting_clouds(t),parallax_x=.18))
     scene.add(Layer25D("ridges",20,landscape["ridges"],parallax_x=.36))
     scene.add(Layer25D("sunbeams",25,landscape["sunbeams"],parallax_x=.42))
-    scene.add(Layer25D("trees",30,landscape["trees"],parallax_x=.58))
-    scene.add(Layer25D("understory",35,landscape["understory"],parallax_x=.67))
+    # The original trees and shrubs flex with world-space gusts, rooted
+    # beneath the hero. Their existing Z ordering/parallax is unchanged.
+    scene.add(Layer25D("trees",30,living_canopy(t,layer="trees"),parallax_x=.58))
+    scene.add(Layer25D("understory",35,living_canopy(t,layer="understory"),parallax_x=.67))
     scene.add(Layer25D("meadow",40,landscape["meadow"],parallax_x=.72))
     # Ground-rooted wind and paw waves live at z50, BEHIND the physical
     # legs/animal at z60. The original ground shadow is then composited in
