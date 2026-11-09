@@ -8,7 +8,7 @@ from PIL import Image, ImageChops, ImageDraw
 
 from automate_ytb.finish25d import (
     VERSION, LOOKS, Look25D, artwork_diagnostics, finish_world,
-    science_look,
+    science_look, frame_layout_diagnostics,
 )
 
 
@@ -85,6 +85,20 @@ class Universal2p5DQualityTests(unittest.TestCase):
         self.assertGreater(report["edgeDetail"],record["edgeDetail"])
         self.assertGreater(report["paletteFamilies"],record["paletteFamilies"])
         self.assertFalse(report["editorialApproval"])
+
+    def test_large_slide_panel_is_detected_but_no_false_quality_approval(self):
+        import PIL.ImageDraw
+        framed=Image.new("RGB",(192,320),(12,32,49))
+        d=PIL.ImageDraw.Draw(framed)
+        d.rectangle((12,72,180,224),outline=(211,223,235),width=3)
+        metrics=frame_layout_diagnostics(framed)
+        self.assertTrue(metrics["suspectedDominantRectangularFrame"])
+        self.assertTrue(metrics["humanReviewRequired"])
+        scenery=Image.new("RGB",(192,320),(32,77,104))
+        self.assertFalse(frame_layout_diagnostics(scenery)[
+            "suspectedDominantRectangularFrame"])
+        with self.assertRaises(ValueError):
+            frame_layout_diagnostics(Image.new("RGB",(32,32)))
 
     def test_no_effect_is_ever_allowed_to_damage_unsafe_inputs(self):
         picture=self._frame()

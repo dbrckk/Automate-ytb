@@ -19,7 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps, ImageStat, 
 from .media_qa import probe_media
 from .production import _sha, _write_json, load_plan
 from .studio import font
-from .finish25d import artwork_diagnostics
+from .finish25d import artwork_diagnostics, frame_layout_diagnostics
 
 PAGE_W, PAGE_H = 1120, 2030
 TILE_W, TILE_H = 520, 418
@@ -251,6 +251,7 @@ def generate(*, plan: Path, video: Path, destination: Path,
               round(cx*.08),round(cy*.16),
               round(cx*.92),round(cy*.85))
         art_signals=artwork_diagnostics(image,bounds=hero)
+        art_signals["sceneLayout"]=frame_layout_diagnostics(image)
         composition = _portrait_band_metrics(image) if portrait else None
         if composition and composition["suspectedBandedComposition"]:
             suspect_banded += 1
@@ -317,6 +318,14 @@ def generate(*, plan: Path, video: Path, destination: Path,
         warnings.append(
             "Possible blurred-fill horizontal strip in portrait video: "
             "inspect top/bottom detail and reframe original action in 9:16")
+    framed=sum(
+        x["artDirection"]["sceneLayout"][
+            "suspectedDominantRectangularFrame"] for x in entries)
+    if len(entries)>=3 and framed>=(len(entries)+1)//2:
+        warnings.append(
+            "Several scenes have dominant paired rectangular panels: "
+            "review slideshow/infographic appearance and replace flat "
+            "source art with authored moving 2.5D world layers.")
     if len(entries) >= 4 and duplicates >= len(entries)-1:
         warnings.append("Sampled scenes are visually identical; check scene transitions")
     destination = destination.resolve()
@@ -361,6 +370,10 @@ def generate(*, plan: Path, video: Path, destination: Path,
                 for x in entries),
             "flatGeometry": sum(
                 "flat-color-geometry" in x["artDirection"]["reviewSignals"]
+                for x in entries),
+            "dominantFramedScenes": sum(
+                x["artDirection"]["sceneLayout"][
+                    "suspectedDominantRectangularFrame"]
                 for x in entries),
             "notAnAutomaticAestheticApproval": True,
         },

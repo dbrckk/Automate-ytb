@@ -75,3 +75,15 @@ anomaly warnings and manual art review.
 P5.9: production reliability, multi-genre scene recipes, caching,
 regression suites, permanent release links and editorial signoff;
 no paid media credits, unlicensed artwork or claims of false AAA quality.
+
+## P5.5 quality QA correction from actual encoded film
+
+A real 30.04-second 1080x1920 Kokoro ocean-currents preview passed H264,
+AAC, timing and old 'flat asset' numerical signals, **but still looked like
+five infographic slides**. Its huge left/right panel borders are present in
+each decoded beat. The generic visual QA now reports paired dominant panel
+rails separately from color and edge complexity and requests visual review.
+This is an honest diagnostic, not an invented replacement for the flat
+assets. It is calibrated against this ocean preview, the rendered 2.5D
+forest video and the submitted lightning video; the panel detector is
+**advisory only** because genuine architecture can contain rectangles.

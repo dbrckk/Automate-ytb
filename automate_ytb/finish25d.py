@@ -150,6 +150,46 @@ def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
     picture.paste(result,bounds)
 
 
+
+def frame_layout_diagnostics(picture:Image.Image) -> dict:
+    """Find persistent panel rails that make moving footage look like slides.
+
+    Calibrated against decoded 360x640 ocean-storyboard, real 2.5D forest
+    and lightning frames. This is descriptive art QA only: architecture,
+    framing devices and scientific diagrams can intentionally use rectangles.
+    Detect paired left/right high-contrast rails, not text through OCR.
+    """
+    if (not isinstance(picture,Image.Image) or picture.mode not in ("RGB","RGBA")
+            or picture.width < 128 or picture.height < 128):
+        raise ValueError("Invalid decoded art-direction layout frame")
+    from PIL import ImageChops
+    w,h=picture.size
+    portrait=h>w
+    y0=round(h*(.29 if portrait else .20))
+    y1=round(h*(.77 if portrait else .82))
+    gray=picture.convert("L")
+    difference=ImageChops.difference(
+        gray.crop((1,y0,w,y1)),gray.crop((0,y0,w-1,y1)))
+    # Spatial BOX average is deterministic, cheap and captures long
+    # straight borders rather than individual high-contrast text glyphs.
+    columns=list(difference.resize(
+        (w-1,1),Image.Resampling.BOX).tobytes())
+    margin=max(2,round(w*.04))
+    side=max(margin+4,round(w*.24))
+    left=max(columns[margin:side])
+    right=max(columns[w-side:w-margin])
+    interior=sorted(columns[side:w-side])
+    baseline=interior[len(interior)//2]
+    panel=bool(min(left,right)>=max(28,3*baseline))
+    return {
+        "suspectedDominantRectangularFrame":panel,
+        "leftRailContrast":left,
+        "rightRailContrast":right,
+        "medianInteriorContrast":baseline,
+        "method":"decoded-frame-paired-long-border-advisory-v1",
+        "humanReviewRequired":True,
+    }
+
 def artwork_diagnostics(picture:Image.Image, *,bounds:tuple[int,int,int,int]
                         ) -> dict:
     """Objective descriptive art signals, never a fake AAA quality score."""
