@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 122,
+  "count": 123,
   "videos": [
+    {
+      "id": "science-preview-upward-lightning-42712311434/upward-lightning.mp4",
+      "topic": "upward-lightning",
+      "category": "science",
+      "releaseTag": "science-preview-upward-lightning-42712311434",
+      "publishedAt": "2026-11-09T22:37:25Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-upward-lightning-42712311434/upward-lightning.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-upward-lightning-42712311434",
+      "bytes": 16427051,
+      "sha256": "sha256:19186f6637ee00cc1abcbe2981b7528ad518c70a8d401e973bc7533169b2092d"
+    },
     {
       "id": "science-preview-earth-stop-42712311452/earth-stop.mp4",
       "topic": "earth-stop",
