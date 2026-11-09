@@ -1,0 +1,50 @@
+name: Verify original upward-lightning science Short
+
+# New original science episode, distinct from previous lightning-storm video.
+# This workflow renders genuine Kokoro PCM and 30fps native portrait motion.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/upward-lightning-original-short.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-verify:
+    name: Render 30s original upward lightning with real Kokoro
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Can Lightning Travel Upward From a Tower?"
+      original_script: >-
+        Inside a storm cloud, collisions separate electric charges and build a powerful voltage.
+        As the electric field intensifies, a branching leader can descend toward a tall tower.
+        From the tower tip, upward streamers rise and may connect with the approaching channel.
+        Once connected, an intense return stroke produces the brilliant lightning flash we see.
+        The rapid heating of air launches a shock wave that reaches our ears as thunder.
+      character: "Original 2.5D storm cloud, electric channel and grounded radio tower"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: expressive
+      soundtrack: ambient
+      transition: adaptive
+      caption_timing: audio
+      duration_seconds: 30
+      shot_seconds: 6
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm real encoded media and complete visual QA
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm preview is not social-published
+        run: |
+          echo "Original upward-lightning 1080x1920 H264/AAC MP4 rendered with Kokoro." >> "$GITHUB_STEP_SUMMARY"
+          echo "Download via GitHub Releases after the independent stable-delivery workflow succeeds." >> "$GITHUB_STEP_SUMMARY"
+          echo "Human editorial review required before TikTok/YouTube publication." >> "$GITHUB_STEP_SUMMARY"
