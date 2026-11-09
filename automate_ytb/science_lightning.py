@@ -19,7 +19,7 @@ from .scene25d import Layer25D, Scene25D
 from .camera25d import shot_camera, point_on_path
 from .science_lightning_fx import (
     environment_plates, paint_terrain, bloom_electric_channel,
-    paint_foreground_weather,
+    paint_foreground_weather, paint_reactive_storm_light,
 )
 
 BEATS=("charge","leader","connection","return","thunder")
@@ -339,6 +339,12 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
         _return(d,action_t,duration,english)
     else:
         _thunder(d,action_t,duration,english)
+    # The animated clouds and wet terrain are illuminated by the same
+    # electrical event as the channel. Compose between terrain and action,
+    # not over the white bolt: its luminous core remains readable.
+    responsive=Image.new("RGBA",(1080,SOURCE_HEIGHT))
+    paint_reactive_storm_light(responsive,beat,action_t,duration)
+    stage.add(Layer25D("reactive-atmosphere-and-wet-ground",65,responsive))
     stage.add(Layer25D("electric-action",70,actions))
     light=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     bloom_electric_channel(
