@@ -112,6 +112,7 @@ def electrical_charges():
         ob=bpy.context.object
         ob.name="Charge ion particle %02d"%i
         ob.data.materials.append(cyan if i%2 else amber)
+        ob["base_z"]=float(z)
         objects.append(ob)
     return objects
 
@@ -193,8 +194,8 @@ def pose(beat: str, progress: float, charges, ring) -> dict:
         ob.hide_render=beat not in ("return","thunder") or (beat=="thunder" and progress>.50)
     for j,ob in enumerate(charges):
         ob.hide_render=beat!="charge"
-        ob.location.z += .09*math.sin(progress*3+1.7*j)
-    # Restoring per frame avoids cumulative charge drift across shots.
+        ob.location.z = ob["base_z"]+.09*math.sin(progress*3+1.7*j)
+    # Absolute placement avoids cumulative frame-to-frame charge drift.
     energy=230+330*power
     bpy.data.objects["Blue-white lightning motivated key"].data.energy=energy
     bpy.data.objects["Warm industrial sodium backlight"].data.energy=930
