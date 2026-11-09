@@ -8,6 +8,8 @@
 
 **Feuille de route vérifiable : [plan de travail V2 et critères d'acceptation](docs/QUALITY_ROADMAP.md).**
 
+**Téléchargement vidéo stable (Android / PC) : [guide GitHub Releases, contrôles SHA-256 et liens directs vérifiés](docs/LIVRAISON_MP4_PERMANENTE.md).** Pour les vidéos narrées 2.5D et les previews scientifiques validées, les liens définitifs sont des assets de GitHub Releases, et non des `sandbox:/mnt/data` ou des ZIP Actions temporaires. Les nouveaux moteurs doivent intégrer cette étape avant de déclarer un MP4 livré.
+
 Première version fonctionnelle inspirée des **étapes** de la démonstration vidéo : étudier une niche, définir un concept, écrire une narration, composer des scènes, produire une voix, assembler une vidéo, créer des miniatures et préparer sa diffusion. Ce dépôt **ne copie pas** les vidéos ni les personnages de Murph.
 
 Voir aussi [les décors originaux guidés par le scénario](docs/STORY_LANDSCAPES.md), avec paysages persistants en mode cartoon.
@@ -19,7 +21,7 @@ Voir aussi [les décors originaux guidés par le scénario](docs/STORY_LANDSCAPE
 - **Storyboard** : scènes et illustrations originales générées localement avec Pillow. Des images détenues ou licenciées peuvent être placées dans `assets/scene-01.png`, etc.
 - **Montage** : assemblage FFmpeg des scènes avec transitions simples, audio narratif fourni ou TTS eSpeak, sous-titres SRT, et trois miniatures.
 - **Livrables** : projet JSON, narration, plan de montage, vidéo MP4, miniatures, métadonnées YouTube et liste de contrôles éditoriaux.
-- **Depuis Android** : lancer les workflows `Actions` sur GitHub puis récupérer l’artefact téléchargeable. Aucun PC personnel obligatoire.
+- **Depuis Android** : lancer les workflows `Actions` sur GitHub ; les artefacts Actions restent des brouillons temporaires. Pour un téléchargement durable, utiliser les MP4 vérifiés dans [GitHub Releases](https://github.com/dbrckk/Automate-ytb/releases). Aucun PC personnel obligatoire.
 
 La V1 **n’inclut pas** de génération cinématique IA photoréaliste, de clone de voix, de recherche factuelle IA sans vérification, de montage identique à la vidéo de référence ni de publication automatique YouTube. Les visuels locaux sont des cartes graphiques originales qui servent de base au montage. Pour des images et animations plus sophistiquées, utiliser des fournisseurs avec droits d’utilisation vérifiés et injecter les médias approuvés dans le storyboard.
 

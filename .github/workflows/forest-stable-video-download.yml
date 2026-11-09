@@ -1,0 +1,111 @@
+name: Stable permanent MP4 downloads for validated forest Shorts
+
+# Actions artifacts expire. Release assets have versioned public links.
+# A GitHub prerelease is technical delivery ONLY, never TikTok/YouTube posting.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/forest-stable-video-download.yml"
+  workflow_run:
+    workflows:
+      - "Verify narrated 2.5D forest short with real Kokoro PCM"
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Successful verified Kokoro run ID on main; legacy approved P4.7 run also supported"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: forest-stable-video-${{ github.event.workflow_run.id || inputs.source_run_id || 'p47-bootstrap' }}
+  cancel-in-progress: false
+
+jobs:
+  permanent-download:
+    if: >-
+      ${{ github.event_name != 'workflow_run' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.head_branch == 'main' &&
+           github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # The workflow-file push publishes previously validated P4.7 once.
+      # Future main-branch Kokoro jobs publish automatically on success.
+      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || github.event_name == 'workflow_dispatch' && inputs.source_run_id || '42593121306' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install free MP4 QA tools
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 180s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq ffmpeg
+          fi
+      - name: Allow only successful trustworthy first-party Kokoro source runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]{5,15}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > "$RUNNER_TEMP/forest-source.json"
+          jq -e --arg repo "$GITHUB_REPOSITORY" --argjson id "$SOURCE_RUN_ID" '
+            .id == $id and
+            .status == "completed" and .conclusion == "success" and
+            .name == "Verify narrated 2.5D forest short with real Kokoro PCM" and
+            .head_repository.full_name == $repo and
+            ((.head_branch == "main" and .event == "push") or
+             (.id == 42593121306 and .event == "pull_request"))
+          ' "$RUNNER_TEMP/forest-source.json" >/dev/null
+      - name: Download original confirmed video and matching SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$SOURCE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "p35-real-kokoro-narrated-forest-en" --dir incoming
+      - name: Validate genuine audio, video, signature and full decode
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/prepare_forest_release.py \
+            --artifact incoming --output delivered --run-id "$SOURCE_RUN_ID"
+      - name: Create immutable, public, non-social-network GitHub Release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="forest-25d-${SOURCE_RUN_ID}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              "delivered/forest-discovery.mp4" \
+              "delivered/forest-discovery-manifest.json" \
+              --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "UNREVIEWED 2.5D Short • Forest Discovery • run ${SOURCE_RUN_ID}" \
+              --notes "Versioned permanent direct-download original 1080x1920 H.264/AAC Short with genuine Kokoro narration and original causal sound design. Source verified GitHub Actions run: ${SOURCE_RUN_ID}. Technical SHA-256, codec and full media decode checks passed. Human artistic and listening review remains REQUIRED. Not published to YouTube or TikTok." \
+              --prerelease --latest=false
+          fi
+          # The URL is not advertised until an anonymous full GET works.
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/forest-discovery.mp4"
+          curl --fail --show-error --silent --location --retry 4 \
+            --retry-delay 2 --retry-all-errors --max-time 180 \
+            "$url" --output "$RUNNER_TEMP/anonymous.mp4"
+          sha256sum "delivered/forest-discovery.mp4" | cut -d' ' -f1 > "$RUNNER_TEMP/expected.sha"
+          sha256sum "$RUNNER_TEMP/anonymous.mp4" | cut -d' ' -f1 > "$RUNNER_TEMP/received.sha"
+          diff -u "$RUNNER_TEMP/expected.sha" "$RUNNER_TEMP/received.sha"
+          {
+            echo "## PERMANENT PUBLIC MP4 — VERIFIABLY DOWNLOADABLE"
+            echo
+            echo "$url"
+            echo
+            echo "Source run: $SOURCE_RUN_ID"
+            echo "Verified SHA256: $(cat "$RUNNER_TEMP/expected.sha")"
+            echo "Direct public HTTP download tested without login or token."
+            echo "Technical preview — editorial review not yet approved."
+          } >> "$GITHUB_STEP_SUMMARY"
