@@ -4,12 +4,6 @@ name: Stable direct MP4 downloads for science previews
 # Technical review previews receive stable GitHub Release asset URLs,
 # conspicuously marked UNREVIEWED. No YouTube publishing occurs.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/science-preview-download.yml"
-      - "scripts/prepare_science_preview_delivery.py"
-      - "scripts/update_video_history.py"
   workflow_run:
     workflows:
       - "Verify full 9:16 rainbow optics Shorts release candidate"
@@ -50,9 +44,9 @@ jobs:
     timeout-minutes: 15
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # The first main push seeded the rainbow preview. Seed Earth next;
-      # subsequent source workflow completions are mapped independently.
-      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event_name == 'workflow_run' && github.event.workflow_run.id || '41286036076' }}
+      # Only real successful workflow runs or explicit operator-selected runs;
+      # never rerun expired, hard-coded artifact IDs on unrelated main pushes.
+      SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event.workflow_run.id }}
       PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original volcano-eruption science Shorts' && 'volcano-eruption' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original aurora-dance science Shorts' && 'aurora-dance' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original upward-lightning science Short' && 'upward-lightning' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original lightning-storm science Shorts' && 'lightning-storm' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
     steps:
       - uses: actions/checkout@v4
