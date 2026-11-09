@@ -12,6 +12,7 @@ import math
 import random
 
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
+from .science_lightning_art import detailed_cloud_volume, paint_industrial_detail
 
 SIZE=(1080,930)
 WHITE=(229,246,255,255)
@@ -28,65 +29,25 @@ def _sky() -> Image.Image:
     d=ImageDraw.Draw(scene)
     for y in range(SIZE[1]):
         depth=y/SIZE[1]
-        # Dark blue-black indigo at cloud altitude to humid slate by horizon.
+        # Color script: indigo-black upper storm, muted plum horizon,
+        # cool slate reflection. Warmth is strongest behind the industrial
+        # silhouette, not a uniform cyan wash across every material.
+        horizon=math.exp(-((depth-.72)/.27)**2)
         d.line((0,y,1080,y),
-               fill=(round(5+20*depth),round(14+29*depth),
-                     round(32+49*depth),255))
+               fill=(round(5+20*depth+22*horizon),
+                     round(14+29*depth+7*horizon),
+                     round(32+49*depth+3*horizon),255))
+    glow=Image.new("RGBA",SIZE)
+    ImageDraw.Draw(glow).ellipse((-100,500,1200,1080),
+                                  fill=(171,115,86,30))
+    scene.alpha_composite(glow.filter(ImageFilter.GaussianBlur(94)))
     return scene
 
 
 @lru_cache(maxsize=9)
 def cloud_volume(depth: int, variant: int) -> Image.Image:
-    """Depth-dependent shaded cumulonimbus billows on a transparent surface."""
-    if type(depth) is not int or depth not in (0,1,2) or type(variant) is not int or not 0<=variant<3:
-        raise ValueError("Invalid cloud volume")
-    width,height=(620,300) if depth==0 else (670,285) if depth==1 else (760,265)
-    plate=Image.new("RGBA",(width,height))
-    rng=random.Random(41+variant*97+depth*263)
-    shadow=Image.new("L",(width,height))
-    ds=ImageDraw.Draw(shadow)
-    for j in range(13):
-        radius=(width*.09)+rng.random()*width*.105
-        x=round(j*(width/12)+rng.randrange(-50,45))
-        y=round(height*.51+rng.randrange(-34,45))
-        sy=round(radius*(.51+depth*.12))
-        ds.ellipse((x-radius,y-sy,x+radius,y+sy),fill=210)
-    shadow=shadow.filter(ImageFilter.GaussianBlur(17+depth*5))
-    # Upper edges receive a small cool rim, lower edges retain storm shade.
-    luminance=Image.new("RGBA",(width,height))
-    d=ImageDraw.Draw(luminance)
-    for y in range(height):
-        f=y/height
-        shade=(41+variant*4+depth*13)+round(51*(1.-f)**2)
-        d.line((0,y,width,y),fill=(shade,shade+18,shade+39,
-                                round(185-45*f)))
-    luminance.putalpha(shadow)
-    # Blur bright contour spots, not an opaque cartoon cloud outline.
-    mist=Image.new("RGBA",(width,height))
-    md=ImageDraw.Draw(mist)
-    for k in range(7):
-        x=round(width*(k+1)/8)
-        y=round(56+16*math.sin(k+variant))
-        rr=round(width*.12)
-        md.ellipse((x-rr,y-31,x+rr,y+20),
-                   fill=(133,194,220,28+depth*8))
-    volume=Image.alpha_composite(
-        luminance,mist.filter(ImageFilter.GaussianBlur(23)))
-    # Hard rectangular cloud-sprite edges were visible in the encoded film.
-    # Feather all four boundaries to zero, with organic opacity variation,
-    # preserving actual soft cloud contours as parallax layers overlap.
-    feather=Image.new("L",(width,height))
-    pixels=feather.load()
-    for yy in range(height):
-        fy=min(1.,yy/52.,(height-1-yy)/68.)
-        for xx in range(width):
-            fx=min(1.,xx/67.,(width-1-xx)/76.)
-            uneven=.82+.18*math.sin(xx*.047+math.sin(yy*.033)*2.)
-            pixels[xx,yy]=max(0,min(255,round(
-                255*max(0,min(fx,fy))**1.4*uneven)))
-    volume.putalpha(ImageChops.multiply(
-        volume.getchannel("A"),feather))
-    return volume
+    """Deterministic original sculpted cloud sprite, cached by Z and seed."""
+    return detailed_cloud_volume(depth, variant)
 
 
 @lru_cache(maxsize=1)
@@ -166,37 +127,9 @@ def paint_terrain(draw: ImageDraw.ImageDraw,t: float) -> None:
                   (530,789),(670,759),(829,789),(970,766),
                   (1080,779),(1080,930),(0,930)],
                  fill=(13,32,49,255))
-    # City distant industrial shapes add scale, not full 3D photorealism.
-    for i in range(9):
-        x=45+i*128
-        h=44+(i*37)%69
-        draw.rectangle((x,793-h,x+31+i%3*9,811),
-                       fill=(20,42,58,234))
-        for yy in (804-h+12,804-h+29):
-            draw.line((x+5,yy,x+16,yy),
-                      fill=(108,148,156,105),width=2)
-    # A persistent grounded radio mast appears in every beat, not just
-    # the connection scene. Its tip matches the shared channel geometry.
-    draw.line(((658,811),(700,695),(742,811)),
-              fill=(115,155,172,255),width=6,joint="curve")
-    draw.line((681,756,720,756),fill=(151,185,196,240),width=4)
-    draw.line((668,787,731,787),fill=(151,185,196,240),width=4)
-    draw.line((682,756,728,787),fill=(112,152,169,200),width=3)
-    draw.line((717,756,673,787),fill=(112,152,169,200),width=3)
-    draw.line((700,695,700,755),fill=(196,217,224,255),width=5)
-    draw.ellipse((695,688,705,698),fill=(248,113,104,245))
-    for k in range(18):
-        x=(k*83+18)%1100
-        y=832+k%4*21
-        draw.line((x,y,x+28,y+2),
-                  fill=(67,121,144,55),width=3)
-    # Water reflections with animated perspective ripples on the horizon.
-    for i in range(24):
-        x=(i*131+27)%1120
-        y=836+(i*59)%88
-        wav=12*math.sin(t*1.2+i*.8)
-        draw.line((round(x+wav),y,round(x+wav)+25+i%4*14,y),
-                  fill=(90,154,181,31+i%4*16),width=2)
+    # Replace flat rectangles and wire-frame triangle with original
+    # perspective architecture, material highlights and a braced 3D-read mast.
+    paint_industrial_detail(draw,t)
 
 
 def _flash_intensity(beat,t,duration):
