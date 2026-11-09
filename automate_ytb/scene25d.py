@@ -13,8 +13,9 @@ import math
 import re
 
 from PIL import Image, ImageChops
+from .surface25d import MATERIALS, relight_surface
 
-VERSION = "scene25d-multiz-alpha-parallax-v1"
+VERSION = "scene25d-multiz-material-depth-relight-p55-v2"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
 
 
@@ -26,6 +27,7 @@ class Layer25D:
     parallax_x: float = 0.0
     parallax_y: float = 0.0
     mask: Image.Image | None = None
+    material: str = "none"
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not _ID.fullmatch(self.name):
@@ -49,6 +51,8 @@ class Layer25D:
                  or self.mask.mode != "L"
                  or self.mask.size != self.image.size)):
             raise ValueError("2.5D mask must be a matching 8-bit alpha image")
+        if not isinstance(self.material,str) or self.material not in MATERIALS:
+            raise ValueError("Unknown authored 2.5D material")
 
 
 class Scene25D:
@@ -77,13 +81,12 @@ class Scene25D:
 
     def quality_report(self, *, camera_x: float = 32.,
                        camera_y: float = 14.) -> dict:
-        """Optional reusable quality evidence for any authored 2.5D scene.
+        """Audit original authored 2.5D materials and real scene parallax.
 
-        This reports low-detail and flat-parallax risks, without falsely
-        certifying subjective cinematic quality or approving publication.
+        Diagnostic metadata only; never certifies aesthetics or publication.
         """
         from .visual_quality25d import analyze_scene
-        return analyze_scene(self, camera_x=camera_x, camera_y=camera_y)
+        return analyze_scene(self,camera_x=camera_x,camera_y=camera_y)
 
     def render(self, *, camera_x: float = 0.0,
                camera_y: float = 0.0) -> Image.Image:
@@ -96,7 +99,7 @@ class Scene25D:
             raise ValueError("Cannot render an empty 2.5D scene")
         result = Image.new("RGBA", self.size)
         for layer in sorted(self._layers, key=lambda x: x.z):
-            source = layer.image
+            source = relight_surface(layer.image,layer.material)
             if layer.mask is not None:
                 source = source.copy()
                 source.putalpha(ImageChops.multiply(
