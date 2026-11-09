@@ -28,7 +28,8 @@ class BlenderMaterialPilotTests(unittest.TestCase):
             "file": file.name,
             "width": 320, "height": 400, "samples": 8,
             "meshObjects": 150, "lightObjects": 3,
-            "proceduralMaterials": 11, "actual3dCloudMeshes": 3,\n            "actual3dCloudLobes": 42, "actual3dCloudVertices": 5000,
+            "proceduralMaterials": 11, "actual3dCloudMeshes": 3,
+            "actual3dCloudLobes": 42, "actual3dCloudVertices": 5000,
             "sha256": hashlib.sha256(file.read_bytes()).hexdigest(),
         }
         (root / "manifest.json").write_text(json.dumps(record), encoding="utf8")
@@ -39,7 +40,8 @@ class BlenderMaterialPilotTests(unittest.TestCase):
             root = Path(temp)
             self.make_fixture(root)
             result = validate(root)
-            self.assertEqual(result["actual3dCloudMeshes"], 3)\n            self.assertEqual(result["actual3dCloudLobes"], 42)
+            self.assertEqual(result["actual3dCloudMeshes"], 3)
+            self.assertEqual(result["actual3dCloudLobes"], 42)
             self.assertGreater(min(result["visualChannelStddev"]), 30)
 
     def test_pixel_modifications_are_rejected_even_with_valid_metadata(self):
