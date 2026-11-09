@@ -92,6 +92,21 @@ class Generic25DQualityTests(unittest.TestCase):
         self.assertEqual(report["depthPlanes"],3)
         self.assertIs(report["publicationApproved"],False)
 
+    def test_translucent_atmosphere_keeps_its_real_visible_texture(self):
+        rng=random.Random(921)
+        textured=Image.new("RGBA",(320,320))
+        pixels=textured.load()
+        for y in range(35,285):
+            for x in range(35,285):
+                n=rng.randrange(120)
+                pixels[x,y]=(64+n,92+n//3,137+n//2,138)
+        plain=Image.new("RGBA",(320,320))
+        ImageDraw.Draw(plain).rectangle((35,35,284,284),
+                                        fill=(110,115,160,138))
+        detailed=analyze_layer(textured)["detailEnergy"]
+        base=analyze_layer(plain)["detailEnergy"]
+        self.assertGreater(detailed,base+3)
+
     def test_material_microtexture_is_not_faked_by_plain_edge(self):
         rng=random.Random(445)
         rich=Image.new("RGBA",(320,320))
