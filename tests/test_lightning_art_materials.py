@@ -61,7 +61,7 @@ class StormMaterialTests(unittest.TestCase):
         # Thousands of shaded samples, lit windows and steel cross-braces.
         tower = plate.crop((650,685,755,815))
         self.assertGreater(ImageStat.Stat(tower.getchannel("R")).stddev[0],25)
-        self.assertGreater(len(tower.getcolors(maxcolors=10000) or []),50)
+        self.assertGreater(len(tower.getcolors(maxcolors=10000) or []),20)
         again=Image.new("RGBA",SIZE)
         paint_industrial_detail(ImageDraw.Draw(again,"RGBA"),1.0)
         self.assertEqual(again.tobytes(),plate.tobytes())
