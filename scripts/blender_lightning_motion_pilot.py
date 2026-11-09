@@ -153,10 +153,22 @@ def pose(beat: str, progress: float, charges, ring) -> dict:
     pilot.aim(camera,target)
     camera.data.lens=(52,59,62,52,43)[index]
     for depth in range(3):
-        bank=bpy.data.objects["Fused cumulonimbus bank %d"%depth]
+        # bpy.ops.object.convert can append ".001" to a converted
+        # metaball object's name, depending on Blender version.
+        # Resolve by unique typed prefix rather than guessing exact names.
+        matches=[o for o in bpy.data.objects
+                 if o.type=="MESH" and
+                 o.name.startswith("Fused cumulonimbus bank %d"%depth)]
+        if len(matches)!=1:
+            raise RuntimeError("Missing or duplicate physical cloud mesh")
+        bank=matches[0]
         bank.location.x=(depth-1)*.12+.10*progress*(1+depth*.3)
         bank.location.y=.08*math.sin(progress*math.pi+depth)
-    bolt=bpy.data.objects["Main skyward channel 3D"]
+    channels=[o for o in bpy.data.objects
+              if o.type=="CURVE" and o.name.startswith("Main skyward channel 3D")]
+    if len(channels)!=1:
+        raise RuntimeError("Missing or duplicate continuous electric channel")
+    bolt=channels[0]
     forks=[ob for ob in bpy.data.objects
            if ob.name.startswith("Electrical side fork ")]
     # Leader grows from cloud toward the tower; connection reaches upward.
