@@ -99,6 +99,20 @@ class PreviewDeliveryTests(unittest.TestCase):
             prepare(self.base,self.out,"rainbow-optics",12345)
         self.assertFalse(self.out.exists())
 
+    def test_science_delivery_only_responds_to_actual_verified_source_runs(self):
+        workflow=(Path(__file__).resolve().parents[1]/
+                  ".github/workflows/science-preview-download.yml").read_text(
+                      encoding="utf-8")
+        self.assertIn("  workflow_run:",workflow)
+        self.assertIn("  workflow_dispatch:",workflow)
+        self.assertNotIn("  push:",workflow)
+        self.assertNotIn("41286036076",workflow)
+        self.assertIn("github.event.workflow_run.id",workflow)
+        self.assertIn("gh run download",workflow)
+        self.assertIn("upward-lightning",workflow)
+        self.assertIn('cmp -s "delivered/${PREVIEW_SLUG}.mp4"',workflow)
+        self.assertIn("python scripts/update_video_history.py",workflow)
+
     def test_rejects_unsafe_names_and_run_ids(self):
         with self.assertRaises(ValueError):
             prepare(self.base,self.out,"../../danger",12345)
