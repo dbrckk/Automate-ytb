@@ -32,10 +32,17 @@ class NewOriginalShortTests(unittest.TestCase):
                          "caption_timing: audio","needs: render-and-verify"):
             self.assertIn(expected,wf)
 
+    def test_draft_release_never_leaks_into_public_video_history(self):
+        draft={"tag_name":"science-preview-secret-999",
+               "draft":True,"published_at":None,
+               "assets":[{"name":"secret.mp4","state":"uploaded",
+                          "browser_download_url":"https://example.org/private"}]}
+        self.assertEqual(catalog_from_releases([draft])["count"],0)
+
     def test_history_contains_only_actual_uploaded_mp4_releases(self):
         releases=[
             {"tag_name":"science-preview-upward-lightning-12345",
-             "published_at":"2026-11-09T12:00:00Z",
+             "published_at":"2026-11-09T12:00:00Z","draft":False,
              "html_url":"https://github.com/example/repo/releases/tag/abc",
              "assets":[{"name":"upward-lightning.mp4","state":"uploaded",
                         "browser_download_url":"https://github.com/example/repo/releases/download/abc/upward-lightning.mp4",
