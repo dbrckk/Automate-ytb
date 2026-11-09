@@ -70,6 +70,24 @@ class StormMaterialTests(unittest.TestCase):
         self.assertIsNotNone(ImageChops.difference(
             plate,later).getbbox())
 
+    def test_electric_channel_has_deterministic_irregular_forks(self):
+        from automate_ytb.science_lightning import (
+            PATH, LEADER_CHANNEL, _leader_branch,
+        )
+        self.assertEqual(len(PATH),57)
+        self.assertEqual(len(LEADER_CHANNEL),41)
+        horizontal_steps=[PATH[i+1][0]-PATH[i][0]
+                          for i in range(len(LEADER_CHANNEL)-1)]
+        self.assertGreater(max(abs(step) for step in horizontal_steps),12)
+        self.assertGreater(len(set(horizontal_steps)),12)
+        self.assertEqual(
+            _leader_branch(LEADER_CHANNEL[13],-1,13),
+            _leader_branch(LEADER_CHANNEL[13],-1,13))
+        self.assertEqual(len(_leader_branch(LEADER_CHANNEL[13],-1,13)),9)
+        self.assertNotEqual(
+            _leader_branch(LEADER_CHANNEL[13],-1,13),
+            _leader_branch(LEADER_CHANNEL[13],1,13))
+
     def test_existing_terrain_camera_and_lightning_contact_preserved(self):
         from automate_ytb.science_lightning import TOWER_TOP
         self.assertEqual(TOWER_TOP,(700,695))
