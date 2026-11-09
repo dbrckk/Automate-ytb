@@ -8,15 +8,20 @@ from __future__ import annotations
 import math
 from PIL import Image
 
-CAMERA_VERSION = "science-stage-camera-v2-25d-world-space-subject-tracking"
+CAMERA_VERSION = "science-stage-camera-v3-25d-action-follow-vertical-p49"
 SOURCE_SIZE = (1080, 930)
 OUTPUT_SIZE = (1080, 1380)
+# (start_zoom, end_zoom, start_x, end_x, start_y, end_y)
+# A cloud charge is framed wide; the leader pans downward, the electrical
+# contact holds the grounded tower, the return stroke travels back UP, and
+# the thunder shock-wave pulls back. Author geometry in 1080x930 source
+# space; camera_pose guarantees a bounded, aspect-preserving safe crop.
 SHOT_PATHS = {
-    "charge": (1.57, 1.69, 495.0, 540.0),
-    "leader": (1.72, 1.53, 535.0, 575.0),
-    "connection": (1.59, 1.65, 610.0, 650.0),
-    "return": (1.58, 1.68, 665.0, 555.0),
-    "thunder": (1.68, 1.51, 640.0, 575.0),
+    "charge": (1.58, 1.68, 490.0, 525.0, 452.0, 465.0),
+    "leader": (1.75, 1.92, 530.0, 590.0, 405.0, 540.0),
+    "connection": (1.75, 1.91, 620.0, 660.0, 530.0, 548.0),
+    "return": (1.90, 1.92, 640.0, 560.0, 544.0, 390.0),
+    "thunder": (1.87, 1.58, 635.0, 560.0, 540.0, 465.0),
 }
 
 
@@ -36,17 +41,17 @@ def camera_pose(beat: str, t: float, duration: float, *,
         raise ValueError("Invalid bounded camera focus offset")
     p = t / duration
     ease = p*p*(3-2*p)
-    start_zoom, stop_zoom, x0, x1 = SHOT_PATHS[beat]
+    start_zoom, stop_zoom, x0, x1, y0, y1 = SHOT_PATHS[beat]
     zoom = start_zoom + (stop_zoom-start_zoom)*ease
     focus_x = x0 + (x1-x0)*ease + focus_offset[0]
+    focus_y = y0 + (y1-y0)*ease + focus_offset[1]
     if beat == "return":
         envelope = math.exp(-((p-.23)/.09)**2)
         focus_x += 3.5*envelope*math.sin(t*27)
     half_w = OUTPUT_SIZE[0]/zoom/2
     half_h = OUTPUT_SIZE[1]/zoom/2
     focus_x = max(half_w, min(SOURCE_SIZE[0]-half_w,focus_x))
-    focus_y = max(half_h, min(SOURCE_SIZE[1]-half_h,
-                              SOURCE_SIZE[1]/2 + focus_offset[1]))
+    focus_y = max(half_h, min(SOURCE_SIZE[1]-half_h,focus_y))
     return zoom, focus_x, focus_y
 
 
