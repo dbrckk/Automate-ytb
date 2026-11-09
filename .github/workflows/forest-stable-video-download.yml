@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/forest-stable-video-download.yml"
+      - "scripts/update_video_history.py"
   workflow_run:
     workflows:
       - "Verify narrated 2.5D forest short with real Kokoro PCM"
@@ -109,3 +110,7 @@ jobs:
             echo "Direct public HTTP download tested without login or token."
             echo "Technical preview — editorial review not yet approved."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Refresh GitHub video history after verified public download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/update_video_history.py
