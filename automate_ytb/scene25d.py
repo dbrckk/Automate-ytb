@@ -75,6 +75,16 @@ class Scene25D:
     def layer_names(self) -> tuple[str, ...]:
         return tuple(item.name for item in sorted(self._layers, key=lambda x: x.z))
 
+    def quality_report(self, *, camera_x: float = 32.,
+                       camera_y: float = 14.) -> dict:
+        """Optional reusable quality evidence for any authored 2.5D scene.
+
+        This reports low-detail and flat-parallax risks, without falsely
+        certifying subjective cinematic quality or approving publication.
+        """
+        from .visual_quality25d import analyze_scene
+        return analyze_scene(self, camera_x=camera_x, camera_y=camera_y)
+
     def render(self, *, camera_x: float = 0.0,
                camera_y: float = 0.0) -> Image.Image:
         if (type(camera_x) not in (int, float)
