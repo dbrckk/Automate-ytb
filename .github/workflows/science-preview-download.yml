@@ -9,6 +9,10 @@ on:
     paths:
       - ".github/workflows/science-preview-download.yml"
       - "scripts/prepare_science_preview_delivery.py"
+  pull_request:
+    paths:
+      - ".github/workflows/science-preview-download.yml"
+      - "tests/test_science_public_delivery.py"
   workflow_run:
     workflows:
       - "Verify full 9:16 rainbow optics Shorts release candidate"
@@ -38,12 +42,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-delivery-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public HTTPS download, checksum and release safeguards
+        run: python -m unittest discover -s tests -p test_science_public_delivery.py -v
+
   release-unreviewed-preview:
     if: >-
-      ${{ github.event_name != 'workflow_run' ||
+      ${{ github.event_name != 'pull_request' &&
+          (github.event_name != 'workflow_run' ||
           (github.event.workflow_run.conclusion == 'success' &&
            github.event.workflow_run.head_branch == 'main' &&
-           github.event.workflow_run.head_repository.full_name == github.repository) }}
+           github.event.workflow_run.head_repository.full_name == github.repository)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
