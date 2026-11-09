@@ -128,7 +128,7 @@ def sync(repo: str, token: str) -> dict:
             sha=None
             previous=None
             merged=catalog
-        data=(json.dumps(merged,ensure_ascii=False,indent=2)+"\\n").encode("utf-8")
+        data=(json.dumps(merged,ensure_ascii=False,indent=2)+"\n").encode("utf-8")
         if previous==data:
             return merged
         payload={"message":"docs(video): refresh verified GitHub Releases history",
