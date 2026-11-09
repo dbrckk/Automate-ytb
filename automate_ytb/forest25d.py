@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .animated_forest import _sprite_body, _sprite_tail, _sprite_ear, COLORS
 from .scene25d import Layer25D, Scene25D
+from .finish25d import finish_world
 from .rig25d import walking_leg, GROUND, PERIOD
 from .forest_contact25d import IMPACT_TIME, flower_plates
 from .forest_butterfly25d import butterfly_plate
@@ -217,9 +218,13 @@ def frame(t: float, *, kind: str = "fox",
         rendered=scene.render(camera_x=shot.camera_x,camera_y=shot.camera_y)
         rendered=cinematic_reframe(rendered,t=t,beat=shot.beat,
                                    body_x=meta["bodyX"])
-        if show_story_titles:
-            rendered.alpha_composite(story_overlay(t))
     else:
         camera=30*math.sin(math.pi*t/SECONDS)
         rendered=scene.render(camera_x=camera,camera_y=4*camera/30)
+    # The very same shared 2.5D finishing used for EVERY science topic:
+    # operate on animated world pixels, then place sharp story typography.
+    finish_world(rendered,bounds=(65,585,1015,1495),
+                 look="forest",t=t,duration=SECONDS)
+    if story and show_story_titles:
+        rendered.alpha_composite(story_overlay(t))
     return rendered.convert("RGB")
