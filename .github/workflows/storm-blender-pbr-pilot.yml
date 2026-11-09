@@ -36,7 +36,7 @@ jobs:
         run: |
           blender --background --factory-startup -t 2 \
             --python scripts/blender_lightning_pilot.py -- \
-            --out build/storm-pbr-3d --width 540 --height 690 --samples 8
+            --out build/storm-pbr-3d --width 540 --height 690 --samples 12
       - name: Verify Cycles manifest, 3D evidence and rendered pixels
         run: |
           python scripts/verify_lightning_3d_pilot.py \
