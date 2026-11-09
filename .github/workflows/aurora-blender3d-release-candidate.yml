@@ -1,68 +1,21 @@
-name: Produce original Aurora Alive 3D narrated Short
+name: "Archived: Produce original Aurora Alive 3D narrated Short"
 
-# Runs the real CPU Cycles renderer and full Kokoro/FFmpeg QA on one run.
+# Legacy P5.3 research only. Product policy is exclusively 2.5D.
+# Archive the 3D CI trigger instead of rerunning rejected Blender videos
+# whenever common science or video code changes. Source/history retained.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - .github/workflows/aurora-blender3d-release-candidate.yml
-      - .github/workflows/one-click-preview.yml
-      - scripts/blender_aurora_stage.py
-      - automate_ytb/science_blender_aurora.py
-      - automate_ytb/aurora_tracer_motion.py
-      - automate_ytb/aurora_camera_choreography.py
-      - automate_ytb/aurora_impact_lighting.py
-      - automate_ytb/aurora_stage_review.py
-      - automate_ytb/science_aurora.py
-      - automate_ytb/science_portrait.py
-      - automate_ytb/production.py
-      - tests/test_science_blender_aurora.py
-      - tests/test_aurora_tracer_motion.py
-      - tests/test_aurora_camera_choreography.py
-      - tests/test_aurora_impact_lighting.py
 
 permissions:
   contents: read
 
-concurrency:
-  group: blender-3d-aurora-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  real-aurora-blender-video:
-    name: Original 3D aurora, actual English Kokoro MP4 and independent QA
-    uses: ./.github/workflows/one-click-preview.yml
-    with:
-      topic: "Aurora: The Night Sky Comes Alive"
-      original_script: >-
-        The sky can suddenly glow with moving color, but the story begins with solar wind rushing away from the Sun.
-        When that invisible storm reaches Earth, our magnetic field steers charged particles toward the poles.
-        High above the clouds, fast-moving particles collide with oxygen and nitrogen atoms, one after another.
-        Excited atoms release green, violet, and sometimes red light into the darkness.
-        The colors become rippling curtains: the northern lights dancing above a silent landscape.
-      character: "Original cinematic aurora: real 3D particles, polar sky and glowing curtains"
-      style: science
-      language: en
-      voice: kokoro
-      voice_name: af_heart
-      voice_style: expressive
-      soundtrack: ambient
-      transition: adaptive
-      caption_timing: audio
-      duration_seconds: 33
-      shot_seconds: 6.6
-      resolution: shorts
-      render_profile: high
-      cinematic_3d: true
-
-  verify:
-    name: Publish artifacts only for technical review, not to YouTube
-    needs: real-aurora-blender-video
+  archived-2point5d-only:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Explain human release gate
+      - name: Explain 2.5D-only video pipeline policy
         run: |
-          echo '### Original Blender 3D aurora Short technically passed' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Download the actual MP4 and Blender review sheet in this run.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Human watching, listening and source checking are still required.' >> "$GITHUB_STEP_SUMMARY"
+          echo "### Archived Blender experiment" >> "$GITHUB_STEP_SUMMARY"
+          echo "Current production generates only original 2.5D video." >> "$GITHUB_STEP_SUMMARY"
+          echo "No 3D render, paid credits or social publishing executed." >> "$GITHUB_STEP_SUMMARY"
