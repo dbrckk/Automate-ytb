@@ -272,7 +272,7 @@ def main():
     parser.add_argument('--samples',type=int,default=8)
     config=parser.parse_args(args)
     if not (320<=config.width<=900 and 400<=config.height<=1380 and
-            4<=config.samples<=16):
+            4<=config.samples<=64):
         parser.error('Unsafe pilot render dimensions or samples')
     dest=Path(config.out).resolve()
     dest.mkdir(parents=True,exist_ok=True)
