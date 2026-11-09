@@ -75,5 +75,37 @@ class Generic25DQualityTests(unittest.TestCase):
                 scene.quality_report(camera_x=invalid)
 
 
+    def test_generic_materials_and_masks_remain_compatible(self):
+        scene=Scene25D((320,320))
+        for index,material in enumerate(("foliage","metal","water")):
+            image=Image.new("RGBA",(320,320))
+            ImageDraw.Draw(image).ellipse((20,40,300,270),
+                    fill=(55+index*44,110,170,200))
+            opacity=(Image.new("L",(320,320),0) if index==2 else None)
+            scene.add(Layer25D(name="world-%d"%index,
+                z=10+index*20,image=image,material=material,
+                parallax_x=.12+index*.4,mask=opacity))
+        report=scene.quality_report()
+        self.assertEqual([item["material"] for item in report["layers"]],
+                         ["foliage","metal","water"])
+        self.assertEqual(report["layers"][2]["alphaCoverage"],0.0)
+        self.assertEqual(report["depthPlanes"],3)
+        self.assertIs(report["publicationApproved"],False)
+
+    def test_material_microtexture_is_not_faked_by_plain_edge(self):
+        rng=random.Random(445)
+        rich=Image.new("RGBA",(320,320))
+        solid=Image.new("RGBA",(320,320))
+        ImageDraw.Draw(solid).rectangle((50,50,270,270),
+                                         fill=(110,110,110,255))
+        pixels=rich.load()
+        for y in range(50,271):
+            for x in range(50,271):
+                variation=rng.randint(-35,35)
+                pixels[x,y]=(110+variation,110+variation,110+variation,255)
+        signal=analyze_layer(rich)["detailEnergy"]
+        primitive=analyze_layer(solid)["detailEnergy"]
+        self.assertGreater(signal,primitive+5)
+
 if __name__=="__main__":
     unittest.main()
