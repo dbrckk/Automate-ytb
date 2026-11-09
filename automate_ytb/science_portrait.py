@@ -499,7 +499,7 @@ class PortraitScienceScene:
                        list(VOLCANO_BADGES).index(self.volcano_beat))
                 marker=ImageDraw.Draw(picture,"RGBA")
                 marker.line((108,353,108+180*(index+1)//5,353),
-                            fill=(158,227,245,185),width=3)
+                            fill=(158,227,245,255),width=3)
         active_text=self.active_caption(t,duration)
         summary,summary_size=self._caption_layouts[active_text]
         paint_caption(picture,lines=summary,font_size=summary_size)
