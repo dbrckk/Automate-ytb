@@ -9,6 +9,8 @@ on:
       - "automate_ytb/science_lightning.py"
       - "automate_ytb/science_lightning_fx.py"
       - "automate_ytb/science_portrait.py"
+      - "automate_ytb/cinematic_stage.py"
+      - "automate_ytb/lightning_editorial25d.py"
   push:
     branches: [main]
     paths:
@@ -16,6 +18,8 @@ on:
       - "automate_ytb/science_lightning.py"
       - "automate_ytb/science_lightning_fx.py"
       - "automate_ytb/science_portrait.py"
+      - "automate_ytb/cinematic_stage.py"
+      - "automate_ytb/lightning_editorial25d.py"
 
 permissions:
   contents: read

@@ -27,6 +27,7 @@ from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
 from .science_lightning import (classify as classify_lightning, draw_lightning,
                                 supports_topic as supports_lightning,
                                 storm_background, BADGES as LIGHTNING_BADGES)
+from .lightning_editorial25d import render_lightning_editorial
 from .science_aurora import (classify as classify_aurora, draw_aurora,
                             supports_topic as supports_aurora,
                             portrait_background as aurora_background,
@@ -477,10 +478,16 @@ class PortraitScienceScene:
                 d.ellipse((x-2, y-2, x+2, y+2),
                           fill=(215, 241, 249, 170))
             _ocean_currents(d, t)
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            # UI is composited after the cinematographic camera, so the
-            # moving image cannot overwrite or displace readable typography.
+        if self.lightning_beat is not None:
+            # P4.9 only changes the final editorial layer. Every actual
+            # original science scene remains rendered beforehand, including
+            # the five electrical actions and weather camera movement.
+            render_lightning_editorial(
+                picture,beat=self.lightning_beat,
+                scene_index=self.scene_index,t=t,duration=duration,
+                english=self.english,title_lines=title,title_size=title_size)
+        elif self.aurora_beat is not None or self.volcano_beat is not None:
+            # Keep independently validated Aurora and Volcano UI unchanged.
             header = Image.new("RGBA", picture.size)
             ui = ImageDraw.Draw(header)
             ui.rounded_rectangle((61, 109, 1019, 243), radius=25,
@@ -493,9 +500,7 @@ class PortraitScienceScene:
                                  fill=(10, 38, 58, 156))
             ui.text((99, 273), science_badge[0 if self.english else 1],
                     font=_font(31, bold=True), fill=GOLD+(255,))
-            beat_number = (list(LIGHTNING_BADGES).index(self.lightning_beat)
-                           if self.lightning_beat is not None else
-                           list(AURORA_BADGES).index(self.aurora_beat)
+            beat_number = (list(AURORA_BADGES).index(self.aurora_beat)
                            if self.aurora_beat is not None else
                            list(VOLCANO_BADGES).index(self.volcano_beat))
             ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)

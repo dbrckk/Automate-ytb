@@ -9,7 +9,7 @@ from PIL import Image, ImageChops, ImageDraw
 from automate_ytb.camera25d import (
     SHOT_TRAVEL, event_envelope, shot_camera, point_on_path,
 )
-from automate_ytb.cinematic_stage import camera_pose, camera_frame
+from automate_ytb.cinematic_stage import camera_pose, camera_frame, CAMERA_VERSION
 from automate_ytb.science_lightning import (
     BEATS, LEADER_CHANNEL, UPWARD_STREAMER, CONNECTED_CHANNEL,
 )
@@ -85,6 +85,38 @@ class EventDirectedCameraTests(unittest.TestCase):
         self.assertLessEqual(x+540/zoom,1080.)
         self.assertGreaterEqual(y-690/zoom,0.)
         self.assertLessEqual(y+690/zoom,930.)
+
+    def test_cinematic_portrait_camera_tracks_downward_then_upward_action(self):
+        self.assertIn("vertical-p49",CAMERA_VERSION)
+        initial_leader=camera_pose("leader",0.,7.)
+        final_leader=camera_pose("leader",7.,7.)
+        initial_return=camera_pose("return",0.,7.)
+        final_return=camera_pose("return",7.,7.)
+        # Source-stage pixels: leader tracks falling bolt down, return
+        # stroke reverses to follow the ascending light, not a static slide.
+        self.assertGreater(final_leader[2]-initial_leader[2],110.)
+        self.assertGreater(initial_return[2]-final_return[2],125.)
+        self.assertGreater(final_leader[0],initial_leader[0])
+        self.assertGreater(final_return[0],initial_return[0])
+        self.assertNotEqual(initial_leader[1],final_leader[1])
+
+    def test_every_vertical_camera_frame_is_continuous_and_safe_at_30fps(self):
+        for beat in BEATS:
+            with self.subTest(beat=beat):
+                previous=None
+                for frame in range(211):
+                    t=min(7.,frame/30)
+                    zoom,x,y=camera_pose(beat,t,7.)
+                    self.assertGreaterEqual(zoom,1380/930)
+                    self.assertGreaterEqual(x-540/zoom,-.0001)
+                    self.assertLessEqual(x+540/zoom,1080.0001)
+                    self.assertGreaterEqual(y-690/zoom,-.0001)
+                    self.assertLessEqual(y+690/zoom,930.0001)
+                    if previous is not None:
+                        self.assertLess(abs(x-previous[1]),8.)
+                        self.assertLess(abs(y-previous[2]),8.)
+                        self.assertLess(abs(zoom-previous[0]),.03)
+                    previous=(zoom,x,y)
 
     def test_invalid_script_timing_or_camera_subject_fails_closed(self):
         for bad in (math.nan,math.inf,-.01,1.01,True):
