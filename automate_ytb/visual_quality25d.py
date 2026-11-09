@@ -38,11 +38,21 @@ def analyze_layer(image: Image.Image, *, name: str = "asset") -> dict:
     edge_density=sum(v>38 for v in edge.getdata())/len(edge.getdata())
     rgb=Image.new("RGB",SIZE,(0,0,0))
     rgb.paste(thumb.convert("RGB"),mask=alpha)
-    # A coarse low-pass removes large gradients; remaining variation is
-    # evidence of high-frequency material detail (not a subjective score).
-    blur=rgb.filter(ImageFilter.GaussianBlur(3.0))
-    difference=ImageChops.difference(rgb,blur)
-    detail=round(sum(ImageStat.Stat(difference).mean)/3,3)
+    # Preserve bounded original microtexture and exclude primitive edges.
+    scale=min(1.,320/max(image.size))
+    material=(image if scale==1 else image.resize(
+        (max(16,round(image.width*scale)),max(16,round(image.height*scale))),
+        Image.Resampling.BILINEAR))
+    interior=material.getchannel("A").filter(ImageFilter.MinFilter(5))
+    color=material.convert("RGB")
+    highpass=ImageChops.difference(color,
+             color.filter(ImageFilter.GaussianBlur(1.8))).convert("L")
+    total=count=0
+    for value,mask in zip(highpass.getdata(),interior.getdata()):
+        if mask>=192:
+            total+=value
+            count+=1
+    detail=round(total/count,3) if count else 0.
     channels=rgb.split()
     chroma=ImageChops.difference(channels[0],channels[2])
     chroma_variation=round(ImageStat.Stat(chroma).stddev[0],3)
@@ -72,7 +82,15 @@ def analyze_scene(scene, *, camera_x: float = 32., camera_y: float = 14.) -> dic
     if not scene._layers:
         raise ValueError("Cannot audit empty scene")
     layers=sorted(scene._layers,key=lambda layer:layer.z)
-    analyses=[analyze_layer(layer.image,name=layer.name) for layer in layers]
+    analyses=[]
+    for layer in layers:
+        source=layer.image
+        if layer.mask is not None:
+            source=source.copy()
+            source.putalpha(ImageChops.multiply(source.getchannel("A"),layer.mask))
+        report=analyze_layer(source,name=layer.name)
+        report["material"]=layer.material
+        analyses.append(report)
     original=scene.render()
     moved=scene.render(camera_x=cx,camera_y=cy)
     sample=original.resize(SIZE,Image.Resampling.BILINEAR).convert("RGB")
