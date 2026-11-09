@@ -213,6 +213,71 @@ def _flash_intensity(beat,t,duration):
     return 0.
 
 
+
+@lru_cache(maxsize=1)
+def _reactive_light_masks() -> tuple[Image.Image, Image.Image]:
+    """Cached original cloud and wet-ground light falloff at source resolution.
+
+    This is an illustrated spatial light field, not volumetric ray tracing.
+    Separate masks avoid the flat, whole-screen white flash of older shorts.
+    """
+    clouds=Image.new("L",(270,233))
+    cd=ImageDraw.Draw(clouds)
+    cd.ellipse((12,2,263,144),fill=76)
+    cd.ellipse((68,2,208,108),fill=229)
+    cd.ellipse((125,30,229,121),fill=133)
+    clouds=clouds.filter(ImageFilter.GaussianBlur(17))
+    wet=Image.new("L",(270,233))
+    wd=ImageDraw.Draw(wet)
+    wd.ellipse((21,191,267,253),fill=78)
+    wd.ellipse((116,184,242,244),fill=209)
+    wet=wet.filter(ImageFilter.GaussianBlur(9))
+    return (clouds.resize(SIZE,Image.Resampling.BICUBIC),
+            wet.resize(SIZE,Image.Resampling.BICUBIC))
+
+
+def paint_reactive_storm_light(stage: Image.Image, beat: str,
+                               t: float, duration: float) -> None:
+    """Synchronize real atmospheric/ground relighting with the existing bolt.
+
+    The same _flash_intensity event already used by bloom drives these layers;
+    it adds NO independent strobe. Always paint before the electric channel
+    so the channel retains its own bright core. Transparent RGBA is supported
+    for insertion between terrain and the electric action in the 2.5D stage.
+    """
+    if (stage.mode!="RGBA" or stage.size!=SIZE
+            or beat not in ("charge","leader","connection","return","thunder")
+            or type(t) not in (int,float) or type(duration) not in (int,float)
+            or not math.isfinite(t) or not math.isfinite(duration)
+            or not 0<duration<=180 or not 0<=t<=duration):
+        raise ValueError("Invalid atmospheric relighting frame")
+    power=_flash_intensity(beat,t,duration)
+    if power<.012:
+        return
+    cloud,wet=_reactive_light_masks()
+    for mask,rgb,gain in (
+            (cloud,(171,210,251),.48),
+            (wet,(141,208,247),.62)):
+        layer=Image.new("RGBA",SIZE,(*rgb,0))
+        layer.putalpha(mask.point(
+            lambda value: min(165,round(value*gain*power))))
+        stage.alpha_composite(layer)
+    if beat=="return":
+        # Water highlights reflect the channel's grounded mast attachment.
+        # They inherit the *same* two-pulse energy; no flashing title card.
+        ripples=Image.new("RGBA",SIZE)
+        d=ImageDraw.Draw(ripples)
+        for i in range(20):
+            y=814+i*6
+            x=round(700+20*math.sin(t*2.0+i*.79))
+            spread=round((19+i*2)*(1 if i%2 else -1))
+            half=round(14+(i%6)*11)
+            alpha=round((108-i*3)*power)
+            d.line((x+spread-half,y,x+spread+half,y),
+                   fill=(200,233,255,alpha),width=2+(i%3==0))
+        stage.alpha_composite(ripples)
+
+
 def bloom_electric_channel(stage: Image.Image,beat:str,t:float,
                            duration:float,path) -> None:
     if stage.mode!="RGBA" or stage.size!=SIZE:

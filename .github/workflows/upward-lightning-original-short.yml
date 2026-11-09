@@ -7,13 +7,31 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/upward-lightning-original-short.yml"
+      - "automate_ytb/science_lightning.py"
+      - "automate_ytb/science_lightning_fx.py"
+      - "tests/test_science_lightning_fx.py"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  validate-lightning-effects:
+    name: Verify causal light and cloud/terrain effects before rendering
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free portrait renderer
+        run: python -m pip install -e .
+      - name: Validate lightning cloud and terrain relighting
+        run: python -m unittest discover -s tests -p test_science_lightning_fx.py -v
+
   render-and-verify:
+    needs: validate-lightning-effects
     name: Render 30s original upward lightning with real Kokoro
     uses: ./.github/workflows/one-click-preview.yml
     with:
