@@ -345,12 +345,14 @@ def draw_lightning(picture: Image.Image, beat: str, t: float,
     }
     for name,plate in environment_plates(t,beat,duration):
         z,parallax=depths[name]
-        stage.add(Layer25D(name,z,plate,parallax_x=parallax,
-                           parallax_y=parallax*.24))
+        stage.add(Layer25D(
+            name,z,plate,parallax_x=parallax,
+            parallax_y=parallax*.24,
+            material="soft" if name.startswith("clouds-") else "none"))
     terrain=Image.new("RGBA",(1080,SOURCE_HEIGHT))
     td=ImageDraw.Draw(terrain,"RGBA")
     paint_terrain(td,t)
-    stage.add(Layer25D("terrain",60,terrain))
+    stage.add(Layer25D("terrain",60,terrain,material="metal"))
     # Actions must be blended on a separate transparent overlay. Drawing a
     # low-alpha glow directly onto opaque RGBA would overwrite its alpha,
     # darkening cloud faces and producing opaque-looking flat artifacts.
