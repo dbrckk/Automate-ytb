@@ -1,4 +1,4 @@
-"""Prepare reviewable original-image slideshow shot plans (no media generation)."""
+"""Prepare original 2.5D layered cinematic shot briefs (no imagery generated)."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -8,7 +8,7 @@ import re
 
 from .director import direct_scenes
 
-STYLE = "Original cinematic 3D illustration, rounded character, soft film lighting"
+STYLE = "Original detailed cinematic 2.5D layered illustration, authored material texture, foreground occlusion, atmospheric depth, motivated painterly lighting and animation-ready separate depth planes"
 CAMERAS = ("wide establishing", "medium", "close-up", "over-the-shoulder", "low-angle", "macro")
 
 
