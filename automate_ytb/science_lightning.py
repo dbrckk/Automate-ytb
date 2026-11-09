@@ -114,13 +114,34 @@ def _clouds(layer: Image.Image,t: float):
 
 
 def _leader_path():
-    # One branching physical channel used in leader, link, return and thunder.
+    # Fixed-seed, irregular multiscale electrical channel. The original
+    # smooth double-sine traced a regular decorative squiggle. Local
+    # dielectric breakdown wanders at several spatial frequencies; keep
+    # one exact shared conductive path across all causal beats.
+    rng=random.Random(78122)
+    wander=0.
     nodes=[]
     for k in range(57):
         f=k/56
         y=270+510*f
-        x=485+138*f+31*math.sin(f*12.8)+16*math.sin(f*37.)
+        wander=.58*wander+rng.uniform(-17.,17.)
+        x=(485+138*f+25*math.sin(f*11.2)+
+           8*math.sin(f*30.5)+wander)
         nodes.append((round(x),round(y)))
+    return tuple(nodes)
+
+
+def _leader_branch(origin, side: int, seed: int):
+    # Nonperiodic stepped branches and independent subforks, deterministic
+    # and reused for every frame. They never become disconnected noise.
+    x,y=origin
+    rng=random.Random(4800+seed)
+    nodes=[(x,y)]
+    for i in range(1,9):
+        f=i/8
+        jitter=rng.uniform(-12,12)*f
+        nodes.append((round(x+side*(22+72*f)+jitter),
+                      round(y+71*f+rng.uniform(-5,5))))
     return tuple(nodes)
 
 PATH=_leader_path()
@@ -186,15 +207,22 @@ def _leader(d,t,duration,english):
     _trail(d,coords,(192,237,255,225),4)
     # Side channels only grow after the leader reaches their junction.
     # Alternating left/right branch growth makes the descent readable.
-    for j in (6,13,22,30,36):
+    for i,j in enumerate((6,13,22,30,36)):
         if n>j+1:
-            x,y=LEADER_CHANNEL[j]
-            k=min(1.,(n-j)/9)
-            side=-1 if j%2 else 1
-            branch=((x,y),(x+round(side*37*k),y+round(24*k)),
-                    (x+round(side*58*k),y+round(51*k)))
-            _trail(d,branch,(110,194,246,98),8)
-            _trail(d,branch,(173,224,255,208),3)
+            side=-1 if i%2 else 1
+            branch=_leader_branch(LEADER_CHANNEL[j],side,j)
+            progress=min(1.,(n-j)/11)
+            count=max(2,round(2+(len(branch)-2)*progress))
+            active=branch[:count]
+            _trail(d,active,(110,194,246,80),7)
+            _trail(d,active,(211,239,255,219),2)
+            if count>=6:
+                # Nested fine forks give the spark an organic branching
+                # silhouette without random per-frame flicker.
+                bx,by=active[4]
+                fork=_leader_branch((bx,by),-side,j+117)
+                _trail(d,fork[:4],(130,195,236,92),3)
+                _trail(d,fork[:4],(194,231,253,169),1)
     x,y=coords[-1]
     d.ellipse((x-13,y-13,x+13,y+13),fill=(243,250,255,240))
 
