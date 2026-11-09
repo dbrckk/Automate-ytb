@@ -97,6 +97,33 @@ jobs:
               --prerelease --latest=false
           fi
           url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${PREVIEW_SLUG}.mp4"
-          echo "### Stable direct Android/PC MP4 download" >> "$GITHUB_STEP_SUMMARY"
-          echo "$url" >> "$GITHUB_STEP_SUMMARY"
-          echo "Original media is unchanged, SHA verified; editorial review still required." >> "$GITHUB_STEP_SUMMARY"
+          # Never advertise an untested URL. GitHub may need a moment to
+          # propagate new release assets to anonymous download endpoints.
+          verified=false
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --silent --show-error \
+              --retry 2 --retry-delay 2 --max-time 180 \
+              "$url" --output "$RUNNER_TEMP/public-science.mp4"; then
+              if cmp -s "delivered/${PREVIEW_SLUG}.mp4" "$RUNNER_TEMP/public-science.mp4"; then
+                verified=true
+                break
+              fi
+            fi
+            sleep 5
+          done
+          if [[ "$verified" != true ]]; then
+            echo "::error::Public science MP4 failed anonymous download or checksum comparison"
+            exit 1
+          fi
+          expected="$(sha256sum "delivered/${PREVIEW_SLUG}.mp4" | cut -d' ' -f1)"
+          received="$(sha256sum "$RUNNER_TEMP/public-science.mp4" | cut -d' ' -f1)"
+          [[ "$expected" == "$received" ]]
+          {
+            echo "### VERIFIED permanent public science MP4 download"
+            echo
+            echo "$url"
+            echo
+            echo "Anonymous full HTTP GET: success"
+            echo "SHA-256: $received"
+            echo "Technical preview — human editorial review required."
+          } >> "$GITHUB_STEP_SUMMARY"
