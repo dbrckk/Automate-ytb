@@ -27,6 +27,7 @@ from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
 from .science_lightning import (classify as classify_lightning, draw_lightning,
                                 supports_topic as supports_lightning,
                                 storm_background, BADGES as LIGHTNING_BADGES)
+from .lightning_editorial25d import render_lightning_editorial
 from .science_aurora import (classify as classify_aurora, draw_aurora,
                             supports_topic as supports_aurora,
                             portrait_background as aurora_background,
@@ -355,132 +356,18 @@ class PortraitScienceScene:
             else RAINBOW_BADGES[self.rainbow_beat] if self.rainbow_beat
             else STORYBOARD_BADGES[self.beat] if self.beat
             else badges[self.mode])
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            # Render the stable editorial interface after scene animation.
-            pass
-        else:
-            d.rounded_rectangle((55, 190, 1025, 407), radius=34,
-                                fill=(7, 20, 41, 232),
-                                outline=CYAN+(125,), width=3)
-            for i, row in enumerate(title):
-                d.text((104, 234 + 68*i), row,
-                       font=_font(title_size, bold=True), fill=INK)
-            d.rounded_rectangle((80, 477, 750, 537), radius=22,
-                                fill=(12, 47, 72, 234))
-            d.text((113, 488), science_badge[0 if self.english else 1],
-                   font=_font(36, bold=True), fill=GOLD+(255,))
-        if self.earth_stop_beat is not None:
-            draw_earth_stop(picture, self.earth_stop_beat, t, duration,
-                            self.english, self._planet_at)
-            d = ImageDraw.Draw(picture, "RGBA")
-        elif self.lightning_beat is not None:
-            draw_lightning(picture, self.lightning_beat, t, duration,
-                           self.english,
-                           event_progress=self._narrated_event_fraction)
-            d = ImageDraw.Draw(picture, "RGBA")
-        elif self.aurora_beat is not None:
-            draw_aurora(picture, self.aurora_beat, t, duration,
-                        self.english,
-                        event_progress=self._narrated_event_fraction,
-                        rendered_stage=(self._aurora_stage.frame(
-                            self.aurora_beat, t=t, duration=duration)
-                            if self._aurora_stage is not None else None))
-            d = ImageDraw.Draw(picture, "RGBA")
-        elif self.volcano_beat is not None:
-            draw_volcano(picture, self.volcano_beat, t, duration,
-                         self.english,
-                         event_progress=self._narrated_event_fraction)
-            d = ImageDraw.Draw(picture, "RGBA")
-        elif self.rainbow_beat is not None:
-            draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
-        elif self.beat is not None:
-            if self._blender_stage is not None:
-                self._blender_stage.composite(picture, self.beat, t=t, duration=duration)
-            else:
-                draw_depth(picture, self.beat, t=t, duration=duration)
-            d = ImageDraw.Draw(picture, "RGBA")
-            draw_storyboard(d, self.beat, t, self.english, duration=duration,
-                            event_progress=self._narrated_event_fraction,
-                            depth_background=True)
-        elif self.mode in ("orbital", "daylight"):
-            globe = self._planet_at(t)
-            center_x = 540 + round(16 * math.sin(t*.32))
-            center_y = 955 + round(12 * math.sin(t*.40))
-            top_left = (center_x - globe.width//2, center_y - globe.height//2)
-            picture.alpha_composite(globe, top_left)
-            d = ImageDraw.Draw(picture, "RGBA")
-            if self.mode == "orbital":
-                for rad in (386, 409):
-                    advance = round(12*t)
-                    d.arc((center_x-rad, center_y-rad,
-                           center_x+rad, center_y+rad),
-                          32+advance, 245+advance, fill=CYAN+(140,),
-                          width=3)
-                for i in range(9):
-                    angle = i*math.tau/9 + .27*t
-                    x = center_x + round(397*math.cos(angle))
-                    y = center_y + round(397*math.sin(angle))
-                    d.ellipse((x-4, y-4, x+4, y+4), fill=GOLD+(235,))
-            else:
-                radius = 340
-                # Stylized terminator; schematic lighting, never presented
-                # as a scientific simulation of the Earth-Sun geometry.
-                d.pieslice((center_x-radius, center_y-radius,
-                            center_x+radius, center_y+radius),
-                           270, 90, fill=(7, 14, 31, 86))
-                d.rounded_rectangle((101, 1350, 520, 1426), radius=19,
-                                    fill=(15, 52, 75, 239))
-                d.rounded_rectangle((557, 1350, 974, 1426), radius=19,
-                                    fill=(7, 21, 42, 239))
-                d.text((132, 1367), "DAY" if self.english else "JOUR",
-                       font=_font(36, True), fill=GOLD+(255,))
-                d.text((593, 1367), "NIGHT" if self.english else "NUIT",
-                       font=_font(36, True), fill=CYAN+(255,))
-        elif self.mode == "atmosphere":
-            # Large independent cloud masses and moving current lines.
-            for i, (cx, cy, radius) in enumerate(
-                    ((243, 781, 117), (654, 941, 172), (382, 1202, 137))):
-                dx = round(28*math.sin(t*(.38+i*.14)+i))
-                d.ellipse((cx-radius+dx, cy-radius//2,
-                           cx+radius+dx, cy+radius//2),
-                          fill=(89+i*14, 153+i*10, 181+i*7, 177))
-                d.ellipse((cx-55+dx, cy-radius, cx+104+dx, cy+radius//2),
-                          fill=(139, 196, 220, 144))
-            for i in range(15):
-                y = 698 + i*44
-                x = (i*118 + t*(64+i%3*17))%1190 - 95
-                d.arc((x, y-55, x+230, y+34), 178, 353,
-                      fill=CYAN+(165,), width=5)
-                d.polygon([(x+211, y-18), (x+232, y-11),
-                           (x+207, y+1)], fill=GOLD+(182,))
-        else:
-            # Full-width independently moving wave sheets; no horizontal crop.
-            d.ellipse((117, 640, 963, 1470), fill=(27, 96, 136, 90))
-            waves = [
-                ((31, 110, 169, 218), 31, .72, 931),
-                ((51, 169, 206, 227), 40, .84, 1075),
-                ((24, 108, 174, 238), 34, 1.04, 1242),
-                ((15, 80, 147, 246), 27, 1.24, 1405),
-            ]
-            for i, (color, amp, speed, baseline) in enumerate(waves):
-                points = [(0, 1510)]
-                for x in range(0, 1081, 9):
-                    y = baseline + amp * math.sin(x / 152 + speed*t + i*.62)
-                    points.append((x, round(y)))
-                points.append((1080, 1510))
-                d.polygon(points, fill=color)
-                d.line(points[1:-1], fill=(188, 240, 248, 127), width=3)
-            for i in range(20):
-                x = round((i*113+t*29)%1010)+35
-                y = 810+(i*67)%590
-                d.ellipse((x-2, y-2, x+2, y+2),
-                          fill=(215, 241, 249, 170))
-            _ocean_currents(d, t)
-        if (self.lightning_beat is not None or self.aurora_beat is not None
-                or self.volcano_beat is not None):
-            # UI is composited after the cinematographic camera, so the
-            # moving image cannot overwrite or displace readable typography.
+        if self.lightning_beat is not None:
+            # P4.9: an original, briefly visible opening hook followed by a
+            # small physical-action heading. The episode title no longer
+            # sits above every cinematic shot like a PowerPoint slide.
+            render_lightning_editorial(
+                picture,beat=self.lightning_beat,
+                scene_index=self.scene_index,t=t,duration=duration,
+                english=self.english,title_lines=title,
+                title_size=title_size)
+        elif self.aurora_beat is not None or self.volcano_beat is not None:
+            # Preserve the separately validated Aurora/Volcano typography.
+            # UI is drawn *after* the moving camera for stable readability.
             header = Image.new("RGBA", picture.size)
             ui = ImageDraw.Draw(header)
             ui.rounded_rectangle((61, 109, 1019, 243), radius=25,
@@ -493,9 +380,7 @@ class PortraitScienceScene:
                                  fill=(10, 38, 58, 156))
             ui.text((99, 273), science_badge[0 if self.english else 1],
                     font=_font(31, bold=True), fill=GOLD+(255,))
-            beat_number = (list(LIGHTNING_BADGES).index(self.lightning_beat)
-                           if self.lightning_beat is not None else
-                           list(AURORA_BADGES).index(self.aurora_beat)
+            beat_number = (list(AURORA_BADGES).index(self.aurora_beat)
                            if self.aurora_beat is not None else
                            list(VOLCANO_BADGES).index(self.volcano_beat))
             ui.line((75, 327, 1005, 327), fill=(128, 177, 199, 89), width=3)
