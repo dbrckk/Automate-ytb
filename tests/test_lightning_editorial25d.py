@@ -103,6 +103,12 @@ class LightningEditorialTests(unittest.TestCase):
         self.assertEqual(a.size,(1080,1920))
         self.assertEqual(a.mode,"RGB")
         self.assertIsNotNone(ImageChops.difference(a,b).getbbox())
+        # Regression against accidentally replacing the scene dispatcher:
+        # moving lightning geometry inside the physical stage must change,
+        # independently of the top title or lower narration captions.
+        hero=(40,350,1040,1530)
+        self.assertIsNotNone(
+            ImageChops.difference(a.crop(hero),b.crop(hero)).getbbox())
         self.assertEqual(a.crop((0,80,1080,330)).size,(1080,250))
 
     def test_invalid_editorial_state_fails_closed(self):
