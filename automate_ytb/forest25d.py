@@ -168,12 +168,12 @@ def frame(t: float, *, kind: str = "fox",
     scene=Scene25D(SIZE)
     scene.add(Layer25D("sky",0,landscape["sky"]))
     scene.add(Layer25D("clouds",10,drifting_clouds(t),parallax_x=.18))
-    scene.add(Layer25D("ridges",20,landscape["ridges"],parallax_x=.36))
+    scene.add(Layer25D("ridges",20,landscape["ridges"],parallax_x=.36,material="mineral"))
     scene.add(Layer25D("sunbeams",25,landscape["sunbeams"],parallax_x=.42))
     # The original trees and shrubs flex with world-space gusts, rooted
     # beneath the hero. Their existing Z ordering/parallax is unchanged.
-    scene.add(Layer25D("trees",30,living_canopy(t,layer="trees"),parallax_x=.58))
-    scene.add(Layer25D("understory",35,living_canopy(t,layer="understory"),parallax_x=.67))
+    scene.add(Layer25D("trees",30,living_canopy(t,layer="trees"),parallax_x=.58,material="foliage"))
+    scene.add(Layer25D("understory",35,living_canopy(t,layer="understory"),parallax_x=.67,material="foliage"))
     scene.add(Layer25D("meadow",40,landscape["meadow"],parallax_x=.72))
     # Ground-rooted wind and paw waves live at z50, BEHIND the physical
     # legs/animal at z60. The original ground shadow is then composited in
@@ -187,7 +187,7 @@ def frame(t: float, *, kind: str = "fox",
         behind,petals=flower_plates(
             t,origin_x=ORIGIN_X,speed=SPEED,torso_y=TORSO_Y)
         scene.add(Layer25D("responsive-flower",55,behind))
-    scene.add(Layer25D("ik-"+kind,60,actor))
+    scene.add(Layer25D("ik-"+kind,60,actor,material="fabric"))
     # Ground reaction is driven by real contact, not arbitrary particles.
     # Paw impact arcs remain in front of the feet; rooted moving plants
     # remain behind them, avoiding accidental orange-foot occlusion.
