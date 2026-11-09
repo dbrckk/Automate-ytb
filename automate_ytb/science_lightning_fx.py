@@ -29,10 +29,18 @@ def _sky() -> Image.Image:
     d=ImageDraw.Draw(scene)
     for y in range(SIZE[1]):
         depth=y/SIZE[1]
-        # Dark blue-black indigo at cloud altitude to humid slate by horizon.
+        # Color script: indigo-black upper storm, muted plum horizon,
+        # cool slate reflection. Warmth is strongest behind the industrial
+        # silhouette, not a uniform cyan wash across every material.
+        horizon=math.exp(-((depth-.72)/.27)**2)
         d.line((0,y,1080,y),
-               fill=(round(5+20*depth),round(14+29*depth),
-                     round(32+49*depth),255))
+               fill=(round(5+20*depth+22*horizon),
+                     round(14+29*depth+7*horizon),
+                     round(32+49*depth+3*horizon),255))
+    glow=Image.new("RGBA",SIZE)
+    ImageDraw.Draw(glow).ellipse((-100,500,1200,1080),
+                                  fill=(171,115,86,30))
+    scene.alpha_composite(glow.filter(ImageFilter.GaussianBlur(94)))
     return scene
 
 
