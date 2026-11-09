@@ -93,21 +93,46 @@ def aim(camera, target):
     camera.rotation_euler=delta.to_track_quat('-Z','Y').to_euler()
 
 
-def cloud(name, loc, size, material, seed):
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3,radius=1., location=loc)
+def cloud_bank(depth, material):
+    """One physically joined implicit 3D storm mass, not 14 cotton balls.
+
+    Each of three banks has fourteen independent density lobes. Blender
+    converts the fused metaball surface to a genuine editable mesh before
+    Cycles shades it. A low-amplitude noise displace adds microrelief.
+    """
+    family='Fused cumulonimbus bank %d'%depth
+    implicit=bpy.data.metaballs.new(family)
+    implicit.resolution=.30
+    implicit.render_resolution=.22
+    implicit.threshold=.58
+    ob=bpy.data.objects.new(family,implicit)
+    bpy.context.collection.objects.link(ob)
+    for i in range(14):
+        rng=random.Random(6800+depth*71+i)
+        x=-8+i*1.27+rng.uniform(-.55,.55)
+        y=2.5+depth*2.0+rng.uniform(-.6,.6)
+        z=6.1+depth*.50+rng.uniform(-.30,.50)
+        element=implicit.elements.new(type='BALL')
+        element.co=(x,y,z)
+        element.radius=1.05+rng.uniform(.05,.48)
+        element.stiffness=2.0
+    implicit.materials.append(material)
+    bpy.ops.object.select_all(action='DESELECT')
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active=ob
+    bpy.ops.object.convert(target='MESH')
     ob=bpy.context.object
-    ob.name=name
-    ob.scale=size
-    rng=random.Random(seed)
-    for vertex in ob.data.vertices:
-        xyz=vertex.co
-        wave=.09*math.sin(11*xyz.x+4*xyz.y)+.07*math.sin(15*xyz.z-3*xyz.x)
-        shake=rng.uniform(-.08,.08)
-        vertex.co*=1+wave+shake
-    ob.data.materials.append(material)
-    for polygon in ob.data.polygons:
-        polygon.use_smooth=True
-    return ob
+    if len(ob.data.vertices)<500:
+        raise RuntimeError('Real 3D storm mesh did not emerge from clouds')
+    for face in ob.data.polygons:
+        face.use_smooth=True
+    noise=bpy.data.textures.new('Bank billow microrelief %d'%depth,
+                                type='CLOUDS')
+    noise.noise_scale=.85
+    displacement=ob.modifiers.new('Subtle cloud turbulence','DISPLACE')
+    displacement.texture=noise
+    displacement.strength=.14
+    return len(ob.data.vertices)
 
 
 def lamp(name, position, energy, color, size):
@@ -202,18 +227,12 @@ def build():
     bpy.ops.mesh.primitive_uv_sphere_add(segments=12,ring_count=6,radius=.085,location=tip)
     bpy.context.object.name='Physical tower beacon'
     bpy.context.object.data.materials.append(red)
-    # Truly three-dimensional overlapping storm masses at three Z depths.
+    # Three coherent spatial storm banks with 42 sculpted billows,
+    # instead of forty-two visibly separate shaded-sphere sprites.
+    cloud_vertices=0
     for depth in range(3):
-        for i in range(14):
-            rng2=random.Random(6800+depth*71+i)
-            x=-8+i*1.27+rng2.uniform(-.65,.65)
-            y=2.5+depth*2.0+rng2.uniform(-.9,.9)
-            z=6.1+depth*.50+rng2.uniform(-.45,.65)
-            cloud('Sculpted cumulonimbus %d %d'%(depth,i),
-                  (x,y,z),(.85+rng2.random()*.72,.65+rng2.random()*.64,
-                           .47+rng2.random()*.65),
-                  cloud_mat if (i+depth)%3 else cloud_shadow,
-                  321+depth*57+i*11)
+        cloud_vertices+=cloud_bank(
+            depth,cloud_shadow if depth==2 else cloud_mat)
     # Irregular conductive curve in real 3D, anchored to actual tower tip.
     rng3=random.Random(14811)
     points=[tip]
@@ -278,7 +297,9 @@ def main():
         'meshObjects':sum(o.type=='MESH' for o in bpy.data.objects),
         'lightObjects':sum(o.type=='LIGHT' for o in bpy.data.objects),
         'proceduralMaterials':len(bpy.data.materials),
-        'actual3dCloudMeshes':len([o for o in bpy.data.objects if o.name.startswith('Sculpted cumulonimbus')]),
+        'actual3dCloudMeshes':len([o for o in bpy.data.objects if o.type=='MESH' and o.name.startswith('Fused cumulonimbus')]),
+        'actual3dCloudLobes':42,
+        'actual3dCloudVertices':cloud_vertices,
         'file':'storm-pbr-pilot.png',
         'sha256':hashlib.sha256(filename.read_bytes()).hexdigest(),
     }
