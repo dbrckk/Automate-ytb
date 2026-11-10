@@ -30,7 +30,9 @@ jobs:
           # Ubuntu hosted runners often already ship FFmpeg, espeak and
           # DejaVu. Avoid unconditional apt update: it has hung until the
           # 20-minute job timeout in multiple unrelated PR checks.
-          if ! command -v ffmpeg >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+          # The production CLI supports either eSpeak NG or classic eSpeak.
+          # Avoid calling apt on runners which already have working speech.
+          if ! command -v ffmpeg >/dev/null || { ! command -v espeak-ng >/dev/null && ! command -v espeak >/dev/null; } || ! fc-match DejaVuSans >/dev/null; then
             if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core; then
               sudo timeout -k 10s 120s apt-get update -qq
               sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
@@ -38,7 +40,7 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check -e '.[motion]'
           ffmpeg -version | head -n 1
-          espeak-ng --version
+          if command -v espeak-ng >/dev/null; then espeak-ng --version; else espeak --version; fi
       - name: Unit and safety tests
         run: python -m unittest discover -s tests -v
       - name: Generate sourced example video
