@@ -18,26 +18,59 @@ from PIL import Image, ImageChops, ImageDraw
 from .rock_surface25d import weathered_rock
 
 SIZE = (1080, 1380)
-TERRAIN_VERSION = "volcano-geometric-heightfield-v3-weathered-rock-and-eroded-facets"
+TERRAIN_VERSION = "volcano-geometric-heightfield-v4-radial-buttresses-and-terraced-flanks"
 RINGS = (0, 17, 33, 48, 65, 80, 96, 114, 133, 154, 179,
          206, 236, 268, 302, 338, 376, 414, 449, 480, 520)
 SEGMENTS = 112
 
 # The same geological silhouette is used for full exterior and cutaway shots.
 # It also prevents any back-facing triangle from leaking beyond the mountain.
-CONE_OUTLINE = (
-    # Erosion-shaped shoulders, ledges and asymmetrical source silhouette.
-    # The real crater and the shared magma/ash vent stay at (540,345).
-    (0, 1032), (70, 1009), (128, 958), (176, 914),
-    (212, 854), (249, 803), (269, 754), (302, 707),
-    (336, 658), (357, 607), (391, 560), (418, 529),
-    (451, 466), (473, 414), (499, 364), (514, 338),
-    (529, 343), (549, 336), (566, 353), (585, 400),
-    (611, 447), (651, 511), (676, 565), (707, 612),
-    (738, 675), (779, 729), (816, 784), (851, 829),
-    (897, 889), (947, 933), (1002, 970), (1080, 1008),
-    (1080, 1380), (0, 1380),
+_SHOULDER_ANCHORS = (
+    # Crater and vent coordinates are preserved: geology must NOT shift
+    # the (540,345) eruption source or disconnect the conduit/cutaway.
+    (0,1032),(70,1009),(128,958),(176,914),
+    (212,854),(249,803),(269,754),(302,707),
+    (336,658),(357,607),(391,560),(418,529),
+    (451,466),(473,414),(499,364),(514,338),
+    (529,343),(549,336),(566,353),(585,400),
+    (611,447),(651,511),(676,565),(707,612),
+    (738,675),(779,729),(816,784),(851,829),
+    (897,889),(947,933),(1002,970),(1080,1008),
 )
+
+
+def eroded_silhouette() -> tuple[tuple[int,int], ...]:
+    """Original fixed chipped rock shoulders, not a 32-edge pyramid.
+
+    The source mask is created once at module initialization. All geometry
+    and cuts share it, and every pre-existing summit anchor stays intact.
+    """
+    points=[]
+    for i,(left,right) in enumerate(zip(_SHOULDER_ANCHORS,
+                                        _SHOULDER_ANCHORS[1:])):
+        x0,y0=left
+        x1,y1=right
+        count=max(2,round(abs(x1-x0)/12))
+        for j in range(count):
+            u=j/count
+            x=x0+(x1-x0)*u
+            y=y0+(y1-y0)*u
+            # Erosion is stronger on the outer ridge, not on the summit
+            # where the vent and rock contact must remain fixed.
+            summit_falloff=min(1.,max(0.,abs(x-540)-35)/170.)
+            strength=8+14*summit_falloff
+            broad=math.sin((i+u)*2.31+.46)
+            ridged=math.sin((i+u)*6.11-.71)
+            y+=strength*math.sin(math.pi*u)*(.71*broad+.29*ridged)
+            points.append((round(x),round(y)))
+    points.append(_SHOULDER_ANCHORS[-1])
+    return tuple(points)
+
+
+# Same source mask in every 2.5D source: exterior, animated-lit faceting,
+# cutaway wall and independent camera movement. Final two points close
+# the mountain against the existing terrain bed with no geometry leaks.
+CONE_OUTLINE = eroded_silhouette() + ((1080,1380),(0,1380))
 
 
 def height_at(radius: float, azimuth: float) -> float:
@@ -53,15 +86,27 @@ def height_at(radius: float, azimuth: float) -> float:
         # Radius 520 is the final foothill: elevation must reach the ground.
         u = (radius - 65) / 455
         height = 685 * max(0, 1 - u ** .89)
-    # Erosion fades to zero at the base; mountain must meet the ground.
-    erosion = ((max(0, radius - 70) / 465) ** .69
-               * max(0., 1 - (radius / 520) ** 4))
-    height += erosion * (
-        17 * math.sin(7 * azimuth + .6)
-        + 12 * math.sin(13 * azimuth - .2)
-        + 6 * math.cos(29 * azimuth + .1)
-        + 4 * math.sin(31 * azimuth + radius * .03))
-    return max(0., height)
+    # Lithologic benches and radial buttresses are actual heightfield
+    # displacements: silhouettes, shadow-facing normals and rock relief
+    # all change together. They fade at both vent and ground, instead of
+    # placing arbitrary decorative wrinkles over a perfect cone.
+    u=max(0.,min(1.,(radius-65)/455.))
+    envelope=math.sin(math.pi*u)**2
+    broad_buttress=(39*math.sin(4*azimuth+.23+u*.8)
+                     +23*math.sin(9*azimuth-.61-u*1.9)
+                     +9*math.cos(17*azimuth+.1))
+    radial_benches=(17*math.sin(radius*.037+azimuth*.83)
+                    +8*math.cos(radius*.072-2.7*azimuth))
+    height+=envelope*(broad_buttress+radial_benches)
+    # Small eroded gullies are persistent world-space geometry,
+    # decreasing to zero as the mountain joins the original foothills.
+    erosion=((max(0.,radius-70)/465)**.69 *
+             max(0.,1-(radius/520)**4))
+    height+=erosion*(17*math.sin(7*azimuth+.6)
+                     +12*math.sin(13*azimuth-.2)
+                     +6*math.cos(29*azimuth+.1)
+                     +4*math.sin(31*azimuth+radius*.03))
+    return max(0.,height)
 
 
 def project(x: float, y: float, z: float) -> tuple[float, float]:
@@ -86,10 +131,17 @@ def shaded_terrain() -> Image.Image:
         ring = []
         for index in range(SEGMENTS):
             az = index * 2 * math.pi / SEGMENTS
-            r = radius * (1 + .022 * math.sin(11 * az)
-                          + .018 * math.sin(19 * az))
-            ring.append((r * math.cos(az), r * math.sin(az),
-                         height_at(radius, az)))
+            # Distinct landslide shoulders and erosion ravines alter
+            # the projected slope itself instead of drawing cartoon
+            # sawtooth decorations over straight triangle edges.
+            u=radius/520.
+            shoulder=math.sin(math.pi*u)**2
+            r=radius*(1+.022*math.sin(11*az)
+                      +.018*math.sin(19*az)
+                      +shoulder*(.063*math.sin(5*az+.31+u*2.4)
+                                 +.029*math.sin(13*az-.7-u*3.2)))
+            ring.append((r*math.cos(az),r*math.sin(az),
+                         height_at(radius,az)))
         vertices.append(ring)
 
     faces = []
