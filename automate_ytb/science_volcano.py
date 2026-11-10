@@ -18,6 +18,7 @@ from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
+from .organic_environment25d import terrain_strata, cloud_bank
 
 SIZE=(1080,1380)
 TOP=330
@@ -87,9 +88,13 @@ def _base(section: bool) -> Image.Image:
         x,y=rng.randrange(1080),rng.randrange(40,600)
         b=rng.randrange(110,210)
         d.ellipse((x-1,y-1,x+1,y+1),fill=(b//2,b-15,b,175))
-    d.polygon([(0,945),(170,862),(335,913),(513,820),
-               (689,898),(842,825),(1080,934),(1080,1380),(0,1380)],
-              fill=(25,44,61,255))
+    # Independent distant eroded strata replace the zig-zag background
+    # hillside. The exact same reusable original 2.5D asset family also
+    # appears in underwater geology and future natural landscapes.
+    frame.alpha_composite(terrain_strata(
+        (1080,560),seed=18401,color=(55,73,82),opacity=165),(0,530))
+    frame.alpha_composite(cloud_bank(
+        (1080,370),seed=18437,color=(93,114,130),opacity=56),(0,100))
     # Properly projected 3D terrain, computed once. The dark solid core
     # remains behind it to keep underground/cutaway shots watertight.
     # The mountain merges into the established distant rocky foothills.
