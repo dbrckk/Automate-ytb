@@ -28,8 +28,11 @@ def conduit_center_x(y: float) -> float:
     # Multiple slowly varying geological bends vanish at both endpoints;
     # the magma/ash vent cannot drift away from the actual crater.
     envelope = math.sin(math.pi*u)**2
-    deviation = (11*math.sin(2.65*math.pi*u+.28)
-                 +5*math.sin(5.1*math.pi*u-.45))
+    # Pronounced but bounded authored bends remain visible at phone scale.
+    # The bore is still wide enough at y=660/690 to preserve earlier
+    # pressure/ascent science continuity and its central-path constraints.
+    deviation = (23*math.sin(2.65*math.pi*u+.28)
+                 +8*math.sin(5.1*math.pi*u-.45))
     return VENT[0] + envelope*deviation
 
 
