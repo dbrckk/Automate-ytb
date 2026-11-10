@@ -32,7 +32,7 @@ sources use overlapping intervals.
 
 ## Original technical delivery contract
 The first successful production run of `Verify original aurora-colors
-science Short` on `main` renders Kokoro `af_heart` English, 34-second narration-paced runtime,
+science Short` on `main` renders Kokoro `af_heart` English, 35-second narration-paced runtime,
 original CPU-drawn 2.5D scientific actions, 30 fps, full 1080×1920,
 H.264/AAC, captions, original ambient soundtrack and the existing
 full source-frame + media QA checks.
@@ -59,3 +59,14 @@ the timeline before encoding. Instead of cutting or unnaturally
 accelerating the original science narration, the second video run
 requests **34 seconds** at 6.8 seconds per narrated scene.
 The authored original five-sentence content remains unchanged.
+
+## Final pacing adjustment after measured 34-second attempt
+The second real Kokoro run #42881850376 measured natural scene times
+of 6.800, 7.220, 7.190, 6.800 and 6.800 seconds at a 6.8-second
+minimum shot length: total **34,810 ms**, overshooting its 34,000 ms
+target by **810 ms** (allowed maximum 600 ms). No voice truncation
+was accepted. Five 7-second shots at a requested 35 seconds retain
+the same original physical sentences, keep the longest spoken scene
+within its natural duration, and yield an expected measured timeline
+near **35,410 ms** (within the existing strict tolerance). This was
+derived from actual `narration-pacing.json` artifacts, not guessed.

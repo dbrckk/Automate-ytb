@@ -58,8 +58,8 @@ class OriginalAuroraColorEpisodeTests(unittest.TestCase):
         for required in (
             "      style: science","      language: en",
             "      voice: kokoro","      voice_name: af_heart",
-            "      caption_timing: audio","      duration_seconds: 34",
-            "      shot_seconds: 6.8","      resolution: shorts",
+            "      caption_timing: audio","      duration_seconds: 35",
+            "      shot_seconds: 7","      resolution: shorts",
             "      render_profile: high",
             "uses: ./.github/workflows/one-click-preview.yml",
         ):
