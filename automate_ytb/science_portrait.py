@@ -395,7 +395,7 @@ class PortraitScienceScene:
             d = ImageDraw.Draw(picture, "RGBA")
             draw_storyboard(d, self.beat, t, self.english, duration=duration,
                             event_progress=self._narrated_event_fraction,
-                            depth_background=True)
+                            depth_background=True,canvas=picture)
         elif self.mode in ("orbital", "daylight"):
             globe = self._planet_at(t)
             center_x = 540 + round(16 * math.sin(t*.32))

@@ -132,3 +132,73 @@ def solar_disc(diameter: int, *, seed: int = 71) -> Image.Image:
                 fill=(255,251,207,170),
                 width=max(2,round(diameter*.02)))
     return field
+
+
+
+@lru_cache(maxsize=24)
+def thermal_pool(size: tuple[int,int], *, kind: str, seed: int = 129) -> Image.Image:
+    """Cacheable original warm/cool material with organic painted edge."""
+    if (not isinstance(size,tuple) or len(size)!=2 or
+            any(type(n) is not int or not 96<=n<=720 for n in size)
+            or kind not in ("warm","cool") or type(seed) is not int
+            or not 0<=seed<=1_000_000):
+        raise ValueError("Invalid original temperature material")
+    width,height=size
+    image=Image.new("RGBA",size)
+    pixels=image.load()
+    phase=random.Random(seed).uniform(0,math.tau)
+    base=(253,211,159) if kind=="warm" else (174,222,247)
+    for y in range(height):
+        ny=(y-(height-1)*.5)/(height*.49)
+        for x in range(width):
+            nx=(x-(width-1)*.5)/(width*.49)
+            # Organic superellipse: no flat rectangles or hard card rails.
+            radius=(abs(nx)**4+abs(ny)**4)**.25
+            radius+=.026*math.sin(nx*8.3+phase)*math.cos(ny*7.7-phase*.7)
+            alpha=max(0.,min(1.,(1.03-radius)/.15))
+            alpha=alpha*alpha*(3-2*alpha)
+            if alpha<=0:continue
+            detail=(math.sin(nx*12.8+ny*5.1+phase)
+                    +.46*math.sin(nx*29.4-ny*16.9-phase*.7)
+                    +.21*math.sin(nx*63.8+ny*32.4+phase*.4))
+            stripe=math.exp(-((ny-.24*math.sin(nx*5+phase))/.11)**2)
+            light=(1-radius)*12+detail*7+stripe*8
+            pixels[x,y]=(
+                _byte(base[0]+light*.4),_byte(base[1]+light*.8),
+                _byte(base[2]+light*.4),_byte((226+10*stripe)*alpha))
+    return image
+
+
+@lru_cache(maxsize=12)
+def ice_floe(size: tuple[int,int], *, seed: int = 75) -> Image.Image:
+    """Original polar waterline material with above/below-water strata."""
+    if (not isinstance(size,tuple) or len(size)!=2
+            or any(type(n) is not int or not 96<=n<=420 for n in size)
+            or type(seed) is not int or not 0<=seed<=1_000_000):
+        raise ValueError("Invalid original floating ice")
+    w,h=size
+    im=Image.new("RGBA",size)
+    d=ImageDraw.Draw(im,"RGBA")
+    def poly(points, color):
+        d.polygon([(round(x*w),round(y*h)) for x,y in points],fill=color)
+    top=[(.07,.58),(.16,.45),(.20,.34),(.31,.22),(.38,.29),
+         (.46,.14),(.53,.28),(.64,.19),(.71,.39),(.83,.42),(.91,.58)]
+    poly(top+[(.84,.67),(.12,.67)],(212,239,250,241))
+    poly([(.12,.61),(.84,.61),(.73,.90),(.47,.99),(.30,.85)],
+         (66,157,206,135))
+    poly([(.20,.39),(.31,.22),(.39,.31),(.39,.56),(.13,.60)],
+         (245,252,255,237))
+    poly([(.46,.15),(.53,.28),(.64,.19),(.70,.42),(.61,.52),(.42,.54)],
+         (174,213,239,221))
+    poly([(.39,.57),(.62,.52),(.72,.63),(.46,.89)],
+         (111,196,232,139))
+    rng=random.Random(seed)
+    for j in range(11):
+        x=rng.uniform(.16,.82); y=rng.uniform(.52,.7)
+        d.line((round(x*w),round(y*h),
+                round((x+rng.uniform(-.03,.03))*w),round((y+.04)*h)),
+                fill=(217,245,254,120+j*8),width=1+j%2)
+    d.line([(round(x*w),round(y*h)) for x,y in
+           ((.07,.59),(.28,.58),(.48,.60),(.71,.57),(.91,.59))],
+           fill=(241,253,255,222),width=max(2,round(w*.017)))
+    return im

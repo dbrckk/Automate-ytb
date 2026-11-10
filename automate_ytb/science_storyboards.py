@@ -10,7 +10,9 @@ import math
 import re
 import unicodedata
 
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
+from .hero_materials25d import solar_disc,thermal_pool,ice_floe
+from .organic_environment25d import water_caustics
 
 from .science_motion import _font
 from .science_causal_vfx import draw_interactions
@@ -89,13 +91,19 @@ def _marker(draw: ImageDraw.ImageDraw, x: float, y: float, color,
     draw.ellipse((x-radius, y-radius, x+radius, y+radius), fill=color)
 
 
-def _solar(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
+def _solar(d: ImageDraw.ImageDraw, t: float, english: bool,
+           canvas: Image.Image | None = None) -> None:
     sun_x, sun_y = 312, 968
-    for rad, alpha in ((183, 20), (151, 36), (121, 74)):
-        d.ellipse((sun_x-rad, sun_y-rad, sun_x+rad, sun_y+rad),
-                  fill=(248, 169, 73, alpha))
-    d.ellipse((sun_x-93, sun_y-93, sun_x+93, sun_y+93),
-              fill=(255, 192, 91, 255))
+    if canvas is None:
+        for rad, alpha in ((183, 20), (151, 36), (121, 74)):
+            d.ellipse((sun_x-rad, sun_y-rad, sun_x+rad, sun_y+rad),
+                      fill=(248, 169, 73, alpha))
+        d.ellipse((sun_x-93, sun_y-93, sun_x+93, sun_y+93),
+                  fill=(255, 192, 91, 255))
+    else:
+        sun=solar_disc(186,seed=131)
+        canvas.alpha_composite(
+            sun,(sun_x-sun.width//2,sun_y-sun.height//2))
     for n in range(12):
         phi = n*math.tau/12+t*.35
         start = (sun_x+105*math.cos(phi), sun_y+105*math.sin(phi))
@@ -107,13 +115,21 @@ def _solar(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
         (1015, WARM, "TROPICAL" if english else "TROPICAL"),
         (1235, COLD, "POLAR" if english else "POLAIRE"),
     ):
-        d.rounded_rectangle((611, y, 915, y+145), radius=19,
-                            fill=(color[0], color[1], color[2], 46),
-                            outline=color, width=3)
-        _label(d, (638, y+25), title, size=36)
-        _label(d, (638, y+79), 
+        if canvas is None:
+            d.rounded_rectangle((611, y, 915, y+145), radius=19,
+                                fill=(color[0], color[1], color[2], 46),
+                                outline=color, width=3)
+        else:
+            canvas.alpha_composite(
+                thermal_pool((304,145),
+                             kind="warm" if y==1015 else "cool",
+                             seed=6701+y),(611,y))
+        ink=DARK_TEXT if canvas is not None else WHITE
+        _label(d, (638, y+25), title, color=ink, size=36)
+        _label(d, (638, y+79),
                ("WARM" if y==1015 else "COOL") if english else
-               ("CHAUD" if y==1015 else "FROID"), color=color, size=42)
+               ("CHAUD" if y==1015 else "FROID"),
+               color=ink if canvas is not None else color,size=42)
     for i, end_y in enumerate((868, 1086, 1306)):
         _arrow(d, (410, sun_y+(i-1)*19),
                (590, end_y), GOLD if i==1 else (172, 212, 236, 170), 5)
@@ -124,10 +140,15 @@ def _solar(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            color=GOLD, size=40)
 
 
-def _wind(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
-    # A moving wind field drives visible surface water underneath.
-    d.rounded_rectangle((120, 800, 960, 1050), radius=38,
-                        fill=(42, 78, 112, 85))
+def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
+          canvas: Image.Image | None = None) -> None:
+    # Use continuous original caustic material, not a static diagram card.
+    if canvas is None:
+        d.rounded_rectangle((120, 800, 960, 1050), radius=38,
+                            fill=(42, 78, 112, 85))
+    else:
+        canvas.alpha_composite(water_caustics(
+            (840,250),seed=48102,color=(116,212,243),opacity=66),(120,800))
     for k in range(5):
         y = 840+k*42
         phase = t*(78+k*9)
@@ -174,7 +195,8 @@ def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            color=CYAN, size=34)
 
 
-def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
+def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool,
+             canvas: Image.Image | None = None) -> None:
     d.rounded_rectangle((130, 755, 950, 1376), radius=26,
                         fill=(20, 84, 133, 123))
     d.line((145, 901, 933, 901), fill=(175, 229, 246, 210), width=5)
@@ -190,8 +212,11 @@ def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
     _marker(d, 803, 1016+245*phase, COLD, 12)
     _marker(d, 755-475*phase, 1296, CYAN, 9)
     # Stylized polar ice; no real-world polar location claim.
-    d.polygon(((740, 895),(779, 840),(833, 895),(892, 895)),
-              fill=(216, 241, 253, 210))
+    if canvas is None:
+        d.polygon(((740, 895),(779, 840),(833, 895),(892, 895)),
+                  fill=(216, 241, 253, 210))
+    else:
+        canvas.alpha_composite(ice_floe((200,124),seed=907),(719,806))
     _label(d, (160, 791), "SURFACE" if english else "SURFACE", size=36)
     _label(d, (161, 1214), "DEEP WATER" if english else "EAU PROFONDE",
            color=CYAN, size=36)
@@ -199,13 +224,19 @@ def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            color=COLD, size=36)
 
 
-def _heat(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
+def _heat(d: ImageDraw.ImageDraw, t: float, english: bool,
+          canvas: Image.Image | None = None) -> None:
     # Separate hot and cool reservoirs linked by actual animated transfer.
     for x, hue, text in ((170, WARM, "WARM" if english else "CHAUD"),
                          (695, COLD, "COOL" if english else "FROID")):
-        d.rounded_rectangle((x, 860, x+220, 1130), radius=36,
-                            fill=(hue[0], hue[1], hue[2], 60),
-                            outline=hue, width=5)
+        if canvas is None:
+            d.rounded_rectangle((x, 860, x+220, 1130), radius=36,
+                                fill=(hue[0], hue[1], hue[2], 60),
+                                outline=hue, width=5)
+        else:
+            canvas.alpha_composite(thermal_pool(
+                (220,270),kind="warm" if x==170 else "cool",
+                seed=44920+x),(x,860))
         # A hue-colored caption on the matching colored background vanished in
         # the encoded MP4. White here is only ~2.3:1 contrast; navy ink
         # exceeds 7:1 on both orange and blue reservoir fills.
@@ -282,7 +313,8 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
                     t: float, english: bool, *,
                     duration: float | None = None,
                     event_progress: float | None = None,
-                    depth_background: bool = False) -> None:
+                    depth_background: bool = False,
+                    canvas: Image.Image | None = None) -> None:
     """Draw native educational motion; optionally show real-time causal progression."""
     if (beat not in BEATS or type(t) not in (int, float)
             or not math.isfinite(t) or t < 0 or type(english) is not bool):
@@ -291,6 +323,9 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
             type(duration) not in (int, float) or not math.isfinite(duration)
             or not 0 < duration <= 180 or t > duration):
         raise ValueError("Invalid storyboard duration")
+    if canvas is not None and (not isinstance(canvas,Image.Image)
+            or canvas.mode!="RGBA" or canvas.size!=(1080,1920)):
+        raise ValueError("Invalid native 2.5D material canvas")
     if duration is not None:
         _progress_ribbon(draw, beat, t / duration, english)
     if type(depth_background) is not bool:
@@ -304,15 +339,15 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
     if not depth_background:
         draw.rectangle((80,600,1000,1490),fill=NAVY)
     if beat == "solar":
-        _solar(draw, t, english)
+        _solar(draw, t, english,canvas=canvas)
     elif beat == "wind":
-        _wind(draw, t, english)
+        _wind(draw, t, english,canvas=canvas)
     elif beat == "coriolis":
         _coriolis(draw, t, english)
     elif beat == "sinking":
-        _sinking(draw, t, english)
+        _sinking(draw, t, english,canvas=canvas)
     elif beat == "heat":
-        _heat(draw, t, english)
+        _heat(draw, t, english,canvas=canvas)
     if duration is not None:
         draw_interactions(draw, beat, t=t, duration=duration,
                           event_progress=event_progress)
