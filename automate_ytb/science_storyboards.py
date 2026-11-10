@@ -13,6 +13,7 @@ import unicodedata
 from PIL import Image, ImageDraw
 from .hero_materials25d import solar_disc,thermal_pool,ice_floe
 from .organic_environment25d import water_caustics
+from .flow_material25d import vortex_frame
 
 from .science_motion import _font
 from .science_causal_vfx import draw_interactions
@@ -173,13 +174,22 @@ def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
            color=CYAN, size=39)
 
 
-def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
+def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool,
+              canvas: Image.Image | None = None) -> None:
     cx, cy = 540, 1090
-    d.ellipse((205, 755, 875, 1425), fill=(32, 92, 146, 90),
-              outline=(84, 184, 213, 105), width=3)
+    if canvas is not None:
+        # The animated water source replaces a rigid filled disc with
+        # independent moving filaments; scientific markers remain on top.
+        canvas.alpha_composite(
+            vortex_frame(670,t,palette="ocean",seed=377),
+            (205,755))
+    else:
+        d.ellipse((205, 755, 875, 1425), fill=(32, 92, 146, 90),
+                  outline=(84, 184, 213, 105), width=3)
     # Schematic rotating gyre: direction is illustrative, not hemisphere-specific.
     for r in (138, 212, 284):
-        d.arc((cx-r, cy-r, cx+r, cy+r), 8, 350, fill=CYAN, width=5)
+        if canvas is None:
+            d.arc((cx-r, cy-r, cx+r, cy+r), 8, 350, fill=CYAN, width=5)
         for n in range(3):
             theta = .48*t+n*math.tau/3+r/120
             x, y = cx+r*math.cos(theta), cy+r*math.sin(theta)
@@ -188,8 +198,11 @@ def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool) -> None:
             _arrow(d, (cx+r*math.cos(theta-.19), cy+r*math.sin(theta-.19)),
                    (cx+r*math.cos(angle), cy+r*math.sin(angle)),
                    GOLD if r==212 else WHITE, 5)
-    d.ellipse((cx-62, cy-62, cx+62, cy+62),
-              fill=(13, 47, 72, 245), outline=GOLD, width=5)
+    if canvas is None:
+        d.ellipse((cx-62, cy-62, cx+62, cy+62),
+                  fill=(13, 47, 72, 245), outline=GOLD, width=5)
+    # The direction marker describes a schematic gyre, not hemisphere-specific
+    # rotation. The rendered water now has spatial depth and local motion.
     _label(d, (cx-40, cy-19), "↻", color=GOLD, size=49)
     _label(d, (213, 1435), "CURVED PATH · SCHEMATIC" if english else "TRAJET COURBE · SCHÉMA",
            color=CYAN, size=34)
@@ -343,7 +356,7 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
     elif beat == "wind":
         _wind(draw, t, english,canvas=canvas)
     elif beat == "coriolis":
-        _coriolis(draw, t, english)
+        _coriolis(draw, t, english,canvas=canvas)
     elif beat == "sinking":
         _sinking(draw, t, english,canvas=canvas)
     elif beat == "heat":
