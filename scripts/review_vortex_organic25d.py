@@ -103,4 +103,5 @@ if __name__=="__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--out",type=Path,required=True)
     parser.add_argument("--baseline",type=Path,required=True)
-    print(json.dumps(render(parser.parse_args().out,parser.parse_args().baseline)))
+    args=parser.parse_args()
+    print(json.dumps(render(args.out,args.baseline)))
