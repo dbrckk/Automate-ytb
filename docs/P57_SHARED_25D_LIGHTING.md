@@ -45,3 +45,30 @@ premium. No new GPU, model API, paid credit, or external texture is needed.
 
 P5.7 is a **shared compositing capability**; a visually superior full
 Short is not yet claimed.
+
+
+## P5.8 — Actual pipeline-wide authored-event integration (implemented)
+
+The feature is now connected to both existing render families rather than
+only exposed as an unused compositing API:
+
+- `PortraitScienceScene.frame()` forwards its **measured synthesized-speech
+  event fraction** from `science_audio_cues.audio_event_fraction` to the
+  same shared `finish_world` implementation. This is available across
+  science scenes with real action timing (ocean, lightning, volcano, aurora).
+  Scenes with no authenticated event receive **no invented lighting cue**.
+- `forest25d.frame(story=True, interaction=True)` forwards the existing
+  physical paw–flower contact clock to the same light director. Other
+  character frames remain visually unchanged by default.
+- `event_lighting25d` provides C1 pulse continuity, exact zero at shot
+  boundaries, bounded radii and original warm/cool palette from `LOOKS`.
+- `finish_world(event_fraction=...)` runs once on the finished moving world,
+  **before** the mobile-screen headline and subtitles. Alpha and pixels
+  outside the designated world region are unchanged. Layer-level motivated
+  lighting remains separately available through `Scene25D.render(light=...)`.
+- Regression tests specifically prevent arbitrary flashes, original-image
+  mutation, timer errors and clipping, and compare multiple material looks.
+
+This does **not** constitute a claim that source assets are now AAA; high
+quality lighting only enhances existing art. A higher-quality shared asset
+library and cross-topic video comparison are still required.
