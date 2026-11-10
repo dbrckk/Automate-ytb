@@ -16,6 +16,7 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
+from .organic_environment25d import cloud_bank
 
 BEATS = ("sunlight", "refraction", "reflection", "emergence", "arc")
 BADGES = {
@@ -59,8 +60,17 @@ def daylight_background(seed: int) -> Image.Image:
         ry=rng.randint(29,67)
         hd.ellipse((cx-rx,cy-ry,cx+rx,cy+ry),
                    fill=(215,245,253,22+index%3*6))
-    return Image.alpha_composite(
+    backdrop=Image.alpha_composite(
         plate,haze.filter(ImageFilter.GaussianBlur(35)))
+    # The same connected, multiscale 2.5D cloud assets can be reused by
+    # nature, atmosphere, stories and science, not only by rainbow shots.
+    # Both plates are authored separately at different atmospheric depths.
+    backdrop.alpha_composite(cloud_bank(
+        (1080,480),seed%900_000,color=(165,213,235),opacity=112),(0,435))
+    backdrop.alpha_composite(cloud_bank(
+        (1080,440),(seed+701)%900_000,
+        color=(212,237,247),opacity=75),(0,1030))
+    return backdrop
 
 
 def _plain(value: str) -> str:
@@ -251,15 +261,9 @@ def draw_rainbow(draw: ImageDraw.ImageDraw, beat: str,
             or not 0 < duration <= 180 or not 0 <= t <= duration
             or type(english) is not bool):
         raise ValueError("Invalid rainbow storyboard time or concept")
-    draw.rounded_rectangle((80,600,1000,1490),radius=41,
-                           fill=(6,34,64,238),
-                           outline=(108,200,239,157),width=3)
-    for n in range(8):
-        x=156+n*108
-        draw.line((x,696,x,1467),fill=(99,164,202,25),width=1)
-    for n in range(7):
-        y=770+n*100
-        draw.line((102,y,978,y),fill=(99,164,202,25),width=1)
+    # Keep the real changing optics in an open atmospheric 2.5D world.
+    # A solid rounded chart border and fixed axis grid made every moving
+    # rainbow shot look like a slideshow; preserve scientific labels only.
     _label(draw,115,630,
            "OPTICS · SCHEMATIC · NOT TO SCALE" if english else
            "OPTIQUE · SCHÉMA · HORS ÉCHELLE",size=27,
