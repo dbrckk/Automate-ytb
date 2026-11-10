@@ -78,3 +78,17 @@ filters** for the existing reusable 30s English Kokoro 1080x1920,
 graphics modules must then pass real TTS, MP4 decode, captions, media
 QA and contact sheets; a dedicated test enforces this wiring.
 It is not a request to publish a new video publicly.
+
+## General 9:16 narrated release-gate regression repaired
+The first full narrated science preview on this branch reached its
+art-direction gate and reported one P5.8 legacy assertion treating
+**identical source images at two different times** as mandatory.
+P5.23 deliberately adds original moving water/heat/auroral optical
+materials; static equality at 1.2 s and 3.7 s would prohibit the
+requested real motion, despite an absence of random flicker.
+The shared test is now updated to require deterministic *same-time*
+rendering, a smaller pixel-level difference across 10 milliseconds
+than across 2.5 seconds, and **exactly equal** start/end images
+with the C1 shot-boundary envelope. The dedicated shared graphics
+workflow now executes that test as well; existing general preflight
+and narrated release QA remain mandatory.
