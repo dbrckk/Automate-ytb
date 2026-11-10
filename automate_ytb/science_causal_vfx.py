@@ -11,7 +11,7 @@ import math
 from PIL import ImageDraw
 
 BEATS = frozenset(("solar", "wind", "coriolis", "sinking", "heat"))
-VERSION = "ocean-causal-interactions-v1"
+VERSION = "ocean-causal-interactions-v2-source-aligned-tapered-tracer"
 
 WARM = (255, 193, 98)
 COOL = (122, 222, 249)
@@ -97,31 +97,32 @@ def draw_interactions(draw: ImageDraw.ImageDraw, beat: str, *,
     if phase <= 0:
         return
     main_color = WARM if beat in ("solar", "sinking", "heat") else COOL
-    # Leading tracer and its physically connected motion history.
-    trail_length = .16 if beat != "sinking" else .11
-    for index in range(10, -1, -1):
-        position = phase - trail_length * index / 10
-        if position < 0:
-            continue
-        x, y = _trajectory(beat, position)
-        radius = max(3, round(13 - 8 * index / 10))
-        alpha = round(230 * (1 - .79*index/10))
-        draw.ellipse((round(x-radius*2), round(y-radius*2),
-                      round(x+radius*2), round(y+radius*2)),
-                     fill=(*main_color, max(9, alpha//6)))
-        draw.ellipse((round(x-radius), round(y-radius),
-                      round(x+radius), round(y+radius)),
-                     fill=(*main_color, alpha))
-    # Source lighting grows during energy transfer and fades after impact.
-    source = _trajectory(beat, 0.0)
-    source_opacity = round(78 * math.sin(math.pi * min(1.0, phase)))
-    if source_opacity > 1:
-        sx, sy = source
-        for radius in (23, 40, 61):
-            draw.ellipse((round(sx-radius), round(sy-radius),
-                          round(sx+radius), round(sy+radius)),
-                         outline=(*main_color, max(1, source_opacity//(radius//23))),
-                         width=3)
+    # The actual original 9:16 ocean preview exposed a large cyan capsule:
+    # 11 overlapping 13px discs made the attached tracer resemble a marker
+    # pen on a presentation. Use a narrow, physically connected trajectory
+    # instead, with coherent smoothly tapered width/opacity along the trail.
+    trail_length=.16 if beat!="sinking" else .11
+    start=max(0.,phase-trail_length)
+    path=[_trajectory(beat,start+(phase-start)*i/24)
+          for i in range(25)]
+    for i,(a,b) in enumerate(zip(path,path[1:]),start=1):
+        strength=i/24.
+        draw.line((a,b),
+                  fill=(*main_color,round(30+140*strength)),
+                  width=1+round(3*strength),joint="curve")
+    x,y=_trajectory(beat,phase)
+    draw.ellipse((round(x-4),round(y-4),round(x+4),round(y+4)),
+                 fill=(*main_color,225))
+    # Small local source response replaces three large diagram rings.
+    source_opacity=round(72*math.sin(math.pi*min(1.,phase)))
+    if source_opacity>1:
+        sx,sy=_trajectory(beat,0.0)
+        draw.ellipse((round(sx-14),round(sy-14),
+                      round(sx+14),round(sy+14)),
+                     fill=(*main_color,max(1,source_opacity//4)))
+        draw.ellipse((round(sx-5),round(sy-5),
+                      round(sx+5),round(sy+5)),
+                     fill=(*main_color,source_opacity))
     # The destination responds AFTER the mover arrives, never before impact.
     if phase > .75:
         impact = _ease((phase-.75)/.25)

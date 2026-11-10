@@ -37,6 +37,28 @@ class OceanCausalMotionTests(unittest.TestCase):
         self.assertNotEqual(frame(3, .2).tobytes(), frame(4, .2).tobytes())
         self.assertEqual(frame(3, .2).tobytes(), frame(3, .2).tobytes())
 
+    def test_wind_event_has_no_capsule_of_overlapping_colored_discs(self):
+        from automate_ytb.science_causal_vfx import VERSION
+        self.assertIn("tapered-tracer",VERSION)
+        scene=Image.new("RGBA",(1080,1500))
+        draw_interactions(ImageDraw.Draw(scene,"RGBA"),"wind",
+                          t=4.7,duration=6.8)
+        phase=event_phase(4.7,6.8)
+        x,y=_trajectory("wind",phase)
+        # Earlier the 11 giant discs made a 30px thick unnatural pill.
+        # The new light packet has a 4px tip and a 1-4px in-path tail.
+        self.assertGreater(scene.getpixel((round(x),round(y)))[3],160)
+        self.assertEqual(scene.getpixel((round(x+18),round(y+18)))[3],0)
+        self.assertEqual(scene.getpixel((round(x-18),round(y+18)))[3],0)
+        self.assertEqual(scene.tobytes(),self._wind_replay())
+
+    @staticmethod
+    def _wind_replay():
+        scene=Image.new("RGBA",(1080,1500))
+        draw_interactions(ImageDraw.Draw(scene,"RGBA"),"wind",
+                          t=4.7,duration=6.8)
+        return scene.tobytes()
+
     def test_invalid_timing_rejected(self):
         for event in (-0.1, 1.2, float("nan")):
             with self.assertRaises(ValueError):

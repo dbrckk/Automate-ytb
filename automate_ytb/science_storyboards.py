@@ -16,6 +16,7 @@ from .organic_environment25d import water_caustics
 from .flow_material25d import vortex_frame
 from .density_plume25d import sinking_plume_frame
 from .fluid_emitter25d import emitter_frame
+from .flow_banks25d import draw_organic_flow
 
 from .science_motion import _font
 from .science_causal_vfx import draw_interactions
@@ -173,9 +174,11 @@ def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
     d.line((130, 1101, 950, 1101), fill=(164, 234, 246, 220), width=8)
     for k in range(3):
         y = 1170 + 91*k
-        d.line([(145+x, round(y+17*math.sin(x/83+t*.7+k)))
-                for x in range(0, 785, 12)],
-               fill=(69+k*25, 160+k*19, 222, 190), width=7)
+        path=[(145+x, round(y+17*math.sin(x/83+t*.7+k)))
+              for x in range(0,785,12)]
+        draw_organic_flow(d,path,material="water",width=14,
+                          t=t,duration=duration if duration is not None
+                          else max(6.8,t),seed=5109+k*117)
         x = 190 + ((t*(39+k*8)+k*151)%660)
         _marker(d, x, y+17*math.sin((x-145)/83+t*.7+k), GOLD, 9)
         _arrow(d, (min(827,x-33), y+38), (min(905,x+53),y+38),

@@ -20,7 +20,7 @@ from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
 from .volcanic_conduit25d import draw_rock_conduit
 from .volcanic_reservoir25d import reservoir_rock_source
 from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
-from .material_ribbons25d import draw_material_ribbon
+from .flow_banks25d import advancing_path, draw_organic_flow
 from .fluid_emitter25d import emitter_frame
 
 SIZE=(1080,1380)
@@ -178,47 +178,44 @@ def _explosion(stage:Image.Image,t:float,duration:float)->None:
         (390,82))
     draw_ejecta(stage,t,duration)
 
-def _lava(stage:Image.Image,t:float,duration:float)->None:
-    """Advancing, rock-guided meandering molten rivers with animated hot cores.
-
-    Meanders are *spatially stable* while molten fronts advance: the terrain
-    never warps to pretend it is liquid. Independent incandescent tracers and
-    spreading heat run along the same authored tracks.
-    """
-    d=ImageDraw.Draw(stage,"RGBA")
-    rough_routes=(
+_LAVA_ROUTES=(
         [(540,356),(584,429),(635,505),(670,589),(731,660),
          (770,727),(823,797),(871,873),(937,941),(1020,1002),
          (1080,1030)],
         [(530,355),(493,430),(459,493),(414,578),(374,655),
          (316,729),(276,794),(215,863),(145,929),(72,993),(0,1040)],
     )
-    for side,route in enumerate(rough_routes):
-        # Smooth curves with bounded local variations (4 samples/segment).
-        # This prevents the previous long, straight glowing staircases.
-        track=[route[0]]
-        for segment,(a,b) in enumerate(zip(route,route[1:])):
-            dx,dy=b[0]-a[0],b[1]-a[1]
-            length=max(1,math.hypot(dx,dy))
-            normal=(-dy/length,dx/length)
-            for sub in range(1,6):
-                u=sub/5
-                wiggle=(8.4+side*3)*math.sin(math.pi*u)*math.sin(
-                    (segment+u)*1.68+side*.63)
-                track.append((
-                    a[0]+dx*u+normal[0]*wiggle,
-                    a[1]+dy*u+normal[1]*wiggle))
+
+
+@lru_cache(maxsize=2)
+def _lava_track(side:int)->tuple[tuple[float,float],...]:
+    """Precompute authored physical channels once, not 30 times a second."""
+    if type(side) is not int or side not in (0,1):
+        raise ValueError("Invalid original lava drainage branch")
+    route=_LAVA_ROUTES[side]
+    track=[route[0]]
+    for segment,(a,b) in enumerate(zip(route,route[1:])):
+        dx,dy=b[0]-a[0],b[1]-a[1]
+        length=max(1.,math.hypot(dx,dy))
+        normal=(-dy/length,dx/length)
+        for sub in range(1,6):
+            u=sub/5
+            wiggle=(8.4+side*3)*math.sin(math.pi*u)*math.sin(
+                (segment+u)*1.68+side*.63)
+            track.append((
+                a[0]+dx*u+normal[0]*wiggle,
+                a[1]+dy*u+normal[1]*wiggle))
+    return tuple(track)
+
+
+def _lava(stage:Image.Image,t:float,duration:float)->None:
+    """Eroded rock-bound magma flow with fully shared causal surface banks."""
+    d=ImageDraw.Draw(stage,"RGBA")
+    for side in (0,1):
+        track=_lava_track(side)
         amount=min(1.,t/duration*(1.07+side*.06))
-        float_index=(len(track)-1)*amount
-        index=int(float_index)
-        visible=track[:index+1]
-        if index<len(track)-1:
-            p,q=track[index:index+2]
-            u=float_index-index
-            visible.append((p[0]+(q[0]-p[0])*u,
-                            p[1]+(q[1]-p[1])*u))
-        # At t=0 the eruption has no visible flowing length. A zero-length
-        # path is not a real illuminated ribbon and must not be fabricated.
+        visible=advancing_path(track,amount)
+        # No fictional molten flow has emerged at the start of this beat.
         if len(visible)<2 or math.dist(visible[0],visible[-1])<.001:
             continue
         # Moving incandescent lava illuminates only actual 3D rock faces.
@@ -233,42 +230,11 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
                       for j in range(0,len(visible),max(1,len(visible)//6)))
         _glow(stage,lights)
         d=ImageDraw.Draw(stage,"RGBA")
-        # The advancing magma ribbon uses the SAME renderer as rainbow
-        # rays and ocean currents, with heat-colored painter's depth,
-        # a molten core and a short bright front attached to its path.
-        draw_material_ribbon(d,visible,material="magma",
-                             color=(246,118,39,253),width=63,
-                             progress=.98)
-        # Cooling plates and glossy hot spots travel along existing channels,
-        # never independently across the sky or outside the volcano.
-        for grain in range(17):
-            travel=(grain*.082+t*(.085+side*.018))%1.
-            pos=travel*(len(visible)-1)
-            j=min(int(pos),len(visible)-2)
-            f=pos-j
-            x=visible[j][0]*(1-f)+visible[j+1][0]*f
-            y=visible[j][1]*(1-f)+visible[j+1][1]*f
-            radius=2+(grain%4)
-            d.ellipse((x-radius,y-radius,x+radius,y+radius),
-                      fill=(255,237,151,200+grain%3*14))
-            if grain%3==0:
-                d.line((x-10,y-6,x+9,y+5),
-                       fill=(48,22,24,145),width=4)
-        # An expanding nose of magma has a bright cap and cooled edges.
-        cx,cy=leading
-        d.ellipse((cx-23,cy-22,cx+23,cy+22),
-                  fill=(248,111,36,246))
-        d.ellipse((cx-11,cy-10,cx+11,cy+10),
-                  fill=(255,215,106,232))
-    # A few localized heat flecks above the moving lava (not uniform noise).
-    for i in range(30):
-        progress=(t*(.06+i%5*.013)+i*.117)%1
-        side=-1 if i%2 else 1
-        x=540+side*progress*430
-        y=355+progress*540-16-16*math.sin(t*.9+i)
-        radius=2+i%3
-        d.ellipse((x-radius,y-radius,x+radius,y+radius),
-                  fill=(255,155+i%3*17,66,108))
+        # Source-anchored, nonuniform rock banks and moving crust replace
+        # equal-width presentation ribbons and circular painted flow caps.
+        # Identical geometry is reused by actual ocean current shear below.
+        draw_organic_flow(d,visible,material="magma",width=63,
+                          t=t,duration=duration,seed=8031+side*287)
 
 def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
                  english:bool, *, event_progress:float|None=None)->None:
