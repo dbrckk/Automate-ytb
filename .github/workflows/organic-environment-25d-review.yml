@@ -10,6 +10,9 @@ on:
       - "automate_ytb/science_volcano.py"
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/flow_material25d.py"
+      - "tests/test_flow_material25d.py"
+      - "scripts/review_flow_material25d.py"
       - "tests/test_organic_environment25d.py"
       - "tests/test_hero_materials25d.py"
   push:
@@ -22,6 +25,9 @@ on:
       - "automate_ytb/science_volcano.py"
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/flow_material25d.py"
+      - "tests/test_flow_material25d.py"
+      - "scripts/review_flow_material25d.py"
       - "tests/test_organic_environment25d.py"
       - "tests/test_hero_materials25d.py"
   workflow_dispatch:
@@ -43,9 +49,10 @@ jobs:
       - name: Check generic original materials, source alpha, and integrations
         run: |
           set -euo pipefail
-          python -m py_compile automate_ytb/hero_materials25d.py automate_ytb/organic_environment25d.py automate_ytb/science_rainbow.py automate_ytb/science_volcano.py automate_ytb/science_ocean_depth.py automate_ytb/science_storyboards.py
+          python -m py_compile automate_ytb/hero_materials25d.py automate_ytb/organic_environment25d.py automate_ytb/science_rainbow.py automate_ytb/science_volcano.py automate_ytb/science_ocean_depth.py automate_ytb/science_storyboards.py automate_ytb/flow_material25d.py scripts/review_flow_material25d.py
           python -m unittest discover -s tests -p test_hero_materials25d.py -v
           python -m unittest discover -s tests -p test_science_storyboards.py -v
+          python -m unittest discover -s tests -p test_flow_material25d.py -v
           python -m unittest discover -s tests -p test_organic_environment25d.py -v
           python -m unittest discover -s tests -p test_science_ocean_depth.py -v
           python -m unittest discover -s tests -p test_science_rainbow.py -v
@@ -56,6 +63,9 @@ jobs:
           python scripts/review_shared_editorial25d.py --out build/p59-multitopic
           test -s build/p59-multitopic/multi-topic-25d-contact.jpg
           test -s build/p59-multitopic/manifest.json
+          python scripts/review_flow_material25d.py --out build/p514-flowing-water
+          test -s build/p514-flowing-water/manifest.json
+          test -s build/p514-flowing-water/moving-water-original-25d.jpg
           python - <<'PY'
           import json
           from pathlib import Path
@@ -67,7 +77,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: real-p59-cross-topic-organic-25d
-          path: build/p59-multitopic/
+          path: |
+            build/p59-multitopic/
+            build/p514-flowing-water/
           if-no-files-found: error
           retention-days: 14
       - name: Declare scope of evidence
