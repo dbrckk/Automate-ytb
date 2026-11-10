@@ -66,3 +66,15 @@ envelope** now gives exact original pixels at both ends, while leaving
 all mid-scene source-space motion continuous. Tests sample a genuine
 nontransparent cloud pixel and preserve the historical event-light
 contract, without relaxing its checks.
+
+## Production release gate permanently expanded
+The audit uncovered a coverage gap: modifying `finish25d` or
+`scene25d` previously triggered PNG/scene tests but did not reliably
+start the real narrated `science-shorts-release-candidate` workflow.
+This PR changes the **permanent on.pull_request and on.push path
+filters** for the existing reusable 30s English Kokoro 1080x1920,
+30fps H.264/AAC production job to include `optical_motion25d`,
+`finish25d` and `scene25d`. Any future change to these common
+graphics modules must then pass real TTS, MP4 decode, captions, media
+QA and contact sheets; a dedicated test enforces this wiring.
+It is not a request to publish a new video publicly.

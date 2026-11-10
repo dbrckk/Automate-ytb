@@ -151,6 +151,25 @@ class SharedSourceOpticalMotionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 translate_subpixel(rgba,dx,dy)
 
+    def test_any_global_graphics_engine_change_triggers_real_kokoro_mp4_qa(self):
+        # Previous source-graphics changes ran unit/PNG tests but could
+        # bypass the real narrated 30fps H.264/AAC production gate.
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        workflow=(root/".github/workflows/science-shorts-release-candidate.yml").read_text(
+            encoding="utf8")
+        self.assertIn("  pull_request:",workflow)
+        self.assertIn("  push:",workflow)
+        for path in ("automate_ytb/optical_motion25d.py",
+                     "automate_ytb/finish25d.py",
+                     "automate_ytb/scene25d.py"):
+            self.assertGreaterEqual(workflow.count(f"      - {path}"),2)
+        self.assertIn("uses: ./.github/workflows/one-click-preview.yml",
+                      workflow)
+        self.assertIn("      voice: kokoro",workflow)
+        self.assertIn("      resolution: shorts",workflow)
+        self.assertIn("      render_profile: high",workflow)
+
     def test_real_1080x1920_generators_share_optical_engine(self):
         examples=(
             ("Why do ocean currents move?",
