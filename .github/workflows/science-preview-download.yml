@@ -13,6 +13,7 @@ on:
       - "Verify original aurora-dance science Shorts"
       - "Verify original volcano-eruption science Shorts"
       - "Verify original aurora-colors science Short"
+      - "Produce original rainbow-chase science Short"
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -24,7 +25,7 @@ on:
         description: "Known original science topic"
         required: true
         type: choice
-        options: [rainbow-optics, earth-stop, lightning-storm, upward-lightning, aurora-dance, volcano-eruption, aurora-colors]
+        options: [rainbow-optics, earth-stop, lightning-storm, upward-lightning, aurora-dance, volcano-eruption, aurora-colors, rainbow-chase]
 
 permissions:
   contents: write
@@ -48,7 +49,7 @@ jobs:
       # Only real successful workflow runs or explicit operator-selected runs;
       # never rerun expired, hard-coded artifact IDs on unrelated main pushes.
       SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.source_run_id || github.event.workflow_run.id }}
-      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original aurora-colors science Short' && 'aurora-colors' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original volcano-eruption science Shorts' && 'volcano-eruption' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original aurora-dance science Shorts' && 'aurora-dance' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original upward-lightning science Short' && 'upward-lightning' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original lightning-storm science Shorts' && 'lightning-storm' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
+      PREVIEW_SLUG: ${{ github.event_name == 'workflow_dispatch' && inputs.slug || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Produce original rainbow-chase science Short' && 'rainbow-chase' || github.event.workflow_run.name == 'Verify original aurora-colors science Short' && 'aurora-colors' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original volcano-eruption science Shorts' && 'volcano-eruption' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original aurora-dance science Shorts' && 'aurora-dance' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original upward-lightning science Short' && 'upward-lightning' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify original lightning-storm science Shorts' && 'lightning-storm' || github.event_name == 'workflow_run' && github.event.workflow_run.name == 'Verify full 9:16 rainbow optics Shorts release candidate' && 'rainbow-optics' || 'earth-stop' }}
     steps:
       - uses: actions/checkout@v4
       - name: Install free video decoding tools
@@ -60,12 +61,13 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$SOURCE_RUN_ID" =~ ^[0-9]{4,15}$ ]]
-          [[ "$PREVIEW_SLUG" == "rainbow-optics" || "$PREVIEW_SLUG" == "earth-stop" || "$PREVIEW_SLUG" == "lightning-storm" || "$PREVIEW_SLUG" == "upward-lightning" || "$PREVIEW_SLUG" == "aurora-dance" || "$PREVIEW_SLUG" == "volcano-eruption" || "$PREVIEW_SLUG" == "aurora-colors" ]]
+          [[ "$PREVIEW_SLUG" == "rainbow-chase" || "$PREVIEW_SLUG" == "rainbow-optics" || "$PREVIEW_SLUG" == "earth-stop" || "$PREVIEW_SLUG" == "lightning-storm" || "$PREVIEW_SLUG" == "upward-lightning" || "$PREVIEW_SLUG" == "aurora-dance" || "$PREVIEW_SLUG" == "volcano-eruption" || "$PREVIEW_SLUG" == "aurora-colors" ]]
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source-run.json
           jq -e --arg repo "$GITHUB_REPOSITORY" --arg slug "$PREVIEW_SLUG" '
             .status == "completed" and .conclusion == "success" and
             .head_branch == "main" and .head_repository.full_name == $repo and
-            ((.name == "Verify full 9:16 rainbow optics Shorts release candidate" and $slug == "rainbow-optics") or
+            ((.name == "Produce original rainbow-chase science Short" and $slug == "rainbow-chase") or
+             (.name == "Verify full 9:16 rainbow optics Shorts release candidate" and $slug == "rainbow-optics") or
              (.name == "Render narrated Earth-stop 9:16 animation (Kokoro, offline visuals)" and $slug == "earth-stop") or
              (.name == "Verify original lightning-storm science Shorts" and $slug == "lightning-storm") or
              (.name == "Verify original upward-lightning science Short" and $slug == "upward-lightning") or
