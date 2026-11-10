@@ -24,8 +24,12 @@ def event_envelope(t: float, duration: float, event_fraction: float | None) -> f
             or not math.isfinite(event_fraction)
             or not 0 <= event_fraction <= 1):
         raise ValueError("Invalid original narrated event position")
-    center = max(.19, min(.81, float(event_fraction)))
+    # Never shift a real PCM-derived action timestamp toward shot center.
+    # Narrow the support instead when speech occurs close to a cut.
+    center = float(event_fraction)
     reach = min(.22, center, 1.0-center)
+    if reach <= 0:
+        return 0.0
     distance = abs(t/duration-center)
     if distance >= reach:
         return 0.0
