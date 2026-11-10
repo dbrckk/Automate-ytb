@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from .science_motion import _font, _planet, scene_mode, GOLD, CYAN
 from .science_audio_cues import audio_event_fraction
 from .science_ocean_depth import draw_depth
+from .ocean_atmosphere25d import underwater_background
 from .science_blender_aurora import stage_from_environment as aurora_blender_from_environment
 from .science_blender_3d import stage_from_environment
 from .captions import timed_cues_for_scene
@@ -245,7 +246,11 @@ class PortraitScienceScene:
         self.base = (storm_background() if is_lightning else
                      aurora_background() if is_aurora else
                      volcano_background() if is_volcano else
-                     daylight_background(seed) if is_rainbow else _sky(seed))
+                     daylight_background(seed) if is_rainbow else
+                     underwater_background(seed)
+                     if (self.beat is not None or
+                         (self.mode == "ocean" and self.earth_stop_beat is None))
+                     else _sky(seed))
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments

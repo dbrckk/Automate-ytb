@@ -32,3 +32,23 @@ Full studio validations still cover FFmpeg output, speech and captions.
 A human phone-scale assessment remains necessary. The animation is a
 conceptual gyre and must not be presented as geographically correct
 hemisphere rotation or a predictive ocean model.
+
+## Genuine rendered-image audit — environmental defect repaired
+The contact sheet from the real GitHub Actions production frame revealed
+a remaining starfield behind the animated ocean gyre. An astronomical
+background behind actual ocean currents is incorrect visual storytelling.
+
+The new shared `ocean_atmosphere25d.underwater_background()` paints a
+stable, star-free deep-water environment with a gentle blue absorption
+profile, diffuse surface light and cached original organic sediment and
+caustic sources. It is applied automatically to **all five original
+ocean science types** and generic undersea scenes; astronomical Earth
+views keep their existing space background. It is static source
+environment art: actual current motion still comes from water-storyboard
+and flow-material animations. No extra fake physical events are added.
+
+The dedicated atmosphere regression checks confirm selection, seed
+determinism, opaque 9:16 source, no space point-stars in the mobile
+header, full original subject coverage and preservation of actual Earth
+space visuals. New contact sheets are produced from real production
+scenes on this same PR head.

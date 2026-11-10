@@ -11,6 +11,8 @@ on:
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_storyboards.py"
       - "automate_ytb/flow_material25d.py"
+      - "automate_ytb/ocean_atmosphere25d.py"
+      - "tests/test_ocean_atmosphere25d.py"
       - "tests/test_flow_material25d.py"
       - "scripts/review_flow_material25d.py"
       - "tests/test_organic_environment25d.py"
@@ -26,6 +28,8 @@ on:
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_storyboards.py"
       - "automate_ytb/flow_material25d.py"
+      - "automate_ytb/ocean_atmosphere25d.py"
+      - "tests/test_ocean_atmosphere25d.py"
       - "tests/test_flow_material25d.py"
       - "scripts/review_flow_material25d.py"
       - "tests/test_organic_environment25d.py"
@@ -49,10 +53,11 @@ jobs:
       - name: Check generic original materials, source alpha, and integrations
         run: |
           set -euo pipefail
-          python -m py_compile automate_ytb/hero_materials25d.py automate_ytb/organic_environment25d.py automate_ytb/science_rainbow.py automate_ytb/science_volcano.py automate_ytb/science_ocean_depth.py automate_ytb/science_storyboards.py automate_ytb/flow_material25d.py scripts/review_flow_material25d.py
+          python -m py_compile automate_ytb/hero_materials25d.py automate_ytb/organic_environment25d.py automate_ytb/science_rainbow.py automate_ytb/science_volcano.py automate_ytb/science_ocean_depth.py automate_ytb/science_storyboards.py automate_ytb/flow_material25d.py automate_ytb/ocean_atmosphere25d.py scripts/review_flow_material25d.py
           python -m unittest discover -s tests -p test_hero_materials25d.py -v
           python -m unittest discover -s tests -p test_science_storyboards.py -v
           python -m unittest discover -s tests -p test_flow_material25d.py -v
+          python -m unittest discover -s tests -p test_ocean_atmosphere25d.py -v
           python -m unittest discover -s tests -p test_organic_environment25d.py -v
           python -m unittest discover -s tests -p test_science_ocean_depth.py -v
           python -m unittest discover -s tests -p test_science_rainbow.py -v
