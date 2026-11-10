@@ -295,13 +295,14 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
         _progress_ribbon(draw, beat, t / duration, english)
     if type(depth_background) is not bool:
         raise ValueError("Depth plate selection must be boolean")
-    draw.rounded_rectangle((80, 600, 1000, 1490), radius=40,
-                           fill=None if depth_background else NAVY,
-                           outline=(97, 176, 210, 124), width=3)
-    for x in range(140, 990, 105):
-        draw.line((x, 620, x, 1470), fill=(71, 123, 164, 32), width=1)
-    for y in range(750, 1460, 105):
-        draw.line((112, y, 972, y), fill=(71, 123, 164, 32), width=1)
+    # Shared open 2.5D editorial: physical scenes already provide their
+    # atmospheric depth material. A persistent neon chart frame and full
+    # axis grid made all five ocean beats resemble still PowerPoint slides.
+    # Preserve the actual scientific diagrams and animated causal overlays.
+    # The legacy no-depth-background mode retains its underlying dark
+    # stage color, but not its artificial boxed-outline geometry.
+    if not depth_background:
+        draw.rectangle((80,600,1000,1490),fill=NAVY)
     if beat == "solar":
         _solar(draw, t, english)
     elif beat == "wind":

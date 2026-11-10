@@ -19,6 +19,7 @@ from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSI
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
 from .organic_environment25d import terrain_strata, cloud_bank
+from .material_ribbons25d import draw_material_ribbon
 
 SIZE=(1080,1380)
 TOP=330
@@ -202,7 +203,9 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
             u=float_index-index
             visible.append((p[0]+(q[0]-p[0])*u,
                             p[1]+(q[1]-p[1])*u))
-        if len(visible)<2:
+        # At t=0 the eruption has no visible flowing length. A zero-length
+        # path is not a real illuminated ribbon and must not be fabricated.
+        if len(visible)<2 or math.dist(visible[0],visible[-1])<.001:
             continue
         # Moving incandescent lava illuminates only actual 3D rock faces.
         sources=[(*visible[j],88,.71)
@@ -216,11 +219,12 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
                       for j in range(0,len(visible),max(1,len(visible)//6)))
         _glow(stage,lights)
         d=ImageDraw.Draw(stage,"RGBA")
-        d.line(visible,fill=(15,12,19,253),width=73,joint="curve")
-        d.line(visible,fill=(111,37,26,250),width=63,joint="curve")
-        d.line(visible,fill=(209,64,21,252),width=47,joint="curve")
-        d.line(visible,fill=(255,144,40,242),width=23,joint="curve")
-        d.line(visible,fill=(255,231,132,220),width=7,joint="curve")
+        # The advancing magma ribbon uses the SAME renderer as rainbow
+        # rays and ocean currents, with heat-colored painter's depth,
+        # a molten core and a short bright front attached to its path.
+        draw_material_ribbon(d,visible,material="magma",
+                             color=(246,118,39,253),width=63,
+                             progress=.98)
         # Cooling plates and glossy hot spots travel along existing channels,
         # never independently across the sky or outside the volcano.
         for grain in range(17):

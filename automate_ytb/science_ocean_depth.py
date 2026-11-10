@@ -10,7 +10,10 @@ from functools import lru_cache
 import math
 
 from PIL import Image, ImageDraw, ImageFilter
-from .organic_environment25d import terrain_strata, water_caustics
+from .organic_environment25d import (
+    terrain_strata, water_caustics, open_world_alpha,
+)
+from .material_ribbons25d import draw_material_ribbon
 
 VERSION = "ocean-depth-v1-diffuse-underwater-light"
 SIZE = (920, 890)
@@ -72,10 +75,10 @@ def lighting_plate(beat: str) -> Image.Image:
             x = 39 + side*147 + ((layer*53) % 87)
             d.line((x, y, min(w-25, x+60), y-13),
                    fill=(*highlight, max(9, 35-layer*5)), width=2)
-    mask = Image.new("L", SIZE, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        (0, 0, w-1, h-1), radius=39, fill=255)
-    panel.putalpha(mask)
+    # An open, soft spatial transition avoids a large neon-edged chart
+    # occupying every original ocean frame. The center retains exact
+    # opaque visibility and the source world blends at all four boundaries.
+    panel.putalpha(open_world_alpha(SIZE,feather=85))
     return panel
 
 
@@ -107,8 +110,14 @@ def draw_depth(canvas: Image.Image, beat: str, *,
             delta = amplitude*math.sin(x/125 + phase)
             delta += 4*math.sin(x/59 - phase*.72)
             pts.append((x, round(y + delta)))
-        d.line(pts, fill=(*color, max(18, 70-layer*11)),
-               width=max(2, 5-layer))
+        # Same original 2.5D light-path material system as optical rays and
+        # molten rivers, but with a water-specific cool underside and moving
+        # curved highlight following the real authored current trajectory.
+        draw_material_ribbon(
+            d,pts,material="water",
+            color=(*color,max(18,70-layer*11)),
+            width=max(2,5-layer),
+            progress=(t*(.085+layer*.014)+layer*.21)%1.)
     # Independent suspended matter adds natural depth without expensive noise
     # or random variation between reruns. Coordinates never leave the panel.
     for particle in range(24):

@@ -177,3 +177,29 @@ def water_caustics(size: tuple[int,int], seed: int,
     bloom=image.filter(ImageFilter.GaussianBlur(8))
     bloom.putalpha(bloom.getchannel("A").point(lambda v:round(v*.48)))
     return Image.alpha_composite(bloom,image)
+
+@lru_cache(maxsize=20)
+def open_world_alpha(size: tuple[int,int], feather:int=72) -> Image.Image:
+    """Reusable organic-scene alpha transition, without hard slideshow rails.
+
+    Original moving artwork is rendered across the *whole stage*. Only the
+    cropped edge of a deliberately composed art plate fades into neighboring
+    atmosphere, preserving the 2.5D inner geometry and caption safe zones.
+    This is not a blur of the source world or a fake camera zoom.
+    """
+    if (not isinstance(size,tuple) or len(size)!=2 or
+            any(type(v) is not int or not 128<=v<=1920 for v in size)
+            or type(feather) is not int or not 8<=feather<=192):
+        raise ValueError("Invalid reusable open 2.5D world boundary")
+    width,height=size
+    margin=min(feather,(width-1)//3,(height-1)//3)
+    def taper(index,extent):
+        z=max(0.,min(1.,index/margin,(extent-1-index)/margin))
+        return round(255*z*z*(3-2*z))
+    horizontal=Image.new("L",(width,1))
+    horizontal.putdata([taper(x,width) for x in range(width)])
+    vertical=Image.new("L",(1,height))
+    vertical.putdata([taper(y,height) for y in range(height)])
+    return ImageChops.multiply(
+        horizontal.resize(size,Image.Resampling.NEAREST),
+        vertical.resize(size,Image.Resampling.NEAREST))
