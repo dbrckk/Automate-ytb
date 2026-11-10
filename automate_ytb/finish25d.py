@@ -15,8 +15,9 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageStat, ImageChop
 from .event_lighting25d import authored_light
 from .lightfield25d import illuminate
 from .optical_motion25d import refract_source
+from .material_relief25d import sculpt_authored_material
 
-VERSION = "extreme-25d-seamless-world-finishing-p523-continuous-optics-v3"
+VERSION = "extreme-25d-seamless-world-finishing-p524-source-relief-v4"
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,10 @@ def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
     # pixels, never a filter-only photo slideshow or random texture.
     # Rainbow and daylight are optically precise and deliberately unwarped.
     rgb=refract_source(rgb,look=look,t=t,duration=duration)
+    # Source-derived directional microrelief highlights only curvature
+    # already present in authored pigments. It adds no random noise or
+    # fabricated detail to flat backgrounds, and stays stable at 30 fps.
+    rgb=sculpt_authored_material(rgb,look=look)
     if style.glow_gain:
         # Bright details, not the whole scene, motivate a subtle diffuse
         # bounce; stable across time and independent of source frame noise.
