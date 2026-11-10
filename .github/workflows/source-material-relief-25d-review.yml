@@ -1,0 +1,54 @@
+name: Verify shared original source-derived material relief in 2.5D Shorts
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/source-material-relief-25d-review.yml"
+      - "automate_ytb/material_relief25d.py"
+      - "automate_ytb/finish25d.py"
+      - "scripts/review_material_relief25d.py"
+      - "tests/test_material_relief25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/source-material-relief-25d-review.yml"
+      - "automate_ytb/material_relief25d.py"
+      - "automate_ytb/finish25d.py"
+      - "scripts/review_material_relief25d.py"
+      - "tests/test_material_relief25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  genuine-shared-relief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free original Pillow-based material pipeline
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Test original material, no fabricated texture, existing 2.5D
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/material_relief25d.py automate_ytb/finish25d.py scripts/review_material_relief25d.py
+          python -m unittest discover -s tests -p test_material_relief25d.py -v
+          python -m unittest discover -s tests -p test_optical_motion25d.py -v
+          python -m unittest discover -s tests -p test_shared_extreme25d.py -v
+          python -m unittest discover -s tests -p test_finish25d_seamless.py -v
+      - name: Render 3 genuinely authored original 1080x1920 sources before and after
+        run: |
+          set -euo pipefail
+          python scripts/review_material_relief25d.py --out build/p524-relief
+          test -s build/p524-relief/original-material-relief-25d.jpg
+          test -s build/p524-relief/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p524-shared-material-relief-25d
+          path: build/p524-relief/
+          retention-days: 14
+          if-no-files-found: error
