@@ -81,8 +81,13 @@ def refract_source(image: Image.Image, *, look: str,
         raise ValueError("Invalid original optical source material")
     _clock(t,duration)
     preset=PRESETS[look]
-    if preset[0]==0:
+    # Cut continuity: identity sampling at BOTH scene boundaries. This
+    # preserves previously guaranteed no-event frame equality and
+    # prevents a spatial jump when a new chapter starts or ends.
+    if preset[0]==0 or duration==0 or t==0 or t==duration:
         return image
+    envelope=math.sin(math.pi*t/duration)**2
+    preset=(preset[0]*envelope,preset[1],preset[2],preset[3])
     w,h=image.size
     points={}
     def point(x:int,y:int)->tuple[float,float]:

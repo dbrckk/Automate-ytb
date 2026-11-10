@@ -56,3 +56,13 @@ new licensed assets, fake measured optical physics or automated approval.
 The general source engine improves **continuous movement and optical
 depth**. It cannot magically turn primitive object geometry into
 detailed art; complex source-assets remain a separate core priority.
+
+## Regression fixed using real Actions evidence
+The initial Actions tests discovered a previous P5.8 general finishing
+invariant: identical input at shot start/end must stay byte-identical
+when there is no authored event light. Independent optical movement
+violated this. A smooth `sin(pi*t/duration)^2` **C1 boundary
+envelope** now gives exact original pixels at both ends, while leaving
+all mid-scene source-space motion continuous. Tests sample a genuine
+nontransparent cloud pixel and preserve the historical event-light
+contract, without relaxing its checks.

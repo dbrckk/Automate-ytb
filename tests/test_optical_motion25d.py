@@ -30,6 +30,9 @@ class SharedSourceOpticalMotionTests(unittest.TestCase):
         base=self._authored_scene()
         signature=base.tobytes()
         self.assertTrue(VERSION.endswith("p523-v1"))
+        for look in ("ocean","volcano","aurora","storm","forest"):
+            self.assertIs(refract_source(base,look=look,t=0.,duration=6.8),base)
+            self.assertIs(refract_source(base,look=look,t=6.8,duration=6.8),base)
         self.assertEqual(MESH_STEP,64)
         self.assertEqual(set(PRESETS),{
             "storm","volcano","aurora","ocean","forest","rainbow",
@@ -51,7 +54,7 @@ class SharedSourceOpticalMotionTests(unittest.TestCase):
                                  base.getpixel((319,319)))
                 near=ImageChops.difference(a,b)
                 far=ImageChops.difference(a,c)
-                self.assertLess(sum(near.getbbox() is None for _ in (0,)),1)
+                self.assertIsNotNone(near.getbbox())
                 # Smaller timeline steps should be visibly less disruptive.
                 self.assertLess(sum(near.convert("L").getdata()),
                                 sum(far.convert("L").getdata()))
@@ -105,7 +108,7 @@ class SharedSourceOpticalMotionTests(unittest.TestCase):
         self.assertEqual(scene.render(camera_x=.65,camera_y=.46).tobytes(),
                          at_half.tobytes())
         self.assertEqual(at_half.getpixel((0,0)),at_zero.getpixel((0,0)))
-        self.assertEqual(cloud.getpixel((40,70)),(229,176,121,255))
+        self.assertEqual(cloud.getpixel((80,70)),(229,176,121,255))
 
     def test_common_finish_is_text_safe_alpha_safe_and_repeatable(self):
         original=Image.new("RGBA",(450,500),(24,47,68,255))
