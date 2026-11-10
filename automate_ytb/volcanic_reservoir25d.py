@@ -18,16 +18,21 @@ CENTER = (542,1127)
 BOUNDS = (326,996,758,1257)
 
 
-@lru_cache(maxsize=12)
 def reservoir_contour(scale: float = 1.) -> tuple[tuple[int,int], ...]:
-    """A fixed band-limited rock boundary, rugged but free of random jitter.
+    """Validated original source contour, with immutable cached geometry.
 
-    The same 112 samples anchor everything, from original lit bedrock to
-    masks and pressure waves. This source is sampled once, not per frame.
+    Validate BEFORE the cache to reject 1/True aliases, the same boolean
+    edge case discovered in the P5.16 conduit regression tests.
     """
     if (type(scale) not in (float,int) or not math.isfinite(scale)
             or not .2 <= scale <= 1.08):
         raise ValueError("Invalid authored volcanic reservoir scale")
+    return _cached_reservoir_contour(float(scale))
+
+
+@lru_cache(maxsize=12)
+def _cached_reservoir_contour(scale: float) -> tuple[tuple[int,int], ...]:
+    """112 band-limited samples shared by bedrock and molten materials."""
     cx,cy=CENTER
     pts=[]
     for k in range(112):
@@ -92,7 +97,7 @@ def reservoir_molten_source() -> Image.Image:
     d.polygon(reservoir_contour(.98),fill=(145,49,31,210))
     d.polygon(reservoir_contour(.88),fill=(182,64,28,188))
     d.polygon(reservoir_contour(.69),fill=(228,88,28,137))
-    d.polygon(reservoir_contour(.38),fill=(251,124,42,61))
+    d.polygon(reservoir_contour(.38),fill=(251,124,42,126))
     # Discontinuous isothermal structures, not perfectly elliptical
     # rings or pseudo-random flicker across independently generated frames.
     for lane in range(15):
