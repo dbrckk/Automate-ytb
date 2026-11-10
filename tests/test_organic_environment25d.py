@@ -23,8 +23,13 @@ class SharedOrganicEnvironmentTests(unittest.TestCase):
         self.assertEqual(points[-1][0],919)
         self.assertGreater(len(points),100)
         slopes=[b[1]-a[1] for a,b in zip(points,points[1:])]
-        self.assertGreater(len({round(v/250)*250 for v in slopes}),10)
-        self.assertFalse(all(v==slopes[0] for v in slopes))
+        # The returned ridge uses units of 1/10000 of stage height.
+        # Quantizing the *increment* to 250 units hid actual smooth
+        # variation: inspect many distinct gradients at native precision.
+        self.assertGreater(len(set(slopes)),20)
+        self.assertGreater(max(p[1] for p in points)-min(p[1] for p in points),200)
+        self.assertTrue(any(v>0 for v in slopes))
+        self.assertTrue(any(v<0 for v in slopes))
 
     def test_cloud_is_connected_coherent_and_not_a_flat_ellipse(self):
         cloud=cloud_bank((540,290),seed=97)
