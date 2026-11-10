@@ -15,6 +15,7 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
+from .semantic_geometry25d import render_material_sheet
 
 BEATS = ("solar_wind", "magnetic_field", "collisions", "emission", "curtains")
 BADGES = {
@@ -209,29 +210,19 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
     """Several smooth colored curtains, flowing independently at 30 FPS."""
     # Low-res glow field permits smooth volumetric light on free CPU runners.
     field=Image.new("RGBA",(540,690))
-    fd=ImageDraw.Draw(field,"RGBA")
+    # P5.25: each auroral fold is an independent source-authored organic
+    # silhouette with sub-folds and source-space striations. All 6 planes
+    # move at different phases and densities; this is not a flat rectangle.
     palettes=((31,207,140),(55,247,158),(34,154,218),
               (111,79,221),(48,219,162),(30,165,190))
-    for layer in range(6):
-        points=[]
-        head=[]
-        upper=75+layer*48
-        phase=t*(.25+layer*.026)+layer*.69
-        for x in range(-32,574,12):
-            sway=43*math.sin(x*.0088+phase)+18*math.sin(x*.018-phase*.76)
-            y=upper+sway+13*math.cos(x*.004+layer)
-            depth=155+layer*8+22*math.sin(x*.013+t*.41+layer)
-            head.append((round(x),round(y)))
-            points.append((round(x),round(y+depth)))
-        shade=palettes[layer]
-        fd.polygon(head+list(reversed(points)),
-                   fill=(*shade,29 if layer%2 else 45))
-        fd.line(head,fill=(*shade,112),width=4)
-        for j in range(16):
-            xx=-22+j*37
-            yy=upper+43*math.sin(xx*.0088+phase)+13*math.cos(xx*.004+layer)
-            fd.line((xx,yy,xx+14,yy+140+24*math.sin(t*.6+j)),
-                    fill=(*shade,53),width=1)
+    for layer,color in enumerate(palettes):
+        field.alpha_composite(render_material_sheet(
+            field.size,material="plasma",color=color,
+            seed=17401+layer*367,
+            t=t,duration=duration,
+            baseline=75+layer*48,
+            thickness=165+layer*8,
+            opacity=57 if layer%2==0 else 42))
     # A blurred volumetric base + crisp translucent filaments for depth.
     haze=field.filter(ImageFilter.GaussianBlur(15))
     stage.alpha_composite(haze.resize(STAGE_SIZE,Image.Resampling.BILINEAR))
