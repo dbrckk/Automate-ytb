@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 164,
+  "count": 165,
   "videos": [
+    {
+      "id": "science-preview-volcano-eruption-42888719787/volcano-eruption.mp4",
+      "topic": "volcano-eruption",
+      "category": "science",
+      "releaseTag": "science-preview-volcano-eruption-42888719787",
+      "publishedAt": "2026-11-10T19:52:28Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-volcano-eruption-42888719787/volcano-eruption.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-volcano-eruption-42888719787",
+      "bytes": 16898672,
+      "sha256": "sha256:07117dd830365f6ed7a9b781d9743afa9dd45f4b79a38159e10dfef37223922e"
+    },
     {
       "id": "science-preview-aurora-colors-42882795162/aurora-colors.mp4",
       "topic": "aurora-colors",
