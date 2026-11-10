@@ -1,0 +1,43 @@
+name: Compare real cross-topic 2.5D editorial frames without slideshow panels
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/shared-cinematic-25d-review.yml"
+      - "automate_ytb/editorial25d.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/scene_plan.py"
+      - "scripts/review_shared_editorial25d.py"
+      - "tests/test_editorial25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review-real-cross-topic-frames:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free original 2.5D render dependencies
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Validate shared editorial and layered planner contracts
+        run: |
+          python -m py_compile automate_ytb/editorial25d.py automate_ytb/science_portrait.py automate_ytb/scene_plan.py scripts/review_shared_editorial25d.py
+          python -m unittest discover -s tests -p test_editorial25d.py -v
+          python -m unittest discover -s tests -p test_scene_plan.py -v
+      - name: Actually render 9:16 rainbow, volcano and ocean frames in 2.5D
+        run: |
+          python scripts/review_shared_editorial25d.py --out build/p56-multitopic
+          test -s build/p56-multitopic/multi-topic-25d-contact.jpg
+          test -s build/p56-multitopic/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-p56-shared-25d-multitopic-frames
+          path: build/p56-multitopic/
+          if-no-files-found: error
+          retention-days: 14
