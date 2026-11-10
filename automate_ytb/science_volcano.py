@@ -102,7 +102,7 @@ def _base(section: bool) -> Image.Image:
     # remains behind it to keep underground/cutaway shots watertight.
     # The mountain merges into the established distant rocky foothills.
     # Do not extrude a flat opaque cone all the way to the bottom of frame.
-    foundation = (*CONE_OUTLINE[:13], (1080, 1080), (0, 1080))
+    foundation = (*CONE_OUTLINE[:-2], (1080, 1080), (0, 1080))
     d.polygon(foundation, fill=(28, 31, 41, 255))
     frame.alpha_composite(shaded_terrain())
     d = ImageDraw.Draw(frame)

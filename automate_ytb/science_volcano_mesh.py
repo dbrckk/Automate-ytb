@@ -26,10 +26,17 @@ SEGMENTS = 112
 # The same geological silhouette is used for full exterior and cutaway shots.
 # It also prevents any back-facing triangle from leaking beyond the mountain.
 CONE_OUTLINE = (
-    (0, 988), (127, 914), (228, 797), (337, 621),
-    (448, 463), (502, 347), (522, 334), (558, 334),
-    (589, 419), (697, 594), (805, 769), (940, 915),
-    (1080, 988), (1080, 1380), (0, 1380),
+    # Erosion-shaped shoulders, ledges and asymmetrical source silhouette.
+    # The real crater and the shared magma/ash vent stay at (540,345).
+    (0, 1032), (70, 1009), (128, 958), (176, 914),
+    (212, 854), (249, 803), (269, 754), (302, 707),
+    (336, 658), (357, 607), (391, 560), (418, 529),
+    (451, 466), (473, 414), (499, 364), (514, 338),
+    (529, 343), (549, 336), (566, 353), (585, 400),
+    (611, 447), (651, 511), (676, 565), (707, 612),
+    (738, 675), (779, 729), (816, 784), (851, 829),
+    (897, 889), (947, 933), (1002, 970), (1080, 1008),
+    (1080, 1380), (0, 1380),
 )
 
 

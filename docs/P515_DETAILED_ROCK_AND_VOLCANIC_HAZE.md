@@ -30,3 +30,12 @@ legacy volcano mesh and action regression, and live MP4 validation through
 the general pipeline. This is **authored illustration**, not a physically
 complete fluid/geologic simulation, Unreal render or proof of AAA.
 No paid assets or external AI credits. Human aesthetic review still needed.
+
+## P5.15 source-art second pass
+The first native CI contact showed that highly regular radial gullies
+still formed a wireframe/rain-stripe appearance, and the cone retained
+an almost perfectly triangular outer edge. This was corrected in the
+*shared source generator*: interrupted rock strata, individually
+staggered and branching ravines, different endpoints and irregular
+volcanic shoulders. The cached terrain and the underlying science
+camera, pressure, ash, light and lava contracts are preserved.

@@ -35,6 +35,8 @@ class OriginalRockSurface25DTests(unittest.TestCase):
         material=shaded_terrain()
         self.assertIs(shaded_terrain(),material)
         self.assertEqual(material.size,SIZE)
+        from automate_ytb.science_volcano_mesh import CONE_OUTLINE
+        self.assertGreaterEqual(len(CONE_OUTLINE),30)
         self.assertEqual(material.getpixel((2,200))[3],0)
         self.assertEqual(material.getpixel((540,1180))[3],0)
         self.assertGreater(material.getpixel((540,620))[3],100)

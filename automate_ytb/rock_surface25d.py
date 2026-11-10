@@ -73,34 +73,47 @@ def weathered_rock(source: Image.Image, *, seed: int = 45083
     summit=.251*h
     max_y=min(h-1,round(.76*h))
     for side in (-1,1):
-        for channel in range(11):
-            slope=.059+channel*.026
-            phase=rng.uniform(-1.5,1.5)
+        for channel in range(7):
+            # Independent onset, bending, length and occasional forks
+            # avoid parallel scratch marks resembling synthetic rainfall.
+            slope=.062+channel*.049
+            phase=rng.uniform(-2.,2.)
+            onset=summit+13+rng.randrange(0,100)
+            ending=max_y-rng.randrange(0,160)
             points=[]
             for step in range(29):
-                y=summit+(max_y-summit)*step/28.
+                y=onset+(ending-onset)*step/28.
                 dist=y-summit
-                x=(cx+side*(12+slope*dist)+
-                   (2.5+dist*.015)*math.sin(dist*.019+phase)
-                   +4*math.sin(dist*.047+channel*.37))
+                meander=(4+dist*.029)*math.sin(dist*.016+phase)
+                meander+=3.5*math.sin(dist*.041+channel*.63)
+                x=cx+side*(11+slope*dist)+meander
                 points.append((round(x),round(y)))
-            thick=3+channel%4
-            draw.line(points,fill=(17,20,28,65+channel%4*8),
-                      width=thick+2,joint="curve")
+            thick=3+channel%3
+            draw.line(points,fill=(17,20,28,56+channel%4*11),
+                      width=thick+1,joint="curve")
             upper=[(x+2,y-3) for x,y in points]
-            draw.line(upper,fill=(190,163,145,24+channel%3*9),
+            draw.line(upper,fill=(190,163,145,18+channel%3*8),
                       width=max(1,thick//2),joint="curve")
-    # Irregular depositional layers break large flat facets without adding
-    # a regular grid, while the source alpha clips any crossing sky lines.
-    for stratum in range(18):
-        y=round(.35*h+stratum*(h*.026))
+            if channel%2:
+                fork=points[8:22]
+                subsidiary=[(x+side*(j*1.8),y)
+                            for j,(x,y) in enumerate(fork)]
+                draw.line(subsidiary,fill=(19,25,33,44),width=2,
+                          joint="curve")
+    # Short, staggered sediment bands follow partial depositional beds.
+    # Full-width perfectly regular lines looked like a digital wireframe.
+    for stratum in range(36):
+        start=rng.randrange(110,w-180)
+        length=65+rng.randrange(70,220)
+        y=round(.37*h+rng.uniform(0,.38*h))
+        phase=rng.uniform(-2.1,2.1)
         points=[]
-        for x in range(0,w+8,8):
-            yy=(y+8*math.sin(x*.014+stratum*.57)
-                  +3*math.sin(x*.046-stratum*.91))
+        for x in range(start,min(w,start+length),7):
+            yy=y+6*math.sin(x*.012+phase)+3*math.sin(x*.038-phase)
             points.append((x,round(yy)))
-        draw.line(points,fill=(191,158,143,13+stratum%4*5),
-                  width=1+stratum%3,joint="curve")
+        if len(points)>2:
+            draw.line(points,fill=(185,159,143,12+stratum%5*5),
+                      width=1+stratum%2,joint="curve")
     relief.putalpha(ImageChops.multiply(relief.getchannel("A"),alpha))
     result=Image.alpha_composite(result,relief)
     result.putalpha(alpha)
