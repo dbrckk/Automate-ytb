@@ -12,7 +12,7 @@ be approached** and why the drops visible to different observers differ.
 1. White sunlight reaches falling raindrops, carrying many colors even though the beam looks perfectly white.
 2. Entering a raindrop, each color refracts and bends by a slightly different angle inside water.
 3. Some light reflects from the curved inside back surface, turning toward the front of the drop.
-4. Leaving the drop, the colors bend again, sending selected rays toward your eyes.
+4. Leaving the drop, the colors bend again, sending selected rays toward your eyes at precise viewing angles.
 5. Millions of droplets create the rainbow each observer sees; when you move, its apparent end moves too.
 
 **Editorial note:** This is a qualitative educational demonstration, not a
@@ -29,7 +29,7 @@ position relative to light and droplets. No photos or unlicensed footage.
   `sunlight`, `refraction`, `reflection`, `emergence`, `arc`.
 - English voice: **Kokoro af_heart**, natural pacing, audio-timed subtitles.
 - Video: native **1080 × 1920, 30 fps H.264/AAC**, high render profile,
-  ~40 s; originally composed ambient soundtrack.
+  ~33 s; originally composed ambient soundtrack.
 - Media QA: speech, subtitle, moving video, black/frozen checks, decoded
   contact sheet, mobile safe areas, Shorts platform constraints.
 - Stable delivery: `science-preview-download.yml` listens for the

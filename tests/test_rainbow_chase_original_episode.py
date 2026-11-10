@@ -67,7 +67,7 @@ class RainbowChaseOriginalVideoTests(unittest.TestCase):
             'name: Produce original rainbow-chase science Short',
             "topic: \"Why Can't You Reach the End of a Rainbow?\"",
             "voice: kokoro","voice_name: af_heart","voice_style: natural",
-            "duration_seconds: 40","shot_seconds: 8",
+            "duration_seconds: 32.5","shot_seconds: 6.5",
             "resolution: shorts","render_profile: high",
             "caption_timing: audio",
             'uses: ./.github/workflows/one-click-preview.yml',

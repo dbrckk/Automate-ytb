@@ -43,7 +43,7 @@ jobs:
   render-and-verify:
     needs: preflight
     if: github.event_name != 'pull_request'
-    name: Render original 40s 1080x1920 30fps English Kokoro H264/AAC film
+    name: Render original 33s 1080x1920 30fps English Kokoro H264/AAC film
     uses: ./.github/workflows/one-click-preview.yml
     with:
       topic: "Why Can't You Reach the End of a Rainbow?"
@@ -51,7 +51,7 @@ jobs:
         White sunlight reaches falling raindrops, carrying many colors even though the beam looks perfectly white.
         Entering a raindrop, each color refracts and bends by a slightly different angle inside water.
         Some light reflects from the curved inside back surface, turning toward the front of the drop.
-        Leaving the drop, the colors bend again, sending selected rays toward your eyes.
+        Leaving the drop, the colors bend again, sending selected rays toward your eyes at precise viewing angles.
         Millions of droplets create the rainbow each observer sees; when you move, its apparent end moves too.
       character: "Original sun, layered rain clouds, optically refractive droplets, colored light rays and mobile observer"
       style: science
@@ -62,8 +62,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 40
-      shot_seconds: 8
+      duration_seconds: 32.5
+      shot_seconds: 6.5
       resolution: shorts
       render_profile: high
 
