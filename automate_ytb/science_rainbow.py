@@ -16,7 +16,7 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
-from .organic_environment25d import cloud_bank
+from .organic_environment25d import drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
 
 BEATS = ("sunlight", "refraction", "reflection", "emergence", "arc")
@@ -63,15 +63,24 @@ def daylight_background(seed: int) -> Image.Image:
                    fill=(215,245,253,22+index%3*6))
     backdrop=Image.alpha_composite(
         plate,haze.filter(ImageFilter.GaussianBlur(35)))
-    # The same connected, multiscale 2.5D cloud assets can be reused by
-    # nature, atmosphere, stories and science, not only by rainbow shots.
-    # Both plates are authored separately at different atmospheric depths.
-    backdrop.alpha_composite(cloud_bank(
-        (1080,480),seed%900_000,color=(165,213,235),opacity=112),(0,435))
-    backdrop.alpha_composite(cloud_bank(
-        (1080,440),(seed+701)%900_000,
-        color=(212,237,247),opacity=75),(0,1030))
+    # Sky and diffuse haze are the single cached, unmoving reference plate.
+    # Independently animated multi-Z clouds are composited before scene
+    # optics on every frame, not baked into this static background.
     return backdrop
+
+
+def animate_daylight_clouds(picture: Image.Image, seed: int, t: float) -> None:
+    """Two independent atmosphere depths; no title or caption repaint."""
+    if (not isinstance(picture, Image.Image) or picture.mode != "RGBA"
+            or picture.size != (1080, 1920) or type(seed) is not int):
+        raise ValueError("Rainbow clouds need an original portrait canvas")
+    picture.alpha_composite(drifting_cloud_bank(
+        (1080, 480), seed % 900_000, t,
+        color=(165, 213, 235), opacity=112, speed=.55, phase=.24), (0, 435))
+    picture.alpha_composite(drifting_cloud_bank(
+        (1080, 440), (seed + 701) % 900_000, t,
+        color=(212, 237, 247), opacity=75, speed=1.27,
+        phase=2.1), (0, 1030))
 
 
 def _plain(value: str) -> str:

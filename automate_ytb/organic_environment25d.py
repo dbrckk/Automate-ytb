@@ -203,3 +203,42 @@ def open_world_alpha(size: tuple[int,int], feather:int=72) -> Image.Image:
     return ImageChops.multiply(
         horizontal.resize(size,Image.Resampling.NEAREST),
         vertical.resize(size,Image.Resampling.NEAREST))
+
+
+ATMOSPHERE_MOTION_VERSION = "original-cloud-parallax-25d-p511-v1"
+
+
+def drifting_cloud_bank(size: tuple[int, int], seed: int, t: float,
+                        *, color: tuple[int, int, int] = (201, 228, 246),
+                        opacity: int = 116, speed: float = 1.0,
+                        phase: float = 0.0) -> Image.Image:
+    """Move an authored cloud plane continuously, with overscan and no wraps.
+
+    The coherent RGBA source is cached once by cloud_bank. A bounded, smooth
+    subpixel camera sample creates true layer-relative movement at 30 fps;
+    no regenerated random pixels, stretched edges, third-party assets or
+    hidden time discontinuities. Different speeds model atmospheric parallax,
+    not 3D cloud volumes or a physical weather simulation.
+    """
+    _check(size, seed, color)
+    if (type(t) not in (int, float) or not math.isfinite(t)
+            or not 0 <= t <= 180
+            or type(speed) not in (int, float) or not math.isfinite(speed)
+            or not .1 <= speed <= 2.5
+            or type(phase) not in (int, float) or not math.isfinite(phase)
+            or not 0 <= phase <= math.tau
+            or type(opacity) is not int or not 5 <= opacity <= 235):
+        raise ValueError("Invalid bounded cloud animation clock or optical depth")
+    width, height = size
+    # Source never exceeds the 1920-pixel artwork contract. The exceptional
+    # 1920-wide plate cannot pan without inventing pixels at the boundaries.
+    margin = min(128, (1920 - width) // 2, width // 5)
+    expanded = cloud_bank((width + 2 * margin, height), seed, color, opacity)
+    shift = margin + .76 * margin * math.sin(t * speed * .16 + phase)
+    if not margin:
+        return expanded.copy()
+    # Full-resolution bilinear subpixel translation avoids a visibly stepping
+    # integer crop; all samples stay inside the original oversized asset.
+    return expanded.transform(
+        size, Image.Transform.AFFINE,
+        (1, 0, shift, 0, 1, 0), resample=Image.Resampling.BILINEAR)

@@ -18,7 +18,7 @@ from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
-from .organic_environment25d import terrain_strata, cloud_bank
+from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
 
 SIZE=(1080,1380)
@@ -265,6 +265,12 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
             or not 0<duration<=180 or not 0<=t<=duration):
         raise ValueError("Invalid original volcano frame")
     stage=_base(section=beat in ("magma","pressure","ascent")).copy()
+    # A separate foreground atmosphere layer moves independently of the
+    # cached far-off cloud strata; it stays ABOVE the mountain summit only
+    # in the source sky and BELOW the eruption/plume and other physical FX.
+    stage.alpha_composite(drifting_cloud_bank(
+        (1080, 250), 19147, t, color=(112, 139, 156),
+        opacity=72, speed=.74, phase=1.26), (0, 26))
     if beat in ("magma","pressure","ascent"):
         draw_magma(stage,beat,t,duration)
     elif beat=="eruption":
