@@ -4,7 +4,7 @@ import math
 import unittest
 from PIL import Image, ImageDraw
 from automate_ytb.density_plume25d import VERSION,sinking_plume_frame
-from automate_ytb.science_storyboards import draw_storyboard
+from automate_ytb.science_storyboards import _sinking
 from automate_ytb.science_portrait import PortraitScienceScene
 
 
@@ -37,10 +37,10 @@ class ColdWaterPlumeSourceTests(unittest.TestCase):
     def test_direct_draw_is_compatible_but_real_scene_has_no_rectangular_card(self):
         native=Image.new("RGBA",(1080,1920))
         legacy=native.copy()
-        draw_storyboard(ImageDraw.Draw(native,"RGBA"),
-                        "sinking",.8,True,duration=6.8,canvas=native)
-        draw_storyboard(ImageDraw.Draw(legacy,"RGBA"),
-                        "sinking",.8,True,duration=6.8)
+        # Isolate the source layer: a complete storyboard also draws
+        # titles, stage labels and UI ink in this exact area.
+        _sinking(ImageDraw.Draw(native,"RGBA"),.8,True,canvas=native)
+        _sinking(ImageDraw.Draw(legacy,"RGBA"),.8,True)
         self.assertNotEqual(native.tobytes(),legacy.tobytes())
         self.assertEqual(native.getpixel((150,770))[3],0)
         self.assertGreater(legacy.getpixel((150,770))[3],0)
