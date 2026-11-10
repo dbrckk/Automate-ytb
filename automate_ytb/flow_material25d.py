@@ -12,6 +12,7 @@ import math
 import random
 
 from PIL import Image, ImageChops, ImageDraw
+from .dynamic_material25d import moving_material
 
 VERSION = "shared-animated-surface-vortex-25d-p514-v1"
 
@@ -86,6 +87,12 @@ def vortex_frame(diameter: int, t: float, *,
             or not 0 <= t <= 180 or type(clockwise) is not bool):
         raise ValueError("Invalid original water animation clock")
     source=vortex_source(diameter,palette=palette,seed=seed)
+    # Material volume itself evolves independently under the orbiting
+    # streamlines. Clip each frame to the exact source, not a square card.
+    shifting=moving_material(source.size,t,material="water",seed=seed)
+    shifting.putalpha(ImageChops.multiply(
+        shifting.getchannel("A"),source.getchannel("A")))
+    source=Image.alpha_composite(source,shifting)
     overlay=Image.new("RGBA",source.size)
     draw=ImageDraw.Draw(overlay,"RGBA")
     center=(diameter-1)/2.

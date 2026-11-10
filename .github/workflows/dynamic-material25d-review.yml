@@ -1,0 +1,56 @@
+name: Verify shared moving 2.5D materials in actual ocean and volcano Shorts
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/dynamic-material25d-review.yml"
+      - "automate_ytb/dynamic_material25d.py"
+      - "automate_ytb/flow_material25d.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_dynamic_material25d.py"
+      - "scripts/review_dynamic_material25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/dynamic-material25d-review.yml"
+      - "automate_ytb/dynamic_material25d.py"
+      - "automate_ytb/flow_material25d.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_dynamic_material25d.py"
+      - "scripts/review_dynamic_material25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-cross-subject-motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free original 2.5D material engine
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Verify shared coherence, safe alpha and production integration
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/dynamic_material25d.py automate_ytb/flow_material25d.py automate_ytb/science_volcano_magma.py scripts/review_dynamic_material25d.py
+          python -m unittest discover -s tests -p test_dynamic_material25d.py -v
+          python -m unittest discover -s tests -p test_flow_material25d.py -v
+          python -m unittest discover -s tests -p test_volcanic_reservoir25d.py -v
+          python -m unittest discover -s tests -p test_science_volcano_magma.py -v
+      - name: Render real source material frames at 1080x1920 in two subjects
+        run: |
+          set -euo pipefail
+          python scripts/review_dynamic_material25d.py --out build/p518-dynamic
+          test -s build/p518-dynamic/water-magma-advected-source-25d.jpg
+          test -s build/p518-dynamic/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p518-shared-material-motion-25d
+          path: build/p518-dynamic/
+          retention-days: 14
+          if-no-files-found: error
