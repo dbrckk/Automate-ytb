@@ -32,7 +32,7 @@ sources use overlapping intervals.
 
 ## Original technical delivery contract
 The first successful production run of `Verify original aurora-colors
-science Short` on `main` renders Kokoro `af_heart` English,
+science Short` on `main` renders Kokoro `af_heart` English, 34-second narration-paced runtime,
 original CPU-drawn 2.5D scientific actions, 30 fps, full 1080×1920,
 H.264/AAC, captions, original ambient soundtrack and the existing
 full source-frame + media QA checks.
@@ -48,3 +48,14 @@ with imaginary videos or links.
 
 Human factual, visual and voice-listening review is required before
 any TikTok/YouTube upload; nothing auto-publishes to social networks.
+
+## First-render audio evidence and automatic original script preservation
+Initial technical render #42880867598 measured **33,785 ms** of
+unaccelerated speech plus bounded per-scene final padding, whereas the
+original 30,000 ms target imposed a 3,785 ms drift (maximum allowed
+600 ms). The full Kokoro PCM measurements are saved in that run's
+`video/narration-pacing.json` artifact. The pipeline correctly rejected
+the timeline before encoding. Instead of cutting or unnaturally
+accelerating the original science narration, the second video run
+requests **34 seconds** at 6.8 seconds per narrated scene.
+The authored original five-sentence content remains unchanged.

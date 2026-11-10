@@ -37,7 +37,7 @@ jobs:
 
   render-and-verify:
     needs: verify-authored-episode
-    name: Encode genuine 30-second 1080x1920 English Kokoro science Short
+    name: Encode genuine 34-second 1080x1920 English Kokoro science Short
     uses: ./.github/workflows/one-click-preview.yml
     with:
       topic: "Why Do Northern Lights Glow in Different Colors?"
@@ -56,8 +56,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 30
-      shot_seconds: 6
+      duration_seconds: 34
+      shot_seconds: 6.8
       resolution: shorts
       render_profile: high
 
