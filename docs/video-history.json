@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 132,
+  "count": 133,
   "videos": [
+    {
+      "id": "science-preview-earth-stop-42810584238/earth-stop.mp4",
+      "topic": "earth-stop",
+      "category": "science",
+      "releaseTag": "science-preview-earth-stop-42810584238",
+      "publishedAt": "2026-11-10T11:55:03Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-earth-stop-42810584238/earth-stop.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-earth-stop-42810584238",
+      "bytes": 18868937,
+      "sha256": "sha256:7d8ef9becee9fc09eacdf1f168d45c8b8920dcbe61be7cd57d7c231ff32bb084"
+    },
     {
       "id": "forest-25d-42810583975/forest-discovery.mp4",
       "topic": "forest-discovery",
