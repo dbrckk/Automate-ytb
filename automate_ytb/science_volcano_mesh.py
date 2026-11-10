@@ -15,12 +15,13 @@ from functools import lru_cache
 import math
 
 from PIL import Image, ImageChops, ImageDraw
+from .rock_surface25d import weathered_rock
 
 SIZE = (1080, 1380)
-TERRAIN_VERSION = "volcano-geometric-heightfield-v2-ground-blend"
+TERRAIN_VERSION = "volcano-geometric-heightfield-v3-weathered-rock-and-eroded-facets"
 RINGS = (0, 17, 33, 48, 65, 80, 96, 114, 133, 154, 179,
          206, 236, 268, 302, 338, 376, 414, 449, 480, 520)
-SEGMENTS = 72
+SEGMENTS = 112
 
 # The same geological silhouette is used for full exterior and cutaway shots.
 # It also prevents any back-facing triangle from leaking beyond the mountain.
@@ -151,4 +152,7 @@ def shaded_terrain() -> Image.Image:
     fd.rectangle((0, 1100, SIZE[0], SIZE[1]), fill=0)
     layer.putalpha(ImageChops.multiply(
         ImageChops.multiply(layer.getchannel("A"), mask), fade))
-    return layer
+    # Material-rich original 2.5D painterly rock retains the exact same
+    # surface silhouettes and illumination geometry while removing overly
+    # plain facets in every future exterior/cutaway video.
+    return weathered_rock(layer,seed=45083)

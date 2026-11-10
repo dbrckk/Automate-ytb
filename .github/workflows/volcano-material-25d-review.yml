@@ -1,0 +1,56 @@
+name: Verify original source-painted 2.5D volcanic rock and crater
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/volcano-material-25d-review.yml"
+      - "automate_ytb/rock_surface25d.py"
+      - "automate_ytb/science_volcano_mesh.py"
+      - "automate_ytb/science_volcano.py"
+      - "tests/test_rock_surface25d.py"
+      - "scripts/review_volcano_material25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/volcano-material-25d-review.yml"
+      - "automate_ytb/rock_surface25d.py"
+      - "automate_ytb/science_volcano_mesh.py"
+      - "automate_ytb/science_volcano.py"
+      - "tests/test_rock_surface25d.py"
+      - "scripts/review_volcano_material25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-rock-material-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free original source-painting engine
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Run real original volcanic material and camera regressions
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/rock_surface25d.py automate_ytb/science_volcano.py automate_ytb/science_volcano_mesh.py scripts/review_volcano_material25d.py
+          python -m unittest discover -s tests -p test_rock_surface25d.py -v
+          python -m unittest discover -s tests -p test_science_volcano_mesh.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+          python -m unittest discover -s tests -p test_science_volcano_lighting.py -v
+      - name: Generate actual 1080x1920 rock and eruptions for visual review
+        run: |
+          set -euo pipefail
+          python scripts/review_volcano_material25d.py --out build/p515-volcano
+          test -s build/p515-volcano/original-weathered-volcano-25d.jpg
+          test -s build/p515-volcano/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p515-volcano-native-rock-25d
+          path: build/p515-volcano/
+          retention-days: 14
+          if-no-files-found: error

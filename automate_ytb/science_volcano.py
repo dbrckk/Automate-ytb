@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from functools import lru_cache
 import math
-import random
 import re
 import unicodedata
 
@@ -84,11 +83,14 @@ def _base(section: bool) -> Image.Image:
         p=y/SIZE[1]
         d.line((0,y,1080,y),fill=(int(7+19*p),int(16+17*p),
                                   int(35+18*p),255))
-    rng=random.Random(1803)
-    for i in range(160):
-        x,y=rng.randrange(1080),rng.randrange(40,600)
-        b=rng.randrange(110,210)
-        d.ellipse((x-1,y-1,x+1,y+1),fill=(b//2,b-15,b,175))
+    # An actual volcanic sky contains diffuse ash haze and dust rather than
+    # the tiny stars used in orbital scenes. Build this source plane once.
+    haze=Image.new("RGBA",SIZE)
+    hd=ImageDraw.Draw(haze,"RGBA")
+    hd.ellipse((-220,40,670,535),fill=(91,105,119,46))
+    hd.ellipse((460,0,1330,470),fill=(124,104,102,28))
+    hd.ellipse((40,185,950,680),fill=(64,82,96,34))
+    frame.alpha_composite(haze.filter(ImageFilter.GaussianBlur(95)))
     # Independent distant eroded strata replace the zig-zag background
     # hillside. The exact same reusable original 2.5D asset family also
     # appears in underwater geology and future natural landscapes.
@@ -116,10 +118,17 @@ def _base(section: bool) -> Image.Image:
                 (371, 1029), (491, 1051), (622, 1016),
                 (750, 1058), (870, 1032), (993, 1059),
                 (1080, 1038)], fill=(75, 68, 66, 106), width=2)
-    # Dark inner crater and an irregular illuminated rock rim.
-    d.ellipse((507, 335, 569, 355), fill=(19, 17, 22, 255))
-    d.arc((500, 331, 576, 366), 185, 350,
-          fill=(143, 108, 92, 234), width=5)
+    # Material-aware crater rim rather than a perfectly elliptical icon.
+    # The centered opening remains at 540,345 for every magma/ash effect.
+    crater=[]
+    for k in range(40):
+        angle=k*math.tau/40
+        x=540+(34+2.5*math.sin(7*angle))*math.cos(angle)
+        y=345+(11+1.8*math.sin(9*angle+.4))*math.sin(angle)
+        crater.append((round(x),round(y)))
+    d.polygon(crater,fill=(20,18,23,255))
+    d.line(crater[:22],fill=(169,124,101,223),width=4,joint="curve")
+    d.line(crater[19:37],fill=(68,56,55,255),width=3,joint="curve")
     if section:
         d.polygon([(0,823),(170,844),(342,818),(501,843),
                    (700,813),(870,831),(1080,804),
