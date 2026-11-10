@@ -60,7 +60,8 @@ class MaterialRibbon25DTests(unittest.TestCase):
         ramp=[mask.getpixel((x,440)) for x in (0,4,13,30,60,90)]
         self.assertEqual(ramp,sorted(ramp))
         self.assertGreater(len(set(ramp)),3)
-        self.assertEqual(len(set(ramp[-2:])),1)
+        self.assertLess(ramp[-2],255)
+        self.assertEqual(ramp[-1],255)
         stage=Image.new("RGBA",(1080,1920))
         draw_storyboard(ImageDraw.Draw(stage,"RGBA"),"wind",1.4,True,
                         duration=6.,depth_background=True)
