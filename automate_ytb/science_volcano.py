@@ -21,6 +21,7 @@ from .volcanic_conduit25d import draw_rock_conduit
 from .volcanic_reservoir25d import reservoir_rock_source
 from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
+from .fluid_emitter25d import emitter_frame
 
 SIZE=(1080,1380)
 TOP=330
@@ -169,12 +170,12 @@ def _explosion(stage:Image.Image,t:float,duration:float)->None:
     # Billows rise from the same summit as the red-hot vent, gradually
     # evolving into a drifting column; distant soft layers underlay ejecta.
     draw_ash(stage,t,duration)
-    d=ImageDraw.Draw(stage,"RGBA")
-    jet=91+23*math.sin(t*4.2)**2
-    # Smooth central throat, brighter toward the white-hot core.
-    d.line((540,354,541,354-jet),fill=(119,38,29,217),width=43)
-    d.line((540,354,541,354-jet),fill=(244,83,25,234),width=24)
-    d.line((540,347,541,354-jet),fill=(255,221,112,235),width=9)
+    # Same original moving-fluid source engine as wind-driven sea spray.
+    # The magma jet anchor (150,263) maps precisely to the (540,345)
+    # volcanic crater, rather than three impossible rigid vertical lines.
+    stage.alpha_composite(
+        emitter_frame((300,280),t,duration,material="magma",seed=3207),
+        (390,82))
     draw_ejecta(stage,t,duration)
 
 def _lava(stage:Image.Image,t:float,duration:float)->None:
