@@ -11,6 +11,7 @@ import math
 
 from PIL import Image, ImageDraw, ImageFilter
 from .organic_environment25d import terrain_strata, water_caustics
+from .material_ribbons25d import draw_material_ribbon
 
 VERSION = "ocean-depth-v1-diffuse-underwater-light"
 SIZE = (920, 890)
@@ -107,8 +108,14 @@ def draw_depth(canvas: Image.Image, beat: str, *,
             delta = amplitude*math.sin(x/125 + phase)
             delta += 4*math.sin(x/59 - phase*.72)
             pts.append((x, round(y + delta)))
-        d.line(pts, fill=(*color, max(18, 70-layer*11)),
-               width=max(2, 5-layer))
+        # Same original 2.5D light-path material system as optical rays and
+        # molten rivers, but with a water-specific cool underside and moving
+        # curved highlight following the real authored current trajectory.
+        draw_material_ribbon(
+            d,pts,material="water",
+            color=(*color,max(18,70-layer*11)),
+            width=max(2,5-layer),
+            progress=(t*(.085+layer*.014)+layer*.21)%1.)
     # Independent suspended matter adds natural depth without expensive noise
     # or random variation between reruns. Coordinates never leave the panel.
     for particle in range(24):
