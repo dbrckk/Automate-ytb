@@ -16,13 +16,18 @@ from __future__ import annotations
 from functools import lru_cache
 import math
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
+from .volcanic_conduit25d import (
+    VENT, BASE, INNER_WIDTH, conduit_mask, conduit_center_x,
+    active_conduit_path,
+)
 
 SIZE=(1080,1380)
 LOW=(270,345)
-VERSION="magma-chamber-v2-convective-pressure-fracture-throat"
+VERSION="magma-chamber-v3-shared-curved-conduit-and-advancing-melt"
 BEATS=("magma","pressure","ascent")
 CHAMBER=(326,996,758,1257)
-THROAT=(524,347,556,1031)
+# Legacy bounding box retained for callers; actual rock geometry is curved.
+THROAT=(514,345,566,1028)
 
 
 def _validate(stage: Image.Image, beat: str, t: float,
@@ -45,9 +50,7 @@ def _chamber_mask() -> Image.Image:
 
 @lru_cache(maxsize=1)
 def _conduit_mask() -> Image.Image:
-    mask=Image.new("L",SIZE)
-    ImageDraw.Draw(mask).rounded_rectangle(THROAT,radius=12,fill=255)
-    return mask
+    return conduit_mask()
 
 
 def _molten_plate(t: float, duration: float, beat: str) -> Image.Image:
@@ -153,36 +156,42 @@ def _ascent(stage:Image.Image,t:float,duration:float)->None:
     # Magma front rises through a fixed rock conduit; its advancement is
     # monotone over the scene and will not jump backwards or loop.
     progress=min(1.,max(0.,t/duration*1.18))
-    y_front=1024-675*progress
-    # Low-res bloom is masked to the conduit and adjacent rock near top.
-    light=Image.new("RGBA",LOW)
-    ld=ImageDraw.Draw(light,"RGBA")
-    ld.line([(135,255),(135,y_front*.25)],fill=(255,92,21,153),width=14)
-    light=light.filter(ImageFilter.GaussianBlur(9))
-    stage.alpha_composite(light.resize(SIZE,Image.Resampling.BILINEAR))
+    y_front=BASE[1]-(BASE[1]-VENT[1])*progress
+    flow=active_conduit_path(y_front)
+    # Glow follows the very same physical rock path, rather than a second
+    # straight vertical stripe that could detach from the advancing front.
+    if progress>0:
+        light=Image.new("RGBA",LOW)
+        ld=ImageDraw.Draw(light,"RGBA")
+        ld.line([(x*.25,y*.25) for x,y in flow],
+                fill=(255,92,21,153),width=14,joint="curve")
+        stage.alpha_composite(light.filter(
+            ImageFilter.GaussianBlur(9)).resize(
+                SIZE,Image.Resampling.BILINEAR))
     molten=Image.new("RGBA",SIZE)
     m=ImageDraw.Draw(molten,"RGBA")
-    m.rounded_rectangle((524,y_front,556,1028),radius=10,
-                        fill=(238,75,20,255))
-    m.line((540,1024,540,y_front),fill=(255,173,50,246),width=16)
-    m.line((542,1014,542,y_front),fill=(255,238,135,225),width=5)
-    for i in range(29):
-        y=1020-((i*47+t*(89+i%5*7))%max(2,674*progress))
-        if y<y_front or y>1028:
-            continue
-        x=540+math.sin(i*1.73+t*.83)*8
-        r=2+i%3
-        m.ellipse((x-r,y-r*2,x+r,y+r*2),
-                  fill=(255,244,164,223))
+    if progress>0:
+        m.line(flow,fill=(238,75,20,255),
+               width=INNER_WIDTH+3,joint="curve")
+        m.line(flow,fill=(255,173,50,246),width=16,joint="curve")
+        m.line(flow,fill=(255,238,135,225),width=5,joint="curve")
+        for i in range(29):
+            y=1020-((i*47+t*(89+i%5*7))%max(2,674*progress))
+            if y<y_front or y>BASE[1]:
+                continue
+            x=conduit_center_x(y)+math.sin(i*1.73+t*.83)*8
+            r=2+i%3
+            m.ellipse((x-r,y-r*2,x+r,y+r*2),
+                      fill=(255,244,164,223))
     molten.putalpha(ImageChops.multiply(molten.getchannel("A"),
                                        _conduit_mask()))
     stage.alpha_composite(molten)
     # Side cracks radiate from the center as the melt rises; their reach
     # increases continuously and stays inside the rock cross-section.
     splits=[
-        [(540,845),(497,810),(462,760)],
-        [(540,690),(588,655),(619,609)],
-        [(540,530),(492,490),(464,448)],
+        [(conduit_center_x(845),845),(497,810),(462,760)],
+        [(conduit_center_x(690),690),(588,655),(619,609)],
+        [(conduit_center_x(530),530),(492,490),(464,448)],
     ]
     for k,split in enumerate(splits):
         reach=(1024-y_front-split[0][1])/155

@@ -17,6 +17,7 @@ from .science_volcano_mesh import CONE_OUTLINE, shaded_terrain, TERRAIN_VERSION
 from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSION
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
+from .volcanic_conduit25d import draw_rock_conduit
 from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
 
@@ -138,8 +139,9 @@ def _base(section: bool) -> Image.Image:
             d.line([(0,y),(165,y-19),(335,y+9),(525,y-16),
                     (700,y+13),(900,y-8),(1080,y+11)],
                    fill=(89,66,66,105),width=3)
-        d.line((540,1028,540,345),fill=(111,46,37,246),width=59)
-        d.line((540,1028,540,345),fill=(35,18,23,255),width=34)
+        # This curved rock channel and the ascending molten material are
+        # generated from a single shared physical centerline and mask.
+        draw_rock_conduit(d)
         d.ellipse((327,1004,756,1254),fill=(107,43,28,255),
                   outline=(151,70,43,245),width=12)
     d.polygon([(0,1307),(182,1245),(345,1287),(540,1211),

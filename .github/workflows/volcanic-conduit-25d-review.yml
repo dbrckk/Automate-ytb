@@ -1,0 +1,55 @@
+name: Verify shared curved magma conduit in real 2.5D volcano frames
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/volcanic-conduit-25d-review.yml"
+      - "automate_ytb/volcanic_conduit25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_volcanic_conduit25d.py"
+      - "scripts/review_volcanic_conduit25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/volcanic-conduit-25d-review.yml"
+      - "automate_ytb/volcanic_conduit25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_volcanic_conduit25d.py"
+      - "scripts/review_volcanic_conduit25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-magma-and-cutaway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free native 2D/2.5D renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Verify real rock/magma path and native video frame contracts
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/volcanic_conduit25d.py automate_ytb/science_volcano.py automate_ytb/science_volcano_magma.py scripts/review_volcanic_conduit25d.py
+          python -m unittest discover -s tests -p test_volcanic_conduit25d.py -v
+          python -m unittest discover -s tests -p test_science_volcano_magma.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+      - name: Render two real 1080x1920 frames at different magma advance phases
+        run: |
+          set -euo pipefail
+          python scripts/review_volcanic_conduit25d.py --out build/p516-conduit
+          test -s build/p516-conduit/manifest.json
+          test -s build/p516-conduit/magma-conduit-source-frames.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p516-curved-volcanic-conduit-25d
+          path: build/p516-conduit/
+          retention-days: 14
+          if-no-files-found: error
