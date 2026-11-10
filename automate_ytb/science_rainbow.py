@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
 from .organic_environment25d import cloud_bank
+from .material_ribbons25d import draw_material_ribbon
 
 BEATS = ("sunlight", "refraction", "reflection", "emergence", "arc")
 BADGES = {
@@ -129,12 +130,12 @@ def _ray(draw: ImageDraw.ImageDraw, start: tuple[float, float],
     """Layer a beam and a continuously moving photon tracer on the same line."""
     x0, y0 = start
     x1, y1 = finish
-    draw.line((x0, y0, x1, y1),
-              fill=(color[0], color[1], color[2], 46), width=width+12)
-    draw.line((x0, y0, x1, y1), fill=color, width=width)
-    position = (t*speed+phase)%1.
-    px, py = round(x0+(x1-x0)*position), round(y0+(y1-y0)*position)
-    draw.ellipse((px-8, py-8, px+8, py+8), fill=WHITE)
+    # A shared material-aware renderer keeps this optical ray physically
+    # straight while giving it a localized luminous core and a short,
+    # direction-following photon packet, instead of a rigid line + dot.
+    position=(t*speed+phase)%1.
+    draw_material_ribbon(draw,[(x0,y0),(x1,y1)],material="light",
+                         color=tuple(color),width=width,progress=position)
 
 
 def _drop(draw: ImageDraw.ImageDraw, x: int, y: int, r: int = 230) -> None:
