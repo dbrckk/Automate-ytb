@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 160,
+  "count": 161,
   "videos": [
+    {
+      "id": "science-preview-volcano-eruption-42862677488/volcano-eruption.mp4",
+      "topic": "volcano-eruption",
+      "category": "science",
+      "releaseTag": "science-preview-volcano-eruption-42862677488",
+      "publishedAt": "2026-11-10T17:21:19Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-volcano-eruption-42862677488/volcano-eruption.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-volcano-eruption-42862677488",
+      "bytes": 16295112,
+      "sha256": "sha256:93d992f7fbf4714172d20b2ec0ba255a646f1622912d17d405f6235b83bc02a2"
+    },
     {
       "id": "science-preview-volcano-eruption-42859518642/volcano-eruption.mp4",
       "topic": "volcano-eruption",
