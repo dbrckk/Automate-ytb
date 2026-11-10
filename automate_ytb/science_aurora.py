@@ -213,16 +213,16 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
     # P5.25: each auroral fold is an independent source-authored organic
     # silhouette with sub-folds and source-space striations. All 6 planes
     # move at different phases and densities; this is not a flat rectangle.
-    palettes=((31,207,140),(55,247,158),(34,154,218),
-              (111,79,221),(48,219,162),(30,165,190))
+    palettes=((45,235,165),(75,229,178),(42,155,216),
+              (118,89,219),(40,198,177))
     for layer,color in enumerate(palettes):
         field.alpha_composite(render_material_sheet(
             field.size,material="plasma",color=color,
             seed=17401+layer*367,
             t=t,duration=duration,
-            baseline=75+layer*48,
-            thickness=165+layer*8,
-            opacity=57 if layer%2==0 else 42))
+            baseline=112+layer*43,
+            thickness=154+layer*12,
+            opacity=42 if layer%2==0 else 35))
     # A blurred volumetric base + crisp translucent filaments for depth.
     haze=field.filter(ImageFilter.GaussianBlur(15))
     # Clip only the new auroral source plane well above moving captions.
