@@ -44,6 +44,33 @@ class SharedSourceMaterialReliefTests(unittest.TestCase):
                 self.assertEqual(shade.getpixel((8,8)),source.getpixel((8,8)))
         self.assertEqual(source.tobytes(),source_bytes)
 
+    def test_material_shading_never_wraps_opposite_world_edges(self):
+        """No synthetic rim where a flat source touches a crop boundary."""
+        for edge in ("left", "right", "top", "bottom"):
+            with self.subTest(edge=edge):
+                source=Image.new("RGB",(320,256),(35,35,35))
+                d=ImageDraw.Draw(source)
+                bright={
+                    "left":(0,0,55,255),
+                    "right":(265,0,319,255),
+                    "top":(0,0,319,55),
+                    "bottom":(0,200,319,255),
+                }[edge]
+                d.rectangle(bright,fill=(225,225,225))
+                target={
+                    "left":(0,128),
+                    "right":(319,128),
+                    "top":(160,0),
+                    "bottom":(160,255),
+                }[edge]
+                shaded=sculpt_authored_material(source,look="volcano")
+                self.assertEqual(shaded.getpixel(target),
+                                 source.getpixel(target))
+                # Relief must still react to genuine internal boundaries.
+                self.assertNotEqual(
+                    shaded.crop((50,55,270,200)).tobytes(),
+                    source.crop((50,55,270,200)).tobytes())
+
     def test_global_finish_never_changes_titles_subtitles_or_alpha(self):
         source=Image.new("RGBA",(460,540),(16,39,60,255))
         d=ImageDraw.Draw(source)
