@@ -224,7 +224,8 @@ def frame(t: float, *, kind: str = "fox",
     # The very same shared 2.5D finishing used for EVERY science topic:
     # operate on animated world pixels, then place sharp story typography.
     finish_world(rendered,bounds=(65,585,1015,1495),
-                 look="forest",t=t,duration=SECONDS)
+                 look="forest",t=t,duration=SECONDS,
+                 event_fraction=(IMPACT_TIME/SECONDS if story and interaction else None))
     if story and show_story_titles:
         rendered.alpha_composite(story_overlay(t))
     return rendered.convert("RGB")
