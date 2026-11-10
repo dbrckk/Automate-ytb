@@ -1,0 +1,56 @@
+name: Verify shared organic 2.5D volcanic jets and ocean spray in real Shorts
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/fluid-emitter-25d-review.yml"
+      - "automate_ytb/fluid_emitter25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_storyboards.py"
+      - "tests/test_fluid_emitter25d.py"
+      - "scripts/review_fluid_emitter25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fluid-emitter-25d-review.yml"
+      - "automate_ytb/fluid_emitter25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_storyboards.py"
+      - "tests/test_fluid_emitter25d.py"
+      - "scripts/review_fluid_emitter25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-original-fluid-jets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free CPU 2.5D animation dependencies
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Validate original source dimensions, curves, masks and existing storyboards
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/fluid_emitter25d.py automate_ytb/science_volcano.py automate_ytb/science_storyboards.py scripts/review_fluid_emitter25d.py
+          python -m unittest discover -s tests -p test_fluid_emitter25d.py -v
+          python -m unittest discover -s tests -p test_science_volcano_plume.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+          python -m unittest discover -s tests -p test_science_storyboards.py -v
+      - name: Generate real 1080x1920 moving volcano and ocean science evidence
+        run: |
+          set -euo pipefail
+          python scripts/review_fluid_emitter25d.py --out build/p520-fluid
+          test -s build/p520-fluid/original-jet-and-surface-spray-25d.jpg
+          test -s build/p520-fluid/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p520-shared-moving-fluid-source-25d
+          path: build/p520-fluid/
+          retention-days: 14
+          if-no-files-found: error

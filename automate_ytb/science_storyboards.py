@@ -15,6 +15,7 @@ from .hero_materials25d import solar_disc,thermal_pool,ice_floe
 from .organic_environment25d import water_caustics
 from .flow_material25d import vortex_frame
 from .density_plume25d import sinking_plume_frame
+from .fluid_emitter25d import emitter_frame
 
 from .science_motion import _font
 from .science_causal_vfx import draw_interactions
@@ -151,6 +152,11 @@ def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
     else:
         canvas.alpha_composite(water_caustics(
             (840,250),seed=48102,color=(116,212,243),opacity=66),(120,800))
+        # Source-aware fluid filaments blend with the existing water volume
+        # and travel across the actual ocean surface under the wind arrows.
+        canvas.alpha_composite(
+            emitter_frame((690,190),t,6.8,material="spray",seed=3207),
+            (145,1006))
     for k in range(5):
         y = 840+k*42
         phase = t*(78+k*9)
