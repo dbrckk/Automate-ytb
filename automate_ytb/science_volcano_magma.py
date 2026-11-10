@@ -16,6 +16,7 @@ from __future__ import annotations
 from functools import lru_cache
 import math
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
+from .dynamic_material25d import moving_material
 from .volcanic_reservoir25d import (
     BOUNDS, CENTER, reservoir_mask, reservoir_contour,
     reservoir_molten_source,
@@ -58,6 +59,13 @@ def _molten_plate(t: float, duration: float, beat: str) -> Image.Image:
     # Static material source is shared across every frame; only convection
     # and incandescent eddies change with actual narration time.
     stage=reservoir_molten_source().copy()
+    # Reusable heat/mineral field moves beneath crust plates. Original
+    # geometric source alpha clips it before compositing on the cutaway.
+    surface=moving_material((452,280),t,material="magma",seed=73317)
+    source_mask=_chamber_mask().crop((316,987,768,1267))
+    surface.putalpha(ImageChops.multiply(
+        surface.getchannel("A"),source_mask))
+    stage.alpha_composite(surface,(316,987))
     d=ImageDraw.Draw(stage,"RGBA")
     cx,cy=CENTER
     # Sweeping advected cells simulate circulating, hot molten rock.
