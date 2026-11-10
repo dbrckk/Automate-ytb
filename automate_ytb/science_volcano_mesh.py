@@ -50,7 +50,7 @@ def eroded_silhouette() -> tuple[tuple[int,int], ...]:
                                         _SHOULDER_ANCHORS[1:])):
         x0,y0=left
         x1,y1=right
-        count=max(2,round(abs(x1-x0)/12))
+        count=max(2,round(abs(x1-x0)/7))
         for j in range(count):
             u=j/count
             x=x0+(x1-x0)*u
@@ -80,6 +80,10 @@ def height_at(radius: float, azimuth: float) -> float:
             or not math.isfinite(radius) or not math.isfinite(azimuth)
             or radius < 0 or radius > 520):
         raise ValueError("Volcano heightfield coordinates out of range")
+    # Exact ground intersection avoids floating-point shadow slivers at
+    # the final base ring, a real test-discovered geometry defect.
+    if radius == 520:
+        return 0.0
     if radius < 65:
         height = 685 - 105 * (1 - radius / 65) ** 2
     else:
