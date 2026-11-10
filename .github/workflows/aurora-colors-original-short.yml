@@ -1,0 +1,80 @@
+name: Verify original aurora-colors science Short
+
+# This is a brand-new episode. Only successful original MP4 releases count
+# in the persistent GitHub video history. Run on main without manual steps.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/aurora-colors-original-short.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aurora-colors-original-short-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-authored-episode:
+    name: Verify five distinct original aurora-color science beats
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install original 2.5D art-direction source
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Validate source facts, scientific storyboard and delivery contract
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_aurora_colors_original_episode.py -v
+          python -m unittest discover -s tests -p test_science_aurora.py -v
+          python -m unittest discover -s tests -p test_preview_delivery.py -v
+
+  render-and-verify:
+    needs: verify-authored-episode
+    name: Encode genuine 35-second 1080x1920 English Kokoro science Short
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Why Do Northern Lights Glow in Different Colors?"
+      original_script: >-
+        The solar wind carries charged particles and energy from the Sun toward Earth's magnetic environment.
+        Earth's magnetic field guides energized particles into the polar upper atmosphere, where the air is extremely thin.
+        There, fast electrons collide with oxygen and nitrogen, transferring energy to atoms and molecules high above us.
+        Excited oxygen emits green light lower down and red light higher up, while nitrogen adds blue and pink.
+        Different colors ripple through shimmering curtains in the polar sky, revealing the atmosphere's hidden layers.
+      character: "Original 2.5D Sun, polar Earth, atmospheric oxygen, nitrogen and colored aurora curtains"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: expressive
+      soundtrack: ambient
+      transition: adaptive
+      caption_timing: audio
+      duration_seconds: 35
+      shot_seconds: 7
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    name: Confirm actual original MP4/audio/subtitle QA before public delivery
+    needs: render-and-verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Record editorial review requirement
+        run: |
+          {
+            echo '### New original aurora-colors science Short PASSED'
+            echo '30fps native 1080x1920 H264/AAC, original 2.5D motion,'
+            echo 'real English Kokoro speech and subtitle/media QA completed.'
+            echo 'Stable release is created separately by science-preview-download'
+            echo 'only after this complete success on main.'
+            echo 'Human editorial and pronunciation review still required.'
+            echo 'No YouTube or TikTok account was published to.'
+          } >> "$GITHUB_STEP_SUMMARY"
