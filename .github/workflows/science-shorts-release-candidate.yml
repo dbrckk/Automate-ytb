@@ -15,6 +15,8 @@ on:
       - automate_ytb/optical_motion25d.py
       - automate_ytb/finish25d.py
       - automate_ytb/scene25d.py
+      - tests/test_shared_extreme25d.py
+      - tests/test_optical_motion25d.py
       - automate_ytb/science_audio_cues.py
       - automate_ytb/science_motion.py
       - automate_ytb/voice_audition.py
