@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 143,
+  "count": 144,
   "videos": [
+    {
+      "id": "science-preview-lightning-storm-42825358982/lightning-storm.mp4",
+      "topic": "lightning-storm",
+      "category": "science",
+      "releaseTag": "science-preview-lightning-storm-42825358982",
+      "publishedAt": "2026-11-10T13:48:26Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-lightning-storm-42825358982/lightning-storm.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-lightning-storm-42825358982",
+      "bytes": 20129436,
+      "sha256": "sha256:9312523893f26e50535de45b7b79f44f19725edb458611754814e673eb1ec9d8"
+    },
     {
       "id": "science-preview-upward-lightning-42825359045/upward-lightning.mp4",
       "topic": "upward-lightning",
