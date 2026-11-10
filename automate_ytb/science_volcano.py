@@ -22,6 +22,7 @@ from .volcanic_reservoir25d import reservoir_rock_source
 from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
 from .flow_banks25d import advancing_path, draw_organic_flow
 from .fluid_emitter25d import emitter_frame
+from .semantic_geometry25d import render_material_sheet
 
 SIZE=(1080,1380)
 TOP=330
@@ -254,6 +255,14 @@ def draw_volcano(picture:Image.Image,beat:str,t:float,duration:float,
     if beat in ("magma","pressure","ascent"):
         draw_magma(stage,beat,t,duration)
     elif beat=="eruption":
+        # Atmospheric ash becomes a distinct, slowly evolving foreground
+        # source silhouette only during the eruption (never in calm beats).
+        # It is behind the crater-origin plume and causal incandescent jets.
+        stage.alpha_composite(render_material_sheet(
+            SIZE,material="ash",color=(112,123,134),
+            seed=44801,t=t,duration=duration,
+            baseline=144,thickness=205,
+            opacity=round(14+49*t/duration)))
         _explosion(stage,t,duration)
     else:
         _lava(stage,t,duration)
