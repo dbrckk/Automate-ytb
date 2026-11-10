@@ -15,8 +15,9 @@ import re
 from PIL import Image, ImageChops
 from .surface25d import MATERIALS, relight_surface
 from .lightfield25d import Light25D, illuminate
+from .optical_motion25d import translate_subpixel
 
-VERSION = "scene25d-multiz-material-depth-relight-p55-v2"
+VERSION = "scene25d-multiz-material-depth-relight-p523-subpixel-v3"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
 
 
@@ -108,10 +109,22 @@ class Scene25D:
                 source = source.copy()
                 source.putalpha(ImageChops.multiply(
                     source.getchannel("A"), layer.mask))
-            dx = round(camera_x * layer.parallax_x)
-            dy = round(camera_y * layer.parallax_y)
+            # Preserve the authentic subpixel parallax motion of EACH Z
+            # plane instead of snapping coordinates to integer pixels and
+            # making background clouds/hair/jets judder at video frame rate.
+            dx = camera_x * layer.parallax_x
+            dy = camera_y * layer.parallax_y
             if light is not None:
+                # The original low-frequency light field remains quantized
+                # for cache reuse; geometry moves with genuine fractional
+                # precision through premultiplied-alpha interpolation.
                 source = illuminate(source, light, z=layer.z,
-                                    shift_x=dx, shift_y=dy)
-            result.alpha_composite(source, (dx, dy))
+                                    shift_x=round(dx),shift_y=round(dy))
+            if (abs(dx-round(dx))<1e-10 and
+                    abs(dy-round(dy))<1e-10):
+                # Exact historical fast path and pixel identity for common
+                # zero/integer camera motion.
+                result.alpha_composite(source,(round(dx),round(dy)))
+            else:
+                result.alpha_composite(translate_subpixel(source,dx,dy))
         return result
