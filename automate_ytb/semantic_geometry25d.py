@@ -11,16 +11,16 @@ from __future__ import annotations
 import math
 import random
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageChops
 
-VERSION = "source-authored-semantic-sheets-p525-v1"
+VERSION = "source-authored-semantic-sheets-p525-v2-feathered-geometry"
 MATERIALS = ("plasma", "water", "ash")
 
 # Fixed palette weights are intentionally material-specific, not recolored
 # copies of a single generic sine ribbon.
 _SHAPES = {
     # top undulation, fold count, longitudinal speed, thickness modulation
-    "plasma": (0.24, 13, 0.46, 0.23),
+    "plasma": (0.20, 12, 0.37, 0.22),
     "water": (0.095, 6, 0.22, 0.12),
     "ash": (0.17, 9, 0.115, 0.28),
 }
@@ -123,7 +123,7 @@ def render_material_sheet(size: tuple[int, int], *, material: str,
     # Vertical plasma striations follow the upper and lower shapes. Water
     # receives a restrained crest; ash only retains irregular stratum folds.
     if material == "plasma":
-        for i in range(0,len(xx)-1,4):
+        for i in range(0,len(xx)-1,2):
             x = xx[i]
             yt = upper[i][1]
             yb = lower[i][1]
@@ -135,4 +135,21 @@ def render_material_sheet(size: tuple[int, int], *, material: str,
     elif material == "water":
         painter.line(upper, fill=(*light,round(opacity*.66)),
                      width=max(1,round(thickness*.025)),joint="curve")
+    # Without a lateral alpha envelope, any sheet spanning a 9:16 frame
+    # becomes a perfectly vertical opaque panel at both edges. Feather the
+    # *geometry source alpha*, not the final video or subtitle pixels.
+    edge_fraction = .18 if material=="plasma" else (.08 if material=="water" else .13)
+    ramp=[]
+    for x in range(w):
+        q=x/(w-1)
+        u=max(0.,min(1.,q/edge_fraction,(1-q)/edge_fraction))
+        fade=u*u*(3-2*u)
+        # Deterministic spatial density, not a new random-per-frame texture.
+        density=(.72+.28*math.sin(q*math.tau*3.9+phase*.27+shifts[3])**2
+                 if material=="plasma" else 1.)
+        ramp.append(max(0,min(255,round(255*fade*density))))
+    alpha_x=Image.new("L",(w,1))
+    alpha_x.putdata(ramp)
+    alpha_mask=alpha_x.resize(size,Image.Resampling.NEAREST)
+    plane.putalpha(ImageChops.multiply(plane.getchannel("A"),alpha_mask))
     return plane
