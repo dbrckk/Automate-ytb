@@ -23,7 +23,7 @@ from .volcanic_conduit25d import (
 
 SIZE=(1080,1380)
 LOW=(270,345)
-VERSION="magma-chamber-v3-shared-curved-conduit-and-advancing-melt"
+VERSION="magma-chamber-v3-convective-shared-curved-conduit-and-advancing-melt"
 BEATS=("magma","pressure","ascent")
 CHAMBER=(326,996,758,1257)
 # Legacy bounding box retained for callers; actual rock geometry is curved.
