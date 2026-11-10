@@ -16,6 +16,10 @@ from __future__ import annotations
 from functools import lru_cache
 import math
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
+from .volcanic_reservoir25d import (
+    BOUNDS, CENTER, reservoir_mask, reservoir_contour,
+    reservoir_molten_source,
+)
 from .volcanic_conduit25d import (
     VENT, BASE, INNER_WIDTH, conduit_mask, conduit_center_x,
     active_conduit_path,
@@ -23,9 +27,9 @@ from .volcanic_conduit25d import (
 
 SIZE=(1080,1380)
 LOW=(270,345)
-VERSION="magma-chamber-v3-convective-shared-curved-conduit-and-advancing-melt"
+VERSION="magma-chamber-v4-convective-organic-reservoir-and-shared-curved-conduit"
 BEATS=("magma","pressure","ascent")
-CHAMBER=(326,996,758,1257)
+CHAMBER=BOUNDS
 # Legacy bounding box retained for callers; actual rock geometry is curved.
 THROAT=(514,345,566,1028)
 
@@ -41,11 +45,7 @@ def _validate(stage: Image.Image, beat: str, t: float,
 
 @lru_cache(maxsize=1)
 def _chamber_mask() -> Image.Image:
-    mask=Image.new("L",SIZE)
-    d=ImageDraw.Draw(mask)
-    d.ellipse(CHAMBER,fill=255)
-    # Keep a thin dark crust around the molten reservoir.
-    return mask
+    return reservoir_mask()
 
 
 @lru_cache(maxsize=1)
@@ -55,9 +55,11 @@ def _conduit_mask() -> Image.Image:
 
 def _molten_plate(t: float, duration: float, beat: str) -> Image.Image:
     """Animated metallic-orange cellular magma texture inside the chamber."""
-    stage=Image.new("RGBA",SIZE)
+    # Static material source is shared across every frame; only convection
+    # and incandescent eddies change with actual narration time.
+    stage=reservoir_molten_source().copy()
     d=ImageDraw.Draw(stage,"RGBA")
-    cx,cy=542,1127
+    cx,cy=CENTER
     # Sweeping advected cells simulate circulating, hot molten rock.
     # Closed elliptical trajectories avoid bubbles abruptly teleporting
     # across the magma/rock boundary at scene ends.
@@ -69,7 +71,16 @@ def _molten_plate(t: float, duration: float, beat: str) -> Image.Image:
         y=cy + (.28+.17*minor)*r*math.sin(angle)
         rad=8+(k*7)%18
         heat=.5+.5*math.sin(k*1.713+t*.83)
-        d.ellipse((x-rad,y-rad*.66,x+rad,y+rad*.66),
+        # Draw irregular molten plates with advected edges rather than
+        # scores of identical circular spots resembling floating coins.
+        polygon=[]
+        for j in range(10):
+            a=j*math.tau/10
+            modulation=1+.13*math.sin(3*a+k*.41+t*.12)
+            polygon.append((
+                x+rad*modulation*math.cos(a),
+                y+rad*.67*modulation*math.sin(a)))
+        d.polygon(polygon,
                   fill=(255,round(93+110*heat),round(24+45*heat),190))
         if k%3==0:
             d.arc((x-rad*1.3,y-rad,x+rad*1.3,y+rad),
@@ -86,9 +97,11 @@ def _molten_plate(t: float, duration: float, beat: str) -> Image.Image:
             y=cy+88*eccentric*math.sin(a)
             path.append((x,y))
         d.line(path,fill=(255,190+lane*6,70,190),width=3+lane%3)
-    # A coherent magma-reservoir outline, rather than isolated glowing dots.
-    d.ellipse((329,1001,755,1253),
-              outline=(255,133,47,247),width=8)
+    # Bright melt-rock contact follows the exact *same organic boundary* as
+    # the bedrock silhouette and the gas/liquid masks. No ellipse remains.
+    contour=reservoir_contour(.971)
+    d.line((*contour,contour[0]),fill=(255,133,47,228),
+           width=7,joint="curve")
     return stage
 
 
@@ -117,15 +130,20 @@ def _gas(stage:Image.Image,t:float,duration:float, *, pressure:bool)->None:
 def _pressure(stage:Image.Image,t:float,duration:float)->None:
     d=ImageDraw.Draw(stage,"RGBA")
     fraction=min(1.,t/duration)
-    cx,cy=542,1128
+    # Pressure source contours have coherent subsurface geometry and
+    # are composited under a real shared liquid mask; no glowing circles
+    # can wander into the surrounding rock.
+    pressure=Image.new("RGBA",SIZE)
+    pd=ImageDraw.Draw(pressure,"RGBA")
     for k in range(5):
         q=(t*.28+k*.24)%1
-        # Pressure waves are schematic; deliberately stay near the chamber.
-        rx=176+q*60
-        ry=110+q*50
         alpha=round(154*(1-q)*(.3+.7*fraction))
-        d.arc((cx-rx,cy-ry,cx+rx,cy+ry),178,357,
-              fill=(255,155,70,alpha),width=3)
+        contour=reservoir_contour(.41+q*.54)
+        pd.line((*contour,contour[0]),fill=(255,155,70,alpha),
+                width=2+k%2,joint="curve")
+    pressure.putalpha(ImageChops.multiply(
+        pressure.getchannel("A"),_chamber_mask()))
+    stage.alpha_composite(pressure)
     # Radial fractures propagate through the enclosing rock only during
     # the pressure scene. Growth is progressive (no preexisting crack).
     progress=max(0.,(fraction-.22)/.78)
