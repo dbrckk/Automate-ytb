@@ -39,10 +39,16 @@ def conduit_path() -> tuple[tuple[int,int], ...]:
     return tuple((round(conduit_center_x(y)),y) for y in ys)
 
 
-@lru_cache(maxsize=2)
 def conduit_mask(*, outer: bool = False) -> Image.Image:
+    # Validate before the cache: Python considers True == 1 and false == 0
+    # for hash keys, so a cached bool result must never bypass type checks.
     if type(outer) is not bool:
         raise ValueError("Invalid rock conduit mask selection")
+    return _cached_conduit_mask(outer)
+
+
+@lru_cache(maxsize=2)
+def _cached_conduit_mask(outer: bool) -> Image.Image:
     mask=Image.new("L",SIZE)
     draw=ImageDraw.Draw(mask)
     draw.line(conduit_path(),fill=255,
