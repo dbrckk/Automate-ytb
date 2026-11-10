@@ -84,7 +84,16 @@ def vortex_source(diameter: int, *, palette: str = "ocean",
                 _byte(tint[2]+value*.85),
                 _byte((107+45*body+29*(1-radial))*edge),
             )
-    return source.resize((diameter,diameter),Image.Resampling.BICUBIC)
+    resized=source.resize((diameter,diameter),Image.Resampling.BICUBIC)
+    # BICUBIC may introduce alpha=1..2 at the outermost image pixels,
+    # even though the analytic fluid contour is fully inside its canvas.
+    # Force the final 1px boundary transparent: no seam or optical-ghost
+    # stripe when independently compositing this RGBA material at any Z.
+    alpha=resized.getchannel("A")
+    ImageDraw.Draw(alpha).rectangle(
+        (0,0,diameter-1,diameter-1),outline=0,width=1)
+    resized.putalpha(alpha)
+    return resized
 
 
 def vortex_frame(diameter: int, t: float, *,
