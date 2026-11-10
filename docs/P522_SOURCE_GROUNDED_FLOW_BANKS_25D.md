@@ -40,3 +40,17 @@ volcano/ocean source frames at two time points and SHA256 evidence.
 Full production, Kokoro voice and MP4 release gates remain mandatory
 before merge. This is a sophisticated original 2.5D science aesthetic,
 not a physical numerical simulation or an AAA/photorealistic claim.
+
+## Real-frame visual QA repair — remove oversized causal marker
+Inspection of the actual full-resolution 4.7-second ocean wind frame found
+a distracting large bright cyan capsule, unrelated to the new flow
+banks. Its root cause was eleven overlapping large ellipse markers in
+`science_causal_vfx.draw_interactions`. This same issue could affect
+all five original ocean beats. The shared causal VFX now draws a
+**continuous, tapered, source-aligned tracer** along the *exact same*
+physics teaching trajectory, with a small leading glow and source
+response instead of large concentric diagram rings. This preserves
+speech-driven event phase, caption-safe coordinates and timeline
+determinism. Dedicated regression tests sample the real 4.7-second
+wind pulse and verify it can no longer create the original cyan blob.
+The new native images and job run include this visual review correction.

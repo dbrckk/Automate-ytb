@@ -7,6 +7,8 @@ on:
       - "automate_ytb/flow_banks25d.py"
       - "automate_ytb/science_volcano.py"
       - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/science_causal_vfx.py"
+      - "tests/test_science_causal_vfx.py"
       - "tests/test_flow_banks25d.py"
       - "scripts/review_flow_banks25d.py"
   push:
@@ -16,6 +18,8 @@ on:
       - "automate_ytb/flow_banks25d.py"
       - "automate_ytb/science_volcano.py"
       - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/science_causal_vfx.py"
+      - "tests/test_science_causal_vfx.py"
       - "tests/test_flow_banks25d.py"
       - "scripts/review_flow_banks25d.py"
   workflow_dispatch:
@@ -37,8 +41,9 @@ jobs:
       - name: Test physical shoreline geometry, motion and real story regressions
         run: |
           set -euo pipefail
-          python -m py_compile automate_ytb/flow_banks25d.py automate_ytb/science_volcano.py automate_ytb/science_storyboards.py scripts/review_flow_banks25d.py
+          python -m py_compile automate_ytb/flow_banks25d.py automate_ytb/science_volcano.py automate_ytb/science_storyboards.py automate_ytb/science_causal_vfx.py scripts/review_flow_banks25d.py
           python -m unittest discover -s tests -p test_flow_banks25d.py -v
+          python -m unittest discover -s tests -p test_science_causal_vfx.py -v
           python -m unittest discover -s tests -p test_material_ribbons25d.py -v
           python -m unittest discover -s tests -p test_science_volcano.py -v
           python -m unittest discover -s tests -p test_science_storyboards.py -v
