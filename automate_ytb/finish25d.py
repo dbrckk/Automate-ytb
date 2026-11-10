@@ -12,6 +12,8 @@ from functools import lru_cache
 import math
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageStat
+from .event_lighting25d import authored_light
+from .lightfield25d import illuminate
 
 VERSION = "extreme-25d-world-finishing-p55-v1"
 
@@ -94,7 +96,8 @@ def _focal_falloff(width:int,height:int,look:str) -> Image.Image:
 
 
 def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
-                 look:str, t:float, duration:float) -> None:
+                 look:str, t:float, duration:float,
+                 event_fraction:float | None = None) -> None:
     """In-place 2.5D WORLD finish without changing alpha or caption layers.
 
     The operation is spatially bounded, repeatable and original-audio neutral.
@@ -147,6 +150,15 @@ def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
         rgb=Image.alpha_composite(rgb.convert("RGBA"),tint).convert("RGB")
     result=rgb.convert("RGBA")
     result.putalpha(alpha)
+    # P5.8 uses the SAME real event light in every subject's world pass.
+    # No speculative flash is added when a scene has no authored physical
+    # event or PCM-derived narration cue.
+    cue=authored_light(
+        width=rgb.width,height=rgb.height,
+        t=t,duration=duration,event_fraction=event_fraction,
+        color=style.glow,focal_x=style.focal_x,focal_y=style.focal_y)
+    if cue is not None:
+        result=illuminate(result,cue,z=65)
     picture.paste(result,bounds)
 
 
