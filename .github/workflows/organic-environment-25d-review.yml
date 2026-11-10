@@ -1,0 +1,71 @@
+name: Prove shared organic 2.5D materials in real rainbow volcano and ocean scenes
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/organic-environment-25d-review.yml"
+      - "automate_ytb/organic_environment25d.py"
+      - "automate_ytb/science_rainbow.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_ocean_depth.py"
+      - "tests/test_organic_environment25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/organic-environment-25d-review.yml"
+      - "automate_ytb/organic_environment25d.py"
+      - "automate_ytb/science_rainbow.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_ocean_depth.py"
+      - "tests/test_organic_environment25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-2p5d-materials:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free native image renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Check generic original materials, source alpha, and integrations
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/organic_environment25d.py automate_ytb/science_rainbow.py automate_ytb/science_volcano.py automate_ytb/science_ocean_depth.py
+          python -m unittest discover -s tests -p test_organic_environment25d.py -v
+          python -m unittest discover -s tests -p test_science_ocean_depth.py -v
+          python -m unittest discover -s tests -p test_science_rainbow.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+      - name: Render actual 1080x1920 production scenes in three different domains
+        run: |
+          set -euo pipefail
+          python scripts/review_shared_editorial25d.py --out build/p59-multitopic
+          test -s build/p59-multitopic/multi-topic-25d-contact.jpg
+          test -s build/p59-multitopic/manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("build/p59-multitopic/manifest.json").read_text())
+          assert {x["topic"] for x in data["examples"]} == {"rainbow","volcano","ocean"}
+          assert all(x["orientation"] == "9:16" for x in data["examples"])
+          assert all(not x["publicationApproved"] for x in data["examples"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-p59-cross-topic-organic-25d
+          path: build/p59-multitopic/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Declare scope of evidence
+        run: |
+          {
+            echo "### Genuine rendered multi-topic 2.5D review ready"
+            echo "Original rainbow, volcano and ocean frames rendered, exact hashes in artifact."
+            echo "Human visual assessment still required. No 3D, paid AI tokens, or automatic publication."
+          } >> "$GITHUB_STEP_SUMMARY"

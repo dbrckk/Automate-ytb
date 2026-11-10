@@ -10,6 +10,7 @@ from functools import lru_cache
 import math
 
 from PIL import Image, ImageDraw, ImageFilter
+from .organic_environment25d import terrain_strata, water_caustics
 
 VERSION = "ocean-depth-v1-diffuse-underwater-light"
 SIZE = (920, 890)
@@ -54,13 +55,17 @@ def lighting_plate(beat: str) -> Image.Image:
     ld.ellipse((420, 320, 1130, 790), fill=(*highlight, 18))
     panel = Image.alpha_composite(panel, light.filter(ImageFilter.GaussianBlur(46)))
     d = ImageDraw.Draw(panel, "RGBA")
-    # Depth layering: a sloping abyss, fine mid-depth striations and haze.
-    d.polygon(((0, 660), (200, 585), (420, 630), (610, 540),
-               (920, 640), (920, 890), (0, 890)),
-              fill=(3, 15, 39, 92))
-    d.polygon(((0, 794), (230, 737), (535, 752), (720, 696),
-               (920, 750), (920, 890), (0, 890)),
-              fill=(5, 10, 27, 110))
+    # Actual original organic seafloor and refracted light paths, not
+    # a repeated five-point underwater triangle or a generic dark panel.
+    # Original material plates are cached across all subsequent 30fps frames.
+    identity=list(PALETTES).index(beat)
+    panel.alpha_composite(terrain_strata(
+        (920,470),seed=24109+identity*613,
+        color=(26,53,68),opacity=192),(0,420))
+    panel.alpha_composite(water_caustics(
+        SIZE,seed=35119+identity*517,
+        color=highlight,opacity=44))
+    d=ImageDraw.Draw(panel,"RGBA")
     for layer in range(5):
         y = 115 + layer*138
         for side in range(7):
