@@ -478,7 +478,8 @@ class PortraitScienceScene:
                 volcano=self.volcano_beat is not None,
                 rainbow=self.rainbow_beat is not None,
                 mode=self.mode),
-            t=t, duration=duration)
+            t=t, duration=duration,
+            event_fraction=self._narrated_event_fraction)
         if self.lightning_beat is not None:
             # P4.9 only changes the final editorial layer. Every actual
             # original science scene remains rendered beforehand, including
