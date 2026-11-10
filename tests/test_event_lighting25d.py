@@ -52,6 +52,15 @@ class SharedEventLightIntegrationTests(unittest.TestCase):
             t=3,duration=6,event_fraction=None,
             color=(255,205,170),focal_x=.5,focal_y=.5))
 
+    def test_edge_speech_events_keep_their_original_measured_time(self):
+        # A late spoken action at 93% must NOT flash at an invented 81%.
+        duration=8.
+        spoken=.93
+        self.assertAlmostEqual(event_envelope(duration*spoken,duration,spoken),1.)
+        self.assertEqual(event_envelope(duration*.81,duration,spoken),0.)
+        self.assertEqual(event_envelope(0.,duration,0.),0.)
+        self.assertEqual(event_envelope(duration,duration,1.),0.)
+
     def test_cross_topic_palettes_are_genuinely_distinct(self):
         self.assertNotEqual(LOOKS["volcano"].glow,LOOKS["forest"].glow)
         for name in ("volcano","ocean","rainbow","forest","storm","neutral"):
