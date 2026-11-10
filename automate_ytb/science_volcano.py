@@ -18,6 +18,7 @@ from .science_volcano_lighting import illuminate_rock, VERSION as LIGHTING_VERSI
 from .science_volcano_plume import draw_ash, draw_ejecta, VERSION as PLUME_VERSION
 from .science_volcano_magma import draw_magma, VERSION as MAGMA_VERSION
 from .volcanic_conduit25d import draw_rock_conduit
+from .volcanic_reservoir25d import reservoir_rock_source
 from .organic_environment25d import terrain_strata, cloud_bank, drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
 
@@ -142,8 +143,9 @@ def _base(section: bool) -> Image.Image:
         # This curved rock channel and the ascending molten material are
         # generated from a single shared physical centerline and mask.
         draw_rock_conduit(d)
-        d.ellipse((327,1004,756,1254),fill=(107,43,28,255),
-                  outline=(151,70,43,245),width=12)
+        # Original volcanic reservoir and its molten/gas interior share the
+        # same irregular authored source boundary. No perfect ellipse.
+        frame.alpha_composite(reservoir_rock_source())
     d.polygon([(0,1307),(182,1245),(345,1287),(540,1211),
                (751,1271),(932,1235),(1080,1281),
                (1080,1380),(0,1380)],fill=(14,20,29,245))

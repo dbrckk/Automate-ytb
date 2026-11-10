@@ -1,0 +1,56 @@
+name: Prove original detailed magma chamber source in real 2.5D videos
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/volcanic-reservoir-25d-review.yml"
+      - "automate_ytb/volcanic_reservoir25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_volcanic_reservoir25d.py"
+      - "scripts/review_volcanic_reservoir25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/volcanic-reservoir-25d-review.yml"
+      - "automate_ytb/volcanic_reservoir25d.py"
+      - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_volcano_magma.py"
+      - "tests/test_volcanic_reservoir25d.py"
+      - "scripts/review_volcanic_reservoir25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-reservoir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install original free 2D/2.5D renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Validate coherent source geometry and existing volcano animation
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/volcanic_reservoir25d.py automate_ytb/science_volcano.py automate_ytb/science_volcano_magma.py scripts/review_volcanic_reservoir25d.py
+          python -m unittest discover -s tests -p test_volcanic_reservoir25d.py -v
+          python -m unittest discover -s tests -p test_volcanic_conduit25d.py -v
+          python -m unittest discover -s tests -p test_science_volcano_magma.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+      - name: Render real original source frames across 3 geological actions
+        run: |
+          set -euo pipefail
+          python scripts/review_volcanic_reservoir25d.py --out build/p517-reservoir
+          test -s build/p517-reservoir/manifest.json
+          test -s build/p517-reservoir/organic-magma-source-25d.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p517-organic-magma-source-25d
+          path: build/p517-reservoir/
+          retention-days: 14
+          if-no-files-found: error
