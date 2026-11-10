@@ -203,7 +203,9 @@ def _lava(stage:Image.Image,t:float,duration:float)->None:
             u=float_index-index
             visible.append((p[0]+(q[0]-p[0])*u,
                             p[1]+(q[1]-p[1])*u))
-        if len(visible)<2:
+        # At t=0 the eruption has no visible flowing length. A zero-length
+        # path is not a real illuminated ribbon and must not be fabricated.
+        if len(visible)<2 or math.dist(visible[0],visible[-1])<.001:
             continue
         # Moving incandescent lava illuminates only actual 3D rock faces.
         sources=[(*visible[j],88,.71)
