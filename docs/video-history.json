@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 149,
+  "count": 150,
   "videos": [
+    {
+      "id": "science-preview-upward-lightning-42832543997/upward-lightning.mp4",
+      "topic": "upward-lightning",
+      "category": "science",
+      "releaseTag": "science-preview-upward-lightning-42832543997",
+      "publishedAt": "2026-11-10T14:28:55Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-upward-lightning-42832543997/upward-lightning.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-upward-lightning-42832543997",
+      "bytes": 16890277,
+      "sha256": "sha256:a31b2f98b6b8afedb43fac4b8b60618c190a7e1e24dfb416e7e8db2649f2187c"
+    },
     {
       "id": "science-preview-rainbow-optics-42832543999/rainbow-optics.mp4",
       "topic": "rainbow-optics",
