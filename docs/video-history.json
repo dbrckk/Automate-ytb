@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 142,
+  "count": 143,
   "videos": [
+    {
+      "id": "science-preview-upward-lightning-42825359045/upward-lightning.mp4",
+      "topic": "upward-lightning",
+      "category": "science",
+      "releaseTag": "science-preview-upward-lightning-42825359045",
+      "publishedAt": "2026-11-10T13:47:40Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-upward-lightning-42825359045/upward-lightning.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-upward-lightning-42825359045",
+      "bytes": 16590063,
+      "sha256": "sha256:4f0639597230547bd797b3fd7be0bf6a7dc107c50502d39781f457e0b52f4c34"
+    },
     {
       "id": "science-preview-aurora-dance-42825359024/aurora-dance.mp4",
       "topic": "aurora-dance",
