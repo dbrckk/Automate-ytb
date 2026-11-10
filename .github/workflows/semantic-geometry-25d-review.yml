@@ -1,0 +1,58 @@
+name: Verify reusable semantic 2.5D silhouettes across video genres
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/semantic-geometry-25d-review.yml"
+      - "automate_ytb/semantic_geometry25d.py"
+      - "automate_ytb/science_aurora.py"
+      - "automate_ytb/science_ocean_depth.py"
+      - "automate_ytb/science_volcano.py"
+      - "scripts/review_semantic_geometry25d.py"
+      - "tests/test_semantic_geometry25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/semantic-geometry-25d-review.yml"
+      - "automate_ytb/semantic_geometry25d.py"
+      - "automate_ytb/science_aurora.py"
+      - "automate_ytb/science_ocean_depth.py"
+      - "automate_ytb/science_volcano.py"
+      - "scripts/review_semantic_geometry25d.py"
+      - "tests/test_semantic_geometry25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-silhouettes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow-based original video art
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Compile, test authored shapes and existing science generators
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/semantic_geometry25d.py automate_ytb/science_aurora.py automate_ytb/science_ocean_depth.py automate_ytb/science_volcano.py scripts/review_semantic_geometry25d.py
+          python -m unittest discover -s tests -p test_semantic_geometry25d.py -v
+          python -m unittest discover -s tests -p test_science_aurora.py -v
+          python -m unittest discover -s tests -p test_science_volcano.py -v
+          python -m unittest discover -s tests -p test_science_storyboards.py -v
+      - name: Draw actual 1080x1920 before-after scene sources for three genres
+        run: |
+          set -euo pipefail
+          python scripts/review_semantic_geometry25d.py --out build/p525-semantic
+          test -s build/p525-semantic/manifest.json
+          test -s build/p525-semantic/semantic-geometry-p525-contact.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p525-three-source-genres-before-after
+          path: build/p525-semantic/
+          retention-days: 14
+          if-no-files-found: error
