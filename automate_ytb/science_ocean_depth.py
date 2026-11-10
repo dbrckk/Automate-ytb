@@ -10,7 +10,9 @@ from functools import lru_cache
 import math
 
 from PIL import Image, ImageDraw, ImageFilter
-from .organic_environment25d import terrain_strata, water_caustics
+from .organic_environment25d import (
+    terrain_strata, water_caustics, open_world_alpha,
+)
 from .material_ribbons25d import draw_material_ribbon
 
 VERSION = "ocean-depth-v1-diffuse-underwater-light"
@@ -73,10 +75,10 @@ def lighting_plate(beat: str) -> Image.Image:
             x = 39 + side*147 + ((layer*53) % 87)
             d.line((x, y, min(w-25, x+60), y-13),
                    fill=(*highlight, max(9, 35-layer*5)), width=2)
-    mask = Image.new("L", SIZE, 0)
-    ImageDraw.Draw(mask).rounded_rectangle(
-        (0, 0, w-1, h-1), radius=39, fill=255)
-    panel.putalpha(mask)
+    # An open, soft spatial transition avoids a large neon-edged chart
+    # occupying every original ocean frame. The center retains exact
+    # opaque visibility and the source world blends at all four boundaries.
+    panel.putalpha(open_world_alpha(SIZE,feather=85))
     return panel
 
 
