@@ -84,7 +84,8 @@ class MaterialRibbon25DTests(unittest.TestCase):
                 empty=Image.new("RGBA",(1080,1920))
                 draw_volcano(empty,"lava",0.,6.,True)
             self.assertEqual(initial.size,(1080,1920))
-            self.assertIsNotNone(ImageChops.difference(initial,later).getbbox())
+            self.assertIsNotNone(ImageChops.difference(
+                initial.convert("RGB"),later.convert("RGB")).getbbox())
             out.append(initial.getbbox())
         self.assertEqual(len(out),3)
 
