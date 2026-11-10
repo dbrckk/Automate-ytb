@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 167,
+  "count": 168,
   "videos": [
+    {
+      "id": "science-preview-rainbow-chase-42918834320/rainbow-chase.mp4",
+      "topic": "rainbow-chase",
+      "category": "science",
+      "releaseTag": "science-preview-rainbow-chase-42918834320",
+      "publishedAt": "2026-11-10T23:02:24Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-rainbow-chase-42918834320/rainbow-chase.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-rainbow-chase-42918834320",
+      "bytes": 5639394,
+      "sha256": "sha256:2856c795b76ef149742a1a66519d68cdf12bcd6162dc50c8ad0239279f6df097"
+    },
     {
       "id": "science-preview-aurora-dance-42900672078/aurora-dance.mp4",
       "topic": "aurora-dance",
