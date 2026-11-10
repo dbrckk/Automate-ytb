@@ -14,8 +14,9 @@ import math
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageStat, ImageChops
 from .event_lighting25d import authored_light
 from .lightfield25d import illuminate
+from .optical_motion25d import refract_source
 
-VERSION = "extreme-25d-seamless-world-finishing-p58-v2"
+VERSION = "extreme-25d-seamless-world-finishing-p523-continuous-optics-v3"
 
 
 @dataclass(frozen=True)
@@ -155,6 +156,11 @@ def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
             radius=1.15,percent=style.sharpness,threshold=5))
     rgb=ImageEnhance.Contrast(rgb).enhance(style.contrast)
     rgb=ImageEnhance.Color(rgb).enhance(style.saturation)
+    # Shared original space-time material movement across all science
+    # subjects: subtle non-periodic water/heat/air refraction of authored
+    # pixels, never a filter-only photo slideshow or random texture.
+    # Rainbow and daylight are optically precise and deliberately unwarped.
+    rgb=refract_source(rgb,look=look,t=t,duration=duration)
     if style.glow_gain:
         # Bright details, not the whole scene, motivate a subtle diffuse
         # bounce; stable across time and independent of source frame noise.

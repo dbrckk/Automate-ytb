@@ -60,9 +60,30 @@ class Universal2p5DQualityTests(unittest.TestCase):
         third=self._frame()
         finish_world(third,bounds=(16,66,176,242),
                      look="storm",t=3.7,duration=6.)
-        # Lighting follows source events, never a synthetic uncorrelated
-        # noise pattern that jumps whenever absolute frame time changes.
-        self.assertEqual(first.tobytes(),third.tobytes())
+        # P5.23 intentionally adds deterministic flowing *material*
+        # movement between distinct timestamps. Requiring a static image
+        # here would block the actual purpose of the shared optical engine.
+        # No-event lighting still stays static; real optical source motion
+        # must change smoothly without per-frame stochastic flicker.
+        self.assertNotEqual(first.tobytes(),third.tobytes())
+        nearby=self._frame()
+        finish_world(nearby,bounds=(16,66,176,242),
+                     look="storm",t=1.21,duration=6.)
+        from PIL import ImageStat
+        from PIL import ImageChops
+        near_diff=ImageChops.difference(first,nearby).convert("L")
+        far_diff=ImageChops.difference(first,third).convert("L")
+        self.assertLess(ImageStat.Stat(near_diff).mean[0],
+                        ImageStat.Stat(far_diff).mean[0])
+        # The authored clip begins and ends on identical source art
+        # without optical jumps at hard cuts or during initial/final holds.
+        at_start=self._frame()
+        at_end=self._frame()
+        finish_world(at_start,bounds=(16,66,176,242),
+                     look="storm",t=0.,duration=6.)
+        finish_world(at_end,bounds=(16,66,176,242),
+                     look="storm",t=6.,duration=6.)
+        self.assertEqual(at_start.tobytes(),at_end.tobytes())
 
     def test_named_art_direction_uses_existing_science_classification(self):
         self.assertEqual(science_look(lightning=True),"storm")
