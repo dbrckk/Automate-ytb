@@ -49,6 +49,26 @@ class MaterialRibbon25DTests(unittest.TestCase):
         self.assertEqual(image.getpixel((150,30))[3],0)
         self.assertEqual(image.getpixel((150,130))[3],0)
 
+    def test_open_world_mask_blends_stage_without_chart_borders(self):
+        from automate_ytb.organic_environment25d import open_world_alpha
+        from automate_ytb.science_storyboards import draw_storyboard
+        mask=open_world_alpha((920,890),feather=85)
+        self.assertIs(mask,open_world_alpha((920,890),feather=85))
+        self.assertEqual(mask.getpixel((0,0)),0)
+        self.assertEqual(mask.getpixel((919,440)),0)
+        self.assertEqual(mask.getpixel((460,440)),255)
+        ramp=[mask.getpixel((x,440)) for x in (0,4,13,30,60,90)]
+        self.assertEqual(ramp,sorted(ramp))
+        self.assertGreater(len(set(ramp)),3)
+        self.assertEqual(len(set(ramp[-2:])),1)
+        stage=Image.new("RGBA",(1080,1920))
+        draw_storyboard(ImageDraw.Draw(stage,"RGBA"),"wind",1.4,True,
+                        duration=6.,depth_background=True)
+        # Removing the old rectangular slide border must not remove the
+        # physically authored moving wind arrows and current trajectories.
+        self.assertEqual(stage.getpixel((80,700))[3],0)
+        self.assertGreater(stage.getchannel("A").getextrema()[1],100)
+
     def test_bad_meshes_and_nonfinite_times_fail_explicitly(self):
         paths=([(0,0)],[(0,0),(0,0)],
                [(0,0),(math.nan,5)],[(0,0),(5000,5)])
