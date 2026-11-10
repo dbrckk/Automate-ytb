@@ -39,3 +39,14 @@ SHA256 manifest and contact sheet for visual inspection.
 
 This is conceptual original 2.5D scientific imagery, not a numerical
 fluid simulation or photorealistic underwater footage.
+
+## Native-frame refinement — last dense-water diagram removed
+The first actual P5.19 review sheet exposed another blue rectangular
+card in the sinking/polar-water chapter. The same PR now replaces this
+real production card with the new shared open-water caustics and
+`density_plume25d.sinking_plume_frame`: low-resolution diffuse
+volumetric shading behind moving full-resolution cold-water filaments.
+The entire material source is clipped to the existing organic world
+mask. Surface ripple, coherent deep descent, visible ice and scientific
+explanatory arrows remain. Legacy direct-draw access is preserved.
+This is original conceptual 2.5D animation, not a fluid solver.

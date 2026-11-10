@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 from .hero_materials25d import solar_disc,thermal_pool,ice_floe
 from .organic_environment25d import water_caustics
 from .flow_material25d import vortex_frame
+from .density_plume25d import sinking_plume_frame
 
 from .science_motion import _font
 from .science_causal_vfx import draw_interactions
@@ -210,11 +211,24 @@ def _coriolis(d: ImageDraw.ImageDraw, t: float, english: bool,
 
 def _sinking(d: ImageDraw.ImageDraw, t: float, english: bool,
              canvas: Image.Image | None = None) -> None:
-    d.rounded_rectangle((130, 755, 950, 1376), radius=26,
-                        fill=(20, 84, 133, 123))
-    d.line((145, 901, 933, 901), fill=(175, 229, 246, 210), width=5)
-    for y in (1040, 1177, 1315):
-        d.line((160, y, 920, y), fill=(134, 205, 232, 60), width=2)
+    if canvas is None:
+        # Retain the old diagram for direct-draw legacy teaching callers.
+        d.rounded_rectangle((130, 755, 950, 1376), radius=26,
+                            fill=(20, 84, 133, 123))
+        d.line((145, 901, 933, 901), fill=(175, 229, 246, 210), width=5)
+        for y in (1040, 1177, 1315):
+            d.line((160, y, 920, y), fill=(134, 205, 232, 60), width=2)
+    else:
+        # A real moving cold-water volume, not a rectangular cutaway card.
+        canvas.alpha_composite(water_caustics(
+            (820,622),seed=28179,color=(128,212,241),opacity=45),
+            (130,755))
+        canvas.alpha_composite(
+            sinking_plume_frame((820,622),t,seed=71341),(130,755))
+        surface=[(x,round(901+6*math.sin(x/84+t*.32)))
+                 for x in range(152,931,13)]
+        d.line(surface,fill=(175,229,246,156),
+               width=4,joint="curve")
     # Orange surface advection toward cold latitudes.
     _arrow(d, (210, 965), (775, 965), WARM, 13)
     # Cold saline water sinks and returns along the deep layer.
