@@ -14,7 +14,7 @@ import random
 from PIL import Image, ImageChops, ImageDraw
 from .dynamic_material25d import moving_material
 
-VERSION = "shared-animated-surface-vortex-25d-p514-v1"
+VERSION = "shared-organic-water-mass-p526-reusable-vortex-p514-v1"
 
 PALETTES = {
     "ocean": (30, 111, 162),
@@ -54,22 +54,35 @@ def vortex_source(diameter: int, *, palette: str = "ocean",
         for x in range(resolution):
             nx=(x-mid)/half
             r=math.hypot(nx,ny)
-            if r>=1:
-                continue
             angle=math.atan2(ny,nx)
-            edge=max(0.,min(1.,(1-r)/.065))
-            edge=edge*edge*(3-2*edge)
-            core=math.exp(-(r/.19)**2)
-            body=math.exp(-((r-.69)/.30)**2)
-            striations=(math.sin(19*r-4*angle+phase)*9
-                        +math.sin(39*r+7*angle+phase*.34)*4)
+            # P5.26: one connected water mass with an irregular eroded
+            # shoreline-style contour instead of a perfect opaque disc.
+            # Angular harmonics are authored from the fixed source seed, not
+            # sampled random noise; the same mask is stable on every frame.
+            boundary=(.93 + .050*math.sin(5*angle+phase)
+                          + .028*math.cos(9*angle-.43*phase)
+                          + .013*math.sin(17*angle+phase*.67))
+            radial=r/boundary
+            if radial>=1:
+                continue
+            # 24%-wide diffuse shore of the liquid volume. This lets
+            # currents merge into already-painted deep ocean rather than
+            # ending in an obvious hard circular presentation panel.
+            q=max(0.,min(1.,(1-radial)/.24))
+            edge=q*q*(3-2*q)
+            core=math.exp(-(radial/.19)**2)
+            body=math.exp(-((radial-.69)/.30)**2)
+            striations=(math.sin(19*radial-4*angle+phase)*9
+                        +math.sin(39*radial+7*angle+phase*.34)*4)
+            fine=(max(0.,math.sin(35*radial-9*angle+phase*.81))**7
+                  *14*(1-core))
             reflection=23*max(0.,-.72*nx-.5*ny)*(1-core)
-            value=12*body-18*core+striations+reflection
+            value=12*body-18*core+striations+fine+reflection
             px[x,y]=(
                 _byte(tint[0]+value*.57),
                 _byte(tint[1]+value),
                 _byte(tint[2]+value*.85),
-                _byte((175+48*body+25*(1-r))*edge),
+                _byte((107+45*body+29*(1-radial))*edge),
             )
     return source.resize((diameter,diameter),Image.Resampling.BICUBIC)
 
@@ -122,6 +135,23 @@ def vortex_frame(diameter: int, t: float, *,
             r=max(2,round(diameter*.005))
             draw.ellipse((tip[0]-r,tip[1]-r,tip[0]+r,tip[1]+r),
                          fill=(226,249,255,172))
+    # Additional fine liquid shear folds follow curved radial streamlines,
+    # independently of the 12 primary gyre arms. No extra static icons.
+    for filament in range(23):
+        phase=(filament*math.tau/23
+               +direction*t*(.18+.007*(filament%5))
+               +.12*math.sin(filament*1.29+seed*.003))
+        nodes=[]
+        for j in range(42):
+            u=j/41
+            radius_fraction=.27+.55*u
+            angle=phase+direction*(.21+u*2.9)
+            angle+=.065*math.sin(u*11.1+filament*.79)
+            rr=radius_fraction*radius
+            nodes.append((center+rr*math.cos(angle),
+                          center+rr*math.sin(angle)*.93))
+        draw.line(nodes,fill=(145,219,238,40+filament%4*11),
+                  width=max(1,round(diameter*.002)),joint="curve")
     # Clip all moving strokes to the very same original water silhouette.
     alpha=ImageChops.multiply(
         overlay.getchannel("A"),source.getchannel("A"))
