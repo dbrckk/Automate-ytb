@@ -1,0 +1,57 @@
+name: Verify original non-circular ocean and reusable vortex source
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/organic-vortex-25d-review.yml"
+      - "automate_ytb/flow_material25d.py"
+      - "scripts/review_vortex_organic25d.py"
+      - "tests/test_organic_vortex25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/organic-vortex-25d-review.yml"
+      - "automate_ytb/flow_material25d.py"
+      - "scripts/review_vortex_organic25d.py"
+      - "tests/test_organic_vortex25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  world-shape-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout new reusable original source engine
+        uses: actions/checkout@v4
+      - name: Checkout true default branch for before/after control
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free shared original source renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Compile and test unchanged alpha / animation contracts
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/flow_material25d.py scripts/review_vortex_organic25d.py
+          python -m unittest discover -s tests -p test_organic_vortex25d.py -v
+          python -m unittest discover -s tests -p test_flow_material25d.py -v
+          python -m unittest discover -s tests -p test_science_storyboards.py -v
+      - name: Compare true main source and new gyre frame at identical timestamp
+        run: |
+          set -euo pipefail
+          python scripts/review_vortex_organic25d.py --baseline baseline --out build/p526-vortex
+          test -s build/p526-vortex/organic-water-source-before-after.jpg
+          test -s build/p526-vortex/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-p526-water-mass-real-main-before-after
+          path: build/p526-vortex/
+          retention-days: 14
+          if-no-files-found: error
