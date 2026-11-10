@@ -42,8 +42,8 @@ class ColdWaterPlumeSourceTests(unittest.TestCase):
         draw_storyboard(ImageDraw.Draw(legacy,"RGBA"),
                         "sinking",.8,True,duration=6.8)
         self.assertNotEqual(native.tobytes(),legacy.tobytes())
-        self.assertEqual(native.getpixel((132,770))[3],0)
-        self.assertGreater(legacy.getpixel((132,770))[3],0)
+        self.assertEqual(native.getpixel((150,770))[3],0)
+        self.assertGreater(legacy.getpixel((150,770))[3],0)
         self.assertEqual(native.crop((0,0,1080,520)).tobytes(),
                          legacy.crop((0,0,1080,520)).tobytes())
 
