@@ -9,13 +9,14 @@ from __future__ import annotations
 from functools import lru_cache
 import math
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 from .organic_environment25d import (
-    terrain_strata, water_caustics, open_world_alpha,
+    terrain_strata, water_caustics,
 )
 from .material_ribbons25d import draw_material_ribbon
+from .world_volume25d import world_volume_alpha
 
-VERSION = "ocean-depth-v1-diffuse-underwater-light"
+VERSION = "ocean-depth-v2-open-feathered-underwater-world"
 SIZE = (920, 890)
 ORIGIN = (80, 600)
 # Unique color stories instead of recoloring the same stock background.
@@ -75,10 +76,11 @@ def lighting_plate(beat: str) -> Image.Image:
             x = 39 + side*147 + ((layer*53) % 87)
             d.line((x, y, min(w-25, x+60), y-13),
                    fill=(*highlight, max(9, 35-layer*5)), width=2)
-    # An open, soft spatial transition avoids a large neon-edged chart
-    # occupying every original ocean frame. The center retains exact
-    # opaque visibility and the source world blends at all four boundaries.
-    panel.putalpha(open_world_alpha(SIZE,feather=85))
+    # The entire source world now fades organically into the already
+    # established underwater atmosphere, rather than a large rectangular
+    # slideshow panel with short 85px edge feathering.
+    panel.putalpha(world_volume_alpha(
+        SIZE,kind="water",seed=51803+identity*271))
     return panel
 
 
@@ -95,8 +97,13 @@ def draw_depth(canvas: Image.Image, beat: str, *,
             or not math.isfinite(t) or not math.isfinite(duration)
             or not 0 < duration <= 180 or not 0 <= t <= duration):
         raise ValueError("Unsupported ocean depth canvas or animation clock")
-    canvas.alpha_composite(lighting_plate(beat), ORIGIN)
-    d = ImageDraw.Draw(canvas, "RGBA")
+    plate=lighting_plate(beat)
+    canvas.alpha_composite(plate, ORIGIN)
+    # All dynamic ribbons, particles and sources are drawn inside the same
+    # 920x890 physical volume. Clipping them to its original alpha avoids
+    # sharp floating chart lines extending beyond diffuse material edges.
+    moving=Image.new("RGBA",SIZE)
+    d = ImageDraw.Draw(moving, "RGBA")
     _, _, color = PALETTES[beat]
     # Four translucent wave traces at different depths/speeds; their phase
     # changes smoothly instead of swapping static image backgrounds.
@@ -109,7 +116,7 @@ def draw_depth(canvas: Image.Image, beat: str, *,
         for x in range(118, 969, 22):
             delta = amplitude*math.sin(x/125 + phase)
             delta += 4*math.sin(x/59 - phase*.72)
-            pts.append((x, round(y + delta)))
+            pts.append((x-ORIGIN[0], round(y + delta)-ORIGIN[1]))
         # Same original 2.5D light-path material system as optical rays and
         # molten rivers, but with a water-specific cool underside and moving
         # curved highlight following the real authored current trajectory.
@@ -125,13 +132,19 @@ def draw_depth(canvas: Image.Image, beat: str, *,
         x = 130 + ((particle*117 + t*(15+depth*8)) % 820)
         y = 680 + ((particle*91 + 37*depth) % 730)
         radius = 1 + (particle % 3)
-        d.ellipse((round(x-radius), round(y-radius),
-                   round(x+radius), round(y+radius)),
+        d.ellipse((round(x-radius-ORIGIN[0]),
+                   round(y-radius-ORIGIN[1]),
+                   round(x+radius-ORIGIN[0]),
+                   round(y+radius-ORIGIN[1])),
                   fill=(*color, max(24, 85 - depth*12)))
     # Stable highlight near the original source; the causal interaction module
     # independently handles arrival flashes after a particle reaches its goal.
     sx = 290 if beat in ("solar", "heat") else 720 if beat == "sinking" else 540
     sy = 785
     shimmer = 0.55 + .45*math.sin(t*.63)
-    d.arc((sx-115, sy-31, sx+115, sy+47), 198, 340,
+    d.arc((sx-115-ORIGIN[0], sy-31-ORIGIN[1],
+           sx+115-ORIGIN[0], sy+47-ORIGIN[1]), 198, 340,
           fill=(*color, round(78*shimmer)), width=3)
+    moving.putalpha(ImageChops.multiply(
+        moving.getchannel("A"),plate.getchannel("A")))
+    canvas.alpha_composite(moving,ORIGIN)
