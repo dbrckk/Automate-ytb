@@ -87,10 +87,27 @@ jobs:
       - name: Install open-source Pillow and FFmpeg
         run: |
           set -euo pipefail
+          # Hosted runners sometimes hang for 180 seconds during apt update;
+          # use existing package indices first and bound repository retries.
+          # Abort explicitly if FFmpeg/FFprobe cannot be installed.
           if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
-            sudo timeout -k 10s 180s apt-get update -qq
-            sudo timeout -k 10s 180s apt-get install -y -qq ffmpeg
+            if ! sudo timeout -k 5s 75s apt-get \
+              -o Acquire::Retries=1 \
+              -o Acquire::http::Timeout=12 \
+              -o Acquire::https::Timeout=12 \
+              install -y -qq --no-install-recommends ffmpeg; then
+              sudo timeout -k 5s 45s apt-get \
+                -o Acquire::Retries=0 \
+                -o Acquire::http::Timeout=12 \
+                -o Acquire::https::Timeout=12 update -qq
+              sudo timeout -k 5s 90s apt-get \
+                -o Acquire::Retries=1 \
+                -o Acquire::http::Timeout=12 \
+                -o Acquire::https::Timeout=12 \
+                install -y -qq --no-install-recommends ffmpeg
+            fi
           fi
+          command -v ffmpeg && command -v ffprobe
           python -m pip install --disable-pip-version-check -e .
       - name: Verify two-bone IK, actual foot locks and alpha compositing
         run: |
