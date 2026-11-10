@@ -26,6 +26,28 @@ MATERIALS={
 }
 
 
+def _edge_clamped_offset(height: Image.Image, dx: int, dy: int) -> Image.Image:
+    """Shift luminance without wrapping opposite scene edges into each other.
+
+    ImageChops.offset is circular by default. Its wrapped pixels produce false
+    highlights or dark rims along otherwise flat world-crop borders.
+    Our four directional shifts change only one axis at a time.
+    """
+    shifted = ImageChops.offset(height, dx, dy)
+    w, h = height.size
+    if dx > 0:
+        shifted.paste(height.crop((0, 0, 1, h)).resize((dx, h)), (0, 0))
+    elif dx < 0:
+        shifted.paste(height.crop((w - 1, 0, w, h)).resize((-dx, h)),
+                      (w + dx, 0))
+    if dy > 0:
+        shifted.paste(height.crop((0, 0, w, 1)).resize((w, dy)), (0, 0))
+    elif dy < 0:
+        shifted.paste(height.crop((0, h - 1, w, h)).resize((w, -dy)),
+                      (0, h + dy))
+    return shifted
+
+
 def sculpt_authored_material(image:Image.Image, *, look:str)->Image.Image:
     """Emphasize actual material ridges while preserving existing geometry.
 
@@ -48,10 +70,10 @@ def sculpt_authored_material(image:Image.Image, *, look:str)->Image.Image:
     height=height.filter(ImageFilter.GaussianBlur(1.0))
     # Opposing authored surface light: local gradients indicate curvature.
     # Fixed source-space direction prevents time-incoherent frame shimmer.
-    east=ImageChops.offset(height,2,0)
-    south=ImageChops.offset(height,0,2)
-    west=ImageChops.offset(height,-2,0)
-    north=ImageChops.offset(height,0,-2)
+    east=_edge_clamped_offset(height,2,0)
+    south=_edge_clamped_offset(height,0,2)
+    west=_edge_clamped_offset(height,-2,0)
+    north=_edge_clamped_offset(height,0,-2)
     highlight=ImageChops.add(ImageChops.subtract(height,east),
                              ImageChops.subtract(height,south),scale=2)
     shadow=ImageChops.add(ImageChops.subtract(height,west),
