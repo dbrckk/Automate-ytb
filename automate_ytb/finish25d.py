@@ -11,9 +11,11 @@ from dataclasses import dataclass
 from functools import lru_cache
 import math
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageStat
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps, ImageStat, ImageChops
+from .event_lighting25d import authored_light
+from .lightfield25d import illuminate
 
-VERSION = "extreme-25d-world-finishing-p55-v1"
+VERSION = "extreme-25d-seamless-world-finishing-p58-v2"
 
 
 @dataclass(frozen=True)
@@ -93,8 +95,33 @@ def _focal_falloff(width:int,height:int,look:str) -> Image.Image:
     return low.resize((width,height),Image.Resampling.BICUBIC)
 
 
+@lru_cache(maxsize=12)
+def _seamless_world_mask(width: int, height: int) -> Image.Image:
+    """Feather the common-world grading, never draw a hard rectangular card.
+
+    Evaluated only on region dimensions and cached across every 30fps frame.
+    Zero at all four crop edges preserves original neighboring source pixels;
+    interior receives the full authored grade and optional physical event light.
+    """
+    if (type(width) is not int or type(height) is not int
+            or not 32 <= width <= 1920 or not 32 <= height <= 1920):
+        raise ValueError("Invalid 2.5D seam-safe finish mask")
+    feather=max(8,min(76,width//7,height//7))
+    def fade(index: int, count: int) -> int:
+        q=min(1.,index/feather,(count-1-index)/feather)
+        return round(255*q*q*(3-2*q))
+    x=Image.new("L",(width,1))
+    x.putdata([fade(i,width) for i in range(width)])
+    y=Image.new("L",(1,height))
+    y.putdata([fade(i,height) for i in range(height)])
+    return ImageChops.multiply(
+        x.resize((width,height),Image.Resampling.NEAREST),
+        y.resize((width,height),Image.Resampling.NEAREST))
+
+
 def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
-                 look:str, t:float, duration:float) -> None:
+                 look:str, t:float, duration:float,
+                 event_fraction:float | None = None) -> None:
     """In-place 2.5D WORLD finish without changing alpha or caption layers.
 
     The operation is spatially bounded, repeatable and original-audio neutral.
@@ -146,6 +173,22 @@ def finish_world(picture:Image.Image, *, bounds:tuple[int,int,int,int],
         tint.putalpha(strength)
         rgb=Image.alpha_composite(rgb.convert("RGBA"),tint).convert("RGB")
     result=rgb.convert("RGBA")
+    result.putalpha(alpha)
+    # P5.8 uses the SAME real event light in every subject's world pass.
+    # No speculative flash is added when a scene has no authored physical
+    # event or PCM-derived narration cue.
+    cue=authored_light(
+        width=rgb.width,height=rgb.height,
+        t=t,duration=duration,event_fraction=event_fraction,
+        color=style.glow,focal_x=style.focal_x,focal_y=style.focal_y)
+    if cue is not None:
+        result=illuminate(result,cue,z=65)
+    # Grading was previously pasted as a full-strength rectangle; on real
+    # 9:16 rainbow, ocean and volcano previews this produced obvious
+    # vertical panel rails and 90-degree edges, even with no UI panels.
+    # Blend only the art modification against its exact source underneath.
+    result=Image.composite(
+        result,original,_seamless_world_mask(rgb.width,rgb.height))
     result.putalpha(alpha)
     picture.paste(result,bounds)
 
