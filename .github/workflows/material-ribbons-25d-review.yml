@@ -8,6 +8,8 @@ on:
       - "automate_ytb/science_rainbow.py"
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/organic_environment25d.py"
       - "scripts/review_material_ribbons25d.py"
       - "tests/test_material_ribbons25d.py"
   push:
@@ -18,6 +20,8 @@ on:
       - "automate_ytb/science_rainbow.py"
       - "automate_ytb/science_ocean_depth.py"
       - "automate_ytb/science_volcano.py"
+      - "automate_ytb/science_storyboards.py"
+      - "automate_ytb/organic_environment25d.py"
       - "scripts/review_material_ribbons25d.py"
       - "tests/test_material_ribbons25d.py"
   workflow_dispatch:
@@ -44,6 +48,8 @@ jobs:
           python -m unittest discover -s tests -p test_science_rainbow.py -v
           python -m unittest discover -s tests -p test_science_volcano.py -v
           python -m unittest discover -s tests -p test_science_ocean_depth.py -v
+          python -m unittest discover -s tests -p test_science_storyboards.py -v
+          python -m unittest discover -s tests -p test_organic_environment25d.py -v
       - name: Render genuine 1080x1920 production frames with the three shared materials
         run: |
           set -euo pipefail
