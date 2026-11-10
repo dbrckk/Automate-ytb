@@ -12,7 +12,7 @@ import random
 import re
 import unicodedata
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
 from .science_stage_director import reframe, VERSION as DIRECTOR_VERSION
 from .semantic_geometry25d import render_material_sheet
@@ -225,6 +225,16 @@ def _curtains(stage:Image.Image,t:float, duration:float) -> None:
             opacity=57 if layer%2==0 else 42))
     # A blurred volumetric base + crisp translucent filaments for depth.
     haze=field.filter(ImageFilter.GaussianBlur(15))
+    # Clip only the new auroral source plane well above moving captions.
+    # Reframing may zoom the original 1380px stage, so this feather is in
+    # pre-camera source space and protects the entire future title/caption
+    # band without a sharp horizontal edge after blur.
+    fade=Image.new("L",(1,field.height))
+    fade.putdata([255 if y<=455 else
+                  max(0,round(255*(500-y)/45)) for y in range(field.height)])
+    mask=fade.resize(field.size,Image.Resampling.NEAREST)
+    for plane in (haze,field):
+        plane.putalpha(ImageChops.multiply(plane.getchannel("A"),mask))
     stage.alpha_composite(haze.resize(STAGE_SIZE,Image.Resampling.BILINEAR))
     stage.alpha_composite(field.resize(STAGE_SIZE,Image.Resampling.BILINEAR))
     # Moving foreground stars / reflected lake highlights beneath curtains.
