@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 130,
+  "count": 131,
   "videos": [
+    {
+      "id": "science-preview-volcano-eruption-42788652720/volcano-eruption.mp4",
+      "topic": "volcano-eruption",
+      "category": "science",
+      "releaseTag": "science-preview-volcano-eruption-42788652720",
+      "publishedAt": "2026-11-10T09:29:18Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-volcano-eruption-42788652720/volcano-eruption.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-volcano-eruption-42788652720",
+      "bytes": 14974703,
+      "sha256": "sha256:78cae8387f6b301e74fd0d5fa147aea550388118b90d872cecaf00889d53cc22"
+    },
     {
       "id": "science-preview-rainbow-optics-42788652541/rainbow-optics.mp4",
       "topic": "rainbow-optics",
