@@ -10,6 +10,10 @@ on:
       - .github/workflows/one-click-preview.yml
       - automate_ytb/science_causal_vfx.py
       - automate_ytb/science_ocean_depth.py
+      - automate_ytb/semantic_geometry25d.py
+      - automate_ytb/science_aurora.py
+      - automate_ytb/science_volcano.py
+      - tests/test_semantic_geometry25d.py
       - automate_ytb/science_storyboards.py
       - automate_ytb/science_portrait.py
       - automate_ytb/optical_motion25d.py
@@ -33,6 +37,10 @@ on:
       - automate_ytb/finish25d.py
       - automate_ytb/scene25d.py
       - automate_ytb/science_storyboards.py
+      - automate_ytb/semantic_geometry25d.py
+      - automate_ytb/science_aurora.py
+      - automate_ytb/science_volcano.py
+      - automate_ytb/science_ocean_depth.py
       - automate_ytb/science_motion.py
 
 # Rendering and QA must be part of THIS run. A fire-and-forget dispatch can
