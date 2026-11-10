@@ -25,7 +25,7 @@ from .finish25d import finish_world, science_look
 from .editorial25d import paint_header, paint_caption, VERSION as EDITORIAL25D_VERSION
 from .science_storyboards import classify as classify_storyboard, draw_storyboard, BADGES as STORYBOARD_BADGES
 from .science_rainbow import (classify as classify_rainbow, draw_rainbow,
-                              daylight_background, BADGES as RAINBOW_BADGES)
+                              daylight_background, animate_daylight_clouds, BADGES as RAINBOW_BADGES)
 from .science_lightning import (classify as classify_lightning, draw_lightning,
                                 supports_topic as supports_lightning,
                                 storm_background, BADGES as LIGHTNING_BADGES)
@@ -241,6 +241,7 @@ class PortraitScienceScene:
                     topic, flags=re.IGNORECASE))
         seed = int.from_bytes(hashlib.sha256(
             f"{topic}|{scene_index}|portrait".encode()).digest()[:8], "big")
+        self._rainbow_sky_seed = seed if is_rainbow else None
         self.base = (storm_background() if is_lightning else
                      aurora_background() if is_aurora else
                      volcano_background() if is_volcano else
@@ -382,7 +383,10 @@ class PortraitScienceScene:
                          event_progress=self._narrated_event_fraction)
             d = ImageDraw.Draw(picture, "RGBA")
         elif self.rainbow_beat is not None:
-            draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
+            animate_daylight_clouds(picture, self._rainbow_sky_seed, t)
+            d = ImageDraw.Draw(picture, "RGBA")
+            draw_rainbow(d, self.rainbow_beat, t, duration, self.english,
+                         canvas=picture)
         elif self.beat is not None:
             if self._blender_stage is not None:
                 self._blender_stage.composite(picture, self.beat, t=t, duration=duration)

@@ -16,8 +16,9 @@ import unicodedata
 from PIL import Image, ImageDraw, ImageFilter
 
 from .science_motion import _font
-from .organic_environment25d import cloud_bank
+from .organic_environment25d import drifting_cloud_bank
 from .material_ribbons25d import draw_material_ribbon
+from .hero_materials25d import glass_sphere, solar_disc
 
 BEATS = ("sunlight", "refraction", "reflection", "emergence", "arc")
 BADGES = {
@@ -63,15 +64,24 @@ def daylight_background(seed: int) -> Image.Image:
                    fill=(215,245,253,22+index%3*6))
     backdrop=Image.alpha_composite(
         plate,haze.filter(ImageFilter.GaussianBlur(35)))
-    # The same connected, multiscale 2.5D cloud assets can be reused by
-    # nature, atmosphere, stories and science, not only by rainbow shots.
-    # Both plates are authored separately at different atmospheric depths.
-    backdrop.alpha_composite(cloud_bank(
-        (1080,480),seed%900_000,color=(165,213,235),opacity=112),(0,435))
-    backdrop.alpha_composite(cloud_bank(
-        (1080,440),(seed+701)%900_000,
-        color=(212,237,247),opacity=75),(0,1030))
+    # Sky and diffuse haze are the single cached, unmoving reference plate.
+    # Independently animated multi-Z clouds are composited before scene
+    # optics on every frame, not baked into this static background.
     return backdrop
+
+
+def animate_daylight_clouds(picture: Image.Image, seed: int, t: float) -> None:
+    """Two independent atmosphere depths; no title or caption repaint."""
+    if (not isinstance(picture, Image.Image) or picture.mode != "RGBA"
+            or picture.size != (1080, 1920) or type(seed) is not int):
+        raise ValueError("Rainbow clouds need an original portrait canvas")
+    picture.alpha_composite(drifting_cloud_bank(
+        (1080, 480), seed % 900_000, t,
+        color=(165, 213, 235), opacity=112, speed=.55, phase=.24), (0, 435))
+    picture.alpha_composite(drifting_cloud_bank(
+        (1080, 440), (seed + 701) % 900_000, t,
+        color=(212, 237, 247), opacity=75, speed=1.27,
+        phase=2.1), (0, 1030))
 
 
 def _plain(value: str) -> str:
@@ -138,8 +148,14 @@ def _ray(draw: ImageDraw.ImageDraw, start: tuple[float, float],
                          color=tuple(color),width=width,progress=position)
 
 
-def _drop(draw: ImageDraw.ImageDraw, x: int, y: int, r: int = 230) -> None:
-    """Spherical water droplet, not a teardrop or a flat prism."""
+def _drop(draw: ImageDraw.ImageDraw, x: int, y: int, r: int = 230,
+          *, canvas: Image.Image | None = None) -> None:
+    """Use the shared original refractive material when actual pixels exist."""
+    if canvas is not None:
+        canvas.alpha_composite(
+            glass_sphere(2*r, seed=173), (x-r,y-r))
+        return
+    # Legacy public Pillow-draw API remains usable in direct storyboard tests.
     draw.ellipse((x-r-18,y-r-18,x+r+18,y+r+18),
                  fill=(56, 169, 211, 23))
     draw.ellipse((x-r,y-r,x+r,y+r), fill=(21, 89, 147, 105),
@@ -153,13 +169,19 @@ def _drop(draw: ImageDraw.ImageDraw, x: int, y: int, r: int = 230) -> None:
         draw.ellipse((xx-rr,yy-rr,xx+rr,yy+rr),fill=WHITE)
 
 
-def _sunlight(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
+def _sunlight(draw: ImageDraw.ImageDraw, t: float, english: bool,
+              *, canvas: Image.Image | None = None) -> None:
     sunx,suny=252,1013
-    for radius,alpha in ((190,23),(152,40),(119,83)):
-        draw.ellipse((sunx-radius,suny-radius,sunx+radius,suny+radius),
-                     fill=(255,193,99,alpha))
-    draw.ellipse((sunx-86,suny-86,sunx+86,suny+86),
-                 fill=(255,220,130,255))
+    if canvas is not None:
+        sun=solar_disc(172, seed=71)
+        canvas.alpha_composite(
+            sun, (sunx-sun.width//2,suny-sun.height//2))
+    else:
+        for radius,alpha in ((190,23),(152,40),(119,83)):
+            draw.ellipse((sunx-radius,suny-radius,sunx+radius,suny+radius),
+                         fill=(255,193,99,alpha))
+        draw.ellipse((sunx-86,suny-86,sunx+86,suny+86),
+                     fill=(255,220,130,255))
     for n in range(14):
         angle=math.tau*n/14+t*.18
         a=(sunx+105*math.cos(angle),suny+105*math.sin(angle))
@@ -179,8 +201,9 @@ def _sunlight(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            "LA LUMIÈRE CONTIENT DES COULEURS",size=32)
 
 
-def _refraction(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
-    _drop(draw,630,1070,229)
+def _refraction(draw: ImageDraw.ImageDraw, t: float, english: bool,
+                *, canvas: Image.Image | None = None) -> None:
+    _drop(draw,630,1070,229,canvas=canvas)
     _ray(draw,(137,935),(410,965),WHITE,t=t,speed=.28,width=11)
     for i,color in enumerate(SPECTRUM):
         # Refraction inside water is schematic: wavelengths deviate
@@ -192,8 +215,9 @@ def _refraction(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            "LA LUMIÈRE SE COURBE DANS L'EAU",size=33)
 
 
-def _reflection(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
-    _drop(draw,603,1068,234)
+def _reflection(draw: ImageDraw.ImageDraw, t: float, english: bool,
+                *, canvas: Image.Image | None = None) -> None:
+    _drop(draw,603,1068,234,canvas=canvas)
     for i,color in enumerate(SPECTRUM):
         sy=918+i*11
         _ray(draw,(386,sy),(798,1000+i*9),color,t=t,
@@ -205,8 +229,9 @@ def _reflection(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
            "LA LUMIÈRE SE RÉFLÉCHIT",size=34)
 
 
-def _emergence(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
-    _drop(draw,615,1065,226)
+def _emergence(draw: ImageDraw.ImageDraw, t: float, english: bool,
+               *, canvas: Image.Image | None = None) -> None:
+    _drop(draw,615,1065,226,canvas=canvas)
     for i,color in enumerate(SPECTRUM):
         _ray(draw,(796,999+i*10),(441,1188-i*8),color,
              t=t,speed=.22,phase=i*.09,width=5)
@@ -254,13 +279,18 @@ def _arc(draw: ImageDraw.ImageDraw, t: float, english: bool) -> None:
 
 
 def draw_rainbow(draw: ImageDraw.ImageDraw, beat: str,
-                 t: float, duration: float, english: bool) -> None:
+                 t: float, duration: float, english: bool,
+                 *, canvas: Image.Image | None = None) -> None:
     """Draw one of five original rainbow mechanisms at native 9:16 resolution."""
     if (beat not in BEATS or type(t) not in (int,float)
             or type(duration) not in (int,float)
             or not math.isfinite(t) or not math.isfinite(duration)
             or not 0 < duration <= 180 or not 0 <= t <= duration
-            or type(english) is not bool):
+            or type(english) is not bool
+            or (canvas is not None and
+                (not isinstance(canvas, Image.Image)
+                 or canvas.mode != "RGBA"
+                 or canvas.size != (1080,1920)))):
         raise ValueError("Invalid rainbow storyboard time or concept")
     # Keep the real changing optics in an open atmospheric 2.5D world.
     # A solid rounded chart border and fixed axis grid made every moving
@@ -270,12 +300,12 @@ def draw_rainbow(draw: ImageDraw.ImageDraw, beat: str,
            "OPTIQUE · SCHÉMA · HORS ÉCHELLE",size=27,
            color=(170,211,231,235))
     if beat=="sunlight":
-        _sunlight(draw,t,english)
+        _sunlight(draw,t,english,canvas=canvas)
     elif beat=="refraction":
-        _refraction(draw,t,english)
+        _refraction(draw,t,english,canvas=canvas)
     elif beat=="reflection":
-        _reflection(draw,t,english)
+        _reflection(draw,t,english,canvas=canvas)
     elif beat=="emergence":
-        _emergence(draw,t,english)
+        _emergence(draw,t,english,canvas=canvas)
     else:
         _arc(draw,t,english)

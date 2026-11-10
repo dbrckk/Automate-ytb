@@ -11,7 +11,7 @@ import unittest
 from PIL import Image, ImageDraw, ImageStat
 
 from automate_ytb.organic_environment25d import (
-    VERSION,cloud_bank,ridge_points,terrain_strata,water_caustics
+    VERSION,cloud_bank,drifting_cloud_bank,ridge_points,terrain_strata,water_caustics
 )
 
 
@@ -95,6 +95,65 @@ class SharedOrganicEnvironmentTests(unittest.TestCase):
         draw_rainbow(ImageDraw.Draw(canvas,"RGBA"),"sunlight",.3,6.,True)
         self.assertEqual(canvas.getpixel((80,600))[3],0)
         self.assertGreater(canvas.getchannel("A").getextrema()[1],230)
+
+
+    def test_subpixel_cloud_parallax_is_deterministic_and_alpha_safe(self):
+        first=drifting_cloud_bank((540,290),seed=97,t=0.,speed=.85)
+        middle=drifting_cloud_bank((540,290),seed=97,t=2.75,speed=.85)
+        self.assertEqual(first.size,(540,290))
+        self.assertEqual(first.mode,"RGBA")
+        self.assertEqual(first.getpixel((90,0))[3],0)
+        self.assertNotEqual(first.tobytes(),middle.tobytes())
+        self.assertEqual(middle.tobytes(),drifting_cloud_bank(
+            (540,290),seed=97,t=2.75,speed=.85).tobytes())
+        # Never mutate the cached original multi-scale RGBA source.
+        unchanged=cloud_bank((540,290),seed=97)
+        original=unchanged.tobytes()
+        drifting_cloud_bank((540,290),seed=97,t=12.)
+        self.assertEqual(unchanged.tobytes(),original)
+
+    def test_atmospheric_motion_rejects_unsafe_inputs(self):
+        for t in (-1,181,float("nan"),float("inf"),True):
+            with self.assertRaises(ValueError):
+                drifting_cloud_bank((540,290),seed=5,t=t)
+        for speed in (0.,4.,float("nan")):
+            with self.assertRaises(ValueError):
+                drifting_cloud_bank((540,290),seed=5,t=3.,speed=speed)
+        with self.assertRaises(ValueError):
+            drifting_cloud_bank((540,290),seed=5,t=1.,phase=99)
+        with self.assertRaises(ValueError):
+            drifting_cloud_bank((540,290),seed=5,t=1.,opacity=-1)
+
+    def test_real_rainbow_atmosphere_moves_but_leaves_header_untouched(self):
+        from automate_ytb.science_rainbow import (
+            daylight_background, animate_daylight_clouds,
+        )
+        base=daylight_background(101)
+        start=base.copy()
+        future=base.copy()
+        animate_daylight_clouds(start,101,0.)
+        animate_daylight_clouds(future,101,4.)
+        self.assertNotEqual(
+            start.crop((40,540,1030,870)).tobytes(),
+            future.crop((40,540,1030,870)).tobytes())
+        self.assertEqual(
+            start.crop((0,0,1080,260)).tobytes(),
+            base.crop((0,0,1080,260)).tobytes())
+        self.assertEqual(
+            start.crop((0,1550,1080,1920)).tobytes(),
+            base.crop((0,1550,1080,1920)).tobytes())
+        with self.assertRaises(ValueError):
+            animate_daylight_clouds(Image.new("RGB",(1080,1920)),101,2.)
+
+    def test_real_volcano_upper_atmosphere_changes_with_clock(self):
+        from automate_ytb.science_volcano import draw_volcano
+        a=Image.new("RGBA",(1080,1920))
+        b=Image.new("RGBA",(1080,1920))
+        draw_volcano(a,"magma",0.,6.,True)
+        draw_volcano(b,"magma",4.,6.,True)
+        self.assertNotEqual(
+            a.crop((100,390,950,540)).tobytes(),
+            b.crop((100,390,950,540)).tobytes())
 
 
 if __name__=="__main__":
