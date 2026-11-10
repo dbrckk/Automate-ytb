@@ -385,7 +385,8 @@ class PortraitScienceScene:
         elif self.rainbow_beat is not None:
             animate_daylight_clouds(picture, self._rainbow_sky_seed, t)
             d = ImageDraw.Draw(picture, "RGBA")
-            draw_rainbow(d, self.rainbow_beat, t, duration, self.english)
+            draw_rainbow(d, self.rainbow_beat, t, duration, self.english,
+                         canvas=picture)
         elif self.beat is not None:
             if self._blender_stage is not None:
                 self._blender_stage.composite(picture, self.beat, t=t, duration=duration)
