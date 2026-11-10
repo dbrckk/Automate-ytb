@@ -86,6 +86,20 @@ class OriginalFluidEmitter25DTests(unittest.TestCase):
         self.assertEqual(native.crop((0,0,1080,690)).tobytes(),
                          previous.crop((0,0,1080,690)).tobytes())
 
+    def test_real_wind_source_supports_long_narrated_segments(self):
+        from PIL import ImageDraw
+        from automate_ytb.science_storyboards import draw_storyboard
+        # This used to fail at 6.8s because an unrelated default duration
+        # was hardcoded inside the water spray source emitter.
+        first=Image.new("RGBA",(1080,1920))
+        another=Image.new("RGBA",(1080,1920))
+        draw_storyboard(ImageDraw.Draw(first,"RGBA"),"wind",9.4,True,
+                        duration=12.0,canvas=first)
+        draw_storyboard(ImageDraw.Draw(another,"RGBA"),"wind",11.2,True,
+                        duration=12.0,canvas=another)
+        self.assertNotEqual(first.tobytes(),another.tobytes())
+        self.assertEqual(first.size,(1080,1920))
+
     def test_real_two_subject_native_video_frames_follow_narration(self):
         examples=(
             ("How do volcanoes erupt?",

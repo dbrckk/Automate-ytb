@@ -39,3 +39,12 @@ on the exact final head before merging.
 Illustrated fluid trajectories are educational; these source visuals
 do **not** claim physically simulated lava or windborne water, 3D
 rasterization, or automatic aesthetic approval.
+
+## General narration-clock regression fixed before merge
+The original first P5.20 emitter integration called the ocean spray source
+with a hard-coded 6.8-second duration, even for narrated segments longer
+than 6.8 seconds. The dedicated original engine now receives the actual
+`draw_storyboard(duration=...)` in the wind branch, while direct legacy
+`_wind` calls use a bounded clock-compatible fallback. A new regression
+renders wind frames at 9.4 and 11.2 seconds of a 12-second original beat.
+This is a real production generalization beyond a single 30-second clip.

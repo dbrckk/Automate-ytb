@@ -144,7 +144,8 @@ def _solar(d: ImageDraw.ImageDraw, t: float, english: bool,
 
 
 def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
-          canvas: Image.Image | None = None) -> None:
+          canvas: Image.Image | None = None,
+          duration: float | None = None) -> None:
     # Use continuous original caustic material, not a static diagram card.
     if canvas is None:
         d.rounded_rectangle((120, 800, 960, 1050), radius=38,
@@ -155,7 +156,10 @@ def _wind(d: ImageDraw.ImageDraw, t: float, english: bool,
         # Source-aware fluid filaments blend with the existing water volume
         # and travel across the actual ocean surface under the wind arrows.
         canvas.alpha_composite(
-            emitter_frame((690,190),t,6.8,material="spray",seed=3207),
+            emitter_frame(
+                (690,190),t,
+                duration if duration is not None else max(6.8,t),
+                material="spray",seed=3207),
             (145,1006))
     for k in range(5):
         y = 840+k*42
@@ -374,7 +378,7 @@ def draw_storyboard(draw: ImageDraw.ImageDraw, beat: str,
     if beat == "solar":
         _solar(draw, t, english,canvas=canvas)
     elif beat == "wind":
-        _wind(draw, t, english,canvas=canvas)
+        _wind(draw, t, english,canvas=canvas,duration=duration)
     elif beat == "coriolis":
         _coriolis(draw, t, english,canvas=canvas)
     elif beat == "sinking":
