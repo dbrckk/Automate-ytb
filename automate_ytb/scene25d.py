@@ -14,6 +14,7 @@ import re
 
 from PIL import Image, ImageChops
 from .surface25d import MATERIALS, relight_surface
+from .lightfield25d import Light25D, illuminate
 
 VERSION = "scene25d-multiz-material-depth-relight-p55-v2"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
@@ -89,12 +90,15 @@ class Scene25D:
         return analyze_scene(self,camera_x=camera_x,camera_y=camera_y)
 
     def render(self, *, camera_x: float = 0.0,
-               camera_y: float = 0.0) -> Image.Image:
+               camera_y: float = 0.0,
+               light: Light25D | None = None) -> Image.Image:
         if (type(camera_x) not in (int, float)
                 or type(camera_y) not in (int, float)
                 or not math.isfinite(camera_x) or not math.isfinite(camera_y)
                 or abs(camera_x) > 180 or abs(camera_y) > 180):
             raise ValueError("Invalid bounded 2.5D camera displacement")
+        if light is not None and not isinstance(light, Light25D):
+            raise ValueError("Expected an authored 2.5D light field")
         if not self._layers:
             raise ValueError("Cannot render an empty 2.5D scene")
         result = Image.new("RGBA", self.size)
@@ -106,5 +110,8 @@ class Scene25D:
                     source.getchannel("A"), layer.mask))
             dx = round(camera_x * layer.parallax_x)
             dy = round(camera_y * layer.parallax_y)
+            if light is not None:
+                source = illuminate(source, light, z=layer.z,
+                                    shift_x=dx, shift_y=dy)
             result.alpha_composite(source, (dx, dy))
         return result
