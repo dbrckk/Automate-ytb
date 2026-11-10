@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 150,
+  "count": 151,
   "videos": [
+    {
+      "id": "science-preview-earth-stop-42832545065/earth-stop.mp4",
+      "topic": "earth-stop",
+      "category": "science",
+      "releaseTag": "science-preview-earth-stop-42832545065",
+      "publishedAt": "2026-11-10T14:29:54Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-earth-stop-42832545065/earth-stop.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-earth-stop-42832545065",
+      "bytes": 18899870,
+      "sha256": "sha256:a50b08abe472e7ffc4396591b37bc89c51d29f4cef20920500613eb166fe5b3d"
+    },
     {
       "id": "science-preview-upward-lightning-42832543997/upward-lightning.mp4",
       "topic": "upward-lightning",
