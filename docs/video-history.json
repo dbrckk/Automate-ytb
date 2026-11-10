@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 166,
+  "count": 167,
   "videos": [
+    {
+      "id": "science-preview-aurora-dance-42900672078/aurora-dance.mp4",
+      "topic": "aurora-dance",
+      "category": "science",
+      "releaseTag": "science-preview-aurora-dance-42900672078",
+      "publishedAt": "2026-11-10T21:08:17Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-aurora-dance-42900672078/aurora-dance.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-aurora-dance-42900672078",
+      "bytes": 11539085,
+      "sha256": "sha256:1e4794827d0abd84a3d63029ebd3d55512ed9e98daf47f3ff400022362ecde87"
+    },
     {
       "id": "science-preview-volcano-eruption-42900672099/volcano-eruption.mp4",
       "topic": "volcano-eruption",
