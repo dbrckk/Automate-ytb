@@ -14,6 +14,7 @@ from .organic_environment25d import (
     terrain_strata, water_caustics,
 )
 from .material_ribbons25d import draw_material_ribbon
+from .semantic_geometry25d import render_material_sheet
 from .world_volume25d import world_volume_alpha
 
 VERSION = "ocean-depth-v2-open-feathered-underwater-world"
@@ -103,8 +104,15 @@ def draw_depth(canvas: Image.Image, beat: str, *,
     # 920x890 physical volume. Clipping them to its original alpha avoids
     # sharp floating chart lines extending beyond diffuse material edges.
     moving=Image.new("RGBA",SIZE)
-    d = ImageDraw.Draw(moving, "RGBA")
     _, _, color = PALETTES[beat]
+    # The ocean has a distinct continuously deforming source-surface plane.
+    # Its true organic crest, lower contour and subsurface folds use the
+    # SAME geometry engine as plasma and ash, not a second scene renderer.
+    moving.alpha_composite(render_material_sheet(
+        SIZE,material="water",color=color,
+        seed=35513+list(PALETTES).index(beat)*313,
+        t=t,duration=duration,baseline=139,thickness=82,opacity=56))
+    d = ImageDraw.Draw(moving, "RGBA")
     # Four translucent wave traces at different depths/speeds; their phase
     # changes smoothly instead of swapping static image backgrounds.
     for layer in range(4):
