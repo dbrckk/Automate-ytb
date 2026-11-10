@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 145,
+  "count": 146,
   "videos": [
+    {
+      "id": "science-preview-lightning-storm-42832543938/lightning-storm.mp4",
+      "topic": "lightning-storm",
+      "category": "science",
+      "releaseTag": "science-preview-lightning-storm-42832543938",
+      "publishedAt": "2026-11-10T14:23:31Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-lightning-storm-42832543938/lightning-storm.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-lightning-storm-42832543938",
+      "bytes": 20545458,
+      "sha256": "sha256:584f2e9dcf55322cb6e11227b004bb458d525f79d6037aeefc926e5c000e5efd"
+    },
     {
       "id": "science-preview-rainbow-optics-42825358833/rainbow-optics.mp4",
       "topic": "rainbow-optics",
