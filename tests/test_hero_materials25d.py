@@ -2,7 +2,9 @@
 import unittest
 
 from PIL import Image,ImageDraw,ImageStat
-from automate_ytb.hero_materials25d import glass_sphere,solar_disc,VERSION
+from automate_ytb.hero_materials25d import (
+    glass_sphere,solar_disc,thermal_pool,ice_floe,VERSION,
+)
 from automate_ytb.science_portrait import PortraitScienceScene
 from automate_ytb.science_rainbow import draw_rainbow
 
@@ -54,6 +56,48 @@ class Hero2p5DMaterialTests(unittest.TestCase):
                 self.assertEqual(first.size,(1080,1920))
                 self.assertEqual(first.mode,"RGB")
                 self.assertEqual(first.tobytes(),film.frame(.15,6.).tobytes())
+
+    def test_original_thermal_and_ice_assets_are_cached_materials(self):
+        warm=thermal_pool((220,270),kind="warm",seed=500)
+        cold=thermal_pool((220,270),kind="cool",seed=500)
+        self.assertIs(warm,thermal_pool((220,270),kind="warm",seed=500))
+        self.assertEqual(warm.mode,"RGBA")
+        self.assertEqual(warm.getpixel((0,0))[3],0)
+        self.assertGreater(warm.getpixel((110,135))[3],180)
+        self.assertNotEqual(warm.tobytes(),cold.tobytes())
+        self.assertGreater(max(ImageStat.Stat(warm.convert("RGB")).stddev),20)
+        self.assertNotEqual(warm.tobytes(),
+                            thermal_pool((220,270),kind="warm",seed=501).tobytes())
+        ice=ice_floe((200,124),seed=907)
+        self.assertIs(ice,ice_floe((200,124),seed=907))
+        self.assertEqual(ice.getpixel((0,0))[3],0)
+        self.assertGreater(ice.getchannel("A").getextrema()[1],200)
+        self.assertGreater(len(ice.getcolors(maxcolors=20000) or []),4)
+
+    def test_thermal_material_and_ice_reject_invalid_source_input(self):
+        for size in ("bad",(7000,320),(72,72)):
+            with self.assertRaises(ValueError):
+                thermal_pool(size,kind="warm")
+        with self.assertRaises(ValueError):
+            thermal_pool((220,270),kind="plasma")
+        with self.assertRaises(ValueError):
+            ice_floe((200,124),seed=-1)
+
+    def test_four_ocean_mechanisms_use_real_detailed_source_art(self):
+        from automate_ytb.science_storyboards import draw_storyboard
+        for beat in ("solar","wind","sinking","heat"):
+            with self.subTest(beat=beat):
+                source=Image.new("RGBA",(1080,1920))
+                legacy=Image.new("RGBA",(1080,1920))
+                draw_storyboard(ImageDraw.Draw(source,"RGBA"),
+                                beat,.4,True,duration=6.,canvas=source)
+                draw_storyboard(ImageDraw.Draw(legacy,"RGBA"),
+                                beat,.4,True,duration=6.)
+                self.assertNotEqual(source.tobytes(),legacy.tobytes())
+                self.assertEqual(source.crop((0,0,1080,520)).tobytes(),
+                                 legacy.crop((0,0,1080,520)).tobytes())
+                self.assertEqual(source.crop((0,1522,1080,1920)).tobytes(),
+                                 legacy.crop((0,1522,1080,1920)).tobytes())
 
     def test_legacy_draw_only_optics_still_supported(self):
         stage=Image.new("RGBA",(1080,1920))
