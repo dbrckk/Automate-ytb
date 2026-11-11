@@ -1,5 +1,7 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Chantier V2 en cours : [outil de baseline audiovisuelle reproductible](docs/LOT0_BENCHMARK_AV_REFERENCE_3561_2026-11-11.md)** (MP4 réel, mouvement, voix/audio EBU R128, tests et confidentialité). Ce premier livrable ne vaut pas encore validation du moteur MasterTimeline.
+
 **Plan directeur audiovisuel V2 (référence 3561, 11 novembre 2026) : [architecture complète, animation persistante, musique, bruitages, voix, QA, 9 lots d'implémentation et 16 issues](docs/PLAN_AMELIORATION_QUALITE_AUDIOVISUELLE_REFERENCE_3561_V2_2026-11-11.md).** Ce document est la feuille de route de référence pour les prochaines améliorations.
 
 **Plan directeur actualisé : [plan de production vidéo multi-genres — 5 novembre 2026](docs/VIDEO_PRODUCTION_MASTER_PLAN_2026-11-05.md).**
