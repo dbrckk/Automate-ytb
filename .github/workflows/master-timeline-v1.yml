@@ -46,9 +46,11 @@ jobs:
           set -euo pipefail
           python -m py_compile automate_ytb/master_timeline.py \
             scripts/render_master_timeline_pilot.py tests/test_master_timeline.py \
-            tests/test_master_timeline_pilot.py
+            tests/test_master_timeline_pilot.py tests/test_master_timeline_adapter.py \
+            automate_ytb/master_timeline_adapter.py automate_ytb/master_timeline_art.py
           python -m unittest discover -s tests -p test_master_timeline.py -v
           python -m unittest discover -s tests -p test_master_timeline_pilot.py -v
+          python -m unittest discover -s tests -p test_master_timeline_adapter.py -v
       - name: Render a second complete reproducible audiovisual engineering pilot
         run: |
           set -euo pipefail
