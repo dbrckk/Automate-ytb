@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 from PIL import ImageDraw
+from .causal_action25d import action_phase
 
 BEATS = frozenset(("solar", "wind", "coriolis", "sinking", "heat"))
 VERSION = "ocean-causal-interactions-v2-source-aligned-tapered-tracer"
@@ -38,12 +39,9 @@ def event_phase(t: float, duration: float,
             or not math.isfinite(event_progress)
             or not 0 <= event_progress <= 1):
         raise ValueError("Invalid speech-derived ocean event marker")
-    # The keyword is somewhere inside a synthesized caption phrase. Start
-    # the action slightly before its midpoint, but don't pretend to know
-    # an exact word/phoneme onset or force the event into a tiny time window.
-    trigger = 0.45 if event_progress is None else event_progress
-    start = min(0.64, max(0.06, trigger - 0.16))
-    return _ease(((t / duration) - start) / max(0.10, 0.96 - start))
+    # Shared source-space clock: byte-compatible with the existing ocean
+    # progression while also driving optical ray/source interactions.
+    return action_phase(t,duration,event_progress=event_progress)
 
 
 def _trajectory(beat: str, fraction: float) -> tuple[float, float]:
