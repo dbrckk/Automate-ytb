@@ -100,7 +100,7 @@ def create_causal_foley(*, timeline: MasterTimeline, output: Path,
             "end": min(total, cue["atSample"] + round(seconds * RATE)),
             "seed": seed,
             "pan": ((seed % 11) - 5) * .025,
-            "gain": min(.22, .20 * 10**(cue["gainDb"] / 20)),
+            "gain": min(.6, .95 * 10**(cue["gainDb"] / 20)),
         })
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
