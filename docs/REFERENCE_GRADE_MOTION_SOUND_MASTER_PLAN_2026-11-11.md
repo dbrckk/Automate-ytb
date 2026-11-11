@@ -1,5 +1,7 @@
 # Objectif de qualité : animation scientifique de référence (2026-11-11)
 
+**Mise à jour :** le [plan directeur audiovisuel V2](PLAN_AMELIORATION_QUALITE_AUDIOVISUELLE_REFERENCE_3561_V2_2026-11-11.md) détaille désormais l'architecture cible, les contrats de modules, les tests, les risques et l'ordre des travaux. Il fait autorité pour les prochains lots ; conserver ce document pour l'historique.
+
 ## Source et limites de l'analyse
 
 Référence fournie par l'utilisateur : `3561.mp4`, 30,8 s, 576×1024, 30 fps, H.264/AAC, environ 2 Mo. Thème : nombre de plis d'une feuille pour atteindre la Lune. Analyse de dix échantillons vidéo espacés de trois secondes. Le son n'a pas fait l'objet d'une écoute humaine comparative : aucune note de musicalité, timbre, rythme sonore ou naturel vocal n'est revendiquée. Ne pas copier les images, la bande-son, le script, les logos ou les assets du créateur.
