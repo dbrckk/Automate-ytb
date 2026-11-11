@@ -374,6 +374,19 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         raise ValueError("Audio-derived captions require a narration audio track")
     data = load_plan(plan_path)
     scenes = data["scenes"][:limit] if limit is not None else data["scenes"]
+    # Optional, explicitly authored V2 world tracks operate on the actual
+    # PCM-adjusted V1 scene boundaries; old plans remain byte-for-byte legacy.
+    authored_timeline = None
+    if data.get("masterTimeline") is not None:
+        if (limit is not None or resolution != "shorts" or fps != 30
+                or any(s.get("renderStyle") != "science" or
+                       s.get("motionRig") != "original-science-v1"
+                       for s in scenes)):
+            raise ValueError(
+                "Authored MasterTimeline currently requires a complete 30fps "
+                "native scientific Short with original approved motion rigs")
+        from .master_timeline_adapter import compile_authored_science_timeline
+        authored_timeline = compile_authored_science_timeline(data, fps=fps)
     if resolution == "shorts" and any(
             not (
                 (scene.get("renderStyle") == "science"
@@ -481,6 +494,10 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
             "portraitFramingMode": portrait_framing,
             "sourceType": "real-footage" if "videoAsset" in scene else "image",
             "dimensions": dims, "fps": fps, "renderer": VERSION,
+            "masterTimeline": (
+                {"version": authored_timeline.config_version,
+                 "spec": data["masterTimeline"]}
+                if authored_timeline is not None else None),
             "universalCameraVersion": "universal-shot-camera-v1",
             "aurora3DManifestSHA": (
                 _sha(Path(os.environ["AUTOMATE_YTB_AURORA_3D_DIR"]) / "manifest.json")
@@ -546,7 +563,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                         direction=scene.get("direction"),
                         caption_segments=(scene.get("captionSegments")
                                           if caption_timing == "audio" else None),
-                        scene_start_ms=scene["startMs"])
+                        scene_start_ms=scene["startMs"],
+                        authored_timeline=authored_timeline)
                 elif uses_owl_rig:
                     from .animated_owl import render_motion_clip
                     index = int(scene["id"].split("-")[1])
@@ -713,6 +731,8 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                      "counts": directions_report,
                      "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
+        "persistentVisualTimeline": (
+            authored_timeline.metadata() if authored_timeline is not None else None),
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
         "realFootageSourceAudioIncluded": False,
