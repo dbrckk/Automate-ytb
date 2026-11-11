@@ -166,10 +166,11 @@ class MasterTimelineSafetyTests(unittest.TestCase):
             cues=[SoundCue("ping", "change", "growth")])
         self.assertEqual(len(t.beats), 5)
         self.assertEqual(t.total_frames, 900)
-        self.assertEqual(t.state_at(600)["objects"]["item"]["value"],
-                         t.state_at(599)["objects"]["item"]["value"] + (
-                             t.state_at(600)["objects"]["item"]["value"] -
-                             t.state_at(599)["objects"]["item"]["value"]))
+        self.assertEqual(t.state_at(600)["beatId"], "scene-004")
+        delta = (t.state_at(600)["objects"]["item"]["value"] -
+                 t.state_at(599)["objects"]["item"]["value"])
+        self.assertGreater(delta, 0)
+        self.assertLess(delta, .1)
         self.assertGreater(t.state_at(599)["objects"]["item"]["value"], 1)
         self.assertEqual(original, frozen)
         invalid = copy.deepcopy(original)
