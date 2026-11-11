@@ -98,8 +98,8 @@ class MasterTimelineRealSceneAdapterTests(unittest.TestCase):
                              original.crop(bounds).tobytes())
             self.assertEqual(later.crop(bounds).tobytes(),
                              original.crop(bounds).tobytes())
-        self.assertNotEqual(ImageChops.difference(first.crop(STAGE),
-                         original.crop(STAGE)).getbbox(), None)
+        self.assertIsNotNone(ImageChops.difference(first.crop(STAGE),
+                         original.crop(STAGE)).convert("RGB").getbbox())
 
     def test_fail_closed_on_unsupported_units_actors_times_and_exec_data(self):
         orig = authored_plan()
