@@ -53,7 +53,10 @@ def _domain_plan(topic: str, scenes: list[dict]) -> tuple[str, tuple]:
         "ocean": ocean, "rainbow": rainbow, "lightning": lightning,
         "aurora": aurora, "volcano": volcano,
     }
-    for domain, (expected, points) in _PATHS.items():
+    for domain, recipes in _PATHS.items():
+        if len(recipes) != 1:
+            raise ValueError("Each original scientific domain requires one verified motion recipe")
+        expected, points = recipes[0]
         actual = tuple(classifiers[domain](topic, s["narration"]) for s in scenes)
         if actual == expected:
             return domain, points
