@@ -1,0 +1,53 @@
+name: Verify opt-in persistent original science world (V2)
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/science_world_preset.py"
+      - "tests/test_science_world_preset.py"
+      - ".github/workflows/one-click-preview.yml"
+      - ".github/workflows/science-world-preset-v2.yml"
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/science_world_preset.py"
+      - "tests/test_science_world_preset.py"
+      - ".github/workflows/science-world-preset-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: persistent-science-world-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  compile-five-real-domain-plans:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install offline visual runtime (free)
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Test five real science storyboards, temporal continuity and invalid cases
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/science_world_preset.py tests/test_science_world_preset.py
+          python -m unittest discover -s tests -p test_science_world_preset.py -v
+          python -m unittest discover -s tests -p test_master_timeline_adapter.py -v
+      - name: Verify One-click workflow only activates safe validated opt-in
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path(".github/workflows/one-click-preview.yml").read_text()
+          assert "continuous_world:" in s
+          assert "default: false" in s
+          assert 'python -m automate_ytb.science_world_preset --plan build/scene-plan.json' in s
+          assert '"$YT_STYLE" != "science"' in s
+          assert '"$YT_RESOLUTION" != "shorts"' in s
+          print("SCIENCE_CONTINUITY_OPT_IN_OK")
+          PY
