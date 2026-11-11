@@ -1,5 +1,7 @@
 # Automate-ytb — feuille de route vers une réalisation audiovisuelle de référence
 
+**Mise à jour :** le [plan directeur audiovisuel V2](PLAN_AMELIORATION_QUALITE_AUDIOVISUELLE_REFERENCE_3561_V2_2026-11-11.md) détaille désormais l'architecture cible, les contrats de modules, les tests, les risques et l'ordre des travaux. Il fait autorité pour les prochains lots ; conserver ce document pour l'historique.
+
 Date : 2026-11-11. Statut : plan de production, **pas** une fonctionnalité implémentée. Objet : améliorer le **pipeline réutilisable**, jamais seulement une vidéo.
 
 ## Objectif
