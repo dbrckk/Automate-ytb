@@ -452,7 +452,7 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
                        width: int, height: int, fps: int, destination: Path,
                        direction: dict | None = None,
                        caption_segments: list[dict] | None = None,
-                       scene_start_ms: int = 0, **_unused) -> None:
+                       scene_start_ms: int = 0, authored_timeline=None, **_unused) -> None:
     if style!="science" or (width,height) not in ((1280,720),(1920,1080),(1080,1920)):
         raise ValueError("Unsupported science style or resolution")
     if fps not in (24,30) or not .1<=duration<=180:
@@ -463,8 +463,11 @@ def render_motion_clip(*, topic: str, narration: str, scene_index: int,
         from .science_portrait import PortraitScienceScene
         shot = PortraitScienceScene(
             topic=topic, narration=narration, scene_index=scene_index,
-            caption_segments=caption_segments, scene_start_ms=scene_start_ms)
+            caption_segments=caption_segments, scene_start_ms=scene_start_ms,
+            authored_timeline=authored_timeline)
     else:
+        if authored_timeline is not None:
+            raise ValueError("Authored MasterTimeline is native-portrait only")
         shot = ScienceScene(topic=topic,narration=narration,scene_index=scene_index,
                             size=(width,height))
     destination.parent.mkdir(parents=True,exist_ok=True)
