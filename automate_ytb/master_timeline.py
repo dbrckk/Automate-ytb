@@ -265,11 +265,17 @@ class MasterTimeline:
                         events: list[PropertyEvent],
                         cues: list[SoundCue] | None = None, fps: int = 30) -> "MasterTimeline":
         """Adapt an EXISTING scene-plan.json without changing its schema."""
-        if type(plan) is not dict or type(plan.get("targetDurationSeconds")) is not int:
+        if type(plan) is not dict or type(plan.get("targetDurationSeconds")) not in (int, float):
             raise ValueError("Invalid existing scene-plan duration")
         duration = plan["targetDurationSeconds"]
-        if not 1 <= duration <= 3600:
+        if not math.isfinite(duration) or not 1 <= duration <= 3600:
             raise ValueError("Invalid original episode duration")
+        # Kokoro updates the old integer scene duration from actual PCM; the
+        # production plan then uses decimal seconds and integer millisecond
+        # beat boundaries. Use those authoritative recorded milliseconds.
+        duration_ms = round(duration * 1000)
+        if abs(duration * 1000 - duration_ms) > 0.01:
+            raise ValueError("Scene duration exceeds millisecond precision")
         scenes = plan.get("scenes")
         if (not isinstance(scenes, list) or not 1 <= len(scenes) <= 1200
                 or plan.get("sceneCount") != len(scenes)):
@@ -282,13 +288,14 @@ class MasterTimeline:
             start, end = scene.get("startMs"), scene.get("endMs")
             if (type(start) is not int or type(end) is not int
                     or start != previous_ms or not start < end
-                    or end > duration * 1000):
+                    or end > duration_ms):
                 raise ValueError("Missing, overlapping or invalid scene times")
             beats.append(Beat(id=scene["id"],
                               start_frame=(start * fps + 500) // 1000,
                               end_frame=(end * fps + 500) // 1000))
             previous_ms = end
-        if previous_ms != duration * 1000:
+        if previous_ms != duration_ms:
             raise ValueError("Scene plan does not cover authored duration")
-        return cls(total_frames=duration * fps, objects=objects,
+        total_frames = (duration_ms * fps + 500) // 1000
+        return cls(total_frames=total_frames, objects=objects,
                    events=events, beats=beats, cues=cues, fps=fps)
