@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 169,
+  "count": 170,
   "videos": [
+    {
+      "id": "science-preview-rainbow-optics-43077888014/rainbow-optics.mp4",
+      "topic": "rainbow-optics",
+      "category": "science",
+      "releaseTag": "science-preview-rainbow-optics-43077888014",
+      "publishedAt": "2026-11-11T18:31:43Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-rainbow-optics-43077888014/rainbow-optics.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-rainbow-optics-43077888014",
+      "bytes": 6958743,
+      "sha256": "sha256:02e6bee21ab8519d49a2db4b233f575b4db0c1b60eed59cfaab28c3543b52c28"
+    },
     {
       "id": "science-preview-ocean-heat-engine-43064804190/ocean-heat-engine.mp4",
       "topic": "ocean-heat-engine",
