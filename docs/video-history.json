@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 176,
+  "count": 177,
   "videos": [
+    {
+      "id": "science-preview-rainbow-optics-43105324002/rainbow-optics.mp4",
+      "topic": "rainbow-optics",
+      "category": "science",
+      "releaseTag": "science-preview-rainbow-optics-43105324002",
+      "publishedAt": "2026-11-11T21:48:29Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-rainbow-optics-43105324002/rainbow-optics.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-rainbow-optics-43105324002",
+      "bytes": 6962183,
+      "sha256": "sha256:12f29e2847e682eaf0e6f56fd5730e71737953f96a7e3cb711a4f179bfff14a6"
+    },
     {
       "id": "science-preview-upward-lightning-43077888007/upward-lightning.mp4",
       "topic": "upward-lightning",
