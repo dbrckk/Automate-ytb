@@ -558,6 +558,8 @@ L'utilisateur peut noter chaque axe ; la cible de passage est **≥4/5 sur chaqu
 
 Chaque pilote : script inédit, storyboard et fait vérifiables, génération réelle, contact sheet, film MP4 et SRT/VTT, stems audio, rapport QA et **écoute humaine**. Une réussite sur un seul sujet ne prouve pas que le moteur est générique.
 
+**Exécution du lot 0 :** [outil de mesure, baseline réelle, tests et éléments restants](LOT0_BENCHMARK_AV_REFERENCE_3561_2026-11-11.md). Les fonctionnalités futures restent définies comme non implémentées jusqu'à preuve sur MP4.
+
 ## 14. Plan d'exécution par lots avec dépendances et critères de sortie
 
 ### Lot 0 — Instrumenter et protéger la baseline (priorité P0)
