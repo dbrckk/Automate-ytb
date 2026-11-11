@@ -36,7 +36,7 @@ jobs:
 
   render:
     needs: preflight
-    name: Render new 33-second 1080x1920 English Kokoro H264/AAC episode
+    name: Render new 34-second 1080x1920 English Kokoro H264/AAC episode
     uses: ./.github/workflows/one-click-preview.yml
     with:
       topic: "Can Ocean Currents Move Heat Across the Planet?"
@@ -55,8 +55,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 33
-      shot_seconds: 6.6
+      duration_seconds: 34
+      shot_seconds: 6.8
       resolution: shorts
       render_profile: high
 

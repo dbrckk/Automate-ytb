@@ -49,11 +49,15 @@ class OriginalOceanHeatEngineVideoTests(unittest.TestCase):
             "voice: kokoro","voice_name: af_heart",
             "language: en","resolution: shorts",
             "render_profile: high","caption_timing: audio",
-            "duration_seconds: 33",
+            "duration_seconds: 34",
             "soundtrack: ambient",
+            "shot_seconds: 6.8",
             "branches: [main]",
         ):
             self.assertIn(expected,raw)
+        release=(ROOT/".github/workflows/science-preview-download.yml").read_text(encoding="utf-8")
+        self.assertIn("ocean-heat-engine",release)
+        self.assertIn("Produce new original ocean heat-engine science Short",release)
         self.assertNotIn("placeholder",raw.lower())
         self.assertNotIn("publish-to-youtube",raw.lower())
 
