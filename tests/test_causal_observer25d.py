@@ -116,7 +116,9 @@ class CausalObserverTests(unittest.TestCase):
         # The header is stationary. The *spoken active caption* naturally
         # advances between these two times: comparing caption bytes would
         # incorrectly forbid synchronized subtitles from changing.
-        head=(0,0,1080,520)
+        # The animated high-altitude cloud layer enters at y=435. Only
+        # the overlaid static editorial title itself must remain unchanged.
+        head=(0,0,1080,400)
         self.assertEqual(first.crop(head).tobytes(),
                          last.crop(head).tobytes())
         for frame in (first,last):
