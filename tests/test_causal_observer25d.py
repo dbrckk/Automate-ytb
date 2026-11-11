@@ -113,11 +113,16 @@ class CausalObserverTests(unittest.TestCase):
         world=(80,1000,1000,1494)
         diff=ImageChops.difference(first.crop(world),last.crop(world))
         self.assertIsNotNone(diff.getbbox())
-        # Caption/title source pixels are invariant under physical action;
-        # they never slide with the viewer's visual perspective.
-        for bounds in ((0,0,1080,520),(65,1522,1015,1722)):
-            self.assertEqual(first.crop(bounds).tobytes(),
-                             last.crop(bounds).tobytes())
+        # The header is stationary. The *spoken active caption* naturally
+        # advances between these two times: comparing caption bytes would
+        # incorrectly forbid synchronized subtitles from changing.
+        head=(0,0,1080,520)
+        self.assertEqual(first.crop(head).tobytes(),
+                         last.crop(head).tobytes())
+        for frame in (first,last):
+            self.assertGreater(
+                sum(frame.crop((65,1522,1015,1722)).convert("L").getdata()),
+                100000)
 
     def test_strict_malformed_actions_are_rejected(self):
         for t,duration,cue in ((-1,6,None),(7,6,None),
