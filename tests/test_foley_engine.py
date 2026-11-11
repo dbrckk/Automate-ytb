@@ -145,5 +145,83 @@ class CausalFoleyRealMediaTests(unittest.TestCase):
                     self.assertGreater(output.stat().st_size, 8000)
 
 
+    def test_real_production_render_includes_authored_foley_in_science_short(self):
+        """No mock render: 1080p portrait science rig, real audio stems and AAC."""
+        from automate_ytb.scene_plan import plan as make_plan
+        from automate_ytb.episode import create_local_art
+        from automate_ytb.production import render
+        with tempfile.TemporaryDirectory(prefix="foley-authored-short-") as workspace:
+            root = Path(workspace)
+            plan_file = root / "scene-plan.json"
+            story = make_plan(
+                topic="What if Earth's oceans changed?",
+                script="The oceans carry warmth around our planet.",
+                duration=30, shot_seconds=30,
+                character="Original science visualization")
+            story["scenes"][0]["startMs"] = 0
+            story["scenes"][0]["endMs"] = 1000
+            story["targetDurationSeconds"] = 1.0
+            story["masterTimeline"] = {
+                "schemaVersion": 1,
+                "objects": [
+                    {"id": "camera", "properties": {"x": 0, "zoom": 1}},
+                    {"id": "parcel", "properties":
+                        {"x": .26, "y": .52, "scale": 1., "opacity": 1.}},
+                ],
+                "cameraId": "camera",
+                "visibleActors": ["parcel"],
+                "events": [{
+                    "id": "parcel-flow", "objectId": "parcel", "field": "x",
+                    "start": {"sceneId": "scene-001", "fraction": .1},
+                    "end": {"sceneId": "scene-001", "fraction": .8},
+                    "from": .26, "to": .72,
+                }],
+                "soundCues": [{
+                    "id": "ocean-water-cue", "sourceEventId": "parcel-flow",
+                    "family": "water", "gainDb": -14,
+                }],
+            }
+            plan_file.write_text(json.dumps(story), encoding="utf-8")
+            art = create_local_art(plan_file, style="science")
+            self.assertEqual(art["characterRig"], "original-science-v1")
+            voice = root / "narration.wav"
+            music = root / "background-original.wav"
+            for target, hertz in ((voice, 210), (music, 140)):
+                subprocess.run([
+                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                    "-f", "lavfi", "-i", f"sine=frequency={hertz}:duration=1",
+                    "-ar", "48000", str(target)], timeout=40, check=True)
+            output = root / "render"
+            rendered = render(plan_path=plan_file, output=output,
+                              resolution="shorts", fps=30,
+                              audio=voice, music=music,
+                              transition="cut")
+            self.assertTrue(rendered["hasCausalFoley"])
+            self.assertEqual(rendered["causalFoley"]["cueCount"], 1)
+            self.assertEqual(rendered["causalFoley"]["events"][0]["atSample"], 4800)
+            self.assertTrue(rendered["persistentVisualTimeline"]
+                            ["audioIntegratedIntoFinalMix"])
+            self.assertEqual(rendered["audioMixMode"],
+                             "ducked-narration-plus-original-bed+causal-foley")
+            self.assertFalse(rendered["publicationApproved"])
+            mp4 = Path(rendered["video"])
+            self.assertGreater(mp4.stat().st_size, 5000)
+            probe = json.loads(subprocess.run([
+                "ffprobe", "-v", "error", "-show_entries",
+                "format=duration:stream=codec_type,codec_name,width,height,sample_rate",
+                "-of", "json", str(mp4)],
+                check=True, capture_output=True, text=True, timeout=40).stdout)
+            video = [s for s in probe["streams"] if s["codec_type"]=="video"]
+            audio = [s for s in probe["streams"] if s["codec_type"]=="audio"]
+            self.assertEqual((video[0]["width"],video[0]["height"],video[0]["codec_name"]),
+                             (1080,1920,"h264"))
+            self.assertEqual((audio[0]["codec_name"],audio[0]["sample_rate"]),
+                             ("aac","48000"))
+            self.assertAlmostEqual(float(probe["format"]["duration"]), 1., delta=.06)
+            stem = output / "foley-original.wav"
+            self.assertEqual(hashlib.sha256(stem.read_bytes()).hexdigest(),
+                             rendered["causalFoley"]["wavSha256"])
+
+
 if __name__ == "__main__":
     unittest.main()
