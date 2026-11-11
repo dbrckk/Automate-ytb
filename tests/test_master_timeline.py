@@ -178,6 +178,38 @@ class MasterTimelineSafetyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MasterTimeline.from_scene_plan(invalid, objects=self.obj, events=[])
 
+    def test_real_kokoro_audio_derived_decimal_duration_and_millisecond_beats(self):
+        # Observed production shape of the real ocean Short: after Kokoro,
+        # five authored beats end at 34,420 ms, not an integer 34 seconds.
+        measured = {
+            "targetDurationSeconds": 34.42,
+            "sceneCount": 5,
+            "scenes": [
+                {"id": f"scene-{i+1:03d}",
+                 "startMs": 6800 * i, "endMs": 6800 * (i+1)}
+                for i in range(5)
+            ],
+        }
+        measured["scenes"][-1]["endMs"] = 34420
+        t = MasterTimeline.from_scene_plan(
+            measured, objects=self.obj,
+            events=[PropertyEvent("long-flow", "item", "x",
+                                  10, 1000, 0, 90)],
+            cues=[SoundCue("real-cue", "long-flow", "water")])
+        self.assertEqual(t.total_frames, 1033)
+        self.assertEqual([(b.start_frame, b.end_frame) for b in t.beats],
+                         [(0,204), (204,408), (408,612), (612,816), (816,1033)])
+        self.assertEqual(t.state_at(1032)["beatId"], "scene-005")
+        self.assertGreater(t.state_at(901)["objects"]["item"]["x"],
+                           t.state_at(900)["objects"]["item"]["x"])
+        self.assertEqual(t.audio_events()[0]["atSample"], 16000)
+        for invalid in (True, float("nan"), float("inf"), 34.42043):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                bad = copy.deepcopy(measured)
+                bad["targetDurationSeconds"] = invalid
+                MasterTimeline.from_scene_plan(
+                    bad, objects=self.obj, events=[])
+
     def test_bounded_resource_limits(self):
         with self.assertRaises(ValueError):
             MasterTimeline(total_frames=120, objects=self.obj,
