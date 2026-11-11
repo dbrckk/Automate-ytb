@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 171,
+  "count": 172,
   "videos": [
+    {
+      "id": "science-preview-earth-stop-43077888031/earth-stop.mp4",
+      "topic": "earth-stop",
+      "category": "science",
+      "releaseTag": "science-preview-earth-stop-43077888031",
+      "publishedAt": "2026-11-11T18:34:57Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-earth-stop-43077888031/earth-stop.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-earth-stop-43077888031",
+      "bytes": 19658450,
+      "sha256": "sha256:10bcfe45023a8b6223955f35f45e21ddbb03f15e8e96b82f407a2efef770e6c4"
+    },
     {
       "id": "science-preview-rainbow-chase-43077887934/rainbow-chase.mp4",
       "topic": "rainbow-chase",
