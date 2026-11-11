@@ -662,7 +662,24 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
         music = music.resolve(strict=True)
         if not music.is_file():
             raise ValueError("Soundtrack audio must be a file")
-    if music is not None and audio is not None:
+    # Explicitly authored scene events produce genuine original PCM in the
+    # final AAC mix, not only a report. Unmodified episodes keep the old path.
+    # Silent engineering previews remain video-only for established QA gates.
+    foley_report = None
+    foley_path = output / "foley-original.wav"
+    if (authored_timeline is not None
+            and authored_timeline.timeline.audio_events()
+            and (audio is not None or music is not None)):
+        from .foley_engine import create_causal_foley
+        foley_report = create_causal_foley(
+            timeline=authored_timeline.timeline,
+            output=foley_path, duration_seconds=duration)
+    if foley_report is not None:
+        from .foley_engine import mix_causal_foley
+        causal_mix_mode = mix_causal_foley(
+            silent_video=raw, voice=audio, music=music, foley=foley_path,
+            output=result, duration_seconds=duration, profile=render_profile)
+    elif music is not None and audio is not None:
         # Compress the music against the narration *only while it speaks*,
         # instead of making the entire episode background unpleasantly quiet.
         # The final limiter prevents additive clipping.
@@ -732,7 +749,11 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                      "method": "conservative-keyword-match-on-user-script"},
         "video": str(result), "videoSha256": _sha(result),
         "persistentVisualTimeline": (
-            authored_timeline.metadata() if authored_timeline is not None else None),
+            {**authored_timeline.metadata(),
+             "audioIntegratedIntoFinalMix": foley_report is not None}
+            if authored_timeline is not None else None),
+        "hasCausalFoley": foley_report is not None,
+        "causalFoley": foley_report,
         "scenesRendered": len(scenes), "resolution": resolution, "fps": fps,
         "realFootageSceneCount": sum("videoAsset" in scene for scene in scenes),
         "realFootageSourceAudioIncluded": False,
@@ -757,9 +778,11 @@ def render(*, plan_path: Path, output: Path, audio: Path | None = None,
                                  -24 if music is not None else None),
         "targetTruePeakDbtp": (-1.5 if audio is not None or music is not None
                                else None),
-        "audioMixMode": ("ducked-narration-plus-original-bed" if music is not None and audio is not None
-                         else "original-bed-only" if music is not None else "narration-only" if audio is not None
-                         else "silent"),
+        "audioMixMode": (
+            causal_mix_mode if foley_report is not None else
+            ("ducked-narration-plus-original-bed" if music is not None and audio is not None
+             else "original-bed-only" if music is not None
+             else "narration-only" if audio is not None else "silent")),
         "transitions": transitions_report,
         "objectGaze": {
             "version": "prop-eye-pose-v1",
