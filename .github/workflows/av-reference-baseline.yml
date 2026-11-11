@@ -1,0 +1,57 @@
+name: Verify true audiovisual baseline metrics (lot 0)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/benchmark_audiovisual.py"
+      - "tests/test_av_reference_baseline.py"
+      - "docs/av-reference-baseline-2026-11-11.json"
+      - ".github/workflows/av-reference-baseline.yml"
+      - ".github/workflows/one-click-preview.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/benchmark_audiovisual.py"
+      - "tests/test_av_reference_baseline.py"
+      - ".github/workflows/av-reference-baseline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: av-reference-baseline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  benchmark-real-encoded-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify local media tools
+        run: |
+          set -euo pipefail
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+      - name: Validate private-safe AV metrics against real encoded synthetic MP4
+        run: |
+          python -m py_compile scripts/benchmark_audiovisual.py tests/test_av_reference_baseline.py
+          python -m unittest discover -s tests -p test_av_reference_baseline.py -v
+      - name: Validate baseline documentation without shipping reference media
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          baseline=json.loads(Path("docs/av-reference-baseline-2026-11-11.json").read_text(encoding="utf-8"))
+          assert baseline["automatedArtisticJudgment"] is False
+          assert baseline["humanAudioReviewCompleted"] is False
+          assert len(baseline["videos"])==2
+          assert all("sourcePath" not in v and "frames" not in v for v in baseline["videos"])
+          assert not Path("3561.mp4").exists()
+          assert not Path("ocean-heat-engine.mp4").exists()
+          print("LOT0_AV_BASELINE_OK")
+          PY
