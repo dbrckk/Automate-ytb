@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 168,
+  "count": 169,
   "videos": [
+    {
+      "id": "science-preview-ocean-heat-engine-43064804190/ocean-heat-engine.mp4",
+      "topic": "ocean-heat-engine",
+      "category": "science",
+      "releaseTag": "science-preview-ocean-heat-engine-43064804190",
+      "publishedAt": "2026-11-11T17:15:28Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-ocean-heat-engine-43064804190/ocean-heat-engine.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-ocean-heat-engine-43064804190",
+      "bytes": 11191110,
+      "sha256": "sha256:82cfe9165de15cc711b7f974a8a507697e56736bc4d680f5ade41b7199bb4e2d"
+    },
     {
       "id": "science-preview-rainbow-chase-42918834320/rainbow-chase.mp4",
       "topic": "rainbow-chase",
