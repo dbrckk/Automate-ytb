@@ -407,6 +407,11 @@ jobs:
             --media build/video/media-report.json \
             --pacing build/video/narration-pacing.json \
             --output build/video/professional-review.json
+      - name: Record reproducible encoded audiovisual baseline
+        run: |
+          python scripts/benchmark_audiovisual.py \
+            --video build/video/preview.mp4 --label original-preview \
+            --output build/video/av-benchmark.json
       - name: Render optional English speaker comparison for listening
         if: ${{ inputs.voice == 'kokoro' && inputs.language == 'en' }}
         continue-on-error: true
@@ -450,6 +455,7 @@ jobs:
             build/video/draft-captions.vtt
             build/video/quality-report.json
             build/video/media-report.json
+            build/video/av-benchmark.json
             build/video/qa-summary.json
             build/video/professional-review.json
             build/video/story-preflight.json

@@ -1,0 +1,86 @@
+{
+  "automatedArtisticJudgment": false,
+  "engine": "av-reference-baseline-v1",
+  "humanAudioReviewCompleted": false,
+  "privacy": "No source media or absolute source path stored in this report",
+  "sample": {
+    "fps": 4,
+    "height": 256,
+    "lumaChangeThreshold": 8,
+    "maxSeconds": 120,
+    "width": 144
+  },
+  "schemaVersion": 1,
+  "videos": [
+    {
+      "audio": {
+        "integratedLufs": -14.8,
+        "loudnessRangeLu": 2.5,
+        "measurement": "ffmpeg-ebur128-peak-true",
+        "truePeakDbtp": 0.5
+      },
+      "fileBytes": 1997529,
+      "label": "reference-private",
+      "media": {
+        "audioBitrateKbps": 32.3,
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "audioSampleRateHz": 44100,
+        "durationSeconds": 30.8,
+        "frameRate": 30,
+        "hasAudio": true,
+        "height": 1024,
+        "portrait": true,
+        "videoCodec": "h264",
+        "width": 576
+      },
+      "motion": {
+        "maxConsecutiveNearFrozenPairs": 3,
+        "meanChangedPixelsPercent": 11.328,
+        "medianChangedPixelsPercent": 9.298,
+        "motionPairs": 122,
+        "nearBlackSamples": 0,
+        "p90ChangedPixelsPercent": 22.705,
+        "sampleCount": 123
+      },
+      "motionSampleWindowSeconds": 30.8,
+      "motionWindowTruncated": false,
+      "sha256": "ddabf90af9ce8bf69e93936ae6dc9fdbf22664b978c988408bcd7aec82e1a8c1"
+    },
+    {
+      "audio": {
+        "integratedLufs": -16.1,
+        "loudnessRangeLu": 2.5,
+        "measurement": "ffmpeg-ebur128-peak-true",
+        "truePeakDbtp": -1.5
+      },
+      "fileBytes": 11191110,
+      "label": "ocean-baseline",
+      "media": {
+        "audioBitrateKbps": 241.9,
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "audioSampleRateHz": 48000,
+        "durationSeconds": 34.433,
+        "frameRate": 30,
+        "hasAudio": true,
+        "height": 1920,
+        "portrait": true,
+        "videoCodec": "h264",
+        "width": 1080
+      },
+      "motion": {
+        "maxConsecutiveNearFrozenPairs": 0,
+        "meanChangedPixelsPercent": 4.474,
+        "medianChangedPixelsPercent": 3.334,
+        "motionPairs": 137,
+        "nearBlackSamples": 0,
+        "p90ChangedPixelsPercent": 11.122,
+        "sampleCount": 138
+      },
+      "motionSampleWindowSeconds": 34.433,
+      "motionWindowTruncated": false,
+      "sha256": "82cfe9165de15cc711b7f974a8a507697e56736bc4d680f5ade41b7199bb4e2d"
+    }
+  ]
+}
