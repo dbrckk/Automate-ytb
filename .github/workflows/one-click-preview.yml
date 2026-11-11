@@ -54,6 +54,10 @@ on:
         type: boolean
         required: false
         default: false
+      continuous_world:
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
     inputs:
       topic:
@@ -132,6 +136,10 @@ on:
         type: boolean
         description: "Legacy disabled: this pipeline now produces 2.5D ONLY"
         default: false
+      continuous_world:
+        type: boolean
+        description: "Experimental: persistent original science world actor across 5 narrated beats, 2.5D only"
+        default: false
 
 permissions:
   contents: read
@@ -164,6 +172,7 @@ jobs:
       - name: Prepare original script and validate authored science scene actions
         env:
           YT_LEGACY_3D: ${{ inputs.cinematic_3d }}
+          YT_CONTINUOUS_WORLD: ${{ inputs.continuous_world }}
           YT_SCRIPT: ${{ inputs.original_script }}
           YT_TOPIC: ${{ inputs.topic }}
           YT_CHARACTER: ${{ inputs.character }}
@@ -203,6 +212,13 @@ jobs:
           python -m automate_ytb.science_preflight \
             --plan build/scene-plan.json --style "$YT_STYLE" \
             --resolution "$YT_RESOLUTION" --output build/scene-preflight.json
+          if [ "$YT_CONTINUOUS_WORLD" = "true" ]; then
+            if [ "$YT_STYLE" != "science" ] || [ "$YT_RESOLUTION" != "shorts" ]; then
+              echo "::error::Persistent world is supported only by original 9:16 science Shorts" >&2
+              exit 2
+            fi
+            python -m automate_ytb.science_world_preset --plan build/scene-plan.json
+          fi
       - name: Cache open Kokoro voice assets
         if: ${{ inputs.voice == 'kokoro' }}
         uses: actions/cache@v4
