@@ -22,6 +22,8 @@ Remplacer progressivement la juxtaposition d'illustrations/chapitres indépendan
 - **SoundCue** : fait référence à l'ID d'un **vrai événement visuel** et reçoit un onset précis en **échantillons PCM**, pas une estimation de mot prononcé.
 - **MasterTimeline.state_at(frame)** : état complet purement dérivé de la frame demandée, indépendamment de l'ordre d'appel, des coupes ou du nombre de frames déjà rendues.
 - **MasterTimeline.from_scene_plan(...)** : convertit les vrais startMs/endMs d'un fichier \`scene-plan.json\` V1 en intervalles de frames, sans remplacer son schéma ou modifier ses données.
+- **Compatibilité Kokoro confirmée localement :** les plans réels de production ont une durée décimale dérivée du PCM. Le cas océan à 34,42 s, cinq scènes et 34 420 ms est converti en 1 033 frames à 30 fps, avec les bornes exactes [0,204,408,612,816,1033]. Les valeurs incohérentes, booléennes et non finies sont rejetées.
+- **Preuve indépendante :** un pilote local de 6 s à 30 fps avec quatre sons causaux a été encodé H.264/AAC, décodé entièrement et audité EBU R128. Cela ne remplace pas la validation du rendu du script GitHub, qui reste attendue en CI.
 - **MasterTimeline.audio_events()** : manifeste détachable de cues non mutables pour le moteur Foley/mixage futur.
 - Horloge du pilote : 30 fps, audio PCM 48 kHz, **1 frame = 1600 samples**, sans dérive.
 
