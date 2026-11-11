@@ -259,10 +259,12 @@ class PortraitScienceScene:
         domain=("lightning" if self.lightning_beat is not None else
                 "volcano" if self.volcano_beat is not None else
                 "aurora" if self.aurora_beat is not None else
+                "rainbow" if self.rainbow_beat is not None else
                 "ocean" if self.beat is not None else None)
         action=(self.lightning_beat if domain=="lightning" else
                 self.volcano_beat if domain=="volcano" else
                 self.aurora_beat if domain=="aurora" else
+                self.rainbow_beat if domain=="rainbow" else
                 self.beat if domain=="ocean" else None)
         self._narrated_event_fraction=(
             audio_event_fraction(domain,action,caption_segments,scene_start_ms)
@@ -391,7 +393,8 @@ class PortraitScienceScene:
             animate_daylight_clouds(picture, self._rainbow_sky_seed, t)
             d = ImageDraw.Draw(picture, "RGBA")
             draw_rainbow(d, self.rainbow_beat, t, duration, self.english,
-                         canvas=picture)
+                         canvas=picture,
+                         event_progress=self._narrated_event_fraction)
         elif self.beat is not None:
             if self._blender_stage is not None:
                 self._blender_stage.composite(picture, self.beat, t=t, duration=duration)
