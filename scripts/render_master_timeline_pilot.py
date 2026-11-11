@@ -198,17 +198,15 @@ def produce(output: Path, *, width: int = 360, height: int = 640) -> dict:
         finally:
             if process.stdin and not process.stdin.closed:
                 process.stdin.close()
+            # Avoid communicate() flushing a pipe already closed by the
+            # producer: the video input is complete, stderr remains captured.
+            process.stdin = None
         try:
             _, diagnostic = process.communicate(timeout=180)
-        except ValueError:
-            # communicate flushes stdin even when already closed; use wait.
-            try:
-                process.wait(timeout=180)
-                diagnostic = process.stderr.read()
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait()
-                raise RuntimeError("Timed out encoding pilot video") from None
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+            raise RuntimeError("Timed out encoding pilot video") from None
         if process.returncode != 0 or not output.is_file() or output.stat().st_size < 2048:
             raise RuntimeError("Real MP4 encoding failed: " +
                                diagnostic.decode("utf-8", "replace")[-800:])
