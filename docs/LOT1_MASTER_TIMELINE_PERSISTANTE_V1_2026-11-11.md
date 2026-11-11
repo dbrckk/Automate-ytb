@@ -1,6 +1,6 @@
 # V2 — Lot 1 : MasterTimeline persistante (première tranche exécutable)
 
-**État :** première tranche implémentée avec rendu technique réel et CI spécialisée. **Le rendu narré Automate-ytb historique reste inchangé : l'intégration généralisée aux Shorts et le moteur de musique sont les étapes suivantes.**
+**État :** premier moteur et script d'encodage implémentés, tests CI spécialisés déclenchés mais succès final **non encore établi**. Le rendu narré Automate-ytb historique reste inchangé : l'intégration généralisée aux Shorts et le moteur de musique sont les étapes suivantes.
 
 ## But
 
@@ -56,8 +56,8 @@ La CI exécute cette démonstration sans action utilisateur, conserve le MP4 ré
 - [x] Conserver un objet et une caméra à travers trois beats **dans la même horloge**.
 - [x] Refuser les chevauchements, sauts de valeur, IDs/temps non valides et sources audio inexistantes.
 - [x] Ancrer les sons en échantillons 48 kHz depuis les vrais événements visuels.
-- [x] Produire des images originales en 9:16 et un WAV de SFX, les encoder en vrai H.264/AAC.
-- [ ] Confirmer CI complète et pilote MP4 final après soumission PR.
+- [ ] Confirmer sur un véritable MP4 que le script produit les images originales et les SFX au bon moment (CI en attente).
+- [ ] Confirmer la CI complète et le pilote MP4 final sur GitHub Actions, puis renseigner le run et l'empreinte.
 - [ ] Brancher ce monde persistant dans \`episode.py\` / \`science_portrait.py\` par une option réversible, sur une narration Kokoro réelle.
 - [ ] Raccorder les stems Foley à \`production.render\` et vérifier volume/mix/sous-titres.
 - [ ] Réaliser deux vidéos inédites sur **des sujets distincts** exploitant effectivement cette API.
