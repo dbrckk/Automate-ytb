@@ -76,7 +76,9 @@ class RainbowChaseOriginalVideoTests(unittest.TestCase):
         self.assertIn('if: github.event_name != \'pull_request\'',original)
         self.assertIn('"Produce original rainbow-chase science Short"',delivery)
         self.assertIn('$slug == "rainbow-chase"',delivery)
-        self.assertIn('[[ "$PREVIEW_SLUG" == "rainbow-chase"',delivery)
+        # The authorized slug may appear anywhere in the strict whitelist.
+        # Other new science episodes must not break rainbow release tests.
+        self.assertRegex(delivery, r'(?m)^\s*\[\[ [^\n]*"\$PREVIEW_SLUG" == "rainbow-chase"')
         self.assertIn('cmp -s "delivered/${PREVIEW_SLUG}.mp4"',delivery)
         self.assertIn('scripts/update_video_history.py',delivery)
         self.assertIn('github.event.workflow_run.conclusion == \'success\'',delivery)
