@@ -1,0 +1,63 @@
+name: Verify P5.27 true causal observer motion and 2.5D optical sources
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/p527-causal-observer-review.yml"
+      - "automate_ytb/causal_action25d.py"
+      - "automate_ytb/science_rainbow.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/science_causal_vfx.py"
+      - "automate_ytb/science_audio_cues.py"
+      - "tests/test_causal_observer25d.py"
+      - "scripts/review_causal_observer25d.py"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/p527-causal-observer-review.yml"
+      - "automate_ytb/causal_action25d.py"
+      - "automate_ytb/science_rainbow.py"
+      - "tests/test_causal_observer25d.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-causal-action:
+    name: Prove moving viewer and world-fixed contributing sources on true 9:16 source frames
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout immutable original default-branch reference
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free CPU original renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Compile and verify real voice-driven action and native mobile scenes
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/causal_action25d.py automate_ytb/science_rainbow.py automate_ytb/science_causal_vfx.py automate_ytb/science_audio_cues.py scripts/review_causal_observer25d.py
+          python -m unittest discover -s tests -p test_causal_observer25d.py -v
+          python -m unittest discover -s tests -p test_science_causal_vfx.py -v
+          python -m unittest discover -s tests -p test_science_audio_cues.py -v
+          python -m unittest discover -s tests -p test_science_rainbow.py -v
+          python -m unittest discover -s tests -p test_rainbow_chase_original_episode.py -v
+      - name: Render and compare genuine full-resolution before/after source frames
+        run: |
+          set -euo pipefail
+          python scripts/review_causal_observer25d.py --baseline baseline --output build/p527
+          test -s build/p527/p527-real-rainbow-before-after.jpg
+          test -s build/p527/manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p527-real-rainbow-causal-video-source-before-after
+          path: build/p527/
+          if-no-files-found: error
+          retention-days: 14

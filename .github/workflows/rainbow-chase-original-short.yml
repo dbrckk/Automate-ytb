@@ -7,11 +7,21 @@ on:
     paths:
       - ".github/workflows/rainbow-chase-original-short.yml"
       - "tests/test_rainbow_chase_original_episode.py"
+      - "automate_ytb/science_rainbow.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/causal_action25d.py"
+      - "automate_ytb/science_audio_cues.py"
+      - "tests/test_causal_observer25d.py"
       - "docs/EPISODE_RAINBOW_CHASE_2026-11-10.md"
   push:
     branches: [main]
     paths:
       - ".github/workflows/rainbow-chase-original-short.yml"
+      - "automate_ytb/science_rainbow.py"
+      - "automate_ytb/science_portrait.py"
+      - "automate_ytb/causal_action25d.py"
+      - "automate_ytb/science_audio_cues.py"
+      - "tests/test_causal_observer25d.py"
   workflow_dispatch:
 
 permissions:
@@ -38,6 +48,7 @@ jobs:
           set -euo pipefail
           python -m unittest discover -s tests -p test_rainbow_chase_original_episode.py -v
           python -m unittest discover -s tests -p test_science_rainbow.py -v
+          python -m unittest discover -s tests -p test_causal_observer25d.py -v
           python -m unittest discover -s tests -p test_preview_delivery.py -v
 
   render-and-verify:
