@@ -32,11 +32,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Verify local media tools
+      - name: Install missing FFmpeg and FFprobe using bounded free system packages
         run: |
           set -euo pipefail
-          ffmpeg -version | head -n 1
-          ffprobe -version | head -n 1
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg
+          fi
+          command -v ffmpeg
+          command -v ffprobe
       - name: Validate private-safe AV metrics against real encoded synthetic MP4
         run: |
           python -m py_compile scripts/benchmark_audiovisual.py tests/test_av_reference_baseline.py
