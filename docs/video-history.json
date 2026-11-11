@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 170,
+  "count": 171,
   "videos": [
+    {
+      "id": "science-preview-rainbow-chase-43077887934/rainbow-chase.mp4",
+      "topic": "rainbow-chase",
+      "category": "science",
+      "releaseTag": "science-preview-rainbow-chase-43077887934",
+      "publishedAt": "2026-11-11T18:33:01Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-rainbow-chase-43077887934/rainbow-chase.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-rainbow-chase-43077887934",
+      "bytes": 7512008,
+      "sha256": "sha256:0764eccbe4afe6eb98f74bc9d1651b4d5801fdc9920c5dcf6dc8abd246a4da4e"
+    },
     {
       "id": "science-preview-rainbow-optics-43077888014/rainbow-optics.mp4",
       "topic": "rainbow-optics",
