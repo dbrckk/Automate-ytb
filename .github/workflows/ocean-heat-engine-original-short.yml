@@ -1,0 +1,76 @@
+name: Produce new original ocean heat-engine science Short
+
+# Brand-new November 11 episode. Native 9:16 narrated original ocean
+# materials, NOT re-encoding a prior rainbow or planet preview.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ocean-heat-engine-original-short.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: original-ocean-heat-engine-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify all five causal ocean chapters and original voice pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install original free source renderer
+        run: python -m pip install --disable-pip-version-check -e .
+      - name: Validate authored chapter classification and mobile geometry
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_ocean_heat_engine_original_episode.py -v
+          python -m unittest discover -s tests -p test_science_storyboards.py -v
+
+  render:
+    needs: preflight
+    name: Render new 33-second 1080x1920 English Kokoro H264/AAC episode
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Can Ocean Currents Move Heat Across the Planet?"
+      original_script: >-
+        Sunlight warms tropical surface waters far more than the cold waters near Earth's poles.
+        Powerful surface winds push that warm water into moving currents across ocean basins.
+        Earth's rotation bends those currents into immense circulating gyres rather than straight rivers.
+        Near the poles, colder and saltier water becomes denser and sinks into the deep ocean.
+        This connected circulation transports heat across the planet, influencing regional climates over long periods.
+      character: "Original layered ocean water, organic sun, wind forcing, moving gyre, sinking density plume and heat-flow materials"
+      style: science
+      language: en
+      voice: kokoro
+      voice_name: af_heart
+      voice_style: natural
+      soundtrack: ambient
+      transition: adaptive
+      caption_timing: audio
+      duration_seconds: 33
+      shot_seconds: 6.6
+      resolution: shorts
+      render_profile: high
+
+  confirm:
+    needs: render
+    name: Confirm original new video produced and retained as downloadable artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: |
+          {
+            echo '### New original ocean heat-engine video'
+            echo 'Native 1080x1920, 30fps, Kokoro English narration, original 2.5D'
+            echo 'ocean visuals, AAC and H264, and phrase-synced captions.'
+            echo 'The reusable preview workflow uploads the actual video artifact.'
+            echo 'No automatic TikTok/YouTube publication or aesthetic approval.'
+          } >> "$GITHUB_STEP_SUMMARY"
