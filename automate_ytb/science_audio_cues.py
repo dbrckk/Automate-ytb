@@ -31,14 +31,14 @@ PATTERNS={
         "thunder":r"\b(thunder|sound wave|pressure wave|heats? nearby air)\b",
     },
     "rainbow":{
-        "sunlight":r"\\b(sunlight|white light|sun|blanc|soleil|lumiere)\\b",
-        "refraction":r"\\b(refract\\w*|bend\\w*|enter\\w*|penetre\\w*|entre)\\b",
-        "reflection":r"\\b(reflect\\w*|back surface|reflechi\\w*|reflexion)\\b",
-        "emergence":r"\\b(leav\\w*|exit\\w*|emerg\\w*|sort\\w*|ressort\\w*)\\b",
+        "sunlight":r"\b(sunlight|white light|sun|blanc|soleil|lumiere)\b",
+        "refraction":r"\b(refract\w*|bend\w*|enter\w*|penetre\w*|entre)\b",
+        "reflection":r"\b(reflect\w*|back surface|reflechi\w*|reflexion)\b",
+        "emergence":r"\b(leav\w*|exit\w*|emerg\w*|sort\w*|ressort\w*)\b",
         # Prioritize ACTION words (not 'observer') so when generated
         # captions split the final sentence, the observer starts walking
         # with the actual phrase about moving, not a guessed word time.
-        "arc":r"\\b(mov\\w*|walk\\w*|shifts?|steps?|boug\\w*|deplac\\w*)\\b",
+        "arc":r"\b(mov\w*|walk\w*|shifts?|steps?|boug\w*|deplac\w*)\b",
     },
     "aurora":{
         "solar_wind":r"\b(solar wind|sun|particles?|releases?|sends?)\b",
