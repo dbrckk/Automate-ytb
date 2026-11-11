@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 181,
+  "count": 182,
   "videos": [
+    {
+      "id": "science-preview-upward-lightning-43105323716/upward-lightning.mp4",
+      "topic": "upward-lightning",
+      "category": "science",
+      "releaseTag": "science-preview-upward-lightning-43105323716",
+      "publishedAt": "2026-11-11T21:49:46Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-upward-lightning-43105323716/upward-lightning.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-upward-lightning-43105323716",
+      "bytes": 15953652,
+      "sha256": "sha256:4549a73408db977b6a60a6bc6b9a22d07e6aa78f2b34109ec479b7888b9ab2df"
+    },
     {
       "id": "science-preview-volcano-eruption-43105323630/volcano-eruption.mp4",
       "topic": "volcano-eruption",
