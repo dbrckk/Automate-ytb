@@ -358,6 +358,9 @@ def _arc(draw: ImageDraw.ImageDraw, t: float, duration: float,
     center_x=float(view["arc_center_x"])
     center_y=1240
 
+    # Static short-scene source markers are a schematic of *which* drops
+    # contribute; actual natural rain would fall. Never tell viewers rain
+    # droplets are physically stationary.
     # Fixed rain volume occupies two overlapping depths: distant droplets
     # at 865-1115 and a sparse near plane at 1230; never follow the walker.
     for i,x in enumerate(RAIN_SOURCES_X):
@@ -411,8 +414,8 @@ def _arc(draw: ImageDraw.ImageDraw, t: float, duration: float,
            "THE VIEW CHANGES AS YOU MOVE" if english else
            "LA VUE CHANGE QUAND ON BOUGE",size=32)
     _label(draw,134,765,
-           "RAINDROPS STAY IN PLACE" if english else
-           "LES GOUTTES RESTENT EN PLACE",size=27,
+           "DIFFERENT DROPS SEND THE LIGHT" if english else
+           "D'AUTRES GOUTTES ENVOIENT LA LUMIÈRE",size=27,
            color=(206,238,252,223))
 
 
