@@ -52,9 +52,24 @@ jobs:
             --output outputs
       - name: Verify actual MP4/audio and deliverables
         run: python scripts/check_output.py outputs
-      - name: Archive example deliverables
+      # The real media checks above are release-blocking. A transient or
+      # quota-related GitHub artifact upload failure must not falsely mark
+      # passing unit, render, and encoded-MP4 checks as test failures.
+      # Actual publication/release workflows keep their own strict gate.
+      - name: Archive example deliverables (supplementary CI evidence)
+        id: archive_preview
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: automate-ytb-ci-preview
           path: outputs/
+          if-no-files-found: error
           retention-days: 7
+      - name: Report optional artifact availability
+        if: always()
+        env:
+          ARCHIVE_OUTCOME: ${{ steps.archive_preview.outcome }}
+        run: |
+          if [ "$ARCHIVE_OUTCOME" != "success" ]; then
+            echo "::warning::Supplemental CI artifact upload failed. The real video, audio, and tests were validated separately; publication delivery is NOT approved by this job."
+          fi
