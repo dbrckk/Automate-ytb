@@ -27,7 +27,7 @@ def authored_plan() -> dict:
             {"id": "camera", "properties": {"x": 0, "y": 0, "zoom": 1}},
             {"id": "parcel", "properties": {
                 "x": .20, "y": .48, "scale": 1, "opacity": 1}}],
-        "visualActors": ["parcel"],
+        "visibleActors": ["parcel"],
         "cameraId": "camera",
         "events": [
             {"id": "parcel-drift", "objectId": "parcel", "field": "x",
