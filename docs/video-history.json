@@ -2,8 +2,32 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 177,
+  "count": 179,
   "videos": [
+    {
+      "id": "science-preview-earth-stop-43105323782/earth-stop.mp4",
+      "topic": "earth-stop",
+      "category": "science",
+      "releaseTag": "science-preview-earth-stop-43105323782",
+      "publishedAt": "2026-11-11T21:48:41Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-earth-stop-43105323782/earth-stop.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-earth-stop-43105323782",
+      "bytes": 19658503,
+      "sha256": "sha256:a68dc80e172a583041cac163613dca2c2f5dfaadcc64f0950bb191b5aae590e0"
+    },
+    {
+      "id": "science-preview-rainbow-chase-43105324011/rainbow-chase.mp4",
+      "topic": "rainbow-chase",
+      "category": "science",
+      "releaseTag": "science-preview-rainbow-chase-43105324011",
+      "publishedAt": "2026-11-11T21:48:40Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-rainbow-chase-43105324011/rainbow-chase.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-rainbow-chase-43105324011",
+      "bytes": 7511481,
+      "sha256": "sha256:c074b2921e4b48ef845bc1d9becf4b65733c2024472805c9964e359423b22028"
+    },
     {
       "id": "science-preview-rainbow-optics-43105324002/rainbow-optics.mp4",
       "topic": "rainbow-optics",
