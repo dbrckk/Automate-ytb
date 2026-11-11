@@ -155,9 +155,14 @@ class CausalFoleyRealMediaTests(unittest.TestCase):
             plan_file = root / "scene-plan.json"
             story = make_plan(
                 topic="What if Earth's oceans changed?",
-                script="The oceans carry warmth around our planet.",
-                duration=30, shot_seconds=30,
+                script=("The oceans carry warmth around our planet. "
+                        "Winds drive the currents across vast distances."),
+                duration=30, shot_seconds=15,
                 character="Original science visualization")
+            # Reuse the production-short fixture's *valid* source planner and
+            # trim to a real one-second rig for bounded full-stack testing.
+            story["scenes"] = story["scenes"][:1]
+            story["sceneCount"] = 1
             story["scenes"][0]["startMs"] = 0
             story["scenes"][0]["endMs"] = 1000
             story["targetDurationSeconds"] = 1.0
