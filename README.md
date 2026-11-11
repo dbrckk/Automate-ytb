@@ -1,5 +1,7 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**V2 : [MasterTimeline persistante, événements visuels/audio et véritable pilote H.264/AAC](docs/LOT1_MASTER_TIMELINE_PERSISTANTE_V1_2026-11-11.md).** Ce premier moteur est disponible pour les futurs renderers sans remplacer encore le pipeline narré actuel.
+
 **Chantier V2 en cours : [outil de baseline audiovisuelle reproductible](docs/LOT0_BENCHMARK_AV_REFERENCE_3561_2026-11-11.md)** (MP4 réel, mouvement, voix/audio EBU R128, tests et confidentialité). Ce premier livrable ne vaut pas encore validation du moteur MasterTimeline.
 
 **Plan directeur audiovisuel V2 (référence 3561, 11 novembre 2026) : [architecture complète, animation persistante, musique, bruitages, voix, QA, 9 lots d'implémentation et 16 issues](docs/PLAN_AMELIORATION_QUALITE_AUDIOVISUELLE_REFERENCE_3561_V2_2026-11-11.md).** Ce document est la feuille de route de référence pour les prochaines améliorations.

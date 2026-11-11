@@ -1,0 +1,85 @@
+name: Verify V2 persistent MasterTimeline on real audiovisual MP4
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/master_timeline.py"
+      - "scripts/render_master_timeline_pilot.py"
+      - "tests/test_master_timeline*.py"
+      - ".github/workflows/master-timeline-v1.yml"
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/master_timeline.py"
+      - "scripts/render_master_timeline_pilot.py"
+      - "tests/test_master_timeline*.py"
+      - ".github/workflows/master-timeline-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-master-timeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify-real-cross-scene-timeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install CPU rendering and open source tools
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check -e .
+          fc-match DejaVuSans >/dev/null
+      - name: Test frame clocks, authored events and real H264/AAC continuity
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/master_timeline.py \
+            scripts/render_master_timeline_pilot.py tests/test_master_timeline.py \
+            tests/test_master_timeline_pilot.py tests/test_master_timeline_adapter.py \
+            automate_ytb/master_timeline_adapter.py automate_ytb/master_timeline_art.py
+          python -m unittest discover -s tests -p test_master_timeline.py -v
+          python -m unittest discover -s tests -p test_master_timeline_pilot.py -v
+          python -m unittest discover -s tests -p test_master_timeline_adapter.py -v
+      - name: Render a second complete reproducible audiovisual engineering pilot
+        run: |
+          set -euo pipefail
+          mkdir -p build/master-timeline
+          python scripts/render_master_timeline_pilot.py \
+            --output build/master-timeline/timeline-original.mp4 \
+            --width 360 --height 640
+          python scripts/benchmark_audiovisual.py \
+            --video build/master-timeline/timeline-original.mp4 \
+            --label timeline-engineering-pilot \
+            --output build/master-timeline/av-baseline.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("build/master-timeline")
+          pilot=json.loads((root/"timeline-original.json").read_text())
+          baseline=json.loads((root/"av-baseline.json").read_text())
+          assert pilot["technicalPilotOnly"] and not pilot["publicationApproved"]
+          assert len(pilot["audio"]["sourceEvents"])==4
+          assert baseline["videos"][0]["media"]["videoCodec"]=="h264"
+          assert baseline["videos"][0]["media"]["audioCodec"]=="aac"
+          assert baseline["videos"][0]["motion"]["medianChangedPixelsPercent"]>0
+          assert baseline["videos"][0]["sha256"]==pilot["mp4Sha256"]
+          print("MASTER_TIMELINE_REAL_MP4_OK")
+          PY
+      - name: Retain original technical pilot MP4 and QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-master-timeline-original-engineering-pilot
+          path: build/master-timeline/
+          if-no-files-found: error
+          retention-days: 14

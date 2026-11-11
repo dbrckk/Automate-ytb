@@ -573,6 +573,8 @@ Chaque pilote : script inédit, storyboard et fait vérifiables, génération r�
 
 **Definition of Done** : les deux rendus maison se rejouent de manière mesurable ; aucune donnée de référence protégée ne part sur GitHub. Aucune régression de l'ancien workflow.
 
+**Première tranche de réalisation :** [moteur pur, tests, preuve audiovisuelle et limitations](LOT1_MASTER_TIMELINE_PERSISTANTE_V1_2026-11-11.md). Le raccordement aux Shorts narrés demeure dans le backlog.
+
 ### Lot 1 — MasterTimeline et schéma d'événements (priorité P0, bloquant)
 
 **Actions**

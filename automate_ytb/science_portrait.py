@@ -184,7 +184,7 @@ class PortraitScienceScene:
     """Dedicated safe-area composition independent of landscape coordinates."""
     def __init__(self, *, topic: str, narration: str, scene_index: int,
                  caption_segments: list[dict] | None = None,
-                 scene_start_ms: int = 0):
+                 scene_start_ms: int = 0, authored_timeline=None):
         if (type(scene_start_ms) is not int or not 0 <= scene_start_ms <= 3_600_000):
             raise ValueError("Unsafe science caption scene start")
         if caption_segments is not None and not isinstance(caption_segments, list):
@@ -254,6 +254,11 @@ class PortraitScienceScene:
         self._globes: dict[tuple[int, int], Image.Image] = {}
         self.scene_start_ms = scene_start_ms
         self.caption_segments = caption_segments
+        if authored_timeline is not None:
+            from .master_timeline_adapter import AuthoredScienceTimeline
+            if not isinstance(authored_timeline, AuthoredScienceTimeline):
+                raise ValueError("Invalid authored continuous science timeline")
+        self._authored_timeline = authored_timeline
         # Reuse PCM-derived *phrase* boundaries for the physical camera beat.
         # No word timing is invented; scenes lacking a cue keep authored timing.
         domain=("lightning" if self.lightning_beat is not None else
@@ -492,6 +497,15 @@ class PortraitScienceScene:
                 mode=self.mode),
             t=t, duration=duration,
             event_fraction=self._narrated_event_fraction)
+        if self._authored_timeline is not None:
+            from .master_timeline_art import paint_persistent_actors
+            authored = self._authored_timeline
+            fps = authored.timeline.fps
+            first_frame = (self.scene_start_ms * fps + 500) // 1000
+            absolute_frame = min(authored.timeline.total_frames - 1,
+                                 first_frame + round(t * fps))
+            # The actor remains in one world-space track across all scenes.
+            paint_persistent_actors(picture, authored, absolute_frame)
         if self.lightning_beat is not None:
             # P4.9 only changes the final editorial layer. Every actual
             # original science scene remains rendered beforehand, including
