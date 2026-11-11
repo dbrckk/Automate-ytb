@@ -1,5 +1,7 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Plan directeur audiovisuel V2 (référence 3561, 11 novembre 2026) : [architecture complète, animation persistante, musique, bruitages, voix, QA et 16 lots/Issues](docs/PLAN_AMELIORATION_QUALITE_AUDIOVISUELLE_REFERENCE_3561_V2_2026-11-11.md).** Ce document est la feuille de route de référence pour les prochaines améliorations.
+
 **Plan directeur actualisé : [plan de production vidéo multi-genres — 5 novembre 2026](docs/VIDEO_PRODUCTION_MASTER_PLAN_2026-11-05.md).**
 
 **Évolution graphique 2.5D : [plan priorisé de profondeur, rigs, caméra, éclairage et animations — 7 novembre 2026](docs/ROADMAP_RENDER_PREMIUM_2_5D_2026-11-07.md).**
