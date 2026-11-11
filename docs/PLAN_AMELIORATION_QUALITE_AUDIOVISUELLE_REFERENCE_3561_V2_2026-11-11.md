@@ -600,6 +600,8 @@ Chaque pilote : script inédit, storyboard et fait vérifiables, génération r�
 
 **Definition of Done** : au moins 6 changements de repères ou de grandeur intelligibles, sans mensonge d'unité ni reset de compteur ; aucun élément tronqué en portrait. Un pilote complet est encodé et inspecté.
 
+**Première liaison codée (CI à confirmer) :** [Foley causal dans le véritable AAC final, mixage avec narration et musique, tests d'intégrité](LOT3_FOLEY_CAUSAL_FINAL_AAC_V1_2026-11-11.md).
+
 ### Lot 3 — FoleyEngine et AudioEventTimeline (P1)
 
 **Actions**

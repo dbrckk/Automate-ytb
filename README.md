@@ -1,5 +1,7 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Pipeline audiovisuel V2 : [Foley causal synchronisé dans le MP4 final](docs/LOT3_FOLEY_CAUSAL_FINAL_AAC_V1_2026-11-11.md)** (WAV stéréo 48 kHz, événement visuel source, mix voix/musique, QA SHA-256). Implémentation opt-in, validation CI et audition humaine distinctes.
+
 **Animation narrative V2, optionnelle : [générer automatiquement un monde scientifique persistant dans cinq thèmes](docs/LOT1A_AUTOMATIC_SCIENCE_WORLD_V2.md).** Depuis le workflow One-click, cocher `continuous_world` uniquement pour des Shorts scientifiques originaux à cinq étapes validées. Les bruitages sont actuellement des repères temporels, pas encore mixés au MP4 final.
 
 **V2 : [MasterTimeline persistante, événements visuels/audio et véritable pilote H.264/AAC](docs/LOT1_MASTER_TIMELINE_PERSISTANTE_V1_2026-11-11.md).** Ce premier moteur est disponible pour les futurs renderers sans remplacer encore le pipeline narré actuel.

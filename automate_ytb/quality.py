@@ -208,6 +208,36 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         expected_mix = ("ducked-narration-plus-original-bed" if wanted_speech and wanted_music else
                         "narration-only" if wanted_speech else
                         "original-bed-only" if wanted_music else "silent")
+        # Foley is opt-in and only accepted for a real, authored visual
+        # MasterTimeline with a narration/music bed. It is never assumed for
+        # historical episodes, nor does it waive any existing MP4 quality gate.
+        spec = data.get("masterTimeline")
+        authored_cues = (spec.get("soundCues", [])
+                         if isinstance(spec, dict) else [])
+        expects_foley = bool(authored_cues) and expected_audio
+        if rendered.get("hasCausalFoley", False) is not expects_foley:
+            errors.append("Causal Foley integration does not match authored events")
+        if expects_foley:
+            expected_mix += "+causal-foley"
+            details = rendered.get("causalFoley")
+            wav, foley_manifest = (output / "foley-original.wav",
+                                    output / "foley-report.json")
+            if (not isinstance(details, dict) or
+                    not wav.is_file() or not foley_manifest.is_file()):
+                errors.append("Missing original causal audio stems and report")
+            else:
+                try:
+                    stored = json.loads(foley_manifest.read_text(encoding="utf-8"))
+                    if (stored != details or stored.get("cueCount") != len(authored_cues)
+                            or stored.get("containsThirdPartyAudio") is not False
+                            or stored.get("sampleRateHz") != 48000
+                            or stored.get("channels") != 2
+                            or stored.get("wavSha256") != _digest(wav)
+                            or rendered.get("persistentVisualTimeline", {}).get(
+                                "audioIntegratedIntoFinalMix") is not True):
+                        errors.append("Causal Foley stem metadata or SHA256 differs from rendered export")
+                except (OSError, ValueError, TypeError):
+                    errors.append("Cannot authenticate causal Foley audio evidence")
         if rendered.get("audioMixMode") != expected_mix:
             errors.append("Unexpected audio mixing mode")
         voice_engine = {"none": "none", "espeak": "espeak-draft",

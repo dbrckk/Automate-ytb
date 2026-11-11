@@ -1,0 +1,54 @@
+name: Verify source-locked Foley in real final AAC mixes
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/foley_engine.py"
+      - "automate_ytb/production.py"
+      - "automate_ytb/quality.py"
+      - "tests/test_foley_engine.py"
+      - ".github/workflows/causal-foley-final-mix.yml"
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/foley_engine.py"
+      - "automate_ytb/production.py"
+      - "automate_ytb/quality.py"
+      - "tests/test_foley_engine.py"
+      - ".github/workflows/causal-foley-final-mix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: causal-foley-final-mix-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-aac-foley:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install only missing free local tools
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check -e .
+          ffmpeg -version | head -n 1
+      - name: Compile and test actual event cues, WAV, voiced/music AAC and loudness
+        run: |
+          set -euo pipefail
+          python -m py_compile automate_ytb/foley_engine.py automate_ytb/production.py \
+            automate_ytb/quality.py tests/test_foley_engine.py
+          python -m unittest discover -s tests -p test_foley_engine.py -v
+      - name: Guard legacy soundtrack and mastering compatibility
+        run: |
+          python -m unittest discover -s tests -p test_soundtrack.py -v
