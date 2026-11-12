@@ -51,6 +51,7 @@ on:
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
       - examples/universal_web_request.json
+      - examples/build_original_actor_rig_sample.py
       - .github/workflows/universal-kinetic-smoke.yml
 
 permissions:
@@ -135,6 +136,22 @@ jobs:
       - name: Render another subject from original narration alone
         run: |
           automate-ytb-short --topic "A seed comes to life" --script-file examples/universal_seed_story.en.txt --language en --output build/universal/seed-story-original.mp4 --voice espeak --width 720
+      - name: Render a genuine authored 2.5D actor encounter
+        run: |
+          python examples/build_original_actor_rig_sample.py --out-dir build/universal/rig
+          automate-ytb-short --brief build/universal/rig/actor-rig-story.json --output build/universal/actor-rig-original.mp4 --voice espeak --width 720
+      - name: Verify actor actions survive true H.264 + AAC encoding
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/actor-rig-original.mp4 --require-audio --report build/universal/actor-rig-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('build/universal/actor-rig-original.json').read_text())
+          assert report['artwork']['authoredActionActors']==2
+          assert report['artwork']['authoredActorLinks']==1
+          assert report['delivery']['status']=='passed'
+          assert not report['publicationApproved']
+          PY
       - name: Independently verify technical delivery
         run: |
           python -m automate_ytb.shorts_delivery \
@@ -151,6 +168,8 @@ jobs:
             --label universal-original-kinetic \
             --video build/universal/seed-story-original.mp4 \
             --label universal-original-nature \
+            --video build/universal/actor-rig-original.mp4 \
+            --label original-authored-actor-rig \
             --output build/universal/audiovisual-benchmark.json
       - name: Download verified original media (not private benchmark)
         uses: actions/upload-artifact@v4
