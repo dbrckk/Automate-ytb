@@ -89,7 +89,7 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     """Prepare expensive textures once, never once per video frame."""
     root=brief_path.resolve().parent
     pad=round(width*.09)
-    stage_size=(width-2*pad,round(height*.40))
+    stage_size=(width-2*pad,round(height*.51))
     scenes={}
     manifest=[]
     for index, beat in enumerate(story["beats"]):
