@@ -148,6 +148,12 @@ class AuthoredActorRigTests(unittest.TestCase):
                     self.assertEqual(render_art_stage(scenes[0],45,0,90).tobytes(),
                                      b.tobytes())
                     timeline=timeline_for(story,[0,90,180])
+                    contacts=[x for x in timeline.audio_events()
+                              if x["family"]=="contact"]
+                    self.assertEqual(len(contacts),1)
+                    self.assertLessEqual(abs(contacts[0]["atFrame"]-48),1)
+                    self.assertEqual(contacts[0]["atSample"],
+                                     contacts[0]["atFrame"]*1600)
                     frame=frame_image(story,timeline,[0,90,180],45,360,640,
                                       art_scenes=scenes)
                     self.assertEqual(frame.size,(360,640))
@@ -191,6 +197,7 @@ class AuthoredActorRigTests(unittest.TestCase):
             self.assertGreater(target.stat().st_size,10000)
             self.assertEqual(report["artwork"]["authoredActionActors"],2)
             self.assertEqual(report["artwork"]["authoredActorLinks"],1)
+            self.assertEqual(report["authoredContactCues"],1)
             self.assertFalse(report["publicationApproved"])
             self.assertTrue(target.with_suffix(".srt").is_file())
 
