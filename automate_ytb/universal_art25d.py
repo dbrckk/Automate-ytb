@@ -34,7 +34,7 @@ def validate_layers(raw) -> list[dict]:
         if (type(name) is not str or not 1 <= len(name) <= 180
                 or Path(name).is_absolute() or ".." in Path(name).parts
                 or Path(name).suffix.lower() not in (".png", ".webp")
-                or "\\" in name or name.startswith("/")):
+                or ":" in name or "\\" in name or name.startswith("/")):
             raise ValueError("Unsafe original visual asset path")
         z = entry["z"]
         if type(z) is not int or not 0 <= z <= 100 or z in depth:
