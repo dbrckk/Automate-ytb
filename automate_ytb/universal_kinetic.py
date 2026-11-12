@@ -246,6 +246,19 @@ def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
                   "sequence": "count", "concept": "whoosh"}[beat["kind"]]
         cues.append(SoundCue(f"story-cue-{i:02d}", event_id, family,
                              offset_frames=0, gain_db=-24.))
+        # A visual link has its own exact absolute source event. The shared
+        # beat-progress cue only starts at beat boundaries and cannot carry
+        # late cues (SoundCue offsets are limited to 300 frames).
+        for j, link in enumerate(beat.get("actorLinks", [])):
+            ident=f"link-{i:02d}-{j:02d}"
+            at=start+round((end-start-1)*link["at"])
+            at=min(end-2,max(start,at))
+            objects.append(WorldObject(ident, {"opacity": 0.}))
+            tracks.append(PropertyEvent(
+                f"event-{ident}",ident,"opacity",at,at+2,0.,1.))
+            cues.append(SoundCue(
+                f"contact-{ident}",f"event-{ident}",
+                "contact",offset_frames=0,gain_db=-21.))
         if beat["kind"] == "measure":
             key=(beat["label"].casefold(), beat["unit"], beat["scaleMax"])
             if key not in series_ids:
@@ -490,6 +503,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "wordLevelAligned":False,
         "music":"original-continuous-procedural-ambient",
         "sound":"original-event-locked-foley","mix":mix,
+        "authoredContactCues":sum(len(b["actorLinks"]) for b in story["beats"]),
         "artwork":{
             "engine":"scene25d-multilayer-owned-art",
             "scenesWithRealAuthoredArtwork":len(art_scenes),
