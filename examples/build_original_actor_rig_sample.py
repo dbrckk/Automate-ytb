@@ -131,9 +131,23 @@ def build(out: Path) -> Path:
                      key(1,-.035,.00,.96,-10)]},
              ],
              "actorLinks":[{"fromZ":45,"toZ":78,"at":.53}]},
-            {"kind":"sequence","title":"What happens next",
-             "narration":"A burst of light marks a connection. The example then continues with a response and a finished message.",
-             "steps":["Connection","Response","Complete"]},
+            {"kind":"sequence","title":"The connection continues",
+             "narration":"A burst of light marks the connection. The receiver responds while both objects keep moving through the same continuous scene.",
+             "steps":["Connection","Response","Complete"],
+             "visualLayers":[layer("background",5,.15,.06),
+                             layer("source",45,.72,.38),
+                             layer("receiver",78,1.1,.62)],
+             "actorTracks":[
+                 {"z":45,"keys":[
+                     key(0,.06,-.06,1.01,9),
+                     key(.5,.12,-.035,1.10,6),
+                     key(1,.14,.03,.87,-4)]},
+                 {"z":78,"keys":[
+                     key(0,-.035,.00,.96,-10),
+                     key(.5,-.065,-.035,1.08,-4),
+                     key(1,-.055,-.01,1.03,3)]},
+             ],
+             "actorLinks":[{"fromZ":78,"toZ":45,"at":.54}]},
         ],
     }
     path=out/"actor-rig-story.json"
