@@ -23,7 +23,7 @@ import urllib.request
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
-VERSION = "commons-cc0-photographic-kinetic-stage-v1"
+VERSION = "commons-cc0-photographic-foreground-rig-v2"
 API_URL = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = ("AutomateYTB-FreeShorts/0.1 "
               "(https://github.com/dbrckk/Automate-ytb) python-urllib")
@@ -190,6 +190,7 @@ class CommonsPhotoScene:
     image: Image.Image
     width: int
     height: int
+    subject_mask: Image.Image | None = None
 
     def __post_init__(self):
         if self.image.mode != "RGB":
@@ -201,6 +202,24 @@ class CommonsPhotoScene:
         self.zoomed=ImageEnhance.Contrast(self.zoomed).enhance(1.10)
         self.zoomed=ImageEnhance.Color(self.zoomed).enhance(1.11)
         self.vignette=_vignette((self.width,self.height))
+        self.foreground=None
+        self.soft_background=None
+        if self.subject_mask is not None:
+            if (self.subject_mask.mode != "L"
+                    or self.subject_mask.size != self.image.size):
+                raise ValueError("Subject silhouette must match original raster")
+            # Align the foreground with the same single prefit camera image.
+            mask=ImageOps.fit(self.subject_mask,self.zoomed.size,
+                              method=Image.Resampling.LANCZOS,
+                              centering=(.5,.5))
+            mask=mask.filter(ImageFilter.GaussianBlur(
+                radius=max(1,self.width//340)))
+            foreground=self.zoomed.copy().convert("RGBA")
+            foreground.putalpha(mask)
+            self.foreground=foreground
+            self.soft_background=self.zoomed.filter(
+                ImageFilter.GaussianBlur(
+                    radius=max(3,round(self.width*.014))))
 
     def render(self, frame:int, first:int, last:int)->Image.Image:
         if (type(frame) is not int or type(first) is not int or
@@ -213,14 +232,62 @@ class CommonsPhotoScene:
         spare_y=self.zoomed.height-self.height
         x=round(spare_x*(.24+.53*ease))
         y=round(spare_y*(.65-.36*ease))
-        picture=self.zoomed.crop((x,y,x+self.width,y+self.height))
-        picture=picture.convert("RGBA")
+        if self.foreground is not None:
+            picture=self.soft_background.crop((
+                x,y,x+self.width,y+self.height)).convert("RGBA")
+            # Original alpha-matted subject has its own slower lateral
+            # parallax. No new object or anatomical details are fabricated.
+            dx=round(self.width*.033*math.sin(math.pi*ease))
+            dy=round(self.height*.014*math.sin(math.pi*ease))
+            sprite=self.foreground.crop((
+                x-dx,y-dy,x-dx+self.width,y-dy+self.height))
+            picture.alpha_composite(sprite)
+        else:
+            picture=self.zoomed.crop((
+                x,y,x+self.width,y+self.height)).convert("RGBA")
         picture.alpha_composite(self.vignette)
         return picture.convert("RGB")
 
 
+def _local_subject_mask(image: Image.Image) -> Image.Image:
+    """Lightweight local saliency foreground; never use rembg's cloud default.
+
+    U2NetP code/weights: upstream U-2-Net Apache-2.0; rembg MIT. The model
+    is not bundled with this project and may download once to local cache.
+    """
+    try:
+        from rembg import new_session, remove
+    except ImportError as exc:
+        raise RuntimeError(
+            "Optional subject segmentation requires pip install 'rembg[cpu]'") from exc
+    # Cached on the function object for this process: the ONNX session is
+    # expensive. No remote inference provider or API token is involved.
+    session=getattr(_local_subject_mask,"_cached_session",None)
+    if session is None:
+        session=new_session("u2netp")
+        _local_subject_mask._cached_session=session
+    output=remove(image,session=session)
+    if not isinstance(output,Image.Image):
+        raise RuntimeError("Segmentation produced an unsupported image")
+    mask=output.convert("RGBA").getchannel("A")
+    return mask
+
+
+def _usable_mask(mask: Image.Image, source: Image.Image) -> Image.Image | None:
+    if not isinstance(mask,Image.Image) or mask.size != source.size:
+        return None
+    alpha=mask.convert("L")
+    hist=alpha.histogram()
+    count=source.width*source.height
+    fraction=sum(hist[32:])/count
+    if not .04 <= fraction <= .82:
+        return None
+    return alpha
+
+
 def build_commons_scenes(story:dict, width:int, height:int, *,
-                         query_media=None, image_media=None):
+                         query_media=None, image_media=None,
+                         segment_art=False, mask_subject=None):
     """Fetch <=one thumbnail per eligible beat; failure is a safe fallback.
 
     All media and provenance are recorded. No author content is treated as an
@@ -228,6 +295,17 @@ def build_commons_scenes(story:dict, width:int, height:int, *,
     """
     if not 150 <= width <= 1080 or not 180 <= height <= 1080:
         raise ValueError("Invalid stage dimensions")
+    if type(segment_art) is not bool:
+        raise ValueError("Segmentation choice must be a boolean")
+    if segment_art and mask_subject is None:
+        # Explicit opt-in: report absent local dependencies rather than
+        # quietly claiming the scene has 2.5D object segmentation.
+        try:
+            import rembg
+        except ImportError as exc:
+            raise RuntimeError(
+                "Install the optional rembg[cpu] package for --segment-art") from exc
+    segmenter=mask_subject or _local_subject_mask
     lookup=query_media or search_cc0
     image_download=image_media or _read_url
     scenes, manifest, used = {}, [], set()
@@ -250,11 +328,20 @@ def build_commons_scenes(story:dict, width:int, height:int, *,
                 bitmap=decode_image(content)
             except (ValueError,OSError,urllib.error.URLError,TimeoutError):
                 continue
+            mask=None
+            if segment_art:
+                try:
+                    mask=_usable_mask(segmenter(bitmap),bitmap)
+                except (RuntimeError,ValueError,OSError):
+                    # Evidence that segmentation was not accepted must remain
+                    # visible in metadata, with a stable photo fallback.
+                    mask=None
             scenes[index]=CommonsPhotoScene(
                 title=entry["title"],origin=entry["page"],
                 creator=entry["creator"],thumbnail=entry["thumbnail"],
                 sha256=hashlib.sha256(content).hexdigest(),
-                image=bitmap,width=width,height=height)
+                image=bitmap,width=width,height=height,
+                subject_mask=mask)
             used.add(entry["page"])
             manifest.append({
                 "beat":index,"query":query,"filePage":entry["page"],
@@ -263,6 +350,9 @@ def build_commons_scenes(story:dict, width:int, height:int, *,
                 "thumbnailURL":entry["thumbnail"],
                 "sha256":scenes[index].sha256,
                 "editorialReviewed":False,"rightsVerifiedByHuman":False,
+                "segmentationRequested":segment_art,
+                "segmentationApplied":mask is not None,
+                "segmentationModel":"u2netp" if mask is not None else None,
             })
             break
     return scenes,manifest
