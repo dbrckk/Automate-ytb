@@ -164,29 +164,53 @@ def _display(value: Decimal) -> str:
     return format(value.quantize(Decimal("0.01")), ",f").rstrip("0").rstrip(".")
 
 
-def synthesize(story: dict, engine: str, output: Path, voice_name=None) -> list[int]:
-    """Use actual PCM lengths for beat boundaries, not estimated speech speed."""
+def synthesize(story: dict, engine: str, output: Path, voice_name=None,
+               caption_cues: list[dict] | None = None) -> list[int]:
+    """Generate real PCM per caption phrase; no estimated word alignment."""
+    from .captions import caption_phrases
     speech = SpeechEngine(engine=engine, language=story["language"], voice=voice_name)
-    rate, boundaries = None, [0]
+    rate = None
+    cursor, boundaries, cues = 0, [0], []
     with wave.open(str(output), "wb") as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
-        for beat in story["beats"]:
-            pcm, sample_rate = speech.audio(beat["narration"])
-            if rate is None:
-                rate = sample_rate
-                wav.setframerate(rate)
-            if sample_rate != rate or not pcm or len(pcm) % 2:
-                raise RuntimeError("Inconsistent narration PCM")
-            wav.writeframesraw(pcm)
-            gap = round(rate * .17)
-            wav.writeframesraw(b"\0\0" * gap)
-            boundaries.append(boundaries[-1] + len(pcm)//2 + gap)
-    if boundaries[-1] / rate > 179.0:
+        for beat_index, beat in enumerate(story["beats"]):
+            for phrase in caption_phrases(beat["narration"]):
+                pcm, sample_rate = speech.audio(phrase)
+                if rate is None:
+                    rate = sample_rate
+                    wav.setframerate(rate)
+                if sample_rate != rate or not isinstance(pcm, bytes) or not pcm or len(pcm) % 2:
+                    raise RuntimeError("Inconsistent narration PCM")
+                start_sample = cursor
+                wav.writeframesraw(pcm)
+                cursor += len(pcm) // 2
+                pause = .095 if phrase.rstrip().endswith((".", "!", "?", "…")) else .045
+                pad = round(rate * pause)
+                wav.writeframesraw(b"\0\0" * pad)
+                cursor += pad
+                cues.append((beat_index, phrase, start_sample, cursor))
+            tail = round(rate * .12)
+            wav.writeframesraw(b"\0\0" * tail)
+            cursor += tail
+            boundaries.append(cursor)
+    if cursor / rate > 179.0:
         raise ValueError("Narration exceeds 179 seconds")
     stamps = [round(n * FPS / rate) for n in boundaries]
-    if stamps[0] != 0 or any(b-a < FPS for a, b in zip(stamps, stamps[1:])):
-        raise ValueError("Each beat must have at least 1 second of real narration")
+    if any(b-a < FPS for a, b in zip(stamps, stamps[1:])):
+        raise ValueError("Each beat needs at least one second of narration")
+    if caption_cues is not None:
+        if type(caption_cues) is not list:
+            raise ValueError("Invalid output caption list")
+        for index, phrase, start, stop in cues:
+            first, last = round(start*FPS/rate), round(stop*FPS/rate)
+            if last <= first:
+                raise ValueError("Synthesis produced too short a caption phrase")
+            caption_cues.append({
+                "beatIndex": index, "text": phrase,
+                "startFrame": first, "endFrame": last,
+                "startMs": round(start*1000/rate),
+                "endMs": round(stop*1000/rate)})
     return stamps
 
 
@@ -277,7 +301,7 @@ def _bar(draw, x, y, w, h, fraction, color, palette):
 
 def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 frame: int, width: int, height: int, backdrop=None,
-                art_scenes=None) -> Image.Image:
+                art_scenes=None, caption_cues=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
     palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
@@ -322,18 +346,23 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
             width=width-2*pad,height=round(height*.40),
             palette=palette,value_ratio=quantity_ratio)
         base.paste(stage,(pad,stage_top))
-    # Audio-paced text window; segment times measured, word times NOT measured.
-    words=beat["narration"].split()
-    window=7
-    offset=min(max(0,len(words)-window),int(f*len(words)))
-    snippet=" ".join(words[offset:offset+window])
-    lines,subfont=_fit(d,snippet,width-2*pad,int(width*.048),bold=True,max_lines=3)
-    caption_y=int(height*.825)
-    d.rounded_rectangle((pad-8,caption_y-15,width-pad+8,
-                        caption_y+int(height*.12)),radius=14,fill=(10,20,36))
-    for j,line in enumerate(lines):
-        d.text((pad,caption_y+j*int(subfont.size*1.28)),line,
-               font=subfont,fill=(247,249,253))
+    # Speech-synthesized phrase boundaries are measured from actual PCM,
+    # never guessed word onsets or sliding seven-word subtitles.
+    if caption_cues is not None:
+        snippet=next((c["text"] for c in caption_cues
+                      if c["startFrame"] <= frame < c["endFrame"]), "")
+    else:
+        words=beat["narration"].split()
+        offset=min(max(0,len(words)-7),int(f*len(words)))
+        snippet=" ".join(words[offset:offset+7])
+    if snippet:
+        lines,subfont=_fit(d,snippet,width-2*pad,int(width*.047),
+                           bold=True,max_lines=2)
+        for j,line in enumerate(lines):
+            d.text((pad,int(height*.798)+j*int(subfont.size*1.32)),line,
+                   font=subfont,fill=(248,251,254),
+                   stroke_width=max(2,round(width*.004)),
+                   stroke_fill=(3,7,17))
     return base
 
 
@@ -367,7 +396,9 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
     with tempfile.TemporaryDirectory(prefix="universal-original-") as temp:
         work=Path(temp)
         voice_file=work/"narration.wav"
-        stamps=synthesize(story,voice,voice_file,voice_name=voice_name)
+        captions=[]
+        stamps=synthesize(story,voice,voice_file,voice_name=voice_name,
+                          caption_cues=captions)
         timeline=timeline_for(story,stamps)
         sfx=work/"foley.wav"
         create_causal_foley(timeline=timeline,output=sfx,
@@ -387,7 +418,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             for frame in range(timeline.total_frames):
                 encoder.stdin.write(frame_image(story,timeline,stamps,frame,
                                                width,height,background,
-                                               art_scenes).tobytes())
+                                               art_scenes,captions).tobytes())
             encoder.stdin.close()
             encoder.stdin=None
             _,err=encoder.communicate(timeout=600)
@@ -401,6 +432,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         mix=mix_causal_foley(silent_video=silent,foley=sfx,output=output,
               duration_seconds=timeline.total_frames/FPS,profile="high",
               voice=voice_file,music=ambient)
+    from .captions import srt_time
+    subtitle_path=output.with_suffix(".srt")
+    subtitle_path.write_text("".join(
+        f"{i}\n{srt_time(c['startMs'])} --> {srt_time(c['endMs'])}\n"
+        f"{c['text']}\n\n" for i,c in enumerate(captions,1)),encoding="utf8")
     delivery=validate_short(output,require_audio=True)
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
@@ -409,7 +445,9 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "narrationTiming":"actual-PCM-beat-boundaries",
-        "subtitleTiming":"estimated-proportional-not-word-aligned",
+        "subtitleTiming":"audio-derived-synthesized-phrases",
+        "subtitleCues":len(captions),"subtitleFile":subtitle_path.name,
+        "wordLevelAligned":False,
         "music":"original-continuous-procedural-ambient",
         "sound":"original-event-locked-foley","mix":mix,
         "artwork":{
