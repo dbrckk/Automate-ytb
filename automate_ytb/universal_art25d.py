@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 from .scene25d import Layer25D, Scene25D
 from .surface25d import MATERIALS, relight_surface
 
-VERSION = "universal-owned-art-layer-parallax-and-actions-v2"
+VERSION = "universal-original-vector-and-raster-layer-parallax-v3"
 
 
 def validate_layers(raw) -> list[dict]:
@@ -93,18 +93,39 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     scenes={}
     manifest=[]
     for index, beat in enumerate(story["beats"]):
-        layers=beat.get("visualLayers",[])
-        if not layers:
+        raster_layers=beat.get("visualLayers",[])
+        vector_layers=beat.get("visualVectors",[])
+        if not raster_layers and not vector_layers:
             continue
         scene=Scene25D(stage_size)
         owned_layers=[]
-        for n, item in enumerate(layers):
-            path=(root/item["file"]).resolve()
-            if not path.is_relative_to(root) or path.is_symlink():
-                raise ValueError("Visual asset must remain inside story folder")
-            canvas=_image(path,stage_size,background=item["z"] <= 10)
-            # Relight exactly once: native Scene25D supports animated parallax
-            # while redoing full-resolution relief for 30 fps is wasteful.
+        # Distinct Z, stable compositing order and shared camera coordinates
+        # for original source images and fully authored local vector art.
+        items=sorted([("file",item) for item in raster_layers]+
+                     [("vector",item) for item in vector_layers],
+                     key=lambda entry:entry[1]["z"])
+        for n,(source_kind,item) in enumerate(items):
+            if source_kind=="file":
+                path=(root/item["file"]).resolve()
+                if not path.is_relative_to(root) or path.is_symlink():
+                    raise ValueError("Visual asset must remain inside story folder")
+                canvas=_image(path,stage_size,background=item["z"] <= 10)
+                sha=hashlib.sha256(path.read_bytes()).hexdigest()
+                record={"beat":index,"fileName":path.name,"depth":item["z"],
+                        "sha256":sha,"rightsStatement":item["rights"],
+                        "rightsManuallyConfirmedByAuthor":True}
+            else:
+                from .universal_vector_art import render_vector_layer, vector_sha256
+                canvas=render_vector_layer(item,stage_size)
+                record={
+                    "beat":index,"vectorId":item["id"],"depth":item["z"],
+                    "shapeCount":len(item["shapes"]),
+                    "sha256":vector_sha256(item),
+                    "rightsStatement":item["rights"],
+                    "rightsManuallyConfirmedByAuthor":True,
+                    "generatedLocallyWithoutSourceImage":True}
+            # Relight once at source creation time. Actors transform cached
+            # RGBA source pixels for every subsequent 30-fps animation frame.
             canvas=relight_surface(canvas,item["material"])
             layer=Layer25D(
                 name=f"visual-{index:02d}-{n:02d}",z=item["z"],image=canvas,
@@ -112,12 +133,7 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
                 material="none")
             scene.add(layer)
             owned_layers.append(layer)
-            manifest.append({
-                "beat": index,"fileName":path.name,"depth":item["z"],
-                "sha256":hashlib.sha256(path.read_bytes()).hexdigest(),
-                "rightsStatement":item["rights"],
-                "rightsManuallyConfirmedByAuthor":True,
-            })
+            manifest.append(record)
         if beat.get("actorTracks"):
             from .universal_actor_rig import RiggedArtScene
             scenes[index]=RiggedArtScene(
