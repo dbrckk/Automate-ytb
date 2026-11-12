@@ -245,7 +245,7 @@ def _draw_geometry(draw, shape, size, *, stroke=False):
 def render_vector_layer(layer: dict, size: tuple[int,int]) -> Image.Image:
     """Cacheable source raster; no expensive vector parsing per video frame."""
     if (type(size) is not tuple or len(size)!=2
-            or any(type(x) is not int or not 100<=x<=1200 for x in size)):
+            or any(type(x) is not int or not 100<=x<=1920 for x in size)):
         raise ValueError("Vector stage must use bounded pixel dimensions")
     clean=validate_vector_layers([layer])[0]
     w,h=size
