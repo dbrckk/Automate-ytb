@@ -127,6 +127,41 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     return scenes, manifest
 
 
+def bind_actor_camera_world(story: dict, scenes: dict,
+                            boundaries: list[int]) -> list[dict]:
+    """Keep the camera and visual identity across contiguous shared actors.
+
+    The author must explicitly reuse the same layer files, Z identities and
+    end/start object poses. For a different source, editing still cuts freely.
+    """
+    from .universal_actor_rig import RiggedArtScene, same_authored_actor_world
+    beats=story["beats"]
+    if (type(boundaries) is not list or len(boundaries)!=len(beats)+1
+            or any(type(x) is not int for x in boundaries)
+            or any(a>=b for a,b in zip(boundaries,boundaries[1:]))):
+        raise ValueError("Invalid shot boundaries for continuous actor world")
+    groups=[]
+    start=0
+    for edge in range(1,len(beats)+1):
+        continuation=(
+            edge<len(beats)
+            and same_authored_actor_world(beats[edge-1],beats[edge]))
+        if continuation:
+            continue
+        if edge-start>=2:
+            for shot in range(start,edge):
+                candidate=scenes.get(shot)
+                if not isinstance(candidate,RiggedArtScene):
+                    raise ValueError("Continuity requires original rigged art in every shot")
+                candidate.set_camera_window(boundaries[start],boundaries[edge])
+            groups.append({
+                "firstBeat":start,"lastBeat":edge-1,
+                "cameraStartFrame":boundaries[start],
+                "cameraEndFrame":boundaries[edge]})
+        start=edge
+    return groups
+
+
 def render_art_stage(scene: Scene25D, frame: int,
                      first: int, last: int) -> Image.Image:
     if type(frame) is not int or not first <= frame < last:
