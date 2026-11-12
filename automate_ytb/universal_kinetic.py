@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v3-cc0"
+VERSION = "universal-kinetic-cinematic-stage-v4-foreground-rig"
 
 
 def _text(value, name, limit=120):
@@ -404,9 +404,10 @@ def _music(output:Path,total_frames:int):
 
 
 def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
-            width=720,commons_art=False) -> dict:
+            width=720,commons_art=False,segment_art=False) -> dict:
     if (voice not in ("kokoro","espeak") or type(width) is not int
-            or width not in (360,720,1080) or type(commons_art) is not bool):
+            or width not in (360,720,1080) or type(commons_art) is not bool
+            or type(segment_art) is not bool or (segment_art and not commons_art)):
         raise ValueError("Voice kokoro/espeak and width 360/720/1080 required")
     story=read_story(brief)
     height=width*16//9
@@ -429,7 +430,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         if commons_art:
             from .universal_commons import build_commons_scenes
             commons_scenes,commons_provenance=build_commons_scenes(
-                story,width-2*round(width*.045),round(height*.495))
+                story,width-2*round(width*.045),round(height*.495),
+                segment_art=segment_art)
         silent=work/"picture.mp4"
         cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
              "-f","rawvideo","-pix_fmt","rgb24","-s",f"{width}x{height}",
@@ -470,6 +472,9 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "commonsArtRequested":commons_art,
+        "subjectSegmentationRequested":segment_art,
+        "subjectSegmentationApplied":sum(
+            1 for c in commons_provenance if c["segmentationApplied"]),
         "commonsScenes":len(commons_scenes),
         "commonsSources":commons_provenance,
         "narrationTiming":"actual-PCM-beat-boundaries",
@@ -506,6 +511,8 @@ def main(argv=None):
     p.add_argument("--width",type=int,choices=(360,720,1080),default=720)
     p.add_argument("--commons-art",action="store_true",
                    help="Opt in to online CC0 1.0 Wikimedia visuals, subject to review")
+    p.add_argument("--segment-art",action="store_true",
+                   help="Use free local U2NetP foreground 2.5D matting; requires --commons-art")
     a=p.parse_args(argv)
     try:
         brief=a.brief
@@ -521,7 +528,8 @@ def main(argv=None):
             brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\n",
                              encoding="utf8")
         report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,
-                       width=a.width,commons_art=a.commons_art)
+                       width=a.width,commons_art=a.commons_art,
+                       segment_art=a.segment_art)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return 0 if report["delivery"]["status"]=="passed" else 2
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:
