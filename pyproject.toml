@@ -17,6 +17,7 @@ motion = ["numpy>=1.26,<3", "opencv-python-headless==4.11.0.86"]
 [project.scripts]
 automate-ytb = "automate_ytb.cli:main"
 automate-ytb-autoedit = "automate_ytb.auto_edit:main"
+automate-ytb-short = "automate_ytb.universal_kinetic:main"
 
 [tool.setuptools.packages.find]
 include = ["automate_ytb*"]
