@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
 
-VERSION = "universal-authored-actor-rig-subject-follow-v2"
+VERSION = "universal-authored-actor-rig-continuous-world-v3"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -108,6 +108,41 @@ def sampled_pose(keys: list[dict], phase: float) -> dict:
     raise ValueError("Incomplete actor keyframe track")
 
 
+def same_authored_actor_world(a: dict, b: dict) -> bool:
+    """Only identical licensed source layers and actor identities may persist.
+
+    A new shot using a different picture is a real edit, not a presumed
+    continuous physical object. No filename keyword interpretation occurs.
+    """
+    if not a.get("actorTracks") or not b.get("actorTracks"):
+        return False
+    def ids(beat):
+        layers=tuple(sorted((layer["z"],layer["file"])
+                            for layer in beat["visualLayers"]))
+        actors=tuple(sorted(track["z"] for track in beat["actorTracks"]))
+        return layers,actors
+    return ids(a)==ids(b)
+
+
+def validate_cut_continuity(story: dict) -> int:
+    """Reject jumps for repeatedly drawn original actors in adjacent shots."""
+    count=0
+    for before,after in zip(story["beats"],story["beats"][1:]):
+        if not same_authored_actor_world(before,after):
+            continue
+        old={t["z"]:t for t in before["actorTracks"]}
+        new={t["z"]:t for t in after["actorTracks"]}
+        for z,track in old.items():
+            last=track["keys"][-1]
+            first=new[z]["keys"][0]
+            if any(abs(last[k]-first[k]) > 1e-8
+                   for k in ("x","y","scale","angle")):
+                raise ValueError(
+                    "A repeated original actor cannot jump between adjacent scenes")
+        count+=1
+    return count
+
+
 class RiggedArtScene:
     """Composite original RGBA layers and sampled authored object trajectories."""
 
@@ -116,6 +151,7 @@ class RiggedArtScene:
         self.layers = tuple(sorted(layers, key=lambda item: item.z))
         self.tracks = {t["z"]: t["keys"] for t in tracks}
         self.links = tuple(links)
+        self.camera_window = None
         self.crops = {}
         for layer in self.layers:
             if layer.z not in self.tracks:
@@ -132,14 +168,26 @@ class RiggedArtScene:
                                    ((bbox[0]+bbox[2])/2,
                                     (bbox[1]+bbox[3])/2))
 
+    def set_camera_window(self, first: int, last: int) -> None:
+        if (type(first) is not int or type(last) is not int
+                or first < 0 or last <= first):
+            raise ValueError("Invalid continuous camera time window")
+        self.camera_window=(first,last)
+
     def render(self, frame: int, first: int, last: int) -> Image.Image:
         if (type(frame) is not int or type(first) is not int
                 or type(last) is not int or not first <= frame < last):
             raise ValueError("Invalid authored actor frame")
         phase = (frame-first)/max(1,last-first)
-        smooth = _ease(phase)
-        cam_x = 28*(smooth*2-1)
-        cam_y = 12*math.sin(math.pi*phase)
+        camera_first,camera_last=(
+            self.camera_window if self.camera_window is not None
+            else (first,last))
+        if not camera_first <= frame < camera_last:
+            raise ValueError("Actor frame is outside its continuous camera")
+        camera_phase=(frame-camera_first)/max(1,camera_last-camera_first)
+        camera_smooth=_ease(camera_phase)
+        cam_x = 28*(camera_smooth*2-1)
+        cam_y = 12*math.sin(math.pi*camera_phase)
         result = Image.new("RGBA", self.size)
         centres = {}
         for layer in self.layers:
@@ -182,7 +230,7 @@ class RiggedArtScene:
         # A deterministic follow-camera uses the actual on-screen actor
         # centres, not a static slide-sized crop or a fictitious subject.
         # The crop stays strictly inside the authored source world.
-        zoom=1.08+.18*_ease(phase)
+        zoom=1.08+.18*camera_smooth
         w,h=self.size
         crop_w=max(16,round(w/zoom))
         crop_h=max(16,round(h/zoom))
