@@ -155,6 +155,38 @@ class AuthoredActorRigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,"pivot"):
                 read_story(path)
 
+    def test_overscan_avoids_cutting_an_actor_above_the_stage(self):
+        from automate_ytb.scene25d import Scene25D, Layer25D
+        from automate_ytb.universal_actor_rig import (
+            RiggedArtScene, fit_actor_camera)
+        size=(360,460)
+        backdrop=Layer25D(
+            "original-background",5,Image.new("RGBA",size,(15,28,52,255)),
+            parallax_x=.1,parallax_y=.1)
+        subject=Image.new("RGBA",size)
+        draw=ImageDraw.Draw(subject)
+        draw.ellipse((95,8,205,118),fill=(235,70,88,255))
+        original=Layer25D("original-floating-flower",45,subject)
+        world=Scene25D(size)
+        world.add(backdrop)
+        world.add(original)
+        keys=[key(0,0,-.30,1,0),key(1,.06,-.30,1,4)]
+        scene=RiggedArtScene(world,[backdrop,original],
+                             [{"z":45,"keys":keys,"pivot":[.5,.5]}],[])
+        self.assertGreater(scene.overscan,100)
+        shot=scene.render(0,0,90).convert("RGB")
+        # This red original source is completely above the old 460px canvas
+        # before camera framing. The physically extended source must make
+        # it visible rather than silently clipping it.
+        red=sum(1 for r,g,b in shot.getdata() if r>175 and g<110 and b<130)
+        self.assertGreater(red,1800)
+        self.assertEqual(shot.tobytes(),scene.render(0,0,90).convert("RGB").tobytes())
+        box=fit_actor_camera(size,{
+            45:{"centre":(150,-65),"spriteSize":(110,110),"angle":0}},
+            .3,scene.overscan)
+        self.assertLess(box[1],0)
+        self.assertLessEqual(box[1],-120)
+
     def test_random_access_and_transform_easing(self):
         keys=[key(0,-.2,0,.8,-10),key(.5,0,-.1,1.0,0),
               key(1,.2,0,1.2,10)]
