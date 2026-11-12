@@ -152,6 +152,7 @@ class ContinuousScoreTests(unittest.TestCase):
             self.assertEqual(audio[0]["channels"], 2)
             before = check(plan=story, output=out, expected_voice="none",
                            expected_soundtrack="score")
+            self.assertEqual(before["status"], "passed", before["errors"])
             self.assertNotIn("Continuous score provenance or PCM timing mismatch",
                              before["errors"])
             # Authenticating the original WAV and the report matters even when
