@@ -13,9 +13,11 @@ from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
 
-VERSION = "universal-authored-actor-rig-continuous-world-v3"
+VERSION = "universal-authored-actor-rig-original-opacity-v4"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
+_OPTIONAL_KEYS = frozenset(("opacity",))
+
 
 
 def _real(value, name: str, low: float, high: float) -> float:
@@ -51,8 +53,9 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
         previous = -1.0
         output = []
         for k in keys:
-            if type(k) is not dict or set(k) != _KEYS:
-                raise ValueError("Actor keys must have at/x/y/scale/angle")
+            if (type(k) is not dict or
+                    not _KEYS <= set(k) <= (_KEYS | _OPTIONAL_KEYS)):
+                raise ValueError("Actor keys require at/x/y/scale/angle and optional opacity")
             at = _real(k["at"], "at", 0, 1)
             if at <= previous:
                 raise ValueError("Actor keyframe times must increase")
@@ -62,12 +65,13 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
                 "y": _real(k["y"], "y", -.4, .4),
                 "scale": _real(k["scale"], "scale", .45, 1.75),
                 "angle": _real(k["angle"], "angle", -65, 65),
+                "opacity": _real(k.get("opacity",1.),"opacity",0,1),
             })
             previous = at
         if output[0]["at"] != 0 or output[-1]["at"] != 1:
             raise ValueError("Actor keyframes must span the full scene 0..1")
         if all(all(abs(k[p] - output[0][p]) < 1e-9
-                   for p in ("x", "y", "scale", "angle")) for k in output[1:]):
+                   for p in ("x", "y", "scale", "angle", "opacity")) for k in output[1:]):
             raise ValueError("Static art does not need an actor action track")
         parsed.append({"z": t["z"], "keys": output})
     if links and len(seen) < 2:
@@ -103,7 +107,7 @@ def sampled_pose(keys: list[dict], phase: float) -> dict:
             f = _ease((phase-a["at"])/(b["at"]-a["at"]))
             return {
                 name: (a[name]+(b[name]-a[name])*f)
-                for name in ("x", "y", "scale", "angle")
+                for name in ("x", "y", "scale", "angle", "opacity")
             }
     raise ValueError("Incomplete actor keyframe track")
 
@@ -139,7 +143,7 @@ def validate_cut_continuity(story: dict) -> int:
             last=track["keys"][-1]
             first=new[z]["keys"][0]
             if any(abs(last[k]-first[k]) > 1e-8
-                   for k in ("x","y","scale","angle")):
+                   for k in ("x","y","scale","angle","opacity")):
                 raise ValueError(
                     "A repeated original actor cannot jump between adjacent scenes")
         count+=1
@@ -211,6 +215,10 @@ class RiggedArtScene:
             if abs(pose["angle"]) > 1e-5:
                 transformed = transformed.rotate(
                     pose["angle"],resample=Image.Resampling.BICUBIC,expand=True)
+            if pose["opacity"] < .999999:
+                transformed.putalpha(
+                    transformed.getchannel("A").point(
+                        lambda a:round(a*pose["opacity"])))
             result.alpha_composite(
                 transformed,(round(cx-transformed.width/2),
                              round(cy-transformed.height/2)))
