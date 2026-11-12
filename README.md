@@ -1,8 +1,10 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Nouveau lot V2 (opt-in) : [ScoreComposer — musique originale continue 48 kHz stéréo, sans reset entre scènes](docs/LOT4_SCORE_COMPOSER_CONTINUOUS_V1_2026-11-12.md).** Accessible avec `--soundtrack score` ou le choix `score` dans l'Action Android, profil documentaire par défaut. Les rapports SHA-256 du WAV et les vérifications AAC sont intégrés ; qualité artistique à évaluer à l'écoute.
+
 **Pipeline audiovisuel V2 : [Foley causal synchronisé dans le MP4 final](docs/LOT3_FOLEY_CAUSAL_FINAL_AAC_V1_2026-11-11.md)** (WAV stéréo 48 kHz, événement visuel source, mix voix/musique, QA SHA-256). Implémentation opt-in, validation CI et audition humaine distinctes.
 
-**Animation narrative V2, optionnelle : [générer automatiquement un monde scientifique persistant dans cinq thèmes](docs/LOT1A_AUTOMATIC_SCIENCE_WORLD_V2.md).** Depuis le workflow One-click, cocher `continuous_world` uniquement pour des Shorts scientifiques originaux à cinq étapes validées. Les bruitages sont actuellement des repères temporels, pas encore mixés au MP4 final.
+**Animation narrative V2, optionnelle : [générer automatiquement un monde scientifique persistant dans cinq thèmes](docs/LOT1A_AUTOMATIC_SCIENCE_WORLD_V2.md).** Depuis le workflow One-click, cocher `continuous_world` uniquement pour des Shorts scientifiques originaux à cinq étapes validées. Les bruitages explicitement configurés sont maintenant intégrés dans le mix AAC final ; sans événement déclaré, aucun bruitage causal n'est fabriqué.
 
 **V2 : [MasterTimeline persistante, événements visuels/audio et véritable pilote H.264/AAC](docs/LOT1_MASTER_TIMELINE_PERSISTANTE_V1_2026-11-11.md).** Ce premier moteur est disponible pour les futurs renderers sans remplacer encore le pipeline narré actuel.
 
