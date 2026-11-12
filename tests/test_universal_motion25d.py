@@ -46,6 +46,18 @@ class CinematicMotionStageTests(unittest.TestCase):
                 self.assertNotEqual(b.tobytes(),c.tobytes())
                 self.assertEqual(image(30).tobytes(),b.tobytes())
 
+    def test_small_subpixel_columns_never_create_inverted_rectangles(self):
+        # The full encoded release starts at frame 0, not just key frames.
+        # Test every vulnerable first-frame / growth transition at 720 width.
+        for kind in ("compare","measure"):
+            for frame in range(0,60):
+                with self.subTest(kind=kind,frame=frame):
+                    pic=render_stage(
+                        beat=beat(kind),frame=frame,first=0,last=240,
+                        width=590,height=512,palette=PALETTE,
+                        value_ratio=frame/240 if kind=="measure" else None)
+                    self.assertEqual(pic.size,(590,512))
+
     def test_data_drives_both_quantity_and_geometry(self):
         # The same authored source max yields a fixed output at a fixed ratio.
         before=self.sample("measure",30,ratio=.2)
