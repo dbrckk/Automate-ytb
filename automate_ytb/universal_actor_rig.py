@@ -15,7 +15,7 @@ from .optical_motion25d import translate_subpixel
 from .universal_joint_hierarchy import (
     resolved_actor_geometry, validate_joint_tree)
 
-VERSION = "universal-authored-actor-rig-attached-hierarchy-v5"
+VERSION = "universal-authored-actor-rig-safe-overscan-framing-v6"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -112,6 +112,85 @@ def _ease(t: float) -> float:
     return t*t*(3-2*t)
 
 
+def _extend_edge(source: Image.Image, margin: int) -> Image.Image:
+    """Repeat authored edge pixels into a bounded camera overscan area.
+
+    A blossom may move a little beyond the original illustration viewport.
+    The picture must not be truncated *before* the camera can frame it.
+    The extensions are real source pixels, not invented new scene objects.
+    """
+    w,h=source.size
+    out=Image.new("RGBA",(w+margin*2,h+margin*2))
+    out.alpha_composite(source,(margin,margin))
+    out.alpha_composite(source.crop((0,0,1,h)).resize(
+        (margin,h),Image.Resampling.NEAREST),(0,margin))
+    out.alpha_composite(source.crop((w-1,0,w,h)).resize(
+        (margin,h),Image.Resampling.NEAREST),(margin+w,margin))
+    out.alpha_composite(source.crop((0,0,w,1)).resize(
+        (w,margin),Image.Resampling.NEAREST),(margin,0))
+    out.alpha_composite(source.crop((0,h-1,w,h)).resize(
+        (w,margin),Image.Resampling.NEAREST),(margin,margin+h))
+    for x,y,color in (
+        (0,0,source.getpixel((0,0))),
+        (w+margin,0,source.getpixel((w-1,0))),
+        (0,h+margin,source.getpixel((0,h-1))),
+        (w+margin,h+margin,source.getpixel((w-1,h-1)))):
+        out.paste(color,(x,y,x+margin,y+margin))
+    return out
+
+
+def fit_actor_camera(size: tuple[int,int], geometry: dict,
+                     phase: float, overscan: int) -> tuple[int,int,int,int]:
+    """Bounded camera crop containing authored rotated actor silhouettes.
+
+    Operates on actual resolved parent-child actor transforms, not an average
+    of object centers. Returns source-world crop coordinates (may be negative).
+    Zoom can withdraw slightly if an extended wing/flower needs headroom.
+    """
+    if not geometry or not 0<=phase<=1 or not math.isfinite(phase):
+        raise ValueError("Valid authored actor geometry is required")
+    w,h=size
+    if type(overscan) is not int or overscan<=0:
+        raise ValueError("Invalid bounded camera overscan")
+    edges=[]
+    for item in geometry.values():
+        cx,cy=item["centre"]
+        sw,sh=item["spriteSize"]
+        angle=math.radians(item["angle"])
+        ax=abs(math.cos(angle))*sw/2+abs(math.sin(angle))*sh/2
+        ay=abs(math.sin(angle))*sw/2+abs(math.cos(angle))*sh/2
+        edges.append((cx-ax,cy-ay,cx+ax,cy+ay))
+    xmin=min(p[0] for p in edges)
+    ymin=min(p[1] for p in edges)
+    xmax=max(p[2] for p in edges)
+    ymax=max(p[3] for p in edges)
+    room_x=w*.045
+    room_y=h*.045
+    desired=1.08+.18*phase*phase*(3-2*phase)
+    possible=min(w/max(1,xmax-xmin+room_x*2),
+                 h/max(1,ymax-ymin+room_y*2))
+    zoom=max(.78,min(desired,possible))
+    cw=min(w+2*overscan,max(16,round(w/zoom)))
+    ch=min(h+2*overscan,max(16,round(h/zoom)))
+    # Track the whole visible silhouette with a weak stable-centre prior.
+    focus_x=.12*(w/2)+.88*(xmin+xmax)/2
+    focus_y=.12*(h/2)+.88*(ymin+ymax)/2
+    def place(focus,lo,hi,crop,stage,pad,room):
+        world_min=-pad
+        world_max=stage+pad-crop
+        desired_start=max(world_min,min(world_max,round(focus-crop/2)))
+        # Keep the padded silhouette fully visible whenever geometrically
+        # possible without forcing a jump between adjacent narration shots.
+        allowed_min=max(world_min,math.ceil(hi+room-crop))
+        allowed_max=min(world_max,math.floor(lo-room))
+        if allowed_min<=allowed_max:
+            return max(allowed_min,min(allowed_max,desired_start))
+        return desired_start
+    left=place(focus_x,xmin,xmax,cw,w,overscan,room_x)
+    top=place(focus_y,ymin,ymax,ch,h,overscan,room_y)
+    return left,top,cw,ch
+
+
 def sampled_pose(keys: list[dict], phase: float) -> dict:
     """No frame history: random access, replay and seek produce equal pixels."""
     if not math.isfinite(phase) or not 0 <= phase <= 1:
@@ -137,8 +216,12 @@ def same_authored_actor_world(a: dict, b: dict) -> bool:
     if not a.get("actorTracks") or not b.get("actorTracks"):
         return False
     def ids(beat):
-        layers=tuple(sorted((layer["z"],layer["file"])
-                            for layer in beat["visualLayers"]))
+        from .universal_vector_art import vector_sha256
+        layers=tuple(sorted(
+            [(layer["z"],"file:"+layer["file"])
+             for layer in beat.get("visualLayers",[])] +
+            [(layer["z"],"vector:"+layer["id"]+":"+vector_sha256(layer))
+             for layer in beat.get("visualVectors",[])]))
         actors=tuple(sorted(track["z"] for track in beat["actorTracks"]))
         return layers,actors
     return ids(a)==ids(b)
@@ -181,6 +264,12 @@ class RiggedArtScene:
             if "parentZ" in t}
         self.links = tuple(links)
         self.camera_window = None
+        # Reserve camera room for animated petals, wings and long tools.
+        # Pre-extend only static backdrops once, never once per video frame.
+        self.overscan=round(max(self.size)*.30)
+        self.extended_layers={
+            layer.z:_extend_edge(layer.image,self.overscan)
+            for layer in self.layers if layer.z not in self.tracks}
         self.crops = {}
         for layer in self.layers:
             if layer.z not in self.tracks:
@@ -217,14 +306,17 @@ class RiggedArtScene:
         camera_smooth=_ease(camera_phase)
         cam_x = 28*(camera_smooth*2-1)
         cam_y = 12*math.sin(math.pi*camera_phase)
-        result = Image.new("RGBA", self.size)
+        w_stage,h_stage=self.size
+        margin=self.overscan
+        result = Image.new("RGBA",(w_stage+2*margin,h_stage+2*margin))
         centres = {}
         geometries = {}
         for layer in self.layers:
             dx=cam_x*layer.parallax_x
             dy=cam_y*layer.parallax_y
             if layer.z not in self.tracks:
-                result.alpha_composite(translate_subpixel(layer.image,dx,dy))
+                result.alpha_composite(translate_subpixel(
+                    self.extended_layers[layer.z],dx,dy))
                 continue
             pose=sampled_pose(self.tracks[layer.z],phase)
             sprite,centre=self.crops[layer.z]
@@ -256,11 +348,12 @@ class RiggedArtScene:
                 transformed=workspace.rotate(
                     angle,resample=Image.Resampling.BICUBIC,expand=False)
                 result.alpha_composite(
-                    transformed,(round(joint_x-side/2),round(joint_y-side/2)))
+                    transformed,(round(joint_x+margin-side/2),
+                                 round(joint_y+margin-side/2)))
             else:
                 result.alpha_composite(
-                    transformed,(round(joint_x-px*w),
-                                 round(joint_y-py*h)))
+                    transformed,(round(joint_x+margin-px*w),
+                                 round(joint_y+margin-py*h)))
         if self.links:
             d = ImageDraw.Draw(result,"RGBA")
             for edge in self.links:
@@ -268,6 +361,8 @@ class RiggedArtScene:
                 if pulse <= 0:
                     continue
                 a,b = centres[edge["fromZ"]],centres[edge["toZ"]]
+                a=(a[0]+margin,a[1]+margin)
+                b=(b[0]+margin,b[1]+margin)
                 w = max(1,round(self.size[0]*.009))
                 d.line((round(a[0]),round(a[1]),round(b[0]),round(b[1])),
                        fill=(254,213,142,round(pulse*215)),width=w)
@@ -277,18 +372,8 @@ class RiggedArtScene:
                                round(x+radius),round(y+radius)),
                               outline=(255,235,173,round(pulse*205)),
                               width=max(1,w//2))
-        # A deterministic follow-camera uses the actual on-screen actor
-        # centres, not a static slide-sized crop or a fictitious subject.
-        # The crop stays strictly inside the authored source world.
-        zoom=1.08+.18*camera_smooth
-        w,h=self.size
-        crop_w=max(16,round(w/zoom))
-        crop_h=max(16,round(h/zoom))
-        focus_x=sum(x for x,_ in centres.values())/len(centres)
-        focus_y=sum(y for _,y in centres.values())/len(centres)
-        focus_x=.42*(w/2)+.58*focus_x
-        focus_y=.42*(h/2)+.58*focus_y
-        left=max(0,min(w-crop_w,round(focus_x-crop_w/2)))
-        top=max(0,min(h-crop_h,round(focus_y-crop_h/2)))
-        crop=result.crop((left,top,left+crop_w,top+crop_h))
+        left,top,crop_w,crop_h=fit_actor_camera(
+            self.size,geometries,camera_phase,margin)
+        crop=result.crop((margin+left,margin+top,
+                          margin+left+crop_w,margin+top+crop_h))
         return crop.resize(self.size,Image.Resampling.BICUBIC)

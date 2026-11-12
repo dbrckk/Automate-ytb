@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v8-hierarchical-actors"
+VERSION = "universal-kinetic-cinematic-stage-v9-original-vector-art"
 
 
 def _text(value, name, limit=120):
@@ -110,19 +110,22 @@ def read_story(path: Path) -> dict:
                 raise ValueError("Only explicit HTTPS fact sources accepted")
         current["sources"] = sources[:]
         from .universal_art25d import validate_layers
+        from .universal_vector_art import validate_vector_layers
         current["visualLayers"] = validate_layers(beat.get("visualLayers"))
+        current["visualVectors"] = validate_vector_layers(
+            beat.get("visualVectors"),current["visualLayers"])
         current["visualQuery"] = (
             _text(beat["visualQuery"], "visual query", 120)
             if beat.get("visualQuery") is not None else None)
         if (current["visualQuery"] is not None
                 and not current["visualQuery"].isprintable()):
             raise ValueError("Artwork query must be one printable line")
-        if current["visualLayers"] and kind in ("measure", "compare"):
-            raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
+        if (current["visualLayers"] or current["visualVectors"]) and kind in ("measure", "compare"):
+            raise ValueError("Numeric beats require grounded data diagrams rather than decoration")
         from .universal_actor_rig import validate_actor_rig
         current["actorTracks"],current["actorLinks"]=validate_actor_rig(
             beat.get("actorTracks"),beat.get("actorLinks"),
-            current["visualLayers"])
+            current["visualLayers"]+current["visualVectors"])
         validated.append(current)
     # Foley validates at most 64 real cues. Every beat contributes its own
     # entry cue; a designed actor link contributes one contact cue.
@@ -513,7 +516,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "sound":"original-event-locked-foley","mix":mix,
         "authoredContactCues":sum(len(b["actorLinks"]) for b in story["beats"]),
         "artwork":{
-            "engine":"scene25d-multilayer-owned-art",
+            "engine":"scene25d-original-vector-and-raster-illustrations",
+            "vectorArtEngine":"original-bounded-antialiased-vector-layers-v1",
+            "originalVectorLayers":sum(len(b["visualVectors"]) for b in story["beats"]),
+            "originalVectorShapes":sum(sum(len(l["shapes"]) for l in b["visualVectors"])
+                                        for b in story["beats"]),
             "scenesWithRealAuthoredArtwork":len(art_scenes),
             "approvedLayerProvenance":art_provenance,
             "authoredActionActors":sum(len(b["actorTracks"]) for b in story["beats"]),
