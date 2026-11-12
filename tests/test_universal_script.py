@@ -75,7 +75,7 @@ class UniversalScriptTests(unittest.TestCase):
 
     def test_invalid_input_does_not_fabricate_beats(self):
         for script in ("Hello.", "One short original sentence only.",
-                       "Something unsafe.\\x00Second sentence."):
+                       "Something unsafe.\x00Second sentence."):
             with self.subTest(script=script), self.assertRaises(ValueError):
                 compile_original_script(topic="Any subject",script=script)
         with self.assertRaises(ValueError):
