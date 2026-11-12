@@ -137,8 +137,12 @@ def same_authored_actor_world(a: dict, b: dict) -> bool:
     if not a.get("actorTracks") or not b.get("actorTracks"):
         return False
     def ids(beat):
-        layers=tuple(sorted((layer["z"],layer["file"])
-                            for layer in beat["visualLayers"]))
+        from .universal_vector_art import vector_sha256
+        layers=tuple(sorted(
+            [(layer["z"],"file:"+layer["file"])
+             for layer in beat.get("visualLayers",[])] +
+            [(layer["z"],"vector:"+layer["id"]+":"+vector_sha256(layer))
+             for layer in beat.get("visualVectors",[])]))
         actors=tuple(sorted(track["z"] for track in beat["actorTracks"]))
         return layers,actors
     return ids(a)==ids(b)
