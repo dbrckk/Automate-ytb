@@ -163,6 +163,8 @@ class VectorCinematicTests(unittest.TestCase):
             data=read_story(path)
             scenes,origin=load_art_scenes(data,path,360,640)
             self.assertEqual(sorted(scenes),[0,1])
+            self.assertEqual(scenes[0].size,
+                             (360-2*round(360*.045),round(640*.685)))
             self.assertEqual(len(origin),6)
             self.assertTrue(all(p["sourceType"]=="original-inline-vector"
                                 for p in origin))
@@ -182,6 +184,9 @@ class VectorCinematicTests(unittest.TestCase):
             picture=frame_image(data,timeline,[0,90,180],105,360,640,
                                 art_scenes=scenes)
             self.assertEqual(picture.size,(360,640))
+            # The authored scene reaches the lower mobile picture area,
+            # rather than leaving a large unillustrated bottom slide.
+            self.assertNotEqual(picture.getpixel((180,575)),(10,17,38))
             self.assertNotEqual(a.tobytes(),render_art_stage(
                 scenes[0],9,0,90).tobytes())
 
