@@ -13,10 +13,12 @@ dependencies = ["Pillow>=10.4,<13"]
 images = ["huggingface_hub>=0.36,<2"]
 speech = ["kokoro==0.9.4", "numpy>=1.26,<3"]
 motion = ["numpy>=1.26,<3", "opencv-python-headless==4.11.0.86"]
+foreground = ["rembg[cpu]>=2.0,<3"]
 
 [project.scripts]
 automate-ytb = "automate_ytb.cli:main"
 automate-ytb-autoedit = "automate_ytb.auto_edit:main"
+automate-ytb-short = "automate_ytb.universal_kinetic:main"
 
 [tool.setuptools.packages.find]
 include = ["automate_ytb*"]

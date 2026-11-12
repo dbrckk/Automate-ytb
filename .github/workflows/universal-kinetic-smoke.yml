@@ -1,0 +1,182 @@
+name: Universal kinetic Short — real MP4/audio smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: Original topic (requires a corresponding original_script)
+        type: string
+        required: false
+      original_script:
+        description: Two or more original narration paragraphs or sentences
+        type: string
+        required: false
+      language:
+        description: Narration language
+        type: choice
+        options: [en, fr]
+        default: en
+      voice:
+        description: Free neural Kokoro voice (default) or fast eSpeak draft
+        type: choice
+        options: [kokoro, espeak]
+        default: kokoro
+      commons_art:
+        description: Search Commons for CC0 pictures (online, editorial review required)
+        type: boolean
+        default: false
+      segment_art:
+        description: Optional local U2NetP foreground separation for approved CC0 images
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - automate_ytb/universal_kinetic.py
+      - automate_ytb/universal_script.py
+      - automate_ytb/universal_art25d.py
+      - automate_ytb/universal_actor_rig.py
+      - automate_ytb/universal_motion25d.py
+      - automate_ytb/universal_commons.py
+      - automate_ytb/scene25d.py
+      - automate_ytb/surface25d.py
+      - automate_ytb/master_timeline.py
+      - automate_ytb/foley_engine.py
+      - automate_ytb/narration.py
+      - automate_ytb/shorts_delivery.py
+      - tests/test_universal_kinetic.py
+      - tests/test_universal_script.py
+      - tests/test_universal_art25d.py
+      - tests/test_universal_actor_rig.py
+      - tests/test_universal_motion25d.py
+      - tests/test_universal_commons.py
+      - examples/universal_seed_story.en.txt
+      - examples/universal_web_request.json
+      - examples/build_original_actor_rig_sample.py
+      - .github/workflows/universal-kinetic-smoke.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universal-kinetic-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-animation-and-audio:
+    name: Original non-science vertical Short
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free dependencies
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v espeak-ng >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check -e .
+      - name: Cache open neural narration model (requested runs only)
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install optional free neural narration (requested runs only)
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Install optional local U2NetP foreground inference (manual only)
+        if: github.event_name == 'workflow_dispatch' && inputs.segment_art
+        run: |
+          python -m pip install --disable-pip-version-check -e '.[foreground]'
+      - name: Validate all story grammars and real video
+        run: |
+          python -m unittest discover -s tests -p test_universal_kinetic.py -v
+          python -m unittest discover -s tests -p test_universal_script.py -v
+          python -m unittest discover -s tests -p test_universal_art25d.py -v
+          python -m unittest discover -s tests -p test_universal_actor_rig.py -v
+          python -m unittest discover -s tests -p test_universal_motion25d.py -v
+          python -m unittest discover -s tests -p test_universal_commons.py -v
+      - name: Render real original 9:16 topic video
+        env:
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_SCRIPT: ${{ inputs.original_script }}
+          YT_LANGUAGE: ${{ inputs.language }}
+          YT_VOICE: ${{ inputs.voice }}
+          YT_COMMONS_ART: ${{ inputs.commons_art }}
+          YT_SEGMENT_ART: ${{ inputs.segment_art }}
+        run: |
+          mkdir -p build/universal
+          COMMONS_ARGS=()
+          if [ "${YT_COMMONS_ART:-false}" = "true" ]; then
+            COMMONS_ARGS=(--commons-art)
+          fi
+          if [ "${YT_SEGMENT_ART:-false}" = "true" ]; then
+            if [ "${YT_COMMONS_ART:-false}" != "true" ]; then
+              echo "::error::Local foreground removal requires commons_art=true" >&2
+              exit 2
+            fi
+            COMMONS_ARGS+=(--segment-art)
+          fi
+          if [ -n "$YT_TOPIC" ] || [ -n "$YT_SCRIPT" ]; then
+            if [ -z "$YT_TOPIC" ] || [ -z "$YT_SCRIPT" ]; then
+              echo "::error::Supply BOTH topic and original_script; facts cannot be invented from a title." >&2
+              exit 2
+            fi
+            printf '%s' "$YT_SCRIPT" > build/universal/original-script.txt
+            automate-ytb-short --topic "$YT_TOPIC" --script-file build/universal/original-script.txt --language "${YT_LANGUAGE:-en}" --output build/universal/web-request-original.mp4 --voice "${YT_VOICE:-espeak}" --width 720 "${COMMONS_ARGS[@]}"
+          else
+            automate-ytb-short --brief examples/universal_web_request.json --output build/universal/web-request-original.mp4 --voice espeak --width 720 "${COMMONS_ARGS[@]}"
+          fi
+      - name: Render another subject from original narration alone
+        run: |
+          automate-ytb-short --topic "A seed comes to life" --script-file examples/universal_seed_story.en.txt --language en --output build/universal/seed-story-original.mp4 --voice espeak --width 720
+      - name: Render a genuine authored 2.5D actor encounter
+        run: |
+          python examples/build_original_actor_rig_sample.py --out-dir build/universal/rig
+          automate-ytb-short --brief build/universal/rig/actor-rig-story.json --output build/universal/actor-rig-original.mp4 --voice espeak --width 720
+      - name: Verify actor actions survive true H.264 + AAC encoding
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/actor-rig-original.mp4 --require-audio --report build/universal/actor-rig-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('build/universal/actor-rig-original.json').read_text())
+          assert report['artwork']['authoredActionActors']==4
+          assert report['artwork']['authoredActorLinks']==2
+          assert report['authoredContactCues']==2
+          assert len(report['artwork']['continuousCameraGroups'])==1
+          assert report['delivery']['status']=='passed'
+          assert not report['publicationApproved']
+          PY
+      - name: Independently verify technical delivery
+        run: |
+          python -m automate_ytb.shorts_delivery \
+            --video build/universal/web-request-original.mp4 \
+            --require-audio \
+            --report build/universal/delivery-qa.json
+      - name: Verify second subject real MP4 with voice
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/seed-story-original.mp4 --require-audio --report build/universal/seed-story-delivery-qa.json
+      - name: Measure actual encoded motion and loudness
+        run: |
+          python scripts/benchmark_audiovisual.py \
+            --video build/universal/web-request-original.mp4 \
+            --label universal-original-kinetic \
+            --video build/universal/seed-story-original.mp4 \
+            --label universal-original-nature \
+            --video build/universal/actor-rig-original.mp4 \
+            --label original-authored-actor-rig \
+            --output build/universal/audiovisual-benchmark.json
+      - name: Download verified original media (not private benchmark)
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-kinetic-original-short
+          path: build/universal/
+          if-no-files-found: error
+          retention-days: 14

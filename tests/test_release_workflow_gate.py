@@ -27,17 +27,27 @@ class ScienceReleaseWorkflowTests(unittest.TestCase):
             "  workflow_dispatch:\n", 1)[0]
         dispatch = self.production.split("  workflow_dispatch:\n", 1)[1].split(
             "\npermissions:\n", 1)[0]
-        names = re.findall(r"(?m)^      ([a-z][a-z_]*):\s*$", call)
-        android = re.findall(r"(?m)^      ([a-z][a-z_]*):\s*$", dispatch)
+        names = re.findall(r"(?m)^      ([a-z][a-z0-9_]*):\s*$", call)
+        android = re.findall(r"(?m)^      ([a-z][a-z0-9_]*):\s*$", dispatch)
         expected = {
             "topic", "original_script", "character", "style", "language",
             "voice", "voice_style", "voice_name", "soundtrack", "transition",
             "caption_timing", "duration_seconds", "shot_seconds",
             "resolution", "render_profile",
         }
-        self.assertEqual(set(names), expected)
-        self.assertEqual(len(names), len(expected))
-        self.assertEqual(set(android), expected)
+        # The mobile workflow exposes its original required public contract
+        # plus two backwards-compatible opt-in booleans. A future optional
+        # input must not silently remove, rename or weaken required fields.
+        optional = {"cinematic_3d", "continuous_world"}
+        self.assertEqual(set(names), expected | optional)
+        self.assertEqual(len(names), len(expected) + len(optional))
+        self.assertEqual(set(android), expected | optional)
+        self.assertEqual(len(android), len(expected) + len(optional))
+        for name in optional:
+            self.assertRegex(
+                call, rf"(?m)^      {name}:\n        type: boolean\n        required: false\n        default: false$")
+            self.assertRegex(
+                dispatch, rf"(?m)^      {name}:[\s\S]*?        default: false$")
         for name in expected:
             self.assertRegex(
                 call, rf"(?m)^      {name}:\n        type: (?:string|number)\n        required: true$")
