@@ -35,6 +35,7 @@ on:
       - automate_ytb/universal_script.py
       - automate_ytb/universal_art25d.py
       - automate_ytb/universal_actor_rig.py
+      - automate_ytb/universal_joint_hierarchy.py
       - automate_ytb/universal_motion25d.py
       - automate_ytb/universal_commons.py
       - automate_ytb/scene25d.py
@@ -47,6 +48,7 @@ on:
       - tests/test_universal_script.py
       - tests/test_universal_art25d.py
       - tests/test_universal_actor_rig.py
+      - tests/test_universal_joint_hierarchy.py
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
@@ -100,6 +102,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_actor_rig.py -v
+          python -m unittest discover -s tests -p test_universal_joint_hierarchy.py -v
           python -m unittest discover -s tests -p test_universal_motion25d.py -v
           python -m unittest discover -s tests -p test_universal_commons.py -v
       - name: Render real original 9:16 topic video
@@ -148,6 +151,7 @@ jobs:
           from pathlib import Path
           report=json.loads(Path('build/universal/actor-rig-original.json').read_text())
           assert report['artwork']['authoredActionActors']==6
+          assert report['artwork']['attachedActorParts']==2
           assert report['artwork']['authoredActorLinks']==2
           assert report['authoredContactCues']==2
           assert len(report['artwork']['continuousCameraGroups'])==1

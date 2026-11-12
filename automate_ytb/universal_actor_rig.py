@@ -12,8 +12,10 @@ import math
 from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
+from .universal_joint_hierarchy import (
+    resolved_actor_geometry, validate_joint_tree)
 
-VERSION = "universal-authored-actor-rig-joint-pivots-v4"
+VERSION = "universal-authored-actor-rig-attached-hierarchy-v5"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -41,7 +43,7 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
     seen = set()
     for t in tracks:
         if (type(t) is not dict or not {"z", "keys"} <= set(t)
-                or set(t) - {"z", "keys", "pivot"}
+                or set(t) - {"z", "keys", "pivot", "parentZ", "attach"}
                 or type(t["z"]) is not int or t["z"] not in foreground
                 or t["z"] in seen):
             raise ValueError("Actors require a unique non-background approved layer z")
@@ -75,7 +77,19 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
             raise ValueError("Actor pivot must be two normalized coordinates")
         px=_real(pivot[0],"pivot x",0,1)
         py=_real(pivot[1],"pivot y",0,1)
-        parsed.append({"z": t["z"], "keys": output, "pivot":[px,py]})
+        result={"z":t["z"],"keys":output,"pivot":[px,py]}
+        if "parentZ" in t or "attach" in t:
+            if (set(t) & {"parentZ", "attach"}) != {"parentZ","attach"}:
+                raise ValueError("A joint needs a parentZ and an attach point")
+            anchor=t["attach"]
+            if type(anchor) is not list or len(anchor)!=2:
+                raise ValueError("Joint attachment must be a normalized 2D point")
+            result["parentZ"]=t["parentZ"]
+            result["attach"]=[
+                _real(anchor[0],"attach x",0,1),
+                _real(anchor[1],"attach y",0,1)]
+        parsed.append(result)
+    validate_joint_tree(parsed)
     if links and len(seen) < 2:
         raise ValueError("An authored interaction needs two independently rigged actors")
     edges = []
@@ -141,6 +155,9 @@ def validate_cut_continuity(story: dict) -> int:
         for z,track in old.items():
             if track.get("pivot",[0.5,0.5]) != new[z].get("pivot",[0.5,0.5]):
                 raise ValueError("A repeated original joint cannot change its pivot")
+            if (track.get("parentZ")!=new[z].get("parentZ") or
+                    track.get("attach")!=new[z].get("attach")):
+                raise ValueError("A repeated original child cannot change its attachment")
             last=track["keys"][-1]
             first=new[z]["keys"][0]
             if any(abs(last[k]-first[k]) > 1e-8
@@ -159,6 +176,9 @@ class RiggedArtScene:
         self.layers = tuple(sorted(layers, key=lambda item: item.z))
         self.tracks = {t["z"]: t["keys"] for t in tracks}
         self.pivots = {t["z"]: t.get("pivot",[0.5,0.5]) for t in tracks}
+        self.parents = {
+            t["z"]:(t["parentZ"],t["attach"]) for t in tracks
+            if "parentZ" in t}
         self.links = tuple(links)
         self.camera_window = None
         self.crops = {}
@@ -199,29 +219,34 @@ class RiggedArtScene:
         cam_y = 12*math.sin(math.pi*camera_phase)
         result = Image.new("RGBA", self.size)
         centres = {}
+        geometries = {}
         for layer in self.layers:
-            dx = cam_x*layer.parallax_x
-            dy = cam_y*layer.parallax_y
+            dx=cam_x*layer.parallax_x
+            dy=cam_y*layer.parallax_y
             if layer.z not in self.tracks:
-                # Keep all untouched authored art/parallax exactly as before.
-                result.alpha_composite(translate_subpixel(layer.image, dx, dy))
+                result.alpha_composite(translate_subpixel(layer.image,dx,dy))
                 continue
-            pose = sampled_pose(self.tracks[layer.z], phase)
-            sprite, centre = self.crops[layer.z]
-            cx = centre[0]+dx+pose["x"]*self.size[0]
-            cy = centre[1]+dy+pose["y"]*self.size[1]
-            centres[layer.z] = (cx,cy)
-            w = max(1,round(sprite.width*pose["scale"]))
-            h = max(1,round(sprite.height*pose["scale"]))
-            transformed = sprite.resize((w,h),Image.Resampling.BICUBIC)
+            pose=sampled_pose(self.tracks[layer.z],phase)
+            sprite,centre=self.crops[layer.z]
+            parent_info=self.parents.get(layer.z)
+            parent_geometry=(
+                geometries[parent_info[0]] if parent_info else None)
+            geometry=resolved_actor_geometry(
+                layer=(centre[0],centre[1],layer.parallax_x,layer.parallax_y),
+                pose=pose,pivot=self.pivots[layer.z],
+                stage_size=self.size,sprite_size=sprite.size,
+                camera_x=cam_x,camera_y=cam_y,
+                parent=parent_geometry,
+                attach=parent_info[1] if parent_info else None)
+            geometries[layer.z]=geometry
+            centres[layer.z]=geometry["centre"]
+            w=max(1,round(geometry["spriteSize"][0]))
+            h=max(1,round(geometry["spriteSize"][1]))
+            transformed=sprite.resize((w,h),Image.Resampling.BICUBIC)
             px,py=self.pivots[layer.z]
-            # The pivot is fixed in world space while the original subject
-            # rotates around its actual authored joint, not its bounding box.
-            joint_x=cx+(px-.5)*w
-            joint_y=cy+(py-.5)*h
-            if abs(pose["angle"]) > 1e-5:
-                # A padded transparent workspace guarantees that all corners
-                # remain visible when a limb rotates around an edge joint.
+            joint_x,joint_y=geometry["joint"]
+            angle=geometry["angle"]
+            if abs(angle)>1e-5:
                 side=math.ceil(math.hypot(w,h)*2)+4
                 workspace=Image.new("RGBA",(side,side))
                 origin=(side/2,side/2)
@@ -229,13 +254,13 @@ class RiggedArtScene:
                     transformed,(round(origin[0]-px*w),
                                  round(origin[1]-py*h)))
                 transformed=workspace.rotate(
-                    pose["angle"],resample=Image.Resampling.BICUBIC,
-                    expand=False)
+                    angle,resample=Image.Resampling.BICUBIC,expand=False)
                 result.alpha_composite(
                     transformed,(round(joint_x-side/2),round(joint_y-side/2)))
             else:
                 result.alpha_composite(
-                    transformed,(round(cx-w/2),round(cy-h/2)))
+                    transformed,(round(joint_x-px*w),
+                                 round(joint_y-py*h)))
         if self.links:
             d = ImageDraw.Draw(result,"RGBA")
             for edge in self.links:
