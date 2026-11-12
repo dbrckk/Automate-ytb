@@ -155,7 +155,8 @@ def build(out: Path) -> Path:
              "steps":["Connection","Response","Complete"],
              "visualLayers":[layer("background",5,.15,.06),
                              layer("source",45,.72,.38),
-                             layer("receiver",78,1.1,.62)],
+                             layer("receiver",78,1.1,.62),
+                             layer("antenna",90,.72,.38)],
              "actorTracks":[
                  {"z":45,"keys":[
                      key(0,.06,-.06,1.01,9),
