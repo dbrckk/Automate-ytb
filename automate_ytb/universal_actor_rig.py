@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
 
-VERSION = "universal-authored-actor-rig-continuous-world-v3"
+VERSION = "universal-authored-actor-rig-joint-pivots-v4"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -40,7 +40,8 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
     parsed = []
     seen = set()
     for t in tracks:
-        if (type(t) is not dict or set(t) != {"z", "keys"}
+        if (type(t) is not dict or not {"z", "keys"} <= set(t)
+                or set(t) - {"z", "keys", "pivot"}
                 or type(t["z"]) is not int or t["z"] not in foreground
                 or t["z"] in seen):
             raise ValueError("Actors require a unique non-background approved layer z")
@@ -69,7 +70,12 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
         if all(all(abs(k[p] - output[0][p]) < 1e-9
                    for p in ("x", "y", "scale", "angle")) for k in output[1:]):
             raise ValueError("Static art does not need an actor action track")
-        parsed.append({"z": t["z"], "keys": output})
+        pivot=t.get("pivot", [0.5,0.5])
+        if (type(pivot) is not list or len(pivot)!=2):
+            raise ValueError("Actor pivot must be two normalized coordinates")
+        px=_real(pivot[0],"pivot x",0,1)
+        py=_real(pivot[1],"pivot y",0,1)
+        parsed.append({"z": t["z"], "keys": output, "pivot":[px,py]})
     if links and len(seen) < 2:
         raise ValueError("An authored interaction needs two independently rigged actors")
     edges = []
@@ -133,6 +139,8 @@ def validate_cut_continuity(story: dict) -> int:
         old={t["z"]:t for t in before["actorTracks"]}
         new={t["z"]:t for t in after["actorTracks"]}
         for z,track in old.items():
+            if track.get("pivot",[0.5,0.5]) != new[z].get("pivot",[0.5,0.5]):
+                raise ValueError("A repeated original joint cannot change its pivot")
             last=track["keys"][-1]
             first=new[z]["keys"][0]
             if any(abs(last[k]-first[k]) > 1e-8
@@ -150,6 +158,7 @@ class RiggedArtScene:
         self.size = scene.size
         self.layers = tuple(sorted(layers, key=lambda item: item.z))
         self.tracks = {t["z"]: t["keys"] for t in tracks}
+        self.pivots = {t["z"]: t.get("pivot",[0.5,0.5]) for t in tracks}
         self.links = tuple(links)
         self.camera_window = None
         self.crops = {}
@@ -205,12 +214,28 @@ class RiggedArtScene:
             w = max(1,round(sprite.width*pose["scale"]))
             h = max(1,round(sprite.height*pose["scale"]))
             transformed = sprite.resize((w,h),Image.Resampling.BICUBIC)
+            px,py=self.pivots[layer.z]
+            # The pivot is fixed in world space while the original subject
+            # rotates around its actual authored joint, not its bounding box.
+            joint_x=cx+(px-.5)*w
+            joint_y=cy+(py-.5)*h
             if abs(pose["angle"]) > 1e-5:
-                transformed = transformed.rotate(
-                    pose["angle"],resample=Image.Resampling.BICUBIC,expand=True)
-            result.alpha_composite(
-                transformed,(round(cx-transformed.width/2),
-                             round(cy-transformed.height/2)))
+                # A padded transparent workspace guarantees that all corners
+                # remain visible when a limb rotates around an edge joint.
+                side=math.ceil(math.hypot(w,h)*2)+4
+                workspace=Image.new("RGBA",(side,side))
+                origin=(side/2,side/2)
+                workspace.alpha_composite(
+                    transformed,(round(origin[0]-px*w),
+                                 round(origin[1]-py*h)))
+                transformed=workspace.rotate(
+                    pose["angle"],resample=Image.Resampling.BICUBIC,
+                    expand=False)
+                result.alpha_composite(
+                    transformed,(round(joint_x-side/2),round(joint_y-side/2)))
+            else:
+                result.alpha_composite(
+                    transformed,(round(cx-w/2),round(cy-h/2)))
         if self.links:
             d = ImageDraw.Draw(result,"RGBA")
             for edge in self.links:

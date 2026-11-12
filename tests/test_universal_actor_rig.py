@@ -113,6 +113,48 @@ class AuthoredActorRigTests(unittest.TestCase):
             with self.subTest(link=bad),self.assertRaises(ValueError):
                 validate_actor_rig(art["actorTracks"],bad,art["visualLayers"])
 
+    def test_joint_pivots_are_bounded_and_survive_normalization(self):
+        art=scene_story("A generic articulated illustration")["beats"][0]
+        art["actorTracks"][0]["pivot"]=[.5,.95]
+        tracks,_=validate_actor_rig(
+            art["actorTracks"],art["actorLinks"],art["visualLayers"])
+        self.assertEqual(tracks[0]["pivot"],[.5,.95])
+        for pivot in ([1.2,.5],[-.1,.5],[float("nan"),.5],
+                      [True,.5],["0.5",.5],[.5],(.5,.5)):
+            art["actorTracks"][0]["pivot"]=pivot
+            with self.subTest(pivot=pivot),self.assertRaises(ValueError):
+                validate_actor_rig(
+                    art["actorTracks"],art["actorLinks"],art["visualLayers"])
+
+    def test_rotating_offcentre_joint_keeps_the_attachment_fixed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            original_assets(root/"original")
+            story=scene_story("A simple joint")
+            rig=story["beats"][0]["actorTracks"][0]
+            rig["pivot"]=[.5,1.]
+            rig["keys"]=[key(0,0,0,1,0),key(1,0,0,1,55)]
+            path=root/"story.json"
+            path.write_text(json.dumps(story),encoding="utf8")
+            scenes,_=load_art_scenes(read_story(path),path,360,640)
+            a=render_art_stage(scenes[0],0,0,90)
+            b=render_art_stage(scenes[0],89,0,90)
+            self.assertNotEqual(a.tobytes(),b.tobytes())
+            self.assertEqual(render_art_stage(scenes[0],89,0,90).tobytes(),
+                             b.tobytes())
+            # Reusing the same picture with a different joint across cuts
+            # is rejected rather than creating a discontinuous hinge.
+            beat=story["beats"][0]
+            after=json.loads(json.dumps(beat))
+            for track in after["actorTracks"]:
+                track["keys"][0]=dict(track["keys"][-1],at=0)
+                track["keys"][-1]=dict(track["keys"][-1],at=1,x=.03)
+            after["actorTracks"][0]["pivot"]=[.5,.25]
+            story["beats"]=[beat,after]
+            path.write_text(json.dumps(story),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"pivot"):
+                read_story(path)
+
     def test_random_access_and_transform_easing(self):
         keys=[key(0,-.2,0,.8,-10),key(.5,0,-.1,1.0,0),
               key(1,.2,0,1.2,10)]
