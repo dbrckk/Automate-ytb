@@ -34,6 +34,7 @@ on:
       - automate_ytb/universal_kinetic.py
       - automate_ytb/universal_script.py
       - automate_ytb/universal_art25d.py
+      - automate_ytb/universal_actor_rig.py
       - automate_ytb/universal_motion25d.py
       - automate_ytb/universal_commons.py
       - automate_ytb/scene25d.py
@@ -45,6 +46,7 @@ on:
       - tests/test_universal_kinetic.py
       - tests/test_universal_script.py
       - tests/test_universal_art25d.py
+      - tests/test_universal_actor_rig.py
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
@@ -96,6 +98,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_kinetic.py -v
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
+          python -m unittest discover -s tests -p test_universal_actor_rig.py -v
           python -m unittest discover -s tests -p test_universal_motion25d.py -v
           python -m unittest discover -s tests -p test_universal_commons.py -v
       - name: Render real original 9:16 topic video
