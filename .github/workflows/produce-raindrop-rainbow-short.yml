@@ -1,0 +1,101 @@
+name: Produce original raindrop rainbow Short (Kokoro 2.5D)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/produce-raindrop-rainbow-short.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: original-raindrop-rainbow-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Render narrated original 2.5D science video
+    uses: ./.github/workflows/one-click-preview.yml
+    with:
+      topic: "Inside a Raindrop: How Rainbows Form"
+      original_script: >-
+        White sunlight looks simple, but it holds every color your eyes can see.
+        When that sunlight enters a raindrop, it bends, and different colors begin to spread apart.
+        Inside the raindrop, some of that separated light reflects from its curved back surface.
+        The colored rays leave the drop, bending again as they travel back into the air.
+        Across millions of raindrops, an observer sees a rainbow arc because each color reaches the eye at a different angle.
+      character: "One original transparent glass raindrop and a continuous luminous ray with distinct spectrum colors"
+      style: science
+      language: en
+      voice: kokoro
+      voice_style: expressive
+      voice_name: af_heart
+      soundtrack: ambient
+      transition: adaptive
+      caption_timing: audio
+      duration_seconds: 40
+      shot_seconds: 8
+      resolution: shorts
+      render_profile: high
+      cinematic_3d: false
+      continuous_world: true
+
+  deliver:
+    name: Validate video and publish stable anonymous MP4 link
+    needs: render
+    if: ${{ needs.render.result == 'success' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PREVIEW_SLUG: raindrop-rainbow
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install offline QA decoder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Download exactly this run's verified MP4 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: automate-ytb-free-preview
+          path: incoming
+      - name: Validate technical QA, codecs, captions and complete H.264/AAC decode
+        run: |
+          python scripts/prepare_science_preview_delivery.py \
+            --artifact incoming --output delivered \
+            --slug "$PREVIEW_SLUG" --run-id "$GITHUB_RUN_ID"
+      - name: Publish unreviewed preview only after success
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="science-preview-${PREVIEW_SLUG}-${GITHUB_RUN_ID}"
+          gh release create "$tag" \
+            "delivered/${PREVIEW_SLUG}.mp4" \
+            "delivered/${PREVIEW_SLUG}.srt" \
+            "delivered/${PREVIEW_SLUG}-manifest.json" \
+            --title "UNREVIEWED science preview • Inside a Raindrop" \
+            --notes "Original English narrated 2.5D science Short. Kokoro af_heart, original ambient score, five causal scenes and SRT captions. Technical QA passed. Editorial, scientific and aesthetic review has not been completed. Not published to TikTok or YouTube." \
+            --prerelease --latest=false
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${PREVIEW_SLUG}.mp4"
+          # An asset listed in the GitHub API is NOT enough: download all bytes anonymously.
+          ok=false
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --location --silent --show-error --max-time 180 \
+                 "$url" --output "$RUNNER_TEMP/anonymous.mp4"; then
+              if cmp -s "delivered/${PREVIEW_SLUG}.mp4" "$RUNNER_TEMP/anonymous.mp4"; then
+                ok=true
+                break
+              fi
+            fi
+            sleep 5
+          done
+          [[ "$ok" == true ]] || { echo "::error::Anonymous MP4 integrity check failed"; exit 1; }
+          printf '### Verified direct Android MP4\n%s\n' "$url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep durable video-history index synchronized
+        run: python scripts/update_video_history.py
