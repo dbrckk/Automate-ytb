@@ -143,6 +143,40 @@ class WikimediaCommonsArtTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scenes[0].render(-1,0,90)
 
+    def test_original_subject_mask_has_real_independent_parallax(self):
+        payload=media()
+        mask=Image.new("L",(600,400),0)
+        painter=ImageDraw.Draw(mask)
+        painter.ellipse((185,70,420,330),fill=255)
+        photos,provenance=build_commons_scenes(
+            story(),400,460,
+            query_media=lambda *a:search_cc0(
+                "forest",read_url=lambda *a:json.dumps(api()).encode()),
+            image_media=lambda *a:payload,
+            segment_art=True,mask_subject=lambda im:mask)
+        self.assertEqual(len(photos),1)
+        self.assertTrue(provenance[0]["segmentationRequested"])
+        self.assertTrue(provenance[0]["segmentationApplied"])
+        self.assertEqual(provenance[0]["segmentationModel"],"u2netp")
+        self.assertIsNotNone(photos[0].foreground)
+        a,b=photos[0].render(1,0,90),photos[0].render(50,0,90)
+        self.assertNotEqual(a.tobytes(),b.tobytes())
+        plain=CommonsPhotoScene(
+            title="A",origin=PAGE,creator="Tester",thumbnail=THUMB,
+            sha256="0"*64,image=photos[0].image,width=400,height=460)
+        self.assertNotEqual(photos[0].render(50,0,90).tobytes(),
+                            plain.render(50,0,90).tobytes())
+        # An unusable all-white mask must fail closed to simple photo motion.
+        blank=Image.new("L",(600,400),255)
+        fallback,manifest=build_commons_scenes(
+            story(),400,460,
+            query_media=lambda *a:search_cc0(
+                "forest",read_url=lambda *a:json.dumps(api()).encode()),
+            image_media=lambda *a:payload,
+            segment_art=True,mask_subject=lambda im:blank)
+        self.assertFalse(manifest[0]["segmentationApplied"])
+        self.assertIsNone(fallback[0].foreground)
+
     def test_no_license_no_source_no_photo_does_not_break_video(self):
         with patch("automate_ytb.universal_commons.search_cc0",
                    side_effect=OSError("Network unavailable")):
