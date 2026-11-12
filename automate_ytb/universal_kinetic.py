@@ -114,6 +114,9 @@ def read_story(path: Path) -> dict:
         current["visualQuery"] = (
             _text(beat["visualQuery"], "visual query", 120)
             if beat.get("visualQuery") is not None else None)
+        if (current["visualQuery"] is not None
+                and not current["visualQuery"].isprintable()):
+            raise ValueError("Artwork query must be one printable line")
         if current["visualLayers"] and kind in ("measure", "compare"):
             raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
         validated.append(current)
