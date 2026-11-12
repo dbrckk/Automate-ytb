@@ -124,6 +124,10 @@ def read_story(path: Path) -> dict:
             beat.get("actorTracks"),beat.get("actorLinks"),
             current["visualLayers"])
         validated.append(current)
+    # Foley validates at most 64 real cues. Every beat contributes its own
+    # entry cue; a designed actor link contributes one contact cue.
+    if len(validated)+sum(len(b["actorLinks"]) for b in validated)>64:
+        raise ValueError("Too many event-locked audio cues for one Short")
     return {"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1}
 
