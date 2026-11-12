@@ -96,3 +96,40 @@ python -m unittest discover -s tests -p test_universal_kinetic.py -v
 
 That smoke test uses two original non-science beats and **real local eSpeak,
 FFmpeg, AAC and MP4 decoding**; it never tests arbitrary internet research.
+
+## Direct entry from any **original script** — no storyboard JSON to write
+
+The second input route derives descriptive concepts and optional sequential
+steps from the **exact original narration**. It never fabricates a measured
+value, historical date, physical unit or citation. Each paragraph becomes
+a narrated beat; a single paragraph with multiple sentences is also supported.
+This is a useful cross-topic fallback, not a semantic scene generator that
+can draw an authentic animal or city from scratch.
+
+~~~bash
+automate-ytb-short \
+  --topic "A seed comes to life" \
+  --script-file examples/universal_seed_story.en.txt \
+  --language en --voice kokoro --width 1080 \
+  --output build/seed-short.mp4
+~~~
+
+A `build/seed-short.story.json` file records the compiled editable storyboard,
+followed by `build/seed-short.json` for the video production report.
+
+For Android without local rendering: open
+[Universal kinetic Short smoke](../.github/workflows/universal-kinetic-smoke.yml)
+in GitHub Actions, choose **Run workflow**, and enter **both** `topic`
+and `original_script`, with each narrative paragraph separated by a blank
+line. This workflow currently uses **eSpeak draft narration** for reliable
+free CI; the Kokoro command above is the neural-voice route. An empty
+`topic`/`original_script` pair runs the repository-owned regression
+examples. A topic alone deliberately fails: factual narration must not be
+invented without evidence.
+
+The workflow produces two original unrelated subjects (an infrastructure
+explanation and a nature story), runs real FFprobe preflight, and saves a
+side-by-side quantitative motion/loudness report. It does not copy or
+rehost the private reference media. Videos and metadata are downloadable
+from its Actions artifact for 14 days; this is **not** an archival permanent
+release link.
