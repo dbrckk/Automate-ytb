@@ -430,3 +430,67 @@ six-actor budget. This is not automatic anatomical or physics simulation.
 The dedicated CI verifies three real 720x1280 portrait MP4s, including
 two continuous scenes with a truly parented antenna, and validates inherited
 joint geometry independently of audio and video encoding.
+
+
+### Original vector illustrations: full-resolution artwork without PNG files
+
+The universal original-story JSON now supports `visualVectors` in every
+`concept` or `sequence` beat, alongside approved `visualLayers`.
+It is an **original illustration authoring engine**, not a text-to-image
+model: the vector shape descriptions must be supplied by the story
+author or a separate, audited scene-describing program.
+
+The vector stage accepts 1–6 independent original transparent layers,
+up to 48 shapes per layer, with:
+
+- original multi-segment cubic Bezier outlines, polygons, smooth ellipses,
+  rounded rectangles and lines
+- bounded 0..1 scene-relative geometry (consistent across resolutions)
+- two-stop color gradients, optional strokes and 2× anti-aliasing
+- original depth, material lighting and independent 2.5D parallax
+- all existing actor animation, attached hinge, Foley and cross-scene rules
+- deterministic SHA-256 provenance of the **actual authored shapes**
+- no image downloads, SVG/XML parsing, scripts, remote APIs or paid credits
+
+An original vector illustration layer has this declarative format:
+
+    {
+      "id": "illustrated-sun",
+      "z": 55,
+      "parallaxX": 1.0,
+      "parallaxY": 0.4,
+      "material": "none",
+      "rights": "Original illustration authored from scratch in this story.",
+      "rightsConfirmed": true,
+      "shapes": [
+        {"kind": "ellipse", "box": [0.3, 0.2, 0.7, 0.6],
+         "fill": ["#FFE5AE", "#F0A66D"],
+         "stroke": "#FFF4CC", "strokeWidth": 0.004}
+      ]
+    }
+
+The layer ID is stable across narrated shots. Transparent layers can be
+animated through `actorTracks` by referencing their `z`, just like
+licensed PNG/WebP files. For a continued shot, the source ID and geometry
+hash must remain identical; the rig's poses and joint attachments must
+also be continuous.
+
+To build and encode a complete original, multi-layer illustrated flower
+without **any source image file**:
+
+    python examples/build_original_vector_story.py --out-dir build/flower
+    automate-ytb-short --brief build/flower/original-vector-story.json --output build/flower/flower.mp4 --voice kokoro --width 1080
+
+The sample contains gradients, hand-authored curved petals, veins,
+botanical highlights and a textured background. Leaf and flower
+components inherit motion from the stem; the camera follows the subjects
+continuously over two narration beats. GitHub Actions runs tests and
+encodes a real H.264/AAC portrait video using eSpeak as the fast draft
+voice; `kokoro` remains the optional neural voice mode.
+
+**Honest scope:** this is a scalable, free, testable drawing *backend*.
+It does **not** magically create a faithful image of an arbitrary real
+animal, place, product, scientific mechanism or historical event from
+plain text. A semantically grounded scene specification or a separately
+validated generative/retrieval model is still required for those use
+cases. Source facts and publication require editorial verification.
