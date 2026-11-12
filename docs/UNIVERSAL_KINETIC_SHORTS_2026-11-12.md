@@ -322,3 +322,49 @@ only installs the open model dependency when it is selected.
 correct real foreground/backdrop subjects, generate coherent action rigs,
 and preserve visual identity across several cuts. Neither CC0 photographs
 nor generic saliency masks accomplish that alone.
+
+
+## Authored subject motion: original actor rig
+
+The universal story format now supports actual, keyframed motion for separate
+original, rights-confirmed transparent PNG/WebP subjects. An optional
+`actorTracks` array belongs to an individual concept/sequence beat.
+Each entry identifies an existing foreground layer by its `z` depth and has
+2–8 keys. Key times go from 0 to 1 (the true PCM-derived beat duration),
+positions are bounded offsets in stage fractions, scale is a multiplier,
+and rotation uses degrees. All tracks use smooth time-addressable interpolation.
+
+```json
+{
+  "actorTracks": [
+    {"z": 45, "keys": [
+      {"at": 0, "x": -0.15, "y": 0, "scale": 0.75, "angle": -12},
+      {"at": 0.5, "x": 0, "y": -0.07, "scale": 1.1, "angle": 0},
+      {"at": 1, "x": 0.12, "y": 0, "scale": 1.0, "angle": 9}
+    ]}
+  ],
+  "actorLinks": [{"fromZ": 45, "toZ": 78, "at": 0.53}]
+}
+```
+
+A link pulse represents an explicitly authored visual connection between
+two independently animated original subjects; it does not assert an unproven
+physical collision. No motion is fabricated from topic keywords.
+Backgrounds cannot be rigged; opaque foregrounds, invalid dimensions,
+duplicate depths, missing endpoint keys and unsafe transforms are rejected.
+The same actor rig works for transparent artwork from any appropriate topic.
+
+To generate and truly encode the repo-owned demonstration:
+
+```bash
+python examples/build_original_actor_rig_sample.py --out-dir build/actors
+automate-ytb-short --brief build/actors/actor-rig-story.json \
+  --output build/actors/actor-demo.mp4 --voice kokoro --width 1080
+```
+
+The generator creates three original asset layers. GitHub CI separately
+encodes and validates a real 720x1280 actor-action MP4 alongside existing
+web/nature topics. This improves the **general pipeline** rather than
+claiming to create a faithful person, animal, real machine, or scientific
+physical simulation from a bare title. Topic-specific articulated motion
+synthesis remains an unsolved next step.
