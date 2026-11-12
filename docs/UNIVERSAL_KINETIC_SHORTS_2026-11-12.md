@@ -232,26 +232,26 @@ The universal kinetic engine can now optionally search **Wikimedia Commons**
 for a photograph depicting a beat. This is a zero-cost, token-free original
 media route, not automatic AI-generated artwork:
 
-\`\`\`bash
+```bash
 automate-ytb-short --topic "How wild forests regenerate" \
   --script-file examples/universal_seed_story.en.txt \
   --language en --voice kokoro --commons-art \
   --width 720 --output build/forest-explainer.mp4
-\`\`\`
+```
 
-- Without \`--commons-art\`, production remains **fully offline for visual
+- Without `--commons-art`, production remains **fully offline for visual
   assets**. This also preserves deterministic PR smoke behavior.
-- A JSON beat may provide \`"visualQuery": "pine forest canopy"\`; otherwise
+- A JSON beat may provide `"visualQuery": "pine forest canopy"`; otherwise
   the exact authored beat title is searched. No prompt-generated factual claims
   or invented images are introduced.
 - Only an image with both **CC0** metadata and the canonical
   CC0 1.0 rights URL can be considered. The result's URL must be an HTTPS
-  Wikimedia Commons thumbnail at \`upload.wikimedia.org\`; SVG, huge,
+  Wikimedia Commons thumbnail at `upload.wikimedia.org`; SVG, huge,
   unreadable, malicious and unverifiable candidates are rejected. Only
   JPEG/PNG/WebP raster bytes are decoded, with file-size and pixel limits.
 - One accepted picture per eligible concept/sequence beat. Images with
   identical file-page URLs are not duplicated across beats. Numeric
-  \`measure\`/\`compare\` beats keep their accurate animated measurements,
+  `measure`/`compare` beats keep their accurate animated measurements,
   rather than letting unrelated photography obscure the values.
 - The picture is prepared once then rendered with a smooth camera dolly,
   focused portrait crop, graded lighting and restrained edge treatment.
@@ -259,13 +259,13 @@ automate-ytb-short --topic "How wild forests regenerate" \
   semantic 3D/2.5D skeletal motion**.
 - Search outage, no CC0 result or invalid media falls back to the **existing
   original local 2.5D grammar**. Network search never gatekeeps an MP4.
-- \`<video>.json\` now records selected \`commonsSources\`: exact Commons
+- `<video>.json` now records selected `commonsSources`: exact Commons
   file page, search query, metadata-reported rights/creator, thumbnail URL,
-  media SHA-256 and \`rightsVerifiedByHuman=false\`. Publication approval
+  media SHA-256 and `rightsVerifiedByHuman=false`. Publication approval
   always remains false. The editor must verify rights, subject relevance and
   appropriateness of the selected file before release.
 - The GitHub Actions **Universal kinetic Short smoke** manual workflow now
-  exposes \`commons_art\`, defaulting to off, alongside topic, original script,
+  exposes `commons_art`, defaulting to off, alongside topic, original script,
   language and neural voice.
 
 This is intentionally strict. Wikimedia explicitly cautions that license
@@ -275,7 +275,7 @@ but does not guarantee that every topic has imagery.
 
 ### Independent quality gates
 
-The shared \`tests/test_universal_commons.py\` suite feeds local official-API
+The shared `tests/test_universal_commons.py` suite feeds local official-API
 shaped results and real JPEG bytes to the same code; it verifies CC0
 filtering, unsafe redirect/host rejection, invalid raster failures,
 source metadata, visually changing frames, and safe offline fallback.
