@@ -71,6 +71,13 @@ def _image(path: Path, size: tuple[int,int], *, background: bool) -> Image.Image
                 raise ValueError("Unsupported bounded owned illustration")
             source.load()
             image = source.convert("RGBA")
+            # Test the ORIGINAL alpha before centering/letterboxing a photo.
+            # An opaque RGB source becomes artificially transparent when
+            # contained in a taller portrait stage; that padding is not a
+            # valid foreground cutout and would hide the actual background.
+            if not background and image.getchannel("A").getextrema() == (255,255):
+                raise ValueError(
+                    "Moving subject art needs real source transparency")
     except (OSError, OverflowError) as exc:
         raise ValueError("Unreadable owned visual artwork") from exc
     if background:
