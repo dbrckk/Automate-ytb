@@ -194,6 +194,11 @@ def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
                 b-a < FPS for a, b in zip(boundaries, boundaries[1:]))):
         raise ValueError("Invalid PCM-derived scene boundaries")
     tracks, cues = [], []
+    # A quantity is an enduring world object, not a scene-local counter.
+    # Reappearance after unrelated beats resumes its last verified value.
+    objects=[WorldObject("progress", {"value": 0.}, unit="fraction")]
+    series_ids={}
+    series_levels={}
     for i, beat in enumerate(story["beats"]):
         start, end = boundaries[i:i+2]
         event_id = f"story-progress-{i:02d}"
@@ -203,12 +208,39 @@ def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
                   "sequence": "count", "concept": "whoosh"}[beat["kind"]]
         cues.append(SoundCue(f"story-cue-{i:02d}", event_id, family,
                              offset_frames=0, gain_db=-24.))
+        if beat["kind"] == "measure":
+            key=(beat["label"].casefold(), beat["unit"], beat["scaleMax"])
+            if key not in series_ids:
+                object_id=f"quantity-{len(series_ids):02d}"
+                series_ids[key]=object_id
+                series_levels[key]=0.
+                objects.append(WorldObject(object_id, {"value": 0.},
+                                           unit="fraction"))
+            target=float(beat["value"]/beat["scaleMax"])
+            tracks.append(PropertyEvent(f"quantity-change-{i:02d}",
+                                        series_ids[key], "value",start,end,
+                                        series_levels[key],target))
+            series_levels[key]=target
     return MasterTimeline(
         total_frames=boundaries[-1],
-        objects=[WorldObject("progress", {"value": 0.}, unit="fraction")],
+        objects=objects,
         beats=[Beat(f"beat-{i:02d}", boundaries[i], boundaries[i+1])
                for i in range(n)],
         events=tracks, cues=cues, fps=FPS)
+
+
+def _series_id(story: dict, pos: int) -> str:
+    """Stable ID by first authored occurrence of (label, unit, scale)."""
+    beat=story["beats"][pos]
+    key=(beat["label"].casefold(),beat["unit"],beat["scaleMax"])
+    seen={}
+    for old in story["beats"][:pos+1]:
+        if old["kind"] != "measure":
+            continue
+        old_key=(old["label"].casefold(),old["unit"],old["scaleMax"])
+        if old_key not in seen:
+            seen[old_key]=f"quantity-{len(seen):02d}"
+    return seen[key]
 
 
 def _backdrop(width, height, palette):
@@ -267,8 +299,9 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                font=hf,fill=accent,stroke_width=1,stroke_fill=dark)
     # Scene-specific informational marks are animated, never slide images.
     if beat["kind"] == "measure":
-        amount=beat["value"]*Decimal(str(ease))
-        ratio=amount/beat["scaleMax"]
+        ratio=Decimal(str(timeline.state_at(frame)["objects"][
+            _series_id(story,pos)]["value"]))
+        amount=beat["scaleMax"]*ratio
         label, lf=_single_line(d,beat["label"],width-2*pad,int(width*.055),bold=True)
         d.text((pad,stage_top),label,font=lf,fill=(225,236,241))
         number, big=_single_line(d,_display(amount)+" "+beat["unit"],
