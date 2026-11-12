@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v6-subject-camera"
+VERSION = "universal-kinetic-cinematic-stage-v7-persistent-actor-world"
 
 
 def _text(value, name, limit=120):
@@ -128,6 +128,8 @@ def read_story(path: Path) -> dict:
     # entry cue; a designed actor link contributes one contact cue.
     if len(validated)+sum(len(b["actorLinks"]) for b in validated)>64:
         raise ValueError("Too many event-locked audio cues for one Short")
+    from .universal_actor_rig import validate_cut_continuity
+    validate_cut_continuity({"beats":validated})
     return {"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1}
 
@@ -448,8 +450,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
         background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
-        from .universal_art25d import load_art_scenes
+        from .universal_art25d import (
+            bind_actor_camera_world, load_art_scenes)
         art_scenes,art_provenance=load_art_scenes(story,brief,width,height)
+        camera_groups=bind_actor_camera_world(story,art_scenes,stamps)
         commons_scenes,commons_provenance={},[]
         if commons_art:
             from .universal_commons import build_commons_scenes
@@ -514,7 +518,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             "approvedLayerProvenance":art_provenance,
             "authoredActionActors":sum(len(b["actorTracks"]) for b in story["beats"]),
             "authoredActorLinks":sum(len(b["actorLinks"]) for b in story["beats"]),
-            "actionEngine":"universal-authored-actor-rig-subject-follow-v2"},
+            "actionEngine":"universal-authored-actor-rig-continuous-world-v3",
+            "continuousCameraGroups":camera_groups},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,
         "sourceURLs":sorted(set(s for b in story["beats"] for s in b["sources"])),
         "delivery":delivery,
