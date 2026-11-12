@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from PIL import Image, ImageDraw
 import shutil
 import tempfile
 import unittest
 
 from automate_ytb.universal_kinetic import (
-    VERSION, frame_image, produce, read_story, timeline_for)
+    VERSION, _single_line, frame_image, produce, read_story, timeline_for)
 
 
 def story():
@@ -77,6 +78,24 @@ class UniversalKineticTests(unittest.TestCase):
         data["beats"][0]["narration"]="a"
         with self.assertRaises(ValueError):
             self._load(data)
+
+    def test_mobile_long_visual_labels_never_overflow(self):
+        draw=ImageDraw.Draw(Image.new("RGB",(360,640)))
+        for width in (90,150,230,320):
+            text,font=_single_line(
+                draw,"A very long original historical location label in French",
+                width,30,bold=True)
+            self.assertLessEqual(draw.textbbox((0,0),text,font=font)[2],width)
+        current=story()
+        current["topic"]="An extremely long topic about economic history and technology"
+        current["beats"][1]["steps"]=[
+            "Cryptographic verification", "Authorization workflow",
+            "Cross-platform compatibility", "Status tracking",
+        ]
+        content=self._load(current)
+        track=timeline_for(content,[0,60,120,180,240])
+        image=frame_image(content,track,[0,60,120,180,240],80,360,640)
+        self.assertEqual(image.size,(360,640))
 
     def test_numeric_values_arent_made_up_from_topic(self):
         data=story()
