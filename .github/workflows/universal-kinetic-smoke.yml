@@ -2,6 +2,20 @@ name: Universal kinetic Short — real MP4/audio smoke
 
 on:
   workflow_dispatch:
+    inputs:
+      topic:
+        description: Original topic (requires a corresponding original_script)
+        type: string
+        required: false
+      original_script:
+        description: Two or more original narration paragraphs or sentences
+        type: string
+        required: false
+      language:
+        description: Narration language
+        type: choice
+        options: [en, fr]
+        default: en
   pull_request:
     paths:
       - automate_ytb/universal_kinetic.py
@@ -39,14 +53,26 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check -e .
       - name: Validate all story grammars and real video
-        run: python -m unittest discover -s tests -p test_universal_kinetic.py -v
+        run: |
+          python -m unittest discover -s tests -p test_universal_kinetic.py -v
+          python -m unittest discover -s tests -p test_universal_script.py -v
       - name: Render real original 9:16 topic video
+        env:
+          YT_TOPIC: ${{ inputs.topic }}
+          YT_SCRIPT: ${{ inputs.original_script }}
+          YT_LANGUAGE: ${{ inputs.language }}
         run: |
           mkdir -p build/universal
-          automate-ytb-short \
-            --brief examples/universal_web_request.json \
-            --output build/universal/web-request-original.mp4 \
-            --voice espeak --width 720
+          if [ -n "$YT_TOPIC" ] || [ -n "$YT_SCRIPT" ]; then
+            if [ -z "$YT_TOPIC" ] || [ -z "$YT_SCRIPT" ]; then
+              echo "::error::Supply BOTH topic and original_script; facts cannot be invented from a title." >&2
+              exit 2
+            fi
+            printf '%s' "$YT_SCRIPT" > build/universal/original-script.txt
+            automate-ytb-short --topic "$YT_TOPIC" --script-file build/universal/original-script.txt --language "${YT_LANGUAGE:-en}" --output build/universal/web-request-original.mp4 --voice espeak --width 720
+          else
+            automate-ytb-short --brief examples/universal_web_request.json --output build/universal/web-request-original.mp4 --voice espeak --width 720
+          fi
       - name: Independently verify technical delivery
         run: |
           python -m automate_ytb.shorts_delivery \
