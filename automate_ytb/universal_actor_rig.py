@@ -101,12 +101,12 @@ def sampled_pose(keys: list[dict], phase: float) -> dict:
     if not math.isfinite(phase) or not 0 <= phase <= 1:
         raise ValueError("Invalid actor time")
     if phase >= keys[-1]["at"]:
-        return keys[-1].copy()
+        return {**keys[-1],"opacity":keys[-1].get("opacity",1.)}
     for a, b in zip(keys, keys[1:]):
         if a["at"] <= phase < b["at"]:
             f = _ease((phase-a["at"])/(b["at"]-a["at"]))
             return {
-                name: (a[name]+(b[name]-a[name])*f)
+                name: (a.get(name,1.)+(b.get(name,1.)-a.get(name,1.))*f)
                 for name in ("x", "y", "scale", "angle", "opacity")
             }
     raise ValueError("Incomplete actor keyframe track")
