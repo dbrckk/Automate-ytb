@@ -343,7 +343,10 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     if art is not None:
         from .universal_art25d import render_art_stage
         artwork=render_art_stage(art,frame,start,end)
-        base.paste(artwork,(pad,stage_top),artwork)
+        # Give the real illustrated world over half the portrait frame.
+        # Two-line headers remain above it; PCM captions remain below.
+        art_top=round(height*.27)
+        base.paste(artwork,(pad,art_top),artwork)
     elif commons_scenes is not None and pos in commons_scenes:
         # Optional CC0 media can illustrate arbitrary authored concepts.
         # It is a moving crop of a real photo, NOT invented scene geometry.
