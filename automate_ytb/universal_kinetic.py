@@ -109,6 +109,10 @@ def read_story(path: Path) -> dict:
                     or len(source) > 500):
                 raise ValueError("Only explicit HTTPS fact sources accepted")
         current["sources"] = sources[:]
+        from .universal_art25d import validate_layers
+        current["visualLayers"] = validate_layers(beat.get("visualLayers"))
+        if current["visualLayers"] and kind in ("measure", "compare"):
+            raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
         validated.append(current)
     return {"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1}
@@ -272,7 +276,8 @@ def _bar(draw, x, y, w, h, fraction, color, palette):
 
 
 def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
-                frame: int, width: int, height: int, backdrop=None) -> Image.Image:
+                frame: int, width: int, height: int, backdrop=None,
+                art_scenes=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
     palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
@@ -297,8 +302,15 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     for j,line in enumerate(header):
         d.text((pad,int(height*.166)+j*hf.size*1.20),line,
                font=hf,fill=accent,stroke_width=1,stroke_fill=dark)
+    # Licensed original illustration can replace a conceptual schematic.
+    # The same authored shot clock drives independent depth-layer movement.
+    art=art_scenes.get(pos) if art_scenes is not None else None
+    if art is not None:
+        from .universal_art25d import render_art_stage
+        artwork=render_art_stage(art,frame,start,end)
+        base.paste(artwork,(pad,stage_top),artwork)
     # Scene-specific informational marks are animated, never slide images.
-    if beat["kind"] == "measure":
+    elif beat["kind"] == "measure":
         ratio=Decimal(str(timeline.state_at(frame)["objects"][
             _series_id(story,pos)]["value"]))
         amount=beat["scaleMax"]*ratio
@@ -418,6 +430,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
         background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
+        from .universal_art25d import load_art_scenes
+        art_scenes,art_provenance=load_art_scenes(story,brief,width,height)
         silent=work/"picture.mp4"
         cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
              "-f","rawvideo","-pix_fmt","rgb24","-s",f"{width}x{height}",
@@ -429,7 +443,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         try:
             for frame in range(timeline.total_frames):
                 encoder.stdin.write(frame_image(story,timeline,stamps,frame,
-                                               width,height,background).tobytes())
+                                               width,height,background,
+                                               art_scenes).tobytes())
             encoder.stdin.close()
             encoder.stdin=None
             _,err=encoder.communicate(timeout=600)
@@ -453,6 +468,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "subtitleTiming":"estimated-proportional-not-word-aligned",
         "music":"original-continuous-procedural-ambient",
         "sound":"original-event-locked-foley","mix":mix,
+        "artwork":{
+            "engine":"scene25d-multilayer-owned-art",
+            "scenesWithRealAuthoredArtwork":len(art_scenes),
+            "approvedLayerProvenance":art_provenance},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,
         "sourceURLs":sorted(set(s for b in story["beats"] for s in b["sources"])),
         "delivery":delivery,
