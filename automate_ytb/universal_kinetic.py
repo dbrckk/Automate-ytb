@@ -137,6 +137,21 @@ def _fit(draw, text, width, font_size, *, bold=False, max_lines=3):
     return lines[:max_lines], font
 
 
+def _single_line(draw, text: str, max_width: int, size: int, *,
+                 bold: bool = False) -> tuple[str, ImageFont.FreeTypeFont]:
+    """Fit all authored strings into their actual mobile-safe pixel region."""
+    font = _font(size, bold)
+    while size > 12 and draw.textbbox((0, 0), text, font=font)[2] > max_width:
+        size -= 2
+        font = _font(size, bold)
+    if draw.textbbox((0, 0), text, font=font)[2] <= max_width:
+        return text, font
+    shortened = text
+    while shortened and draw.textbbox((0, 0), shortened + "…", font=font)[2] > max_width:
+        shortened = shortened[:-1]
+    return (shortened.rstrip() + "…" if shortened else "…"), font
+
+
 def _display(value: Decimal) -> str:
     if value == 0:
         return "0"
@@ -254,11 +269,11 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     if beat["kind"] == "measure":
         amount=beat["value"]*Decimal(str(ease))
         ratio=amount/beat["scaleMax"]
-        label, lf=_fit(d,beat["label"],width-2*pad,int(width*.055),bold=True)
-        d.text((pad,stage_top),label[0],font=lf,fill=(225,236,241))
-        big=_font(int(width*.095),True)
-        d.text((pad,stage_top+int(height*.09)),
-               _display(amount)+" "+beat["unit"],font=big,fill=extra)
+        label, lf=_single_line(d,beat["label"],width-2*pad,int(width*.055),bold=True)
+        d.text((pad,stage_top),label,font=lf,fill=(225,236,241))
+        number, big=_single_line(d,_display(amount)+" "+beat["unit"],
+                                width-2*pad,int(width*.095),bold=True)
+        d.text((pad,stage_top+int(height*.09)),number,font=big,fill=extra)
         _bar(d,pad,stage_top+int(height*.22),width-2*pad,
              max(10,width//30),ratio,accent,palette)
         d.text((pad,stage_top+int(height*.275)),
@@ -273,11 +288,14 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 (beat["left"],beat["leftValue"],accent),
                 (beat["right"],beat["rightValue"],extra))):
             y=stage_top+int(i*height*.18)
-            d.text((pad,y),label,font=_font(int(width*.057),True),fill=(237,242,247))
+            label_text, label_font=_single_line(d,label,width-2*pad,
+                                                 int(width*.057),bold=True)
+            d.text((pad,y),label_text,font=label_font,fill=(237,242,247))
             _bar(d,pad,y+int(height*.075),width-2*pad,max(10,width//32),
                  (value/maximum)*Decimal(str(ease)),col,palette)
             v=_display(value*Decimal(str(ease)))+" "+beat["unit"]
-            d.text((pad,y+int(height*.115)),v,font=_font(int(width*.045)),fill=col)
+            value_text, value_font=_single_line(d,v,width-2*pad,int(width*.045))
+            d.text((pad,y+int(height*.115)),value_text,font=value_font,fill=col)
     elif beat["kind"] == "sequence":
         items=beat["items"]
         step=max(1,int((stage_bottom-stage_top)/(len(items))))
@@ -291,8 +309,10 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
             d.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),
                       fill=extra if active else tint,
                       outline=(234,245,249),width=max(1,width//240))
-            d.text((pad+int(width*.18),cy-int(width*.033)),label,
-                   font=_font(int(width*.052),True),
+            stage_label, stage_font=_single_line(
+                d,label,width-2*pad-int(width*.18),int(width*.052),bold=True)
+            d.text((pad+int(width*.18),cy-int(width*.033)),stage_label,
+                   font=stage_font,
                    fill=(235,240,249) if active else (120,148,162))
     else:
         items=beat["items"]
