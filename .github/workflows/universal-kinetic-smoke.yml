@@ -149,6 +149,7 @@ jobs:
           report=json.loads(Path('build/universal/actor-rig-original.json').read_text())
           assert report['artwork']['authoredActionActors']==2
           assert report['artwork']['authoredActorLinks']==1
+          assert report['authoredContactCues']==1
           assert report['delivery']['status']=='passed'
           assert not report['publicationApproved']
           PY
