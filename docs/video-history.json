@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 185,
+  "count": 186,
   "videos": [
+    {
+      "id": "science-preview-raindrop-rainbow-43220317747/raindrop-rainbow.mp4",
+      "topic": "raindrop-rainbow",
+      "category": "science",
+      "releaseTag": "science-preview-raindrop-rainbow-43220317747",
+      "publishedAt": "2026-11-12T12:46:20Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/science-preview-raindrop-rainbow-43220317747/raindrop-rainbow.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/science-preview-raindrop-rainbow-43220317747",
+      "bytes": 7581749,
+      "sha256": "sha256:9242022f279d660adfc682302ba2b40c6c6801bde880beb072bb1a0eca305200"
+    },
     {
       "id": "science-preview-aurora-dance-43113411429/aurora-dance.mp4",
       "topic": "aurora-dance",
