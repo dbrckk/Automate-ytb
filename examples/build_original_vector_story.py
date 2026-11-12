@@ -65,7 +65,7 @@ def landscape():
     for i in range(18):
         x=((i*131+47)%937)/937
         y=((i*71+83)%997)/997*.52+.08
-        size=.0018+(.002*(i%3))
+        size=.0030+(.0015*(i%3))
         shapes.append(ellipse(x,y,x+size,y+size,
                              "#C9E7DC" if i%3 else "#F0C98D"))
     return art("gradient-garden",5,.12,.08,shapes)
