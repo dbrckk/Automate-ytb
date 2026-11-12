@@ -93,6 +93,19 @@ def receiver(path: Path):
     im.save(path)
 
 
+def articulated_antenna(path: Path):
+    """A separate original jointed part attached to the satellite silhouette."""
+    im=Image.new("RGBA",(W,H))
+    d=ImageDraw.Draw(im)
+    x,y=250,310
+    d.polygon([(x-12,y),(x+12,y),(x+7,y-108),(x-7,y-108)],
+              fill=(210,215,205,255),outline=(247,236,196,255))
+    d.ellipse((x-23,y-146,x+23,y-101),fill=(249,185,95,255),
+              outline=(255,235,182,255),width=5)
+    d.line((x-5,y-126,x+10,y-126),fill=(255,243,217,255),width=3)
+    im.save(path)
+
+
 def layer(filename,z,px,py):
     return {"file":f"original/{filename}.png","z":z,
             "parallaxX":px,"parallaxY":py,"material":"none",
@@ -109,6 +122,7 @@ def build(out: Path) -> Path:
     background(art/"background.png")
     source(art/"source.png")
     receiver(art/"receiver.png")
+    articulated_antenna(art/"antenna.png")
     story={
         "schemaVersion":1,
         "topic":"A fictional signal exchange in orbit",
@@ -119,7 +133,8 @@ def build(out: Path) -> Path:
              "nodes":["Craft","Receiver","Signal"],
              "visualLayers":[layer("background",5,.15,.06),
                              layer("source",45,.72,.38),
-                             layer("receiver",78,1.1,.62)],
+                             layer("receiver",78,1.1,.62),
+                             layer("antenna",90,.72,.38)],
              "actorTracks":[
                  {"z":45,"keys":[
                      key(0,-.13,-.02,.72,-12),
@@ -129,6 +144,10 @@ def build(out: Path) -> Path:
                      key(0,.14,.02,.78,16),
                      key(.50,.015,-.04,1.04,-2),
                      key(1,-.035,.00,.96,-10)]},
+                 {"z":90,"pivot":[.5,.94],"keys":[
+                     key(0,-.13,-.02,.72,-4),
+                     key(.50,-.02,-.08,1.07,26),
+                     key(1,.06,-.06,1.01,-15)]},
              ],
              "actorLinks":[{"fromZ":45,"toZ":78,"at":.53}]},
             {"kind":"sequence","title":"The connection continues",
@@ -146,6 +165,10 @@ def build(out: Path) -> Path:
                      key(0,-.035,.00,.96,-10),
                      key(.5,-.065,-.035,1.08,-4),
                      key(1,-.055,-.01,1.03,3)]},
+                 {"z":90,"pivot":[.5,.94],"keys":[
+                     key(0,.06,-.06,1.01,-15),
+                     key(.5,.12,-.035,1.10,18),
+                     key(1,.14,.03,.87,-2)]},
              ],
              "actorLinks":[{"fromZ":78,"toZ":45,"at":.54}]},
         ],
