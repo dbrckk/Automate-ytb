@@ -280,3 +280,45 @@ shaped results and real JPEG bytes to the same code; it verifies CC0
 filtering, unsafe redirect/host rejection, invalid raster failures,
 source metadata, visually changing frames, and safe offline fallback.
 No paid API, account, or token is required to test the feature.
+
+
+## Optional independent 2.5D foreground from real CC0 media
+
+The `--segment-art` switch builds on `--commons-art` and requires the
+optional local CPU dependency:
+
+```bash
+python -m pip install -e '.[foreground]'
+automate-ytb-short --topic "A seed comes to life" \
+  --script-file examples/universal_seed_story.en.txt \
+  --language en --voice kokoro \
+  --commons-art --segment-art --width 720 \
+  --output build/segmented-original.mp4
+```
+
+The implementation explicitly uses the **local U2NetP** session through
+`rembg`, not its current default image provider or any paid cloud service.
+The model is downloaded on first use and cached locally. A segmentation
+mask must have plausible nontrivial coverage before it is applied; otherwise
+the accepted original CC0 photograph still renders with its camera dolly.
+This is a source-image saliency matte, **not proof of accurate anatomy,
+a complete 3D reconstruction, physical simulation or human verification**.
+
+With a valid matte, the original subject moves on a separate timed foreground
+plane over a differently focused background. Both remain anchored in the same
+source image; camera motion is smooth and deterministic. This can improve
+perceived depth for a single salient subject but cannot make complex scenes
+act out unauthored events.
+
+The `commonsSources` manifest now reports `segmentationRequested`,
+`segmentationApplied` and `segmentationModel` per acquired source. The
+`rightsVerifiedByHuman` and `publicationApproved` gates remain false.
+If the optional Python package is absent, explicitly requesting segmentation
+produces an actionable error instead of falsely reporting premium 2.5D.
+The Android manual workflow provides a separate `segment_art` toggle and
+only installs the open model dependency when it is selected.
+
+**Remaining reference-grade gap:** a generic scene generator must select
+correct real foreground/backdrop subjects, generate coherent action rigs,
+and preserve visual identity across several cuts. Neither CC0 photographs
+nor generic saliency masks accomplish that alone.
