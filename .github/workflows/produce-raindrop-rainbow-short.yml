@@ -21,11 +21,11 @@ jobs:
     with:
       topic: "Inside a Raindrop: How Rainbows Form"
       original_script: >-
-        White sunlight looks simple, but it holds every color your eyes can see.
+        White sunlight looks simple, but it holds every color your eyes can see, packed together inside one brilliant beam.
         When that sunlight enters a raindrop, it bends, and different colors begin to spread apart.
         Inside the raindrop, some of that separated light reflects from its curved back surface.
-        The colored rays leave the drop, bending again as they travel back into the air.
-        Across millions of raindrops, an observer sees a rainbow arc because each color reaches the eye at a different angle.
+        The colored rays leave the drop, bending again as they travel back into the air at slightly different angles.
+        Millions of raindrops send different colors toward an observer, forming a curved rainbow arc across the sky.
       character: "One original transparent glass raindrop and a continuous luminous ray with distinct spectrum colors"
       style: science
       language: en
@@ -35,8 +35,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 40
-      shot_seconds: 8
+      duration_seconds: 30
+      shot_seconds: 6
       resolution: shorts
       render_profile: high
       cinematic_3d: false
