@@ -139,6 +139,8 @@ def validate_cut_continuity(story: dict) -> int:
         old={t["z"]:t for t in before["actorTracks"]}
         new={t["z"]:t for t in after["actorTracks"]}
         for z,track in old.items():
+            if track.get("pivot",[0.5,0.5]) != new[z].get("pivot",[0.5,0.5]):
+                raise ValueError("A repeated original joint cannot change its pivot")
             last=track["keys"][-1]
             first=new[z]["keys"][0]
             if any(abs(last[k]-first[k]) > 1e-8
