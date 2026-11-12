@@ -454,7 +454,7 @@ def main(argv=None):
                 language=a.language)
             brief=a.output.with_suffix(".story.json")
             brief.parent.mkdir(parents=True,exist_ok=True)
-            brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\\n",
+            brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\n",
                              encoding="utf8")
         report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,width=a.width)
         print(json.dumps(report,ensure_ascii=False,indent=2))
