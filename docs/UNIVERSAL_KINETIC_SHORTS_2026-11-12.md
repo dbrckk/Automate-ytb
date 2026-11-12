@@ -121,8 +121,11 @@ For Android without local rendering: open
 [Universal kinetic Short smoke](../.github/workflows/universal-kinetic-smoke.yml)
 in GitHub Actions, choose **Run workflow**, and enter **both** `topic`
 and `original_script`, with each narrative paragraph separated by a blank
-line. This workflow currently uses **eSpeak draft narration** for reliable
-free CI; the Kokoro command above is the neural-voice route. An empty
+line. Choose `voice=kokoro` for a free neural narrator (optional one-time
+download and CPU dependencies, no paid API token) or `voice=espeak` for a
+fast robotic draft. Automated PR smoke tests always use eSpeak to keep
+CI lightweight; manually dispatched runs with original scripts can select
+Kokoro. The command above is the same neural-voice engine. An empty
 `topic`/`original_script` pair runs the repository-owned regression
 examples. A topic alone deliberately fails: factual narration must not be
 invented without evidence.
