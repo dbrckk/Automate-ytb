@@ -88,7 +88,7 @@ def create_score(*, plan_path: Path, output: Path,
     # disclosed global score heuristic, not an alleged word-level alignment.
     reveals = [e for e in accent_events if e["family"] == "reveal"]
     pivot = (reveals[0]["atSample"] / samples if reveals else .77)
-    pivot = min(.88, max(.45, pivot))
+    pivot = min(.88, max(.67, pivot))
     marks = ((0., .18), (.20, .36), (.51, .64),
              (max(.52, pivot-.075), .28), (pivot, .88),
              (min(.97, pivot+.11), .65), (1., .08))
