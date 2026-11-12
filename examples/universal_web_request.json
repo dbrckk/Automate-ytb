@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "topic": "How a web request works",
+  "language": "en",
+  "beats": [
+    {
+      "kind": "concept",
+      "title": "The invisible journey",
+      "narration": "When you open a website, several different systems cooperate behind the scenes. Your browser is only the beginning.",
+      "nodes": [
+        "Browser",
+        "DNS",
+        "Network",
+        "Server"
+      ]
+    },
+    {
+      "kind": "sequence",
+      "title": "A chain of events",
+      "narration": "First the browser resolves a domain name. Then a connection is established, a request is sent, and a response comes back.",
+      "steps": [
+        "Resolve",
+        "Connect",
+        "Request",
+        "Respond"
+      ]
+    },
+    {
+      "kind": "measure",
+      "title": "Every millisecond matters",
+      "narration": "Imagine an illustrative request budget of five hundred milliseconds. This number is only an example, not a universal web performance benchmark.",
+      "label": "Illustrative latency budget",
+      "value": "500",
+      "scaleMax": "1000",
+      "unit": "ms"
+    },
+    {
+      "kind": "compare",
+      "title": "Two hypothetical results",
+      "narration": "In a made up comparison, a cached answer takes forty five milliseconds, while an uncached request takes three hundred milliseconds. Real timing varies with conditions.",
+      "left": "Cached example",
+      "right": "Uncached example",
+      "leftValue": "45",
+      "rightValue": "300",
+      "unit": "ms"
+    }
+  ]
+}
