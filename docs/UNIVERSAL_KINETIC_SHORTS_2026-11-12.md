@@ -368,3 +368,30 @@ web/nature topics. This improves the **general pipeline** rather than
 claiming to create a faithful person, animal, real machine, or scientific
 physical simulation from a bare title. Topic-specific articulated motion
 synthesis remains an unsolved next step.
+
+### Articulated parts: author-defined hinge pivots
+
+Each original transparent foreground component can now rotate about its own
+**fixed hinge**, rather than only around the center of its alpha bounding box.
+An optional `pivot` field on an `actorTracks` entry specifies two normalized
+coordinates inside the transparent component's bounding box:
+
+```json
+{"z": 90, "pivot": [0.5, 0.94], "keys": [
+  {"at": 0, "x": 0, "y": 0, "scale": 1, "angle": -20},
+  {"at": 0.5, "x": 0, "y": 0, "scale": 1, "angle": 25},
+  {"at": 1, "x": 0, "y": 0, "scale": 1, "angle": -10}
+]}
+```
+
+Here the component rotates around a near-bottom hinge, so an original
+antenna, arm, wing, pendulum, mechanical lever or similar **separate original
+art layer** can articulate independently from the main subject. The engine
+maintains the joint's world position during rotation and rejects invalid
+pivot coordinates, including non-finite numbers and booleans. The pivot
+must also remain unchanged when the same original subject continues into
+the next shot. No automatic human/animal skeletal inference is claimed.
+
+The reproducible actor demonstration now includes a separately illustrated
+antenna joint over the existing original spacecraft; dedicated GitHub Actions
+renders an actual portrait H.264/AAC film and exercises the hinge tests.
