@@ -27,8 +27,8 @@ class ScienceReleaseWorkflowTests(unittest.TestCase):
             "  workflow_dispatch:\n", 1)[0]
         dispatch = self.production.split("  workflow_dispatch:\n", 1)[1].split(
             "\npermissions:\n", 1)[0]
-        names = re.findall(r"(?m)^      ([a-z][a-z_]*):\s*$", call)
-        android = re.findall(r"(?m)^      ([a-z][a-z_]*):\s*$", dispatch)
+        names = re.findall(r"(?m)^      ([a-z][a-z0-9_]*):\s*$", call)
+        android = re.findall(r"(?m)^      ([a-z][a-z0-9_]*):\s*$", dispatch)
         expected = {
             "topic", "original_script", "character", "style", "language",
             "voice", "voice_style", "voice_name", "soundtrack", "transition",
