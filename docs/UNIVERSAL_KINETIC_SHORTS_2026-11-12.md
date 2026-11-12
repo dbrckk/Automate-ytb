@@ -362,7 +362,7 @@ automate-ytb-short --brief build/actors/actor-rig-story.json \
   --output build/actors/actor-demo.mp4 --voice kokoro --width 1080
 ```
 
-The generator creates three original asset layers. GitHub CI separately
+The generator creates original background, body, receiver and articulated antenna layers. GitHub CI separately
 encodes and validates a real 720x1280 actor-action MP4 alongside existing
 web/nature topics. This improves the **general pipeline** rather than
 claiming to create a faithful person, animal, real machine, or scientific
@@ -395,3 +395,38 @@ the next shot. No automatic human/animal skeletal inference is claimed.
 The reproducible actor demonstration now includes a separately illustrated
 antenna joint over the existing original spacecraft; dedicated GitHub Actions
 renders an actual portrait H.264/AAC film and exercises the hinge tests.
+
+
+### Attached assemblies: a real parent-to-child transform
+
+A child actor can now reference another approved moving foreground layer
+through parentZ and attach, in addition to its own normalized pivot.
+The example contains a spacecraft antenna attached to the original body:
+
+    {
+      "z": 90,
+      "parentZ": 45,
+      "attach": [0.5, 0.62],
+      "pivot": [0.5, 0.94],
+      "keys": [
+        {"at": 0, "x": 0, "y": 0, "scale": 1, "angle": -4},
+        {"at": 0.5, "x": 0, "y": 0, "scale": 1, "angle": 26},
+        {"at": 1, "x": 0, "y": 0, "scale": 1, "angle": -15}
+      ]
+    }
+
+Unlike copying the body position into every antenna frame, the child now
+inherits the parent's translation, camera displacement, scale and angle.
+Its hinge follows the selected normalized parent crop anchor. Its separate
+local angle rotates the component about its own pivot; local x/y offsets
+move along the rotated parent's axes.
+
+Parent layers must be licensed, moving RGBA originals at a lower Z depth.
+The hierarchy is an acyclic tree. Missing parents, invalid normalized
+anchors, discontinuous joint attachment across shots and excessive inherited
+scale are rejected. Nested original parts are supported within the existing
+six-actor budget. This is not automatic anatomical or physics simulation.
+
+The dedicated CI verifies three real 720x1280 portrait MP4s, including
+two continuous scenes with a truly parented antenna, and validates inherited
+joint geometry independently of audio and video encoding.
