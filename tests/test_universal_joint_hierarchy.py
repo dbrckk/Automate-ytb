@@ -52,6 +52,8 @@ class OriginalJointHierarchyTests(unittest.TestCase):
                 {"parentZ":99,"attach":[.5,.5]},
         ):
             t=tracks()
+            t[1].pop("parentZ")
+            t[1].pop("attach")
             t[1].update(broken)
             with self.subTest(broken=broken),self.assertRaises(ValueError):
                 validate_actor_rig(t,[],layers())
