@@ -73,17 +73,25 @@ jobs:
           else
             automate-ytb-short --brief examples/universal_web_request.json --output build/universal/web-request-original.mp4 --voice espeak --width 720
           fi
+      - name: Render another subject from original narration alone
+        run: |
+          automate-ytb-short --topic "A seed comes to life" --script-file examples/universal_seed_story.en.txt --language en --output build/universal/seed-story-original.mp4 --voice espeak --width 720
       - name: Independently verify technical delivery
         run: |
           python -m automate_ytb.shorts_delivery \
             --video build/universal/web-request-original.mp4 \
             --require-audio \
             --report build/universal/delivery-qa.json
+      - name: Verify second subject real MP4 with voice
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/seed-story-original.mp4 --require-audio --report build/universal/seed-story-delivery-qa.json
       - name: Measure actual encoded motion and loudness
         run: |
           python scripts/benchmark_audiovisual.py \
             --video build/universal/web-request-original.mp4 \
             --label universal-original-kinetic \
+            --video build/universal/seed-story-original.mp4 \
+            --label universal-original-nature \
             --output build/universal/audiovisual-benchmark.json
       - name: Download verified original media (not private benchmark)
         uses: actions/upload-artifact@v4
