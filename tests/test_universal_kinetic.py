@@ -127,6 +127,19 @@ class UniversalKineticTests(unittest.TestCase):
         image=frame_image(content,track,[0,60,120,180,240],80,360,640)
         self.assertEqual(image.size,(360,640))
 
+    def test_real_artwork_search_must_be_explicitly_requested(self):
+        data=story()
+        data["beats"][0]["visualQuery"]="historic stone lighthouse"
+        decoded=self._load(data)
+        self.assertEqual(decoded["beats"][0]["visualQuery"],
+                         "historic stone lighthouse")
+        self.assertIsNone(decoded["beats"][1]["visualQuery"])
+        for bad in ("", "A"*121, "unsafe\nline"):
+            data["beats"][0]["visualQuery"]=bad
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                self._load(data)
+        self.assertFalse(decoded["beats"][0]["visualLayers"])
+
     def test_numeric_values_arent_made_up_from_topic(self):
         data=story()
         data["topic"]="A different and unrelated subject"
