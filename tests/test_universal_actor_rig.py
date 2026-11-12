@@ -186,7 +186,7 @@ class AuthoredActorRigTests(unittest.TestCase):
             req.write_text(json.dumps(scene_story("A test of cause and effect")),
                            encoding="utf8")
             target=root/"authored-actors.mp4"
-            report=produce(req,target,width=360,voice="espeak")
+            report=produce(req,target,width=720,voice="espeak")
             self.assertEqual(report["delivery"]["status"],"passed")
             self.assertGreater(target.stat().st_size,10000)
             self.assertEqual(report["artwork"]["authoredActionActors"],2)
