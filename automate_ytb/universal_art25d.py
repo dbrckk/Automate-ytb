@@ -92,6 +92,7 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     stage_size=(width-2*pad,round(height*.51))
     scenes={}
     manifest=[]
+    vector_cache={}
     for index, beat in enumerate(story["beats"]):
         layers=beat.get("visualLayers",[])
         vectors=beat.get("visualVectors",[])
@@ -123,10 +124,14 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
             from .universal_vector25d import (
                 render_vector_layer,vector_fingerprint)
             for n,item in enumerate(vectors):
-                canvas=render_vector_layer(item,stage_size)
-                # Shading is prepared once: a real alpha-matted, original
-                # bezier source participates in the very same 2.5D stage.
-                canvas=relight_surface(canvas,item["material"])
+                fingerprint=vector_fingerprint(item)
+                if fingerprint not in vector_cache:
+                    canvas=render_vector_layer(item,stage_size)
+                    # Shading and 2x supersampling are shared across any
+                    # subsequent beat reusing the exact same authored world.
+                    vector_cache[fingerprint]=relight_surface(
+                        canvas,item["material"])
+                canvas=vector_cache[fingerprint]
                 layer=Layer25D(
                     name=f"vector-{index:02d}-{n:02d}",
                     z=item["z"],image=canvas,
@@ -139,7 +144,7 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
                     "sourceType":"original-inline-vector",
                     "vectorName":item["name"],
                     "shapes":len(item["shapes"]),
-                    "sha256":vector_fingerprint(item),
+                    "sha256":fingerprint,
                     "rightsStatement":"Original storyboard-defined geometry; requires human review",
                     "rightsManuallyConfirmedByAuthor":False,
                 })
