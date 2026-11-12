@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v2"
+VERSION = "universal-kinetic-cinematic-stage-v3-cc0"
 
 
 def _text(value, name, limit=120):
@@ -111,6 +111,9 @@ def read_story(path: Path) -> dict:
         current["sources"] = sources[:]
         from .universal_art25d import validate_layers
         current["visualLayers"] = validate_layers(beat.get("visualLayers"))
+        current["visualQuery"] = (
+            _text(beat["visualQuery"], "visual query", 120)
+            if beat.get("visualQuery") is not None else None)
         if current["visualLayers"] and kind in ("measure", "compare"):
             raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
         validated.append(current)
@@ -301,7 +304,8 @@ def _bar(draw, x, y, w, h, fraction, color, palette):
 
 def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 frame: int, width: int, height: int, backdrop=None,
-                art_scenes=None, caption_cues=None) -> Image.Image:
+                art_scenes=None, caption_cues=None,
+                commons_scenes=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
     palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
@@ -333,6 +337,13 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         from .universal_art25d import render_art_stage
         artwork=render_art_stage(art,frame,start,end)
         base.paste(artwork,(pad,stage_top),artwork)
+    elif commons_scenes is not None and pos in commons_scenes:
+        # Optional CC0 media can illustrate arbitrary authored concepts.
+        # It is a moving crop of a real photo, NOT invented scene geometry.
+        world_pad=round(width*.045)
+        world_top=round(height*.274)
+        artwork=commons_scenes[pos].render(frame,start,end)
+        base.paste(artwork,(world_pad,world_top))
     # Fully authored art takes precedence. Otherwise use the shared
     # cinematic 2.5D grammar: real world-state values, extruded objects,
     # causal light signals, calibrated rulers and camera-stable depth.
@@ -390,8 +401,9 @@ def _music(output:Path,total_frames:int):
 
 
 def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
-            width=720) -> dict:
-    if voice not in ("kokoro","espeak") or type(width) is not int or width not in (360,720,1080):
+            width=720,commons_art=False) -> dict:
+    if (voice not in ("kokoro","espeak") or type(width) is not int
+            or width not in (360,720,1080) or type(commons_art) is not bool):
         raise ValueError("Voice kokoro/espeak and width 360/720/1080 required")
     story=read_story(brief)
     height=width*16//9
@@ -410,6 +422,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
         from .universal_art25d import load_art_scenes
         art_scenes,art_provenance=load_art_scenes(story,brief,width,height)
+        commons_scenes,commons_provenance={},[]
+        if commons_art:
+            from .universal_commons import build_commons_scenes
+            commons_scenes,commons_provenance=build_commons_scenes(
+                story,width-2*round(width*.045),round(height*.495))
         silent=work/"picture.mp4"
         cmd=["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
              "-f","rawvideo","-pix_fmt","rgb24","-s",f"{width}x{height}",
@@ -422,7 +439,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             for frame in range(timeline.total_frames):
                 encoder.stdin.write(frame_image(story,timeline,stamps,frame,
                                                width,height,background,
-                                               art_scenes,captions).tobytes())
+                                               art_scenes,captions,
+                                               commons_scenes).tobytes())
             encoder.stdin.close()
             encoder.stdin=None
             _,err=encoder.communicate(timeout=600)
@@ -448,6 +466,9 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
+        "commonsArtRequested":commons_art,
+        "commonsScenes":len(commons_scenes),
+        "commonsSources":commons_provenance,
         "narrationTiming":"actual-PCM-beat-boundaries",
         "subtitleTiming":"audio-derived-synthesized-phrases",
         "subtitleCues":len(captions),"subtitleFile":subtitle_path.name,
@@ -480,6 +501,8 @@ def main(argv=None):
     p.add_argument("--voice",choices=("kokoro","espeak"),default="kokoro")
     p.add_argument("--voice-name")
     p.add_argument("--width",type=int,choices=(360,720,1080),default=720)
+    p.add_argument("--commons-art",action="store_true",
+                   help="Opt in to online CC0 1.0 Wikimedia visuals, subject to review")
     a=p.parse_args(argv)
     try:
         brief=a.brief
@@ -494,7 +517,8 @@ def main(argv=None):
             brief.parent.mkdir(parents=True,exist_ok=True)
             brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\n",
                              encoding="utf8")
-        report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,width=a.width)
+        report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,
+                       width=a.width,commons_art=a.commons_art)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return 0 if report["delivery"]["status"]=="passed" else 2
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:
