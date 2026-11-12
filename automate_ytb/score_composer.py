@@ -87,11 +87,12 @@ def create_score(*, plan_path: Path, output: Path,
     # An authored reveal is the dramatic pivot; without one the arc is a
     # disclosed global score heuristic, not an alleged word-level alignment.
     reveals = [e for e in accent_events if e["family"] == "reveal"]
-    pivot = (reveals[0]["atSample"] / samples if reveals else .77)
-    pivot = min(.88, max(.67, pivot))
-    marks = ((0., .18), (.20, .36), (.51, .64),
-             (max(.52, pivot-.075), .28), (pivot, .88),
-             (min(.97, pivot+.11), .65), (1., .08))
+    authored_pivot = reveals[0]["atSample"] / samples if reveals else None
+    pivot = (authored_pivot if authored_pivot is not None
+             and .05 <= authored_pivot <= .95 else .77)
+    marks = ((0., .18), (pivot*.26, .36), (pivot*.65, .64),
+             (pivot*.91, .28), (pivot, .88),
+             (pivot + (1-pivot)*.43, .65), (1., .08))
     # Use a crossfade between chord voicings, rather than slicing the pad.
     # Each stereo channel gets a slightly different detuned oscillator.
     chord_frequencies = [
@@ -192,7 +193,7 @@ def create_score(*, plan_path: Path, output: Path,
         "audiblePeakSampleDbfs": (round(20*math.log10(max_sample / 32767), 2)
                                  if max_sample else -120.),
         "musicArc": {"pivotFraction": round(pivot, 4),
-                     "pivotSource": ("authored-visual-reveal" if reveals
+                     "pivotSource": ("authored-visual-reveal" if authored_pivot == pivot
                                      else "global-narrative-heuristic")},
         "authoredEventAccents": cue_report,
         "wavSha256": _sha(output),
