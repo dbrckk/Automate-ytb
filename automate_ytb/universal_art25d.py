@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 from .scene25d import Layer25D, Scene25D
 from .surface25d import MATERIALS, relight_surface
 
-VERSION = "universal-owned-art-layer-parallax-v1"
+VERSION = "universal-owned-art-layer-parallax-and-actions-v2"
 
 
 def validate_layers(raw) -> list[dict]:
@@ -97,6 +97,7 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
         if not layers:
             continue
         scene=Scene25D(stage_size)
+        owned_layers=[]
         for n, item in enumerate(layers):
             path=(root/item["file"]).resolve()
             if not path.is_relative_to(root) or path.is_symlink():
@@ -105,17 +106,24 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
             # Relight exactly once: native Scene25D supports animated parallax
             # while redoing full-resolution relief for 30 fps is wasteful.
             canvas=relight_surface(canvas,item["material"])
-            scene.add(Layer25D(
+            layer=Layer25D(
                 name=f"visual-{index:02d}-{n:02d}",z=item["z"],image=canvas,
                 parallax_x=item["parallaxX"],parallax_y=item["parallaxY"],
-                material="none"))
+                material="none")
+            scene.add(layer)
+            owned_layers.append(layer)
             manifest.append({
                 "beat": index,"fileName":path.name,"depth":item["z"],
                 "sha256":hashlib.sha256(path.read_bytes()).hexdigest(),
                 "rightsStatement":item["rights"],
                 "rightsManuallyConfirmedByAuthor":True,
             })
-        scenes[index]=scene
+        if beat.get("actorTracks"):
+            from .universal_actor_rig import RiggedArtScene
+            scenes[index]=RiggedArtScene(
+                scene,owned_layers,beat["actorTracks"],beat["actorLinks"])
+        else:
+            scenes[index]=scene
     return scenes, manifest
 
 
@@ -123,8 +131,11 @@ def render_art_stage(scene: Scene25D, frame: int,
                      first: int, last: int) -> Image.Image:
     if type(frame) is not int or not first <= frame < last:
         raise ValueError("Frame outside original visual sequence")
-    # Smooth directed 2.5D dolly. Different z profiles move independently,
-    # without inventing physical trajectories for unauthored subjects.
+    from .universal_actor_rig import RiggedArtScene
+    if isinstance(scene,RiggedArtScene):
+        return scene.render(frame,first,last)
+    # Smooth directed 2.5D dolly for still illustration layers.
+    # Authored actor tracks use their own sampled frame clock above.
     phase=(frame-first)/max(1,last-first)
     smooth=phase*phase*(3-2*phase)
     return scene.render(camera_x=round(28*(smooth*2-1)),
