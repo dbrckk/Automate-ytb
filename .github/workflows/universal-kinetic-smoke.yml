@@ -53,6 +53,12 @@ jobs:
             --video build/universal/web-request-original.mp4 \
             --require-audio \
             --report build/universal/delivery-qa.json
+      - name: Measure actual encoded motion and loudness
+        run: |
+          python scripts/benchmark_audiovisual.py \\
+            --video build/universal/web-request-original.mp4 \\
+            --label universal-original-kinetic \\
+            --output build/universal/audiovisual-benchmark.json
       - name: Download verified original media (not private benchmark)
         uses: actions/upload-artifact@v4
         with:
