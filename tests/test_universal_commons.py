@@ -151,13 +151,14 @@ class WikimediaCommonsArtTests(unittest.TestCase):
         self.assertEqual(manifest,[])
         with self.assertRaises(ValueError):
             search_cc0("A"*121,read_url=lambda *a:b"{}")
-        with self.assertRaises(ValueError):
-            build_commons_scenes(story(),400,460,
-                query_media=lambda *a:[{
-                    "page":PAGE,"thumbnail":"https://evil.example/fake.png",
-                    "title":"Fake","license":"CC0-1.0","licenseURL":CC0_URL,
-                    "creator":"Unknown","credit":""}],
-                image_media=lambda *a:media())
+        scenes,manifest=build_commons_scenes(story(),400,460,
+            query_media=lambda *a:[{
+                "page":PAGE,"thumbnail":"https://evil.example/fake.png",
+                "title":"Fake","license":"CC0-1.0","licenseURL":CC0_URL,
+                "creator":"Unknown","credit":""}],
+            image_media=lambda *a:media())
+        self.assertEqual(scenes,{})
+        self.assertEqual(manifest,[])
 
 
 if __name__ == "__main__":
