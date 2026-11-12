@@ -16,6 +16,11 @@ on:
         type: choice
         options: [en, fr]
         default: en
+      voice:
+        description: Free neural Kokoro voice (default) or fast eSpeak draft
+        type: choice
+        options: [kokoro, espeak]
+        default: kokoro
   pull_request:
     paths:
       - automate_ytb/universal_kinetic.py
@@ -45,7 +50,7 @@ jobs:
   real-animation-and-audio:
     name: Original non-science vertical Short
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -59,6 +64,17 @@ jobs:
             sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
           fi
           python -m pip install --disable-pip-version-check -e .
+      - name: Cache open neural narration model (requested runs only)
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install optional free neural narration (requested runs only)
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        run: |
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install --disable-pip-version-check -e '.[speech]'
       - name: Validate all story grammars and real video
         run: |
           python -m unittest discover -s tests -p test_universal_kinetic.py -v
@@ -69,6 +85,7 @@ jobs:
           YT_TOPIC: ${{ inputs.topic }}
           YT_SCRIPT: ${{ inputs.original_script }}
           YT_LANGUAGE: ${{ inputs.language }}
+          YT_VOICE: ${{ inputs.voice }}
         run: |
           mkdir -p build/universal
           if [ -n "$YT_TOPIC" ] || [ -n "$YT_SCRIPT" ]; then
@@ -77,7 +94,7 @@ jobs:
               exit 2
             fi
             printf '%s' "$YT_SCRIPT" > build/universal/original-script.txt
-            automate-ytb-short --topic "$YT_TOPIC" --script-file build/universal/original-script.txt --language "${YT_LANGUAGE:-en}" --output build/universal/web-request-original.mp4 --voice espeak --width 720
+            automate-ytb-short --topic "$YT_TOPIC" --script-file build/universal/original-script.txt --language "${YT_LANGUAGE:-en}" --output build/universal/web-request-original.mp4 --voice "${YT_VOICE:-espeak}" --width 720
           else
             automate-ytb-short --brief examples/universal_web_request.json --output build/universal/web-request-original.mp4 --voice espeak --width 720
           fi
