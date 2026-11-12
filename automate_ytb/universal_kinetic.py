@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v5-authored-actions"
+VERSION = "universal-kinetic-cinematic-stage-v6-subject-camera"
 
 
 def _text(value, name, limit=120):
@@ -496,7 +496,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             "approvedLayerProvenance":art_provenance,
             "authoredActionActors":sum(len(b["actorTracks"]) for b in story["beats"]),
             "authoredActorLinks":sum(len(b["actorLinks"]) for b in story["beats"]),
-            "actionEngine":"universal-authored-actor-rig-v1"},
+            "actionEngine":"universal-authored-actor-rig-subject-follow-v2"},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,
         "sourceURLs":sorted(set(s for b in story["beats"] for s in b["sources"])),
         "delivery":delivery,
