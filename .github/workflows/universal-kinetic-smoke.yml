@@ -1,0 +1,62 @@
+name: Universal kinetic Short — real MP4/audio smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - automate_ytb/universal_kinetic.py
+      - automate_ytb/master_timeline.py
+      - automate_ytb/foley_engine.py
+      - automate_ytb/narration.py
+      - automate_ytb/shorts_delivery.py
+      - tests/test_universal_kinetic.py
+      - examples/universal_web_request.json
+      - .github/workflows/universal-kinetic-smoke.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: universal-kinetic-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  real-animation-and-audio:
+    name: Original non-science vertical Short
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free dependencies
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v espeak-ng >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check -e .
+      - name: Validate all story grammars and real video
+        run: python -m unittest discover -s tests -p test_universal_kinetic.py -v
+      - name: Render real original 9:16 topic video
+        run: |
+          mkdir -p build/universal
+          automate-ytb-short \
+            --brief examples/universal_web_request.json \
+            --output build/universal/web-request-original.mp4 \
+            --voice espeak --width 720
+      - name: Independently verify technical delivery
+        run: |
+          python -m automate_ytb.shorts_delivery \
+            --video build/universal/web-request-original.mp4 \
+            --require-audio \
+            --report build/universal/delivery-qa.json
+      - name: Download verified original media (not private benchmark)
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-kinetic-original-short
+          path: build/universal/
+          if-no-files-found: error
+          retention-days: 14
