@@ -35,8 +35,8 @@ jobs:
       soundtrack: ambient
       transition: adaptive
       caption_timing: audio
-      duration_seconds: 30
-      shot_seconds: 6
+      duration_seconds: 32
+      shot_seconds: 6.4
       resolution: shorts
       render_profile: high
       cinematic_3d: false
