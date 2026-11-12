@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
 
-VERSION = "universal-authored-actor-rig-v1"
+VERSION = "universal-authored-actor-rig-subject-follow-v2"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -179,4 +179,18 @@ class RiggedArtScene:
                                round(x+radius),round(y+radius)),
                               outline=(255,235,173,round(pulse*205)),
                               width=max(1,w//2))
-        return result
+        # A deterministic follow-camera uses the actual on-screen actor
+        # centres, not a static slide-sized crop or a fictitious subject.
+        # The crop stays strictly inside the authored source world.
+        zoom=1.08+.18*_ease(phase)
+        w,h=self.size
+        crop_w=max(16,round(w/zoom))
+        crop_h=max(16,round(h/zoom))
+        focus_x=sum(x for x,_ in centres.values())/len(centres)
+        focus_y=sum(y for _,y in centres.values())/len(centres)
+        focus_x=.42*(w/2)+.58*focus_x
+        focus_y=.42*(h/2)+.58*focus_y
+        left=max(0,min(w-crop_w,round(focus_x-crop_w/2)))
+        top=max(0,min(h-crop_h,round(focus_y-crop_h/2)))
+        crop=result.crop((left,top,left+crop_w,top+crop_h))
+        return crop.resize(self.size,Image.Resampling.BICUBIC)
