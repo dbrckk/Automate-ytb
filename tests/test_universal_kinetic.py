@@ -57,6 +57,36 @@ class UniversalKineticTests(unittest.TestCase):
         second = frame_image(data,motion,times,50,360,640)
         self.assertNotEqual(first.tobytes(),second.tobytes())
 
+    def test_same_quantity_survives_story_beats_without_reset(self):
+        data=story()
+        data["beats"]=[
+            {"kind":"measure","title":"Starting measurement",
+             "narration":"Our example begins with a distance of two meters.",
+             "label":"Distance","value":"2","scaleMax":"10","unit":"m"},
+            {"kind":"concept","title":"The process",
+             "narration":"The same object continues moving across the original story.",
+             "nodes":["Object","Movement","Camera"]},
+            {"kind":"measure","title":"Final measurement",
+             "narration":"The distance grows to six meters in this example.",
+             "label":"Distance","value":"6","scaleMax":"10","unit":"m"},
+        ]
+        parsed=self._load(data)
+        stamps=[0,60,120,180]
+        motion=timeline_for(parsed,stamps)
+        values=[motion.state_at(i)["objects"]["quantity-00"]["value"]
+                for i in (59,60,90,119,120,121,179,180)]
+        self.assertAlmostEqual(values[1],.2)
+        self.assertAlmostEqual(values[2],.2)
+        self.assertAlmostEqual(values[4],.2)
+        self.assertGreater(values[5],values[4])
+        self.assertAlmostEqual(values[-1],.6)
+        self.assertLess(max(abs(b-a) for a,b in zip(values,values[1:])),.4)
+        self.assertTrue(all(values[i] <= values[i+1]
+                            for i in range(len(values)-1)))
+        for i in (59,60,90,119,120,121,179):
+            self.assertEqual(frame_image(parsed,motion,stamps,i,360,640).size,
+                             (360,640))
+
     def test_bad_values_and_unreviewed_sources(self):
         for field, bad in (
             ("value", "NaN"), ("value", "-1"), ("value", "1e100"),
