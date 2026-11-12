@@ -228,6 +228,11 @@ def render_vector_layer(layer: dict, size: tuple[int,int]) -> Image.Image:
             else:
                 colors=tuple(fill)
                 if colors not in gradients:
+                    # A 1080p episode can use 48 distinct gradients per layer.
+                    # Keep at most three large supersampled images in memory
+                    # rather than caching hundreds of megabytes of art.
+                    if len(gradients)>=3:
+                        gradients.pop(next(iter(gradients)))
                     gradient=Image.linear_gradient("L").resize(
                         work.size,Image.Resampling.BILINEAR)
                     gradients[colors]=ImageOps.colorize(
