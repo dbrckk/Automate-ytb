@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v4-foreground-rig"
+VERSION = "universal-kinetic-cinematic-stage-v5-authored-actions"
 
 
 def _text(value, name, limit=120):
@@ -119,6 +119,10 @@ def read_story(path: Path) -> dict:
             raise ValueError("Artwork query must be one printable line")
         if current["visualLayers"] and kind in ("measure", "compare"):
             raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
+        from .universal_actor_rig import validate_actor_rig
+        current["actorTracks"],current["actorLinks"]=validate_actor_rig(
+            beat.get("actorTracks"),beat.get("actorLinks"),
+            current["visualLayers"])
         validated.append(current)
     return {"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1}
@@ -486,7 +490,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "artwork":{
             "engine":"scene25d-multilayer-owned-art",
             "scenesWithRealAuthoredArtwork":len(art_scenes),
-            "approvedLayerProvenance":art_provenance},
+            "approvedLayerProvenance":art_provenance,
+            "authoredActionActors":sum(len(b["actorTracks"]) for b in story["beats"]),
+            "authoredActorLinks":sum(len(b["actorLinks"]) for b in story["beats"]),
+            "actionEngine":"universal-authored-actor-rig-v1"},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,
         "sourceURLs":sorted(set(s for b in story["beats"] for s in b["sources"])),
         "delivery":delivery,
