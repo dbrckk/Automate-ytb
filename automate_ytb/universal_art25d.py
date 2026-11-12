@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 from .scene25d import Layer25D, Scene25D
 from .surface25d import MATERIALS, relight_surface
 
-VERSION = "universal-owned-art-layer-parallax-and-actions-v2"
+VERSION = "universal-mixed-owned-and-inline-bezier-art-v3"
 
 
 def validate_layers(raw) -> list[dict]:
@@ -71,6 +71,13 @@ def _image(path: Path, size: tuple[int,int], *, background: bool) -> Image.Image
                 raise ValueError("Unsupported bounded owned illustration")
             source.load()
             image = source.convert("RGBA")
+            # Test the ORIGINAL alpha before centering/letterboxing a photo.
+            # An opaque RGB source becomes artificially transparent when
+            # contained in a taller portrait stage; that padding is not a
+            # valid foreground cutout and would hide the actual background.
+            if not background and image.getchannel("A").getextrema() == (255,255):
+                raise ValueError(
+                    "Moving subject art needs real source transparency")
     except (OSError, OverflowError) as exc:
         raise ValueError("Unreadable owned visual artwork") from exc
     if background:
@@ -88,13 +95,17 @@ def _image(path: Path, size: tuple[int,int], *, background: bool) -> Image.Image
 def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     """Prepare expensive textures once, never once per video frame."""
     root=brief_path.resolve().parent
-    pad=round(width*.09)
-    stage_size=(width-2*pad,round(height*.51))
+    pad=round(width*.045)
+    # Cinematic world: broad portrait composition with real bottom detail,
+    # not a 40-50% height slide floating within empty screen space.
+    stage_size=(width-2*pad,round(height*.685))
     scenes={}
     manifest=[]
+    vector_cache={}
     for index, beat in enumerate(story["beats"]):
         layers=beat.get("visualLayers",[])
-        if not layers:
+        vectors=beat.get("visualVectors",[])
+        if not layers and not vectors:
             continue
         scene=Scene25D(stage_size)
         owned_layers=[]
@@ -118,6 +129,34 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
                 "rightsStatement":item["rights"],
                 "rightsManuallyConfirmedByAuthor":True,
             })
+        if vectors:
+            from .universal_vector25d import (
+                render_vector_layer,vector_fingerprint)
+            for n,item in enumerate(vectors):
+                fingerprint=vector_fingerprint(item)
+                if fingerprint not in vector_cache:
+                    canvas=render_vector_layer(item,stage_size)
+                    # Shading and 2x supersampling are shared across any
+                    # subsequent beat reusing the exact same authored world.
+                    vector_cache[fingerprint]=relight_surface(
+                        canvas,item["material"])
+                canvas=vector_cache[fingerprint]
+                layer=Layer25D(
+                    name=f"vector-{index:02d}-{n:02d}",
+                    z=item["z"],image=canvas,
+                    parallax_x=item["parallaxX"],
+                    parallax_y=item["parallaxY"],material="none")
+                scene.add(layer)
+                owned_layers.append(layer)
+                manifest.append({
+                    "beat":index,"fileName":None,"depth":item["z"],
+                    "sourceType":"original-inline-vector",
+                    "vectorName":item["name"],
+                    "shapes":len(item["shapes"]),
+                    "sha256":fingerprint,
+                    "rightsStatement":"Original storyboard-defined geometry; requires human review",
+                    "rightsManuallyConfirmedByAuthor":False,
+                })
         if beat.get("actorTracks"):
             from .universal_actor_rig import RiggedArtScene
             scenes[index]=RiggedArtScene(

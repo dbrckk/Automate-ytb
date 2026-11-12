@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from array import array
 from decimal import Decimal, InvalidOperation
+from functools import lru_cache
 import json
 import math
 from pathlib import Path
@@ -32,7 +33,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v7-persistent-actor-world"
+VERSION = "universal-kinetic-cinematic-stage-v9-wide-world-caption-veil"
 
 
 def _text(value, name, limit=120):
@@ -110,19 +111,24 @@ def read_story(path: Path) -> dict:
                 raise ValueError("Only explicit HTTPS fact sources accepted")
         current["sources"] = sources[:]
         from .universal_art25d import validate_layers
+        from .universal_vector25d import validate_vector_layers
         current["visualLayers"] = validate_layers(beat.get("visualLayers"))
+        current["visualVectors"] = validate_vector_layers(beat.get("visualVectors"))
+        depths=[item["z"] for item in current["visualLayers"]+current["visualVectors"]]
+        if len(depths)!=len(set(depths)) or len(depths)>12:
+            raise ValueError("Original art and vector layers need distinct Z positions")
         current["visualQuery"] = (
             _text(beat["visualQuery"], "visual query", 120)
             if beat.get("visualQuery") is not None else None)
         if (current["visualQuery"] is not None
                 and not current["visualQuery"].isprintable()):
             raise ValueError("Artwork query must be one printable line")
-        if current["visualLayers"] and kind in ("measure", "compare"):
+        if (current["visualLayers"] or current["visualVectors"]) and kind in ("measure", "compare"):
             raise ValueError("Numeric beats need visible grounded data; use graphical measure/compare")
         from .universal_actor_rig import validate_actor_rig
         current["actorTracks"],current["actorLinks"]=validate_actor_rig(
             beat.get("actorTracks"),beat.get("actorLinks"),
-            current["visualLayers"])
+            current["visualLayers"]+current["visualVectors"])
         validated.append(current)
     # Foley validates at most 64 real cues. Every beat contributes its own
     # entry cue; a designed actor link contributes one contact cue.
@@ -328,6 +334,18 @@ def _bar(draw, x, y, w, h, fraction, color, palette):
         _box(draw, (x,y,x+max(h,fill),y+h), color, h//2)
 
 
+@lru_cache(maxsize=6)
+def _art_caption_veil(width: int, height: int) -> Image.Image:
+    """Transparent cinematic caption contrast, no opaque slide/card panel."""
+    veil=Image.new("RGBA",(width,max(4,round(height*.22))))
+    draw=ImageDraw.Draw(veil)
+    for y in range(veil.height):
+        f=y/max(1,veil.height-1)
+        alpha=round(145*math.sin(math.pi*f)**2)
+        draw.line((0,y,width,y),fill=(3,9,19,alpha))
+    return veil
+
+
 def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 frame: int, width: int, height: int, backdrop=None,
                 art_scenes=None, caption_cues=None,
@@ -364,8 +382,11 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         artwork=render_art_stage(art,frame,start,end)
         # Give the real illustrated world over half the portrait frame.
         # Two-line headers remain above it; PCM captions remain below.
-        art_top=round(height*.27)
-        base.paste(artwork,(pad,art_top),artwork)
+        art_top=round(height*.275)
+        world_pad=round(width*.045)
+        base.paste(artwork,(world_pad,art_top),artwork)
+        veil=_art_caption_veil(width,height)
+        base.paste(veil,(0,round(height*.72)),veil)
     elif commons_scenes is not None and pos in commons_scenes:
         # Optional CC0 media can illustrate arbitrary authored concepts.
         # It is a moving crop of a real photo, NOT invented scene geometry.
