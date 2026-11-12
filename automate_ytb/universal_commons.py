@@ -310,7 +310,8 @@ def build_commons_scenes(story:dict, width:int, height:int, *,
     image_download=image_media or _read_url
     scenes, manifest, used = {}, [], set()
     for index, beat in enumerate(story["beats"]):
-        if beat["kind"] in ("measure","compare") or beat.get("visualLayers"):
+        if (beat["kind"] in ("measure","compare") or
+                beat.get("visualLayers") or beat.get("visualVectors")):
             continue
         query=beat.get("visualQuery") or beat["title"]
         try:
