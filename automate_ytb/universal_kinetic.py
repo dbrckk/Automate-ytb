@@ -431,14 +431,32 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
 
 def main(argv=None):
     p=argparse.ArgumentParser(description="Original 9:16 kinetic Short from authored topic facts")
-    p.add_argument("--brief",type=Path,required=True)
+    input_group=p.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--brief",type=Path,
+                             help="Explicit JSON story with original structured facts")
+    input_group.add_argument("--script-file",type=Path,
+                             help="Original EN/FR narration, paragraphs or sentences")
+    p.add_argument("--topic",help="Required with --script-file")
+    p.add_argument("--language",choices=("en","fr"),default="en")
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--voice",choices=("kokoro","espeak"),default="kokoro")
     p.add_argument("--voice-name")
     p.add_argument("--width",type=int,choices=(360,720,1080),default=720)
     a=p.parse_args(argv)
     try:
-        report=produce(a.brief,a.output,voice=a.voice,voice_name=a.voice_name,width=a.width)
+        brief=a.brief
+        if a.script_file is not None:
+            from .universal_script import compile_original_script
+            if not a.script_file.is_file() or a.script_file.stat().st_size > 8500:
+                raise ValueError("Missing or oversized original script file")
+            story=compile_original_script(
+                topic=a.topic, script=a.script_file.read_text(encoding="utf8"),
+                language=a.language)
+            brief=a.output.with_suffix(".story.json")
+            brief.parent.mkdir(parents=True,exist_ok=True)
+            brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\\n",
+                             encoding="utf8")
+        report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,width=a.width)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return 0 if report["delivery"]["status"]=="passed" else 2
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:
