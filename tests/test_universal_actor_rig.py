@@ -11,11 +11,12 @@ import shutil
 import tempfile
 import unittest
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageChops, ImageStat
 
 from automate_ytb.universal_actor_rig import (
     RiggedArtScene, sampled_pose, validate_actor_rig)
-from automate_ytb.universal_art25d import load_art_scenes, render_art_stage
+from automate_ytb.universal_art25d import (
+    bind_actor_camera_world, load_art_scenes, render_art_stage)
 from automate_ytb.universal_kinetic import frame_image, produce, read_story, timeline_for
 
 
@@ -176,6 +177,41 @@ class AuthoredActorRigTests(unittest.TestCase):
             path=root/"too-many-events.json"
             path.write_text(json.dumps(data),encoding="utf8")
             with self.assertRaisesRegex(ValueError,"audio cues"):
+                read_story(path)
+
+    def test_same_original_subject_continues_without_camera_cut_jump(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            original_assets(root/"original")
+            data=scene_story("A continued original story")
+            before=data["beats"][0]
+            after=json.loads(json.dumps(before))
+            after["title"]="The same two objects continue on screen"
+            after["narration"]="Both original objects retain their positions while the camera follows their next movement."
+            for track in after["actorTracks"]:
+                start_pose=dict(track["keys"][-1])
+                start_pose["at"]=0
+                end_pose=dict(start_pose)
+                end_pose["at"]=1
+                end_pose["x"]-=.07
+                track["keys"]=[start_pose,end_pose]
+            data["beats"]=[before,after]
+            path=root/"story.json"
+            path.write_text(json.dumps(data),encoding="utf8")
+            parsed=read_story(path)
+            scenes,_=load_art_scenes(parsed,path,360,640)
+            groups=bind_actor_camera_world(parsed,scenes,[0,90,180])
+            self.assertEqual(len(groups),1)
+            self.assertEqual(scenes[0].camera_window,(0,180))
+            self.assertEqual(scenes[1].camera_window,(0,180))
+            a=render_art_stage(scenes[0],89,0,90)
+            b=render_art_stage(scenes[1],90,90,180)
+            delta=ImageChops.difference(a,b).convert("RGB")
+            self.assertLess(sum(ImageStat.Stat(delta).mean)/3,9.0)
+            # A repeated actor cannot teleport across a narrated cut.
+            data["beats"][1]["actorTracks"][0]["keys"][0]["x"]+=.12
+            path.write_text(json.dumps(data),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"jump"):
                 read_story(path)
 
     def test_unapproved_or_opaque_actor_art_fails_closed(self):
