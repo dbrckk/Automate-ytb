@@ -341,11 +341,15 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         quantity_ratio=(timeline.state_at(frame)["objects"][
             _series_id(story,pos)]["value"]
             if beat["kind"]=="measure" else None)
+        # A visual world should occupy the phone frame, not a small
+        # diagram card. Keep the authored-art stage dimensions unchanged.
+        world_pad=round(width*.045)
+        world_top=round(height*.274)
         stage=render_stage(
             beat=beat,frame=frame,first=start,last=end,
-            width=width-2*pad,height=round(height*.40),
+            width=width-2*world_pad,height=round(height*.495),
             palette=palette,value_ratio=quantity_ratio)
-        base.paste(stage,(pad,stage_top))
+        base.paste(stage,(world_pad,world_top))
     # Speech-synthesized phrase boundaries are measured from actual PCM,
     # never guessed word onsets or sliding seven-word subtitles.
     if caption_cues is not None:
