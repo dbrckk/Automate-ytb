@@ -26,7 +26,7 @@ def make_plan(destination: Path, *, one_scene: bool = False) -> Path:
                 "A narrow current starts to move across the ocean. "
                 "The flow becomes visible in the water. "
                 "The current slowly reaches equilibrium."),
-        duration=30, shot_seconds=6, character="An original blue ocean current",
+        duration=30, shot_seconds=6, character="An original violet owl with turquoise eyes and a golden scarf",
     )
     if one_scene:
         data["scenes"] = data["scenes"][:1]
