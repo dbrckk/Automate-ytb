@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 from .scene25d import Layer25D, Scene25D
 from .surface25d import MATERIALS, relight_surface
 
-VERSION = "universal-owned-art-layer-parallax-and-actions-v2"
+VERSION = "universal-mixed-owned-and-inline-bezier-art-v3"
 
 
 def validate_layers(raw) -> list[dict]:
@@ -94,7 +94,8 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
     manifest=[]
     for index, beat in enumerate(story["beats"]):
         layers=beat.get("visualLayers",[])
-        if not layers:
+        vectors=beat.get("visualVectors",[])
+        if not layers and not vectors:
             continue
         scene=Scene25D(stage_size)
         owned_layers=[]
@@ -118,6 +119,30 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
                 "rightsStatement":item["rights"],
                 "rightsManuallyConfirmedByAuthor":True,
             })
+        if vectors:
+            from .universal_vector25d import (
+                render_vector_layer,vector_fingerprint)
+            for n,item in enumerate(vectors):
+                canvas=render_vector_layer(item,stage_size)
+                # Shading is prepared once: a real alpha-matted, original
+                # bezier source participates in the very same 2.5D stage.
+                canvas=relight_surface(canvas,item["material"])
+                layer=Layer25D(
+                    name=f"vector-{index:02d}-{n:02d}",
+                    z=item["z"],image=canvas,
+                    parallax_x=item["parallaxX"],
+                    parallax_y=item["parallaxY"],material="none")
+                scene.add(layer)
+                owned_layers.append(layer)
+                manifest.append({
+                    "beat":index,"fileName":None,"depth":item["z"],
+                    "sourceType":"original-inline-vector",
+                    "vectorName":item["name"],
+                    "shapes":len(item["shapes"]),
+                    "sha256":vector_fingerprint(item),
+                    "rightsStatement":"Original storyboard-defined geometry; requires human review",
+                    "rightsManuallyConfirmedByAuthor":False,
+                })
         if beat.get("actorTracks"):
             from .universal_actor_rig import RiggedArtScene
             scenes[index]=RiggedArtScene(
