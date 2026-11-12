@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 from automate_ytb.universal_kinetic import (
-    VERSION, _single_line, frame_image, produce, read_story, timeline_for)
+    VERSION, _single_line, frame_image, produce, read_story, synthesize, timeline_for)
 
 
 def story():
@@ -135,6 +135,24 @@ class UniversalKineticTests(unittest.TestCase):
         self.assertEqual(str(result["beats"][3]["rightValue"]), "300")
         self.assertFalse(result["beats"][0]["sources"])
 
+    @unittest.skipUnless(shutil.which("espeak-ng") or shutil.which("espeak"),
+                         "Free narration engine unavailable")
+    def test_exact_synthesized_phrase_boundaries(self):
+        data=story()
+        data["beats"]=data["beats"][:2]
+        with tempfile.TemporaryDirectory() as td:
+            output=Path(td)/"voice.wav"
+            phrases=[]
+            stamps=synthesize(data,"espeak",output,caption_cues=phrases)
+            self.assertGreaterEqual(len(phrases),2)
+            self.assertEqual(stamps[0],0)
+            self.assertEqual(phrases[0]["startFrame"],0)
+            self.assertTrue(all(b["startFrame"] >= a["endFrame"]
+                                for a,b in zip(phrases,phrases[1:])))
+            self.assertTrue(all(c["endMs"]>c["startMs"] for c in phrases))
+            self.assertLessEqual(phrases[-1]["endFrame"],stamps[-1])
+            self.assertTrue(output.is_file())
+
     @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe")
                          and (shutil.which("espeak-ng") or shutil.which("espeak")),
                          "Real external free media binaries unavailable")
@@ -153,6 +171,10 @@ class UniversalKineticTests(unittest.TestCase):
             self.assertEqual(manifest["sound"],"original-event-locked-foley")
             self.assertFalse(manifest["publicationApproved"])
             self.assertTrue(out.with_suffix(".json").is_file())
+            self.assertTrue(out.with_suffix(".srt").is_file())
+            self.assertGreater(manifest["subtitleCues"],1)
+            self.assertEqual(manifest["subtitleTiming"],"audio-derived-synthesized-phrases")
+            self.assertFalse(manifest["wordLevelAligned"])
 
 
 if __name__ == "__main__":
