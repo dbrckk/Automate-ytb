@@ -124,10 +124,13 @@ def _column(draw, x, base, width, height, color, *, brightness=1.0):
                  fill=(*shadow, 255))
     draw.rounded_rectangle((round(x-r), top, round(x+r), round(base)),
                            radius=max(3, width//6), fill=(*face, 245))
-    draw.rectangle((round(x-r*.53), top+3, round(x-r*.15), round(base-3)),
-                   fill=(*light, 198))
-    draw.line((round(x+r*.55), top+4, round(x+r*.55), round(base-3)),
-              fill=(*_rgb(color, .42), 150), width=max(1, width//9))
+    # During the first few growth frames the pillar can be only 2–6 px
+    # tall. Pillow rejects inverted highlight bounds at these dimensions.
+    if base-top >= 7:
+        draw.rectangle((round(x-r*.53), top+3, round(x-r*.15), round(base-3)),
+                       fill=(*light, 198))
+        draw.line((round(x+r*.55), top+4, round(x+r*.55), round(base-3)),
+                  fill=(*_rgb(color, .42), 150), width=max(1, width//9))
     draw.ellipse((round(x-r), top-width*.13, round(x+r), top+width*.17),
                  fill=(*_mix(face, light, .42), 245),
                  outline=(*light, 190), width=max(1,width//14))
