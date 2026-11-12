@@ -163,6 +163,21 @@ class AuthoredActorRigTests(unittest.TestCase):
                                         render_art_stage(scenes[0],45,0,90).tobytes())
                     scenes[0].links=orig
 
+    def test_cross_scene_audio_budget_rejected_before_media_io(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            # No real artwork or encoder needed: reject invalid complexity
+            # before expensive source I/O and before Foley reaches its cap.
+            one=scene_story("Generic original motion")["beats"][0]
+            one["actorLinks"]=[{"fromZ":45,"toZ":75,"at":.12+i*.12}
+                               for i in range(6)]
+            data={"schemaVersion":1,"topic":"Too many causal links",
+                  "language":"en","beats":[one for _ in range(12)]}
+            path=root/"too-many-events.json"
+            path.write_text(json.dumps(data),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"audio cues"):
+                read_story(path)
+
     def test_unapproved_or_opaque_actor_art_fails_closed(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td)
