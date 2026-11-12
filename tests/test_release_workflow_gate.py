@@ -45,9 +45,9 @@ class ScienceReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(len(android), len(expected) + len(optional))
         for name in optional:
             self.assertRegex(
-                call, rf"(?m)^      {name}:\\n        type: boolean\\n        required: false\\n        default: false$")
+                call, rf"(?m)^      {name}:\n        type: boolean\n        required: false\n        default: false$")
             self.assertRegex(
-                dispatch, rf"(?m)^      {name}:[\\s\\S]*?        default: false$")
+                dispatch, rf"(?m)^      {name}:[\s\S]*?        default: false$")
         for name in expected:
             self.assertRegex(
                 call, rf"(?m)^      {name}:\n        type: (?:string|number)\n        required: true$")
