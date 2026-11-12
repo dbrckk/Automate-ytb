@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import re
 
-from .universal_kinetic import read_story
-
 VERSION = "source-text-universal-beat-compiler-v1"
 _STOP = frozenset((
     "about", "after", "again", "also", "avec", "avoir", "been", "before",
