@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-topic-driven-v1"
+VERSION = "universal-kinetic-cinematic-stage-v2"
 
 
 def _text(value, name, limit=120):
@@ -309,76 +309,19 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         from .universal_art25d import render_art_stage
         artwork=render_art_stage(art,frame,start,end)
         base.paste(artwork,(pad,stage_top),artwork)
-    # Scene-specific informational marks are animated, never slide images.
-    elif beat["kind"] == "measure":
-        ratio=Decimal(str(timeline.state_at(frame)["objects"][
-            _series_id(story,pos)]["value"]))
-        amount=beat["scaleMax"]*ratio
-        label, lf=_single_line(d,beat["label"],width-2*pad,int(width*.055),bold=True)
-        d.text((pad,stage_top),label,font=lf,fill=(225,236,241))
-        number, big=_single_line(d,_display(amount)+" "+beat["unit"],
-                                width-2*pad,int(width*.095),bold=True)
-        d.text((pad,stage_top+int(height*.09)),number,font=big,fill=extra)
-        _bar(d,pad,stage_top+int(height*.22),width-2*pad,
-             max(10,width//30),ratio,accent,palette)
-        d.text((pad,stage_top+int(height*.275)),
-               "0",font=_font(int(width*.037)),fill=(165,182,200))
-        limit=_display(beat["scaleMax"])+" "+beat["unit"]
-        bb=d.textbbox((0,0),limit,font=_font(int(width*.037)))
-        d.text((width-pad-(bb[2]-bb[0]),stage_top+int(height*.275)),limit,
-               font=_font(int(width*.037)),fill=(165,182,200))
-    elif beat["kind"] == "compare":
-        maximum=max(beat["leftValue"],beat["rightValue"])
-        for i,(label,value,col) in enumerate((
-                (beat["left"],beat["leftValue"],accent),
-                (beat["right"],beat["rightValue"],extra))):
-            y=stage_top+int(i*height*.18)
-            label_text, label_font=_single_line(d,label,width-2*pad,
-                                                 int(width*.057),bold=True)
-            d.text((pad,y),label_text,font=label_font,fill=(237,242,247))
-            _bar(d,pad,y+int(height*.075),width-2*pad,max(10,width//32),
-                 (value/maximum)*Decimal(str(ease)),col,palette)
-            v=_display(value*Decimal(str(ease)))+" "+beat["unit"]
-            value_text, value_font=_single_line(d,v,width-2*pad,int(width*.045))
-            d.text((pad,y+int(height*.115)),value_text,font=value_font,fill=col)
-    elif beat["kind"] == "sequence":
-        items=beat["items"]
-        step=max(1,int((stage_bottom-stage_top)/(len(items))))
-        for i,label in enumerate(items):
-            cy=stage_top+step*i+step//2
-            cx=pad+int(width*.07)
-            if i:
-                d.line((cx,cy-step,cx,cy),fill=tint,width=max(2,width//120))
-            rr=int(width*.039)
-            active=ease*len(items)>=i+.10
-            d.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),
-                      fill=extra if active else tint,
-                      outline=(234,245,249),width=max(1,width//240))
-            stage_label, stage_font=_single_line(
-                d,label,width-2*pad-int(width*.18),int(width*.052),bold=True)
-            d.text((pad+int(width*.18),cy-int(width*.033)),stage_label,
-                   font=stage_font,
-                   fill=(235,240,249) if active else (120,148,162))
+    # Fully authored art takes precedence. Otherwise use the shared
+    # cinematic 2.5D grammar: real world-state values, extruded objects,
+    # causal light signals, calibrated rulers and camera-stable depth.
     else:
-        items=beat["items"]
-        cx,cy=width//2,(stage_top+stage_bottom)//2
-        rr=int(width*.090)
-        d.ellipse((cx-rr,cy-rr,cx+rr,cy+rr),fill=tint,
-                  outline=extra,width=max(2,width//155))
-        d.text((cx-int(width*.023),cy-int(width*.027)),"+",font=_font(int(width*.05),True),
-               fill=(245,245,255))
-        for i,label in enumerate(items):
-            theta=math.tau*i/len(items)-math.pi/2 + .07*math.sin(frame/25)
-            orbit=int(width*.32)
-            x=cx+math.cos(theta)*orbit
-            y=cy+math.sin(theta)*orbit*.86
-            d.line((cx,cy,x,y),fill=extra,width=max(2,width//200))
-            rad=int(width*.026)
-            d.ellipse((x-rad,y-rad,x+rad,y+rad),fill=accent)
-            txt,font=_fit(d,label,int(width*.26),int(width*.032),bold=True,max_lines=2)
-            bx=d.textbbox((0,0),txt[0],font=font)
-            d.text((max(pad,min(width-pad-(bx[2]-bx[0]),x-(bx[2]-bx[0])/2)),
-                    y+rad+int(width*.015)),txt[0],font=font,fill=(234,240,249))
+        from .universal_motion25d import render_stage
+        quantity_ratio=(timeline.state_at(frame)["objects"][
+            _series_id(story,pos)]["value"]
+            if beat["kind"]=="measure" else None)
+        stage=render_stage(
+            beat=beat,frame=frame,first=start,last=end,
+            width=width-2*pad,height=round(height*.40),
+            palette=palette,value_ratio=quantity_ratio)
+        base.paste(stage,(pad,stage_top))
     # Audio-paced text window; segment times measured, word times NOT measured.
     words=beat["narration"].split()
     window=7
@@ -464,6 +407,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "durationSeconds":timeline.total_frames/FPS,"beats":len(story["beats"]),
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
+        "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "narrationTiming":"actual-PCM-beat-boundaries",
         "subtitleTiming":"estimated-proportional-not-word-aligned",
         "music":"original-continuous-procedural-ambient",
