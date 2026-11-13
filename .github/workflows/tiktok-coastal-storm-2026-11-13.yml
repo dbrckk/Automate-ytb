@@ -44,6 +44,9 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Test five-scene vector JSON size and authenticated storyboard
+        run: |
+          python -m unittest discover -s tests -p test_universal_compact_story.py -v
       - name: Verify actual source script and causal storyboard before rendering
         run: |
           python - <<'PY'
