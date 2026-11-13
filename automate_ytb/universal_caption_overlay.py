@@ -7,8 +7,7 @@ full-frame alpha conversions at 30 FPS.
 """
 from __future__ import annotations
 
-import math
-import re
+from functools import lru_cache
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -26,9 +25,9 @@ def _text(raw: str) -> str:
     return result
 
 
-def caption_layout(text: str, *, width: int, height: int) -> dict:
-    """Return a strictly non-truncating two/three-line mobile caption layout."""
-    original = _text(text)
+@lru_cache(maxsize=256)
+def _cached_layout(original: str, width: int, height: int) -> tuple:
+    """Cache expensive exact font measurements as immutable evidence."""
     if (type(width) is not int or width not in SUPPORTED_WIDTHS
             or type(height) is not int or height != width * 16 // 9):
         raise ValueError("Expected supported 9:16 delivery resolution")
@@ -42,7 +41,7 @@ def caption_layout(text: str, *, width: int, height: int) -> dict:
     floor = max(10, round(width * .023))
     tokens = original.split(" ")
     for font_size in range(first_size, floor - 1, -1):
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+        font = _font(font_size)
         lines, current = [], ""
         too_wide = False
         for word in tokens:
@@ -75,14 +74,26 @@ def caption_layout(text: str, *, width: int, height: int) -> dict:
         if y < round(height * .69) or y + panel_height > round(height * .89):
             continue
         assert " ".join(lines) == original
-        return {
-            "text": original, "lines": lines, "fontSize": font_size,
-            "lineHeight": line_height, "panelWidth": panel_width,
-            "panelHeight": panel_height, "x": x, "y": y,
-            "paddingX": pad_x, "paddingY": pad_y,
-        }
+        return (original,tuple(lines),font_size,line_height,
+                panel_width,panel_height,x,y,pad_x,pad_y)
     raise ValueError(
         "Original caption cannot fit the mobile-safe region without omitting text")
+
+
+@lru_cache(maxsize=64)
+def _font(size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+
+
+def caption_layout(text: str, *, width: int, height: int) -> dict:
+    """Safe copy of a cached exact-fit caption layout, never truncated."""
+    original = _text(text)
+    values = _cached_layout(original, width, height)
+    return dict(zip(
+        ("text","lines","fontSize","lineHeight","panelWidth",
+         "panelHeight","x","y","paddingX","paddingY"),
+        (values[0], list(values[1]), *values[2:]),
+    ))
 
 
 def phrase_opacity(frame: int, start: int, end: int) -> int:
@@ -123,7 +134,7 @@ def paint_phrase_caption(canvas: Image.Image, text: str, *,
         (0,0,w-1,h-1), radius=radius,
         fill=(3, 10, 22, round(alpha*.60)),
     )
-    font = ImageFont.truetype("DejaVuSans-Bold.ttf", used["fontSize"])
+    font = _font(used["fontSize"])
     for index, line in enumerate(used["lines"]):
         measured = font.getlength(line)
         left = round((w - measured)/2)
