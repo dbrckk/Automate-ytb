@@ -34,6 +34,7 @@ on:
       - automate_ytb/universal_kinetic.py
       - automate_ytb/universal_script.py
       - automate_ytb/universal_subject_illustrations.py
+      - automate_ytb/universal_subject_motion.py
       - automate_ytb/universal_art25d.py
       - automate_ytb/universal_vector_art.py
       - automate_ytb/universal_actor_rig.py
@@ -55,6 +56,7 @@ on:
       - tests/test_universal_voice_evidence.py
       - tests/test_universal_script.py
       - tests/test_universal_subject_illustrations.py
+      - tests/test_universal_subject_motion.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
       - tests/test_universal_actor_rig.py
@@ -117,6 +119,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_voice_evidence.py -v
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
+          python -m unittest discover -s tests -p test_universal_subject_motion.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_vector_art.py -v
           python -m unittest discover -s tests -p test_universal_actor_rig.py -v
@@ -175,6 +178,8 @@ jobs:
           space=json.loads((folder/'planet-story-original.json').read_text())
           assert flora['proceduralVisualFamily']=='botanical'
           assert space['proceduralVisualFamily']=='celestial'
+          assert flora['proceduralMotionEngine']=='grounded-causal-subject-choreography-v1'
+          assert space['proceduralMotionEngine']=='grounded-causal-subject-choreography-v1'
           for report in (flora,space):
               assert report['proceduralVisualSceneCount']==2
               assert report['proceduralVisualEngine']=='original-source-anchored-procedural-subjects-v1'
