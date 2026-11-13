@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/universal-kokoro-verified.yml'
       - 'automate_ytb/universal_kinetic.py'
+      - 'automate_ytb/universal_script.py'
+      - 'automate_ytb/universal_subject_illustrations.py'
+      - 'automate_ytb/universal_subject_motion.py'
       - 'automate_ytb/universal_voice_evidence.py'
       - 'automate_ytb/narration.py'
       - 'tests/test_universal_voice_evidence.py'

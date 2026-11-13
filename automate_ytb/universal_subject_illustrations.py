@@ -424,7 +424,16 @@ def _pose(z: int, moment: float) -> dict:
     }
 
 
-def subject_tracks(index: int, total: int) -> list[dict]:
+def subject_tracks(index: int, total: int, *,
+                   family: str | None = None) -> list[dict]:
+    """New original scripts use subject-specific actions; old JSON keeps v1.
+
+    Existing serialized subject stories from v15 must remain playable. The
+    legacy path uses precisely its prior generic track values and 3 keys.
+    """
+    if family is not None:
+        from .universal_subject_motion import subject_motion_tracks
+        return subject_motion_tracks(family,index,total)
     if (type(index) is not int or type(total) is not int
             or not 2<=total<=12 or not 0<=index<total):
         raise ValueError("Invalid finite original storyboard clock")
@@ -453,5 +462,5 @@ def apply_original_subjects(topic: str, beats: list[dict]) -> str | None:
         if any(k in beat for k in ("visualLayers","visualVectors","actorTracks")):
             raise ValueError("Cannot overwrite editorial artwork")
         beat["visualVectors"]=deepcopy(layers)
-        beat["actorTracks"]=subject_tracks(i,len(beats))
+        beat["actorTracks"]=subject_tracks(i,len(beats),family=family)
     return family

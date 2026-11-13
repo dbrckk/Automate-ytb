@@ -733,3 +733,53 @@ than accurate scene-by-scene visual storytelling; complex source facts,
 licensed photorealistic art, detailed storyboarding, interactions and
 human editorial judgment still need development. This is an improvement
 of the **generic video creation process**, not a one-video asset swap.
+
+### Causal subject-specific action grammar (v16)
+
+The six source-anchored original art families now have **six distinct
+animated behaviours**, instead of receiving the same slight sinusoidal
+pan/rotation on every illustrated object:
+
+- **Botanical:** stem and canopy grow independently while their motion
+  remains attached to a fixed world composition; airborne pollen moves
+  with a separate slow drift.
+- **Planetary:** the globe rotates slowly and the source-drawn orbit with
+  its small moon revolves faster; foreground stars maintain independent
+  depth motion. This is a stylized illustration, not an astronomical
+  model or an assertion about real orbital dynamics.
+- **Rail:** locomotive and window/machinery layers progress along the
+  same track in screen coordinates; vapor trails behind the train.
+- **Weather:** the cloud drifts horizontally, the raindrop layer travels
+  downward at a different rate, and the distant sky changes slowly.
+- **Ocean:** wave crest, foam and spray follow different rise/roll/fall
+  trajectories with directed angles, actual scale and vertical movement.
+- **Security:** a padlock symbol pulses and a separate layer of status
+  particles moves around it. This does **not** imply that a real login
+  succeeded or an account is secured.
+
+Original source illustrations, parallax, material shading, actor transforms
+and caption/voice/Foley timing remain handled by the existing shared
+renderer. Five bounded pose keys per beat sample an **absolute episode
+clock**, so a continuous two-shot world uses precisely matching actor
+positions, scale and rotation on both sides of the cut. A single project
+can generate many scene cuts without resetting its subject animation.
+
+`proceduralMotionEngine: grounded-causal-subject-choreography-v1` is
+written to newly generated original storyboards and final MP4 manifests
+only after its precise tracks and source noun family are validated.
+Previously saved v15 JSON stories without this marker continue to render
+with their earlier generic deterministic tracks, avoiding breaking older
+user projects. Any forged or altered new choreography is rejected.
+
+The improved original fixture coverage requires **real 720×1280
+H.264/AAC** videos for botanical and planetary source text, the Kokoro
+neural end-to-end smoke, exact cut-continuity checks, audio and mobile
+delivery QA, and all six families' pixel-level dynamic 2.5D renders.
+
+Remaining limitations: these are authored stylized trajectories sampled
+into existing actor transforms. Rain is not a fluid-particle simulation,
+locomotive wheels are not individually rigged, orbital paths are not
+physically integrated and canopy growth is not skeletal botany. Such
+physical realism requires richer subjects with independently animated
+components and editorial supervision rather than misrepresenting a
+decorative effect as factual documentary animation.
