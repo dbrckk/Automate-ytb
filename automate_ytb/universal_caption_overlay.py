@@ -12,7 +12,16 @@ from functools import lru_cache
 from PIL import Image, ImageDraw, ImageFont
 
 VERSION = "pcm-phrase-cinematic-safe-caption-v1"
-SUPPORTED_WIDTHS = frozenset((360, 720, 1080))
+MIN_PORTRAIT_WIDTH = 240
+MAX_PORTRAIT_WIDTH = 1200
+
+
+def _portrait_dimensions(width: int, height: int) -> bool:
+    # Delivery is restricted by the producer to 360/720/1080. Internal
+    # tests and editorial previews also use valid 480x853 portrait frames.
+    return (type(width) is int and MIN_PORTRAIT_WIDTH <= width <= MAX_PORTRAIT_WIDTH
+            and type(height) is int and
+            abs(height - width*16/9) <= 1)
 
 
 def _text(raw: str) -> str:
@@ -28,9 +37,8 @@ def _text(raw: str) -> str:
 @lru_cache(maxsize=256)
 def _cached_layout(original: str, width: int, height: int) -> tuple:
     """Cache expensive exact font measurements as immutable evidence."""
-    if (type(width) is not int or width not in SUPPORTED_WIDTHS
-            or type(height) is not int or height != width * 16 // 9):
-        raise ValueError("Expected supported 9:16 delivery resolution")
+    if not _portrait_dimensions(width,height):
+        raise ValueError("Expected bounded 9:16 original frame or preview")
     inset = round(width * .088)
     pad_x = max(9, round(width * .022))
     pad_y = max(7, round(width * .018))
@@ -113,9 +121,8 @@ def paint_phrase_caption(canvas: Image.Image, text: str, *,
                          layout: dict | None = None) -> Image.Image:
     """Render a small frosted subtitle patch onto a real RGB portrait frame."""
     if (not isinstance(canvas, Image.Image) or canvas.mode != "RGB"
-            or canvas.width not in SUPPORTED_WIDTHS
-            or canvas.height != canvas.width*16//9):
-        raise ValueError("Original caption requires a real 9:16 RGB frame")
+            or not _portrait_dimensions(canvas.width,canvas.height)):
+        raise ValueError("Original caption requires a bounded 9:16 RGB frame")
     expected = caption_layout(text, width=canvas.width, height=canvas.height)
     # Validated reusable precomputed layout is optional; it may not silently
     # substitute a different phrase, omit words or escape the safe area.
