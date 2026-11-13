@@ -48,8 +48,10 @@ on:
       - automate_ytb/master_timeline.py
       - automate_ytb/foley_engine.py
       - automate_ytb/narration.py
+      - automate_ytb/universal_voice_evidence.py
       - automate_ytb/shorts_delivery.py
       - tests/test_universal_kinetic.py
+      - tests/test_universal_voice_evidence.py
       - tests/test_universal_script.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
@@ -109,6 +111,7 @@ jobs:
       - name: Validate all story grammars and real video
         run: |
           python -m unittest discover -s tests -p test_universal_kinetic.py -v
+          python -m unittest discover -s tests -p test_universal_voice_evidence.py -v
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_vector_art.py -v
@@ -170,6 +173,9 @@ jobs:
           assert report['authoredContactCues']==2
           assert len(report['artwork']['continuousCameraGroups'])==1
           assert report['delivery']['status']=='passed'
+          assert report['voiceEvidence']['status']=='verified-real-audio'
+          assert report['voiceEvidence']['engine']=='espeak'
+          assert report['voiceEvidence']['naturalnessVerified'] is False
           assert report['captionOverlayEngine']=='pcm-phrase-cinematic-safe-caption-v1'
           assert report['captionWordsOmitted']==0
           assert report['captionLayoutPreflight']=='passed'

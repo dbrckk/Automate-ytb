@@ -13,6 +13,7 @@ import json
 import math
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -32,7 +33,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v13-safe-phrase-captions"
+VERSION = "universal-kinetic-cinematic-stage-v14-real-neural-voice-evidence"
 
 
 def _text(value, name, limit=120):
@@ -456,10 +457,12 @@ def _music(output:Path,total_frames:int):
 
 
 def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
-            width=720,commons_art=False,segment_art=False) -> dict:
+            width=720,commons_art=False,segment_art=False,
+            export_narration=False) -> dict:
     if (voice not in ("kokoro","espeak") or type(width) is not int
             or width not in (360,720,1080) or type(commons_art) is not bool
-            or type(segment_art) is not bool or (segment_art and not commons_art)):
+            or type(segment_art) is not bool or (segment_art and not commons_art)
+            or type(export_narration) is not bool):
         raise ValueError("Voice kokoro/espeak and width 360/720/1080 required")
     story=read_story(brief)
     height=width*16//9
@@ -479,6 +482,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         captions=[]
         stamps=synthesize(story,voice,voice_file,voice_name=voice_name,
                           caption_cues=captions)
+        from .universal_voice_evidence import inspect_narration
+        voice_proof=inspect_narration(voice_file,engine=voice)
+        if abs(voice_proof["durationMs"]-
+               round(stamps[-1]*1000/FPS))>35:
+            raise RuntimeError("Real synthesized PCM disagrees with video frame clock")
         for cue in captions:
             cue["layout"]=caption_layout(cue["text"],width=width,height=height)
         timeline=timeline_for(story,stamps)
@@ -523,17 +531,38 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         mix=mix_causal_foley(silent_video=silent,foley=sfx,output=output,
               duration_seconds=timeline.total_frames/FPS,profile="high",
               voice=voice_file,music=ambient)
+        # Validate real encoded media BEFORE preserving raw source narration.
+        # A temporary failure cannot leave an exported WAV falsely presented
+        # as the voice track of a successful published Short.
+        delivery=validate_short(output,require_audio=True)
+        if export_narration and delivery["status"] != "passed":
+            raise RuntimeError(
+                "Cannot preserve a narration proof for a failed final MP4: "
+                + "; ".join(delivery.get("errors", [])))
+        narration_export=None
+        if export_narration:
+            narration_export=output.with_suffix(".narration.wav")
+            if narration_export.is_symlink():
+                raise ValueError("Narration evidence destination cannot be a symlink")
+            shutil.copyfile(voice_file,narration_export)
+            copied=inspect_narration(narration_export,engine=voice)
+            if copied["sha256"]!=voice_proof["sha256"]:
+                narration_export.unlink(missing_ok=True)
+                raise RuntimeError("Exported voice PCM differs from synthesized speech")
     from .captions import srt_time
     subtitle_path=output.with_suffix(".srt")
     subtitle_path.write_text("".join(
         f"{i}\n{srt_time(c['startMs'])} --> {srt_time(c['endMs'])}\n"
         f"{c['text']}\n\n" for i,c in enumerate(captions,1)),encoding="utf8")
-    delivery=validate_short(output,require_audio=True)
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "durationSeconds":timeline.total_frames/FPS,"beats":len(story["beats"]),
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
+        "voiceName":(voice_name or ("ff_siwis" if story["language"]=="fr"
+                                      else "af_heart")) if voice=="kokoro" else None,
+        "voiceEvidence":voice_proof,
+        "narrationWavFile":(narration_export.name if narration_export else None),
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "commonsArtRequested":commons_art,
         "subjectSegmentationRequested":segment_art,
@@ -593,6 +622,8 @@ def main(argv=None):
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--voice",choices=("kokoro","espeak"),default="kokoro")
     p.add_argument("--voice-name")
+    p.add_argument("--export-narration-wav",action="store_true",
+                   help="Preserve verified source PCM as a separately inspectable WAV")
     p.add_argument("--width",type=int,choices=(360,720,1080),default=720)
     p.add_argument("--commons-art",action="store_true",
                    help="Opt in to online CC0 1.0 Wikimedia visuals, subject to review")
@@ -614,7 +645,8 @@ def main(argv=None):
                              encoding="utf8")
         report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,
                        width=a.width,commons_art=a.commons_art,
-                       segment_art=a.segment_art)
+                       segment_art=a.segment_art,
+                       export_narration=a.export_narration_wav)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return 0 if report["delivery"]["status"]=="passed" else 2
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:

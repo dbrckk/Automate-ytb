@@ -643,3 +643,44 @@ The manifest records `captionOverlayEngine`,
 This is a **typographic and sync** improvement, not a claim of human-quality
 speech. The usual CI smoke intentionally uses eSpeak; a genuine Kokoro run
 must separately be verified before natural voice quality is claimed.
+
+### Real neural narration evidence in the universal Short renderer (v14)
+
+The universal CLI accepts `--voice kokoro --voice-name af_heart` and
+optionally `--export-narration-wav`, generating the same original 9:16
+Short and preserving the source narration as a separate WAV when opted in.
+
+Every produced Short now measures the *actual generated* mono PCM16 before
+rendering: sample rate, duration, RMS loudness, peak level, voiced fraction,
+and SHA-256. Kokoro is required to produce 24 kHz PCM; silent, truncated,
+oversized or wrong-format voices abort production rather than silently
+falling back to eSpeak. The measured WAV duration must agree with the
+same frame clock that drives visual beats and subtitle cues (±35 ms).
+
+The manifest includes `voiceName`, `voiceEvidence` and optional
+`narrationWavFile`. If a WAV is requested, the renderer first validates
+the actual mixed video and only then copies the original voice PCM, verifying
+the exported SHA-256 exactly matches the pre-render speech samples.
+This supports human listening and reproducible comparison between voices
+without re-synthesizing model output.
+
+```bash
+python -m pip install -e '.[speech]'
+automate-ytb-short \
+  --brief examples/universal_web_request.json \
+  --voice kokoro --voice-name af_heart \
+  --output build/my-short.mp4 --width 720 \
+  --export-narration-wav
+```
+
+A separate fully free CPU-only GitHub Actions workflow,
+`.github/workflows/universal-kokoro-verified.yml`, actually invokes
+the open Kokoro-82M model, renders **original articulated vector artwork**,
+and independently verifies the 24 kHz WAV, hash, bounded speech energy,
+real H.264/AAC, synchronized source captions, and 9:16 resolution.
+It saves source WAV, MP4, SRT, QA and manifest in the same artifact.
+
+**Accuracy limit:** verified neural synthesis and audible PCM are not proof
+that a human finds the voice natural. This audit never auto-approves the
+voice, video, facts, artwork or publication. The existing fast CI uses
+eSpeak and explicitly reports it as such; it is not relabeled as Kokoro.
