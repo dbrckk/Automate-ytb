@@ -12,10 +12,11 @@ import math
 from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
+from .universal_deformation25d import validate_deformation, warp_sway_sprite
 from .universal_joint_hierarchy import (
     resolved_actor_geometry, validate_joint_tree)
 
-VERSION = "universal-authored-actor-rig-safe-overscan-framing-v6"
+VERSION = "universal-authored-actor-rig-hinge-flex-and-overscan-v7"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -43,7 +44,7 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
     seen = set()
     for t in tracks:
         if (type(t) is not dict or not {"z", "keys"} <= set(t)
-                or set(t) - {"z", "keys", "pivot", "parentZ", "attach"}
+                or set(t) - {"z", "keys", "pivot", "parentZ", "attach", "deform"}
                 or type(t["z"]) is not int or t["z"] not in foreground
                 or t["z"] in seen):
             raise ValueError("Actors require a unique non-background approved layer z")
@@ -88,6 +89,10 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
             result["attach"]=[
                 _real(anchor[0],"attach x",0,1),
                 _real(anchor[1],"attach y",0,1)]
+        if "deform" in t:
+            result["deform"]=validate_deformation(t["deform"])
+            if result["deform"] is None:
+                raise ValueError("Deform must be a complete motion specification")
         parsed.append(result)
     validate_joint_tree(parsed)
     if links and len(seen) < 2:
@@ -241,6 +246,8 @@ def validate_cut_continuity(story: dict) -> int:
             if (track.get("parentZ")!=new[z].get("parentZ") or
                     track.get("attach")!=new[z].get("attach")):
                 raise ValueError("A repeated original child cannot change its attachment")
+            if track.get("deform")!=new[z].get("deform"):
+                raise ValueError("A repeated original flexible actor cannot change its deformation")
             last=track["keys"][-1]
             first=new[z]["keys"][0]
             if any(abs(last[k]-first[k]) > 1e-8
@@ -262,6 +269,8 @@ class RiggedArtScene:
         self.parents = {
             t["z"]:(t["parentZ"],t["attach"]) for t in tracks
             if "parentZ" in t}
+        self.deformations={
+            t["z"]:t["deform"] for t in tracks if t.get("deform")}
         self.links = tuple(links)
         self.camera_window = None
         # Reserve camera room for animated petals, wings and long tools.
@@ -336,6 +345,13 @@ class RiggedArtScene:
             h=max(1,round(geometry["spriteSize"][1]))
             transformed=sprite.resize((w,h),Image.Resampling.BICUBIC)
             px,py=self.pivots[layer.z]
+            pivot_x,pivot_y=px*w,py*h
+            if layer.z in self.deformations:
+                transformed,(pivot_x,pivot_y)=warp_sway_sprite(
+                    transformed,pivot=self.pivots[layer.z],
+                    deform=self.deformations[layer.z],
+                    phase=camera_phase)
+                w,h=transformed.size
             joint_x,joint_y=geometry["joint"]
             angle=geometry["angle"]
             if abs(angle)>1e-5:
@@ -343,8 +359,8 @@ class RiggedArtScene:
                 workspace=Image.new("RGBA",(side,side))
                 origin=(side/2,side/2)
                 workspace.alpha_composite(
-                    transformed,(round(origin[0]-px*w),
-                                 round(origin[1]-py*h)))
+                    transformed,(round(origin[0]-pivot_x),
+                                 round(origin[1]-pivot_y)))
                 transformed=workspace.rotate(
                     angle,resample=Image.Resampling.BICUBIC,expand=False)
                 result.alpha_composite(
@@ -352,8 +368,8 @@ class RiggedArtScene:
                                  round(joint_y+margin-side/2)))
             else:
                 result.alpha_composite(
-                    transformed,(round(joint_x+margin-px*w),
-                                 round(joint_y+margin-py*h)))
+                    transformed,(round(joint_x+margin-pivot_x),
+                                 round(joint_y+margin-pivot_y)))
         if self.links:
             d = ImageDraw.Draw(result,"RGBA")
             for edge in self.links:
