@@ -20,9 +20,10 @@ def paint_contact_glints(canvas: Image.Image, point_a, point_b,
             or type(stage_width) is not int or not 64<=stage_width<=1920
             or type(intensity) not in (int,float)
             or not math.isfinite(intensity) or not 0<=intensity<=1
+            or any(type(p) not in (list,tuple) or len(p)!=2
+                   for p in (point_a,point_b))
             or not all(type(c) in (int,float) and math.isfinite(c)
-                       for point in (point_a,point_b) for c in point)
-            or any(len(p)!=2 for p in (point_a,point_b))):
+                       for point in (point_a,point_b) for c in point)):
         raise ValueError("Invalid bounded visual contact parameters")
     if intensity==0:
         return
