@@ -10,7 +10,21 @@ from __future__ import annotations
 
 import math
 
-VERSION = "grounded-causal-subject-choreography-v1"
+LEGACY_VERSION = "grounded-causal-subject-choreography-v1"
+VERSION = "grounded-causal-subject-choreography-v2-organic-secondary-sway"
+
+# Sway applies only to flexible original artwork, never rigid machinery,
+# planets or electronic circuits. A fixed hinge preserves continuity while
+# the existing global camera clock moves through all narrative cuts.
+# (family, z): (pivot x, pivot y, bend amplitude, oscillations, phase offset)
+_FLEXIBLE = {
+    ("botanical", 65): (.5, .95, .044, 1.50, .08),
+    ("rail", 85): (.5, .98, .068, 1.10, .15),
+    ("weather", 65): (.5, .04, .028, 2.40, .20),
+    ("ocean", 45): (.5, .92, .032, 1.00, .12),
+    ("ocean", 65): (.5, .90, .050, 1.65, .26),
+}
+
 
 FAMILIES = frozenset((
     "botanical", "celestial", "rail", "weather", "ocean", "security"
@@ -125,7 +139,8 @@ def subject_pose(family: str, z: int, moment: float) -> dict:
     }
 
 
-def subject_motion_tracks(family: str, index: int, total: int) -> list[dict]:
+def subject_motion_tracks(family: str, index: int, total: int, *,
+                          engine: str = VERSION) -> list[dict]:
     """Use global story time so same actor frame on either side of a cut joins.
 
     Five keys per shot resolve the faster rain/wave/orbit cycles without
@@ -133,7 +148,8 @@ def subject_motion_tracks(family: str, index: int, total: int) -> list[dict]:
     """
     if (type(family) is not str or family not in FAMILIES
             or type(index) is not int or type(total) is not int
-            or not 2<=total<=12 or not 0<=index<total):
+            or not 2<=total<=12 or not 0<=index<total
+            or type(engine) is not str or engine not in (LEGACY_VERSION, VERSION)):
         raise ValueError("Invalid bounded subject motion storyboard")
     tracks=[]
     for z in ACTOR_DEPTHS:
@@ -141,5 +157,11 @@ def subject_motion_tracks(family: str, index: int, total: int) -> list[dict]:
         for at in (0., .25, .5, .75, 1.):
             state=subject_pose(family,z,(index+at)/total)
             keys.append({"at":at, **state})
-        tracks.append({"z":z,"keys":keys})
+        track={"z":z,"keys":keys}
+        if engine==VERSION and (family,z) in _FLEXIBLE:
+            px,py,amount,cycles,offset=_FLEXIBLE[(family,z)]
+            track["pivot"]=[px,py]
+            track["deform"]={
+                "kind":"sway","amount":amount,"cycles":cycles,"offset":offset}
+        tracks.append(track)
     return tracks
