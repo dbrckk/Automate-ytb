@@ -141,10 +141,15 @@ def read_story(path: Path) -> dict:
     motion_engine=story.get("proceduralMotionEngine")
     chapter_engine=story.get("proceduralVisualChapterEngine")
     compound_engine=story.get("proceduralVisualCompositionEngine")
+    causal_engine=story.get("proceduralVisualInteractionEngine")
+    has_contact=(causal_engine is not None
+                 or "proceduralVisualInteractions" in story)
     has_compound=(compound_engine is not None
                   or "proceduralVisualCompositionFamilies" in story)
     has_chapters=(chapter_engine is not None
                   or "proceduralVisualFamilies" in story)
+    if has_contact and not has_compound:
+        raise ValueError("Causal contact needs authenticated two-subject artwork")
     if has_compound:
         from .universal_subject_composition import (
             composition_families, composition_layers, composition_tracks,
@@ -160,14 +165,33 @@ def read_story(path: Path) -> dict:
                 or story.get("proceduralVisualEngine")!=template_version
                 or motion_engine!=motion_version):
             raise ValueError("Untrusted dual-subject provenance")
+        if has_contact:
+            from .universal_subject_interaction import (
+                VERSION as contact_version, detect_contacts, contact_layers,
+                contact_tracks_and_links)
+            expected_contacts=detect_contacts(validated,expected_compound)
+            if (causal_engine!=contact_version
+                    or type(story.get("proceduralVisualInteractions")) is not list
+                    or expected_contacts is None
+                    or story["proceduralVisualInteractions"]!=expected_contacts):
+                raise ValueError("Untrusted source-verb contact provenance")
         for i,(beat,families) in enumerate(zip(validated,expected_compound)):
-            layers=(validate_vector_layers(composition_layers(families))
-                    if families else [])
-            tracks=(validate_actor_rig(
-                composition_tracks(families,i,len(validated)),[],layers)[0]
-                    if families else [])
+            if has_contact:
+                layers=(validate_vector_layers(contact_layers(families))
+                        if families else [])
+                native_tracks,native_links=(
+                    contact_tracks_and_links(
+                        families,i,len(validated),expected_contacts)
+                    if families else ([],[]))
+            else:
+                layers=(validate_vector_layers(composition_layers(families))
+                        if families else [])
+                native_tracks=(composition_tracks(
+                    families,i,len(validated)) if families else [])
+                native_links=[]
+            tracks,links=validate_actor_rig(native_tracks,native_links,layers)
             if (beat["visualVectors"]!=layers or beat["actorTracks"]!=tracks
-                    or beat["actorLinks"] or beat["visualLayers"]):
+                    or beat["actorLinks"]!=links or beat["visualLayers"]):
                 raise ValueError("Dual-subject generated artwork was altered")
     elif has_chapters:
         from .universal_subject_illustrations import (
@@ -236,6 +260,9 @@ def read_story(path: Path) -> dict:
     if has_compound:
         result["proceduralVisualCompositionEngine"]=compound_engine
         result["proceduralVisualCompositionFamilies"]=expected_compound
+    if has_contact:
+        result["proceduralVisualInteractionEngine"]=causal_engine
+        result["proceduralVisualInteractions"]=expected_contacts
     return result
 
 
@@ -662,6 +689,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
         "proceduralVisualCompositionEngine":story.get("proceduralVisualCompositionEngine"),
         "proceduralVisualCompositionFamilies":story.get("proceduralVisualCompositionFamilies"),
+        "proceduralVisualInteractionEngine":story.get("proceduralVisualInteractionEngine"),
+        "proceduralVisualInteractions":story.get("proceduralVisualInteractions"),
+        "proceduralCausalContactCount":sum(
+            e is not None for e in (story.get("proceduralVisualInteractions") or [])),
         "proceduralMotionEngine":story.get("proceduralMotionEngine"),
         "proceduralVisualSceneCount":(
             sum(bool(f) for f in story["proceduralVisualCompositionFamilies"])
