@@ -12,11 +12,12 @@ import math
 from PIL import Image, ImageDraw
 
 from .optical_motion25d import translate_subpixel
+from .universal_contact_glints import paint_contact_glints
 from .universal_deformation25d import validate_deformation, warp_sway_sprite
 from .universal_joint_hierarchy import (
     resolved_actor_geometry, validate_joint_tree)
 
-VERSION = "universal-authored-actor-rig-hinge-flex-and-overscan-v7"
+VERSION = "universal-actor-rig-local-event-contact-glints-v8"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -371,23 +372,15 @@ class RiggedArtScene:
                     transformed,(round(joint_x+margin-pivot_x),
                                  round(joint_y+margin-pivot_y)))
         if self.links:
-            d = ImageDraw.Draw(result,"RGBA")
             for edge in self.links:
-                pulse = max(0., 1-abs(phase-edge["at"])/.09)
-                if pulse <= 0:
+                pulse=max(0.,1-abs(phase-edge["at"])/.09)
+                if pulse<=0:
                     continue
-                a,b = centres[edge["fromZ"]],centres[edge["toZ"]]
-                a=(a[0]+margin,a[1]+margin)
-                b=(b[0]+margin,b[1]+margin)
-                w = max(1,round(self.size[0]*.009))
-                d.line((round(a[0]),round(a[1]),round(b[0]),round(b[1])),
-                       fill=(254,213,142,round(pulse*215)),width=w)
-                for x,y in (a,b):
-                    radius=round(self.size[0]*(.018+.030*pulse))
-                    d.ellipse((round(x-radius),round(y-radius),
-                               round(x+radius),round(y+radius)),
-                              outline=(255,235,173,round(pulse*205)),
-                              width=max(1,w//2))
+                a,b=centres[edge["fromZ"]],centres[edge["toZ"]]
+                paint_contact_glints(
+                    result,(a[0]+margin,a[1]+margin),
+                    (b[0]+margin,b[1]+margin),pulse,
+                    stage_width=w_stage)
         left,top,crop_w,crop_h=fit_actor_camera(
             self.size,geometries,camera_phase,margin)
         crop=result.crop((margin+left,margin+top,
