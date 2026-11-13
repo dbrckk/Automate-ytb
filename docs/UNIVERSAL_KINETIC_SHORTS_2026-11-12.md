@@ -509,3 +509,43 @@ The original flower fixture includes two separate translucent petal glints
 in both continuous shots, demonstrating reusable material layering without
 an external image generator or paid provider. This is an authored vector
 material tool, not an automatic semantic illustration model.
+
+
+### Flexible original illustrated parts: deterministic non-rigid motion
+
+The universal actor rig supports an optional bounded deformation on any
+already-approved transparent actor image or vector layer:
+
+    {
+      "z": 55,
+      "parentZ": 35,
+      "attach": [0.33, 0.64],
+      "pivot": [0.93, 0.57],
+      "deform": {
+        "kind": "sway",
+        "amount": 0.095,
+        "cycles": 1.5,
+        "offset": 0.15
+      },
+      "keys": [/* existing at/x/y/scale/angle keyframes */]
+    }
+
+The scene engine samples a local horizontal mesh deformation on the cached
+RG**B**A source plate. The displacement is **zero at the authored hinge**.
+The same plate may independently inherit its parent's translation, rotation
+and scale. Source-space motion remains coherent after cutting between shots:
+sway reads the group camera clock and the deformation parameters cannot
+change across adjacent shots of the same original actor. The warp pads
+the source image to prevent a moving edge from being clipped.
+
+Amount is bounded to 0.005–0.12 of the resized original crop width; cycles
+to 0.25–3 per continuous camera window; offset to 0–1. Unknown kinds,
+extra fields, non-finite values, booleans and unsafe dimensions fail closed.
+This is authored flexible motion (e.g. leaves, cloth, antenna), *not*
+automatic anatomical inference, physically accurate simulation, or a
+general text-to-video image generator.
+
+The original flower example now has two separately deforming leaves in
+each of two continuous shots. GitHub's real H.264/AAC smoke verifies four
+flexible-actor tracks, while the dedicated unit suite verifies reproducible
+pixels, pinned hinges, and rejected discontinuities.
