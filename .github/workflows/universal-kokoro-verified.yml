@@ -1,0 +1,114 @@
+name: Universal Short — real Kokoro voice and encoded MP4 proof
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/universal-kokoro-verified.yml'
+      - 'automate_ytb/universal_kinetic.py'
+      - 'automate_ytb/universal_voice_evidence.py'
+      - 'automate_ytb/narration.py'
+      - 'tests/test_universal_voice_evidence.py'
+      - 'tests/test_universal_kinetic.py'
+      - 'docs/UNIVERSAL_KINETIC_SHORTS_2026-11-12.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-kokoro-universal-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  neural-narrator-end-to-end:
+    name: Actual free neural narration through full universal 9:16 renderer
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install free CPU speech and media dependencies
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Run independently validated PCM integrity and silence tests
+        run: |
+          python -m unittest discover -s tests -p test_universal_voice_evidence.py -v
+      - name: Produce an original articulated 2.5D short using the actual Kokoro runtime
+        run: |
+          mkdir -p build/neural-voice-proof
+          python examples/build_original_vector_story.py --out-dir build/neural-voice-proof
+          automate-ytb-short \
+            --brief build/neural-voice-proof/original-vector-story.json \
+            --voice kokoro --voice-name af_heart --width 360 \
+            --export-narration-wav \
+            --output build/neural-voice-proof/real-kokoro-short.mp4
+      - name: Verify true mono 24 kHz source PCM, SHA-256 and neural engine metadata
+        run: |
+          python - <<'PY'
+          import json, subprocess, wave
+          from pathlib import Path
+          from automate_ytb.universal_voice_evidence import inspect_narration
+          root=Path('build/neural-voice-proof')
+          video=root/'real-kokoro-short.mp4'
+          wav=root/'real-kokoro-short.narration.wav'
+          report=json.loads((root/'real-kokoro-short.json').read_text())
+          voice=inspect_narration(wav, engine='kokoro')
+          assert report['voiceEngine']=='kokoro'
+          assert report['voiceName']=='af_heart'
+          assert report['narrationWavFile']==wav.name
+          assert report['voiceEvidence']==voice
+          assert voice['sampleRateHz']==24000
+          assert voice['durationMs']>=7000
+          assert voice['activeFraction']>.012
+          assert voice['naturalnessVerified'] is False
+          assert voice['humanListeningRequired'] is True
+          assert report['captionWordsOmitted']==0
+          assert report['subtitleTiming']=='audio-derived-synthesized-phrases'
+          assert report['delivery']['status']=='passed'
+          assert report['artwork']['originalVectorLayers']==10
+          assert not report['publicationApproved']
+          probe=json.loads(subprocess.check_output([
+              'ffprobe','-v','error','-show_entries',
+              'stream=codec_type,codec_name,width,height,avg_frame_rate',
+              '-of','json',str(video)]))
+          streams=probe['streams']
+          video_stream=[x for x in streams if x['codec_type']=='video']
+          audio_stream=[x for x in streams if x['codec_type']=='audio']
+          assert len(video_stream)==1 and len(audio_stream)==1
+          assert video_stream[0]['codec_name']=='h264'
+          assert (video_stream[0]['width'],video_stream[0]['height'])==(360,640)
+          assert video_stream[0]['avg_frame_rate']=='30/1'
+          assert audio_stream[0]['codec_name']=='aac'
+          assert (root/'real-kokoro-short.srt').is_file()
+          print('Verified model-generated 24 kHz source PCM, original 2.5D video, real 30 fps H264/AAC MP4 and exact speech provenance')
+          PY
+      - name: Verify delivered MP4/audio independently
+        run: |
+          python -m automate_ytb.shorts_delivery \
+            --video build/neural-voice-proof/real-kokoro-short.mp4 \
+            --require-audio \
+            --report build/neural-voice-proof/real-kokoro-delivery-qa.json
+      - name: Publish inspectable neural source voice, full video and QC
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-real-kokoro-voice-and-short
+          path: |
+            build/neural-voice-proof/original-vector-story.json
+            build/neural-voice-proof/real-kokoro-short.mp4
+            build/neural-voice-proof/real-kokoro-short.srt
+            build/neural-voice-proof/real-kokoro-short.json
+            build/neural-voice-proof/real-kokoro-short.narration.wav
+            build/neural-voice-proof/real-kokoro-delivery-qa.json
+          retention-days: 14
+          if-no-files-found: error
