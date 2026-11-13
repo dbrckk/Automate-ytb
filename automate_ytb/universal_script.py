@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "source-text-universal-beat-compiler-v4-grounded-chapter-storyboard"
+VERSION = "source-text-universal-beat-compiler-v5-grounded-dual-object-storyboard"
 _STOP = frozenset((
     "about", "after", "again", "also", "avec", "avoir", "been", "before",
     "being", "between", "dans", "does", "dont", "elle", "elles", "encore",
@@ -103,24 +103,38 @@ def compile_original_script(*, topic: str, script: str,
     from .universal_subject_illustrations import (
         apply_original_subjects, apply_chapter_subjects,
         subject_chapter_families, CHAPTER_VERSION, VERSION as art_version)
+    from .universal_subject_composition import (
+        apply_compositions, composition_families,
+        VERSION as composition_version)
     from .universal_subject_motion import VERSION as motion_version
-    sequence=subject_chapter_families(beats)
-    if sequence is None:
-        # Preserve the exact homogeneous v17 source story and its camera.
-        family=apply_original_subjects(topic,beats)
+    compound=composition_families(beats)
+    if compound is not None:
+        # New v19 option only when at least one beat actually names TWO
+        # distinct recognized object families. Never infer from topic.
+        family,sequence=None,None
+        apply_compositions(beats,compound)
     else:
-        family=None
-        apply_chapter_subjects(beats,sequence)
+        sequence=subject_chapter_families(beats)
+        if sequence is None:
+            # Preserve exact v17 full-episode artwork and motion.
+            family=apply_original_subjects(topic,beats)
+        else:
+            # Preserve exact v18 single-subject chapter changes.
+            family=None
+            apply_chapter_subjects(beats,sequence)
     result={"schemaVersion": 1, "topic": topic.strip(),
             "language": language, "beats": beats,
             "originalTextOnly": True,
             "factualResearchPerformed": False,
             "proceduralVisualFamily":family,
-            "proceduralVisualEngine":(art_version if family or sequence else None),
-            "proceduralMotionEngine":(motion_version if family or sequence else None)}
+            "proceduralVisualEngine":(art_version if family or sequence or compound else None),
+            "proceduralMotionEngine":(motion_version if family or sequence or compound else None)}
     if sequence is not None:
         result["proceduralVisualChapterEngine"]=CHAPTER_VERSION
         result["proceduralVisualFamilies"]=sequence
+    if compound is not None:
+        result["proceduralVisualCompositionEngine"]=composition_version
+        result["proceduralVisualCompositionFamilies"]=compound
     return result
 
 
