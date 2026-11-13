@@ -885,3 +885,58 @@ pronouns, or discuss unsupported subjects may still receive simplified
 graphics. Add independently evaluated object composition, richer art
 geometries, story-state continuity and original semantic effects before
 claiming coverage of arbitrary TikTok topics or reference-video parity.
+
+
+### v19 — Two original actors in the SAME narrated 2.5D scene
+
+The previous system could switch illustrated *chapters* (v18) but still
+depicted only one concrete family within each narration beat.
+
+**Implemented in the shared generator, not a special-case demo:**
+
+- Match up to **two distinct, non-negated, explicitly named** template
+  families in the SAME source-text beat. A single category or an unsupported
+  beat retains existing v17/v18 selection. Narration naming three or more
+  unrelated families in one beat conservatively selects the established
+  predominant subject; it does not pretend to render all three.
+- Composite two independent **original vector silhouettes** in side-by-side
+  stage regions. Each has its own moving hero and animated secondary detail.
+  Both retain their original subject motion grammar, continuous global clock,
+  bounded organic deformation where appropriate and distinct Z identities.
+- Respect the **original security/performance limits**: six vector layers
+  (two abstract non-factual background layers plus four animated foreground
+  layers), at most four tracks in a two-subject shot, no network/paid images,
+  no new frame generator, no inferred causal link between unrelated subjects.
+- Identically classified adjacent dual-subject beats share exact artwork
+  hashes, motion endpoints and a continuous camera. A change to the source
+  object pair is an editorial cut, not a fake object-continuity claim.
+- Source-text stories carry
+  `proceduralVisualCompositionEngine=source-grounded-dual-subject-six-layer-compositor-v1`
+  and `proceduralVisualCompositionFamilies`, an array of per-beat family
+  arrays. The reader recomputes the exact family combinations and ALL six
+  vector layers / four trajectories, rejecting forged source text, assets,
+  tracks or engine declarations.
+- Source-only compiled artwork cannot lose its provenance simply by stripping
+  all `procedural*` markers: this is now rejected before rendering.
+  Authored editorial JSON that does not claim `originalTextOnly` retains its
+  existing manual rights-approval path.
+
+**Real-media acceptance test:**
+
+```sh
+python -m unittest discover -s tests -p test_universal_subject_composition.py -v
+automate-ytb-short --topic "Trees and planets, rain and waves" \
+  --script-file examples/universal_dual_subject_story.en.txt \
+  --language en --voice espeak --width 720 \
+  --output build/universal/dual-subject-original.mp4
+python -m automate_ytb.shorts_delivery \
+  --video build/universal/dual-subject-original.mp4 --require-audio
+```
+
+The existing CPU-only Kokoro workflow remains the actual neural-voice gate.
+The eSpeak smoke voice is not claimed to be human quality. Likewise, successful
+encoding and motion tests do **not** demonstrate audiovisual parity with
+the supplied private reference `3561.mp4`. Future priorities are meaningful
+cross-object causal interactions where authored source justifies them, finer
+original per-object geometry and materials, and more than six explicit
+visual families without hallucinating unsupported subjects.
