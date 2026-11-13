@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageOps
 
 from .surface25d import MATERIALS
 
-VERSION = "original-bounded-antialiased-translucent-vector-layers-v2"
+VERSION = "original-bounded-multistop-surface-shading-v3"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
 _RGB = re.compile(r"#[0-9a-fA-F]{6}\Z")
 _KINDS = frozenset(("ellipse", "roundedRect", "polygon", "bezier", "line"))
@@ -48,7 +48,15 @@ def _fill(value):
         return _color(value)
     if type(value) is list and len(value) == 2:
         return [_color(x) for x in value]
-    raise ValueError("Vector fill must be a color, two gradient stops, or null")
+    if type(value) is dict and set(value)=={"colors","direction","space"}:
+        colors=value["colors"]
+        if (type(colors) is not list or not 2<=len(colors)<=5
+                or value["direction"] not in ("vertical","horizontal","diagonal","radial")
+                or value["space"] not in ("shape","stage")):
+            raise ValueError("Invalid original multi-stop vector surface gradient")
+        return {"colors":[_color(x) for x in colors],
+                "direction":value["direction"],"space":value["space"]}
+    raise ValueError("Vector fill must be a color, two stops, or a bounded material gradient")
 
 
 def _point(raw):
@@ -185,6 +193,43 @@ def _curve_points(nodes, width: int, height: int):
     return out
 
 
+def _surface_gradient(colors: tuple[str, ...], direction: str,
+                      size: tuple[int, int]) -> Image.Image:
+    """Original 2D RGB shading, color stops interpolated in stable sRGB.
+
+    A shape-local gradient spans its own silhouette rather than a full-stage
+    strip. Source pixels are generated only once per scene and cached while
+    drawing identical fills; no model calls or per-frame random textures.
+    """
+    if direction=="vertical":
+        shade=Image.linear_gradient("L")
+    elif direction=="horizontal":
+        shade=Image.linear_gradient("L").transpose(Image.Transpose.ROTATE_90)
+    elif direction=="diagonal":
+        shade=Image.frombytes("L",(256,256),bytes(
+            (x+y)//2 for y in range(256) for x in range(256)))
+    elif direction=="radial":
+        shade=Image.radial_gradient("L")
+    else:
+        raise ValueError("Unknown vector light direction")
+    shade=shade.resize(size,Image.Resampling.BILINEAR)
+    parsed=[_rgb(color) for color in colors]
+    if len(parsed)==2:
+        return ImageOps.colorize(shade,parsed[0],parsed[1])
+    channels=[]
+    for component in range(3):
+        lut=[]
+        for i in range(256):
+            scaled=i*(len(parsed)-1)/255
+            left=min(len(parsed)-2,int(scaled))
+            weight=scaled-left
+            value=round(parsed[left][component]*(1-weight)
+                        +parsed[left+1][component]*weight)
+            lut.append(max(0,min(255,value)))
+        channels.append(shade.point(lut))
+    return Image.merge("RGB",tuple(channels))
+
+
 def _rasterize(shape, size, antialias=2):
     w,h=size
     kind=shape["kind"]
@@ -230,17 +275,28 @@ def render_vector_layer(layer: dict, size: tuple[int,int]) -> Image.Image:
         plate=Image.new("RGBA",work.size)
         if fill is not None:
             if type(fill) is str:
-                plate.paste((*_rgb(fill),255),(0,0),mask)
+                plate.paste((*_rgb(fill),255),(0,0,work.width,work.height))
+                plate.putalpha(mask)
             else:
-                colors=tuple(fill)
-                if colors not in gradients:
-                    if len(gradients)>=3:
-                        gradients.pop(next(iter(gradients)))
-                    gradient=Image.linear_gradient("L").resize(
-                        work.size,Image.Resampling.BILINEAR)
-                    gradients[colors]=ImageOps.colorize(
-                        gradient,_rgb(colors[0]),_rgb(colors[1])).convert("RGBA")
-                plate.paste(gradients[colors],(0,0),mask)
+                if type(fill) is list:
+                    # Existing two-stop authored artwork remains stage-relative.
+                    colors=tuple(fill)
+                    direction,space="vertical","stage"
+                else:
+                    colors=tuple(fill["colors"])
+                    direction,space=fill["direction"],fill["space"]
+                bbox=(mask.getbbox() if space=="shape" else
+                      (0,0,work.width,work.height))
+                if bbox is not None:
+                    target_size=(bbox[2]-bbox[0],bbox[3]-bbox[1])
+                    cache_key=(colors,direction,target_size)
+                    if cache_key not in gradients:
+                        if len(gradients)>=3:
+                            gradients.pop(next(iter(gradients)))
+                        gradients[cache_key]=_surface_gradient(
+                            colors,direction,target_size)
+                    plate.paste(gradients[cache_key],bbox[:2])
+                    plate.putalpha(mask)
         if shape["stroke"] is not None:
             d=ImageDraw.Draw(plate)
             color=(*_rgb(shape["stroke"]),255)
