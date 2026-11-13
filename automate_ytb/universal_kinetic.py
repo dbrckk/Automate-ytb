@@ -150,14 +150,17 @@ def read_story(path: Path) -> dict:
                 or subject_family!=select_subject(
                     topic," ".join(b["narration"] for b in validated))):
             raise ValueError("Untrusted procedural subject provenance")
-        from .universal_subject_motion import VERSION as motion_version
-        if motion_engine is not None and motion_engine!=motion_version:
+        from .universal_subject_motion import (
+            VERSION as motion_version, LEGACY_VERSION as old_motion_version)
+        if (motion_engine is not None
+                and motion_engine not in (old_motion_version,motion_version)):
             raise ValueError("Untrusted procedural motion provenance")
         expected_layers=validate_vector_layers(subject_layers(subject_family))
         for i,beat in enumerate(validated):
             authored_tracks,_=validate_actor_rig(
                 subject_tracks(i,len(validated),
-                               family=(subject_family if motion_engine else None)),
+                               family=(subject_family if motion_engine else None),
+                               engine=motion_engine),
                 [],expected_layers)
             if (beat["visualVectors"]!=expected_layers
                     or beat["actorTracks"]!=authored_tracks
