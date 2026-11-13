@@ -191,11 +191,22 @@ class UniversalKineticTests(unittest.TestCase):
             brief=Path(td)/"brief.json"
             out=Path(td)/"short.mp4"
             brief.write_text(json.dumps(data),encoding="utf8")
-            manifest=produce(brief,out,voice="espeak",width=720)
+            manifest=produce(brief,out,voice="espeak",width=720,
+                             export_narration=True)
             self.assertTrue(out.is_file())
             self.assertGreater(out.stat().st_size,10000)
             self.assertEqual(manifest["delivery"]["status"],"passed")
             self.assertEqual(manifest["voiceEngine"],"espeak")
+            self.assertTrue(out.with_suffix(".narration.wav").is_file())
+            self.assertEqual(manifest["narrationWavFile"],"short.narration.wav")
+            self.assertEqual(manifest["voiceEvidence"]["status"],"verified-real-audio")
+            self.assertEqual(manifest["voiceEvidence"]["engine"],"espeak")
+            self.assertFalse(manifest["voiceEvidence"]["naturalnessVerified"])
+            from automate_ytb.universal_voice_evidence import inspect_narration
+            self.assertEqual(
+                manifest["voiceEvidence"]["sha256"],
+                inspect_narration(out.with_suffix(".narration.wav"),
+                                  engine="espeak")["sha256"])
             self.assertEqual(manifest["sound"],"original-event-locked-foley")
             self.assertFalse(manifest["publicationApproved"])
             self.assertTrue(out.with_suffix(".json").is_file())
