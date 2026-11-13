@@ -51,7 +51,7 @@ class CinematicCompositionTests(unittest.TestCase):
     def test_title_is_temporarily_visible_then_fades_without_resets(self):
         self.assertEqual(shot_title_alpha(0,0,180),255)
         self.assertEqual(shot_title_alpha(30,0,180),255)
-        self.assertTrue(0<shot_title_alpha(57,0,180)<255)
+        self.assertTrue(0<shot_title_alpha(47,0,180)<255)
         self.assertEqual(shot_title_alpha(90,0,180),0)
         self.assertEqual(shot_title_alpha(100,90,180),255)
         self.assertEqual(shot_title_alpha(179,90,180),0)
