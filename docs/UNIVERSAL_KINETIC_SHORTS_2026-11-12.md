@@ -549,3 +549,33 @@ The original flower example now has two separately deforming leaves in
 each of two continuous shots. GitHub's real H.264/AAC smoke verifies four
 flexible-actor tracks, while the dedicated unit suite verifies reproducible
 pixels, pinned hinges, and rejected discontinuities.
+
+### Object-space vector material shading (engine v11)
+
+Every original vector primitive can now use a bounded `fill` surface gradient:
+
+```json
+{
+  "colors": ["#FFF4C8", "#E3AA88", "#8B456E", "#273048"],
+  "direction": "radial",
+  "space": "shape"
+}
+```
+
+Accepted directions are `vertical`, `horizontal`, `diagonal`, and
+`radial`; use `space: "shape"` to shade the local painted silhouette
+instead of the whole image, or `space: "stage"` for global atmospheric
+lighting. Use two to five explicitly authored `#RRGGBB` stops.
+The existing solid and two-stop array fills remain accepted, and arrays
+still render as vertical stage-wide gradients for compatibility.
+
+The rasterizer produces a bounded anti-aliased gradient only once per scene.
+The object's alpha is applied after painting its color to avoid dark
+premultiplied edges. The existing RGBA overlay opacity then composites
+reflections correctly over earlier details. The original flower fixture
+uses two differently directed petal shaders and a radial multi-stop center,
+plus independently rigged flexible parts, in two continuous shots.
+
+This feature improves the **reusable renderer** for any authored object.
+It does not claim to invent a semantically correct object from an arbitrary
+topic or to replace factual/visual editorial review.

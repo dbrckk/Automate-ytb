@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v10-flexible-original-subjects"
+VERSION = "universal-kinetic-cinematic-stage-v11-directional-surface-shading"
 
 
 def _text(value, name, limit=120):
@@ -517,7 +517,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "authoredContactCues":sum(len(b["actorLinks"]) for b in story["beats"]),
         "artwork":{
             "engine":"scene25d-original-vector-and-raster-illustrations",
-            "vectorArtEngine":"original-bounded-antialiased-translucent-vector-layers-v2",
+            "vectorArtEngine":"original-bounded-multistop-surface-shading-v3",
             "originalVectorLayers":sum(len(b["visualVectors"]) for b in story["beats"]),
             "originalVectorShapes":sum(sum(len(l["shapes"]) for l in b["visualVectors"])
                                         for b in story["beats"]),
