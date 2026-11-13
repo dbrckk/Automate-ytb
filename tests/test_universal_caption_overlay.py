@@ -62,7 +62,7 @@ class PhraseSafeSubtitleTests(unittest.TestCase):
         result=paint_phrase_caption(canvas,caption,
                                     frame=24,start=0,end=90)
         self.assertEqual(result.size,(480,853))
-        self.assertNotEqual(result.getpixel((240,round(853*.811))),
+        self.assertNotEqual(result.getpixel((240,round(853*.766))),
                             (28,36,48))
         self.assertEqual(result.getpixel((100,20)),(28,36,48))
 
