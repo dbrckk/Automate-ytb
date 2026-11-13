@@ -137,6 +137,21 @@ def read_story(path: Path) -> dict:
     # Generated-art provenance is not a user-supplied label. When present,
     # its original object family, exact geometry and keyframes must agree
     # with the actual source-anchored deterministic template library.
+    source_journey=story.get("proceduralScaleJourney")
+    has_scale=("proceduralScaleJourney" in story
+               or "proceduralScaleJourneyEngine" in story)
+    if has_scale:
+        from .universal_scale_journey import (
+            VERSION as scale_version, derive_scale_journey)
+        expected_journey=derive_scale_journey(validated)
+        if (story.get("originalTextOnly") is not True
+                or story.get("proceduralScaleJourneyEngine")!=scale_version
+                or expected_journey is None
+                or source_journey!=expected_journey
+                or any(b["visualVectors"] or b["visualLayers"]
+                       or b["actorTracks"] or b["actorLinks"]
+                       for b in validated)):
+            raise ValueError("Untrusted source-grounded scale animation provenance")
     subject_family=story.get("proceduralVisualFamily")
     motion_engine=story.get("proceduralMotionEngine")
     chapter_engine=story.get("proceduralVisualChapterEngine")
@@ -148,6 +163,10 @@ def read_story(path: Path) -> dict:
                   or "proceduralVisualCompositionFamilies" in story)
     has_chapters=(chapter_engine is not None
                   or "proceduralVisualFamilies" in story)
+    if has_scale and (has_compound or has_chapters or subject_family is not None
+                      or motion_engine is not None
+                      or story.get("proceduralVisualEngine") is not None):
+        raise ValueError("A scale journey cannot claim another artwork provenance")
     if has_contact and not has_compound:
         raise ValueError("Causal contact needs authenticated two-subject artwork")
     if has_compound:
@@ -263,6 +282,9 @@ def read_story(path: Path) -> dict:
     if has_contact:
         result["proceduralVisualInteractionEngine"]=causal_engine
         result["proceduralVisualInteractions"]=expected_contacts
+    if has_scale:
+        result["proceduralScaleJourneyEngine"]=scale_version
+        result["proceduralScaleJourney"]=expected_journey
     return result
 
 
@@ -479,7 +501,13 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     # Author-supplied real world art receives a cinematic treatment; numeric
     # and conceptual diagrams retain their explicit reviewable data layout.
     art=art_scenes.get(pos) if art_scenes is not None else None
-    if art is None:
+    journey=story.get("proceduralScaleJourney")
+    if journey is not None:
+        from .universal_scale_journey import render_scale_frame
+        base=render_scale_frame(journey,story["topic"],frame,
+                                boundaries,pos,width,height)
+        d=ImageDraw.Draw(base)
+    elif art is None:
         measured=timeline.state_at(frame)["objects"]["progress"]["value"]
         _bar(d,pad,int(height*.107),width-2*pad,max(3,width//140),
              measured,extra,palette)
@@ -493,7 +521,9 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         for j,line in enumerate(header):
             d.text((pad,int(height*.166)+j*hf.size*1.20),
                    line,font=hf,fill=accent,stroke_width=1,stroke_fill=dark)
-    if art is not None:
+    if journey is not None:
+        pass  # The scale world has already occupied the full video frame.
+    elif art is not None:
         from .universal_art25d import render_art_stage
         from .universal_cinematic_portrait import (
             composite_authored_world,shot_title_alpha)
@@ -691,6 +721,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralVisualCompositionFamilies":story.get("proceduralVisualCompositionFamilies"),
         "proceduralVisualInteractionEngine":story.get("proceduralVisualInteractionEngine"),
         "proceduralVisualInteractions":story.get("proceduralVisualInteractions"),
+        "proceduralScaleJourneyEngine":story.get("proceduralScaleJourneyEngine"),
+        "proceduralScaleLandmarkCount":len(
+            (story.get("proceduralScaleJourney") or {}).get("points",[])),
+        "proceduralScaleNumbersSourceVerified":bool(
+            story.get("proceduralScaleJourney")),
         "proceduralCausalContactCount":sum(
             e is not None for e in (story.get("proceduralVisualInteractions") or [])),
         "proceduralMotionEngine":story.get("proceduralMotionEngine"),
