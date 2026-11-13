@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "source-text-universal-beat-compiler-v5-grounded-dual-object-storyboard"
+VERSION = "source-text-universal-beat-compiler-v6-causal-source-verb-storyboard"
 _STOP = frozenset((
     "about", "after", "again", "also", "avec", "avoir", "been", "before",
     "being", "between", "dans", "does", "dont", "elle", "elles", "encore",
@@ -108,11 +108,18 @@ def compile_original_script(*, topic: str, script: str,
         VERSION as composition_version)
     from .universal_subject_motion import VERSION as motion_version
     compound=composition_families(beats)
+    causal_events=None
     if compound is not None:
-        # New v19 option only when at least one beat actually names TWO
-        # distinct recognized object families. Never infer from topic.
+        # Only explicit, affirmative source verbs can activate the new
+        # causal art path. Existing v19 noun-only stories stay unchanged.
+        from .universal_subject_interaction import (
+            detect_contacts, apply_contacts, VERSION as contact_version)
+        causal_events=detect_contacts(beats,compound)
         family,sequence=None,None
-        apply_compositions(beats,compound)
+        if causal_events is None:
+            apply_compositions(beats,compound)
+        else:
+            apply_contacts(beats,compound,causal_events)
     else:
         sequence=subject_chapter_families(beats)
         if sequence is None:
@@ -135,6 +142,9 @@ def compile_original_script(*, topic: str, script: str,
     if compound is not None:
         result["proceduralVisualCompositionEngine"]=composition_version
         result["proceduralVisualCompositionFamilies"]=compound
+    if causal_events is not None:
+        result["proceduralVisualInteractionEngine"]=contact_version
+        result["proceduralVisualInteractions"]=causal_events
     return result
 
 
