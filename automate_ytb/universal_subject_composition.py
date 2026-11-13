@@ -42,7 +42,7 @@ def _explicit_families(text: str) -> list[str]:
         found=[]
         for expression in _PATTERN[family]:
             for match in expression.finditer(corpus):
-                words=re.findall(r"[^\\W_]+",corpus[max(0,match.start()-30):match.start()],
+                words=re.findall(r"[^\W_]+",corpus[max(0,match.start()-30):match.start()],
                                  re.UNICODE)
                 if words[-1:] and words[-1] in _NEGATIONS:
                     continue
