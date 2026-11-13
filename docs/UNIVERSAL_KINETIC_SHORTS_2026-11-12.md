@@ -614,3 +614,32 @@ it does not establish factual causality. Still required: object-specific
 visual generation, movement/storyboard planning, sound/music aesthetic
 evaluation and successful neural Kokoro narration in a complete original
 episode. Human editorial approval is still required to publish.
+
+### PCM-synchronized cinematic phrase captions (shared generator v13)
+
+The original Short renderer now paints every authored phrase with exact font
+metrics, centred in the portrait safe area (69–89% of frame height). The
+short rounded dark matte follows the content instead of permanently
+covering the screen with a wide PowerPoint banner. All words remain
+visible: one to three lines at a bounded font size, explicitly rejecting
+unrenderable strings instead of applying ellipses or discarding lines.
+
+The **same synthesized PCM phrase boundaries** drive both SRT entries and
+baked-in caption visibility. A short fade accompanies each phrase's real
+start/end frames. There is no fabricated word-level alignment, estimated
+karaoke highlight or speech recognition. Offline preview captions are
+labelled unaligned and use an authored excerpt.
+
+Caption layouts are validated against the actual 9:16 target resolution
+*before* starting expensive free Kokoro inference or FFmpeg; source text and
+mobile constraints are checked together. Bounded font/layout caches reuse
+measured line breaks over every 30 FPS frame and are returned defensively
+to prevent a mutated caller layout from omitting text. Rendering
+alpha-composites just the small caption panel, not a full RGBA frame.
+The manifest records `captionOverlayEngine`,
+`captionLayoutPreflight: passed`, `captionWordsOmitted: 0`, and
+`wordLevelAligned: false`. The full-media CI asserts these claims.
+
+This is a **typographic and sync** improvement, not a claim of human-quality
+speech. The usual CI smoke intentionally uses eSpeak; a genuine Kokoro run
+must separately be verified before natural voice quality is claimed.
