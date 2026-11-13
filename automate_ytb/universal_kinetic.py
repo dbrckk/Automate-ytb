@@ -33,7 +33,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v15-grounded-procedural-originals"
+VERSION = "universal-kinetic-cinematic-stage-v16-causal-semantic-actions"
 
 
 def _text(value, name, limit=120):
@@ -138,6 +138,9 @@ def read_story(path: Path) -> dict:
     # its original object family, exact geometry and keyframes must agree
     # with the actual source-anchored deterministic template library.
     subject_family=story.get("proceduralVisualFamily")
+    motion_engine=story.get("proceduralMotionEngine")
+    if motion_engine is not None and subject_family is None:
+        raise ValueError("Subject motion must have grounded original artwork")
     if subject_family is not None:
         from .universal_subject_illustrations import (
             select_subject, subject_layers, subject_tracks,
@@ -147,16 +150,22 @@ def read_story(path: Path) -> dict:
                 or subject_family!=select_subject(
                     topic," ".join(b["narration"] for b in validated))):
             raise ValueError("Untrusted procedural subject provenance")
+        from .universal_subject_motion import VERSION as motion_version
+        if motion_engine is not None and motion_engine!=motion_version:
+            raise ValueError("Untrusted procedural motion provenance")
         expected_layers=validate_vector_layers(subject_layers(subject_family))
         for i,beat in enumerate(validated):
             authored_tracks,_=validate_actor_rig(
-                subject_tracks(i,len(validated)),[],expected_layers)
+                subject_tracks(i,len(validated),
+                               family=(subject_family if motion_engine else None)),
+                [],expected_layers)
             if (beat["visualVectors"]!=expected_layers
                     or beat["actorTracks"]!=authored_tracks
                     or beat["actorLinks"] or beat["visualLayers"]):
                 raise ValueError("Procedural subject illustration was altered")
     return {"topic": topic, "language": language, "beats": validated,
-            "schemaVersion": 1, "proceduralVisualFamily":subject_family}
+            "schemaVersion": 1, "proceduralVisualFamily":subject_family,
+            "proceduralMotionEngine":motion_engine}
 
 
 def _font(size: int, bold=False):
@@ -578,6 +587,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
+        "proceduralMotionEngine":story.get("proceduralMotionEngine"),
         "proceduralVisualSceneCount":(
             len(story["beats"]) if story.get("proceduralVisualFamily") else 0),
         "proceduralVisualEngine":(
