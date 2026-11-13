@@ -535,6 +535,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         # A temporary failure cannot leave an exported WAV falsely presented
         # as the voice track of a successful published Short.
         delivery=validate_short(output,require_audio=True)
+        if export_narration and delivery["status"] != "passed":
+            raise RuntimeError(
+                "Cannot preserve a narration proof for a failed final MP4: "
+                + "; ".join(delivery.get("errors", [])))
         narration_export=None
         if export_narration:
             narration_export=output.with_suffix(".narration.wav")
