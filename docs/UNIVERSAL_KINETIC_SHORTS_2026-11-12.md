@@ -684,3 +684,52 @@ It saves source WAV, MP4, SRT, QA and manifest in the same artifact.
 that a human finds the voice natural. This audit never auto-approves the
 voice, video, facts, artwork or publication. The existing fast CI uses
 eSpeak and explicitly reports it as such; it is not relabeled as Kokoro.
+
+### Original subject-specific illustrated Shorts from script text (v15)
+
+A free user-supplied **original** EN/FR script can now select a real,
+multi-depth vector subject automatically, *only when its own narration*
+contains explicit recognizable source nouns. Supported first families:
+botanical scenes (trees/seeds/leaves), orbital/planetary illustrations,
+railway locomotives, rain/clouds, ocean waves and password/security
+symbols. These are **different original silhouettes**, not just recolored
+copies of the old circles and bars.
+
+Each accepted family builds five bounded original painted layers (sky,
+environment, recognizable hero, internal detail and moving atmospheric
+elements). Per-object multi-stop material shading, translucency, parallax,
+4 independent actor trajectories and continuous two-shot camera movement
+reuse the already-tested universal 2.5D renderer. Original theme-specific
+foreground details are generated deterministically and cached as source
+sprites; no per-frame asset re-generation, remotely retrieved copyrighted
+photo, AI inference service or fabricated numerical fact is needed.
+
+Example free CLI:
+```bash
+automate-ytb-short \
+  --topic "An illustrated planetary journey" \
+  --script-file examples/universal_planet_story.en.txt \
+  --language en --voice kokoro --voice-name af_heart \
+  --width 720 --output build/planet.mp4
+```
+
+**Safety and reliability:** unknown or unrecognized subjects retain the
+legacy generic conceptual diagrams rather than inventing an unrelated real
+object. A concrete family must be mentioned in the narration; topical words
+alone do not qualify, and simple explicit negation is excluded. The
+`proceduralVisualFamily` and `proceduralVisualEngine` declarations are
+verified against the same source text and exact original shapes/keyframes
+before output is trusted. Mutated "automatically generated" vector artwork
+is rejected, never silently accepted as certified source provenance.
+The final MP4 manifest records the actual generated family and number of
+originally illustrated scenes and leaves `publicationApproved: false`.
+
+**Current limitations:** the vocabulary and six procedural silhouette
+families are finite. These are **stylized illustrative objects** rather
+than documentary footage, historically exact trains, observed planets,
+scientifically precise simulations or a general text-to-image AI model.
+Mixed or ambiguous subjects may still use a thematic illustration rather
+than accurate scene-by-scene visual storytelling; complex source facts,
+licensed photorealistic art, detailed storyboarding, interactions and
+human editorial judgment still need development. This is an improvement
+of the **generic video creation process**, not a one-video asset swap.
