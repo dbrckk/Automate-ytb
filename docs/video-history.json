@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 186,
+  "count": 187,
   "videos": [
+    {
+      "id": "tiktok-coastal-storm-d812c11d6e33/coastal-storm-short-en-1080x1920.mp4",
+      "topic": "coastal-storm-short-en-1080x1920",
+      "category": "other",
+      "releaseTag": "tiktok-coastal-storm-d812c11d6e33",
+      "publishedAt": "2026-11-13T21:09:11Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/tiktok-coastal-storm-d812c11d6e33/coastal-storm-short-en-1080x1920.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/tiktok-coastal-storm-d812c11d6e33",
+      "bytes": 5030622,
+      "sha256": "sha256:8d3235c29bb44a946906be93d261146a0012ef3b2d323890fdf0a36748d79fc1"
+    },
     {
       "id": "science-preview-raindrop-rainbow-43220317747/raindrop-rainbow.mp4",
       "topic": "raindrop-rainbow",
