@@ -121,6 +121,35 @@ class SourceAnchoredProceduralArtTests(unittest.TestCase):
                 self.assertEqual(story["proceduralVisualFamily"],family)
                 self.assertTrue(story["originalTextOnly"])
 
+    def test_generated_subject_provenance_cannot_be_spoofed_or_mutated(self):
+        topic,script=TEXTS["botanical"]
+        original=compile_original_script(topic=topic,script=script)
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"approved.json"
+            path.write_text(json.dumps(original),encoding="utf8")
+            trusted=read_story(path)
+            self.assertEqual(trusted["proceduralVisualFamily"],"botanical")
+            forged=json.loads(json.dumps(original))
+            forged["proceduralVisualFamily"]="celestial"
+            path.write_text(json.dumps(forged),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"provenance"):
+                read_story(path)
+            forged=json.loads(json.dumps(original))
+            forged["beats"][0]["visualVectors"][2]["shapes"][0]["fill"]="#000000"
+            path.write_text(json.dumps(forged),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"altered"):
+                read_story(path)
+            forged=json.loads(json.dumps(original))
+            forged["beats"][1]["actorTracks"][0]["keys"][1]["x"]+=.015
+            path.write_text(json.dumps(forged),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"altered"):
+                read_story(path)
+            forged=json.loads(json.dumps(original))
+            forged["proceduralVisualEngine"]="fake-remote-studio"
+            path.write_text(json.dumps(forged),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"provenance"):
+                read_story(path)
+
     def test_rasterized_original_world_is_real_transparent_and_continuous(self):
         for family in ("botanical","celestial","rail","ocean","weather","security"):
             with self.subTest(family=family),tempfile.TemporaryDirectory() as td:
