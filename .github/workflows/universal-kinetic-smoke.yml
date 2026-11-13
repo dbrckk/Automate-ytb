@@ -178,8 +178,12 @@ jobs:
           space=json.loads((folder/'planet-story-original.json').read_text())
           assert flora['proceduralVisualFamily']=='botanical'
           assert space['proceduralVisualFamily']=='celestial'
-          assert flora['proceduralMotionEngine']=='grounded-causal-subject-choreography-v1'
-          assert space['proceduralMotionEngine']=='grounded-causal-subject-choreography-v1'
+          assert flora['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
+          assert space['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
+          # Botanical art must truly exercise the flexible 2.5D compositor;
+          # celestial orbits must remain rigid (no fabric-like bend).
+          assert flora['artwork']['flexibleActorParts']==2
+          assert space['artwork']['flexibleActorParts']==0
           for report in (flora,space):
               assert report['proceduralVisualSceneCount']==2
               assert report['proceduralVisualEngine']=='original-source-anchored-procedural-subjects-v1'

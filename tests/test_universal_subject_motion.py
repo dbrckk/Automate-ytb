@@ -14,7 +14,8 @@ import tempfile
 import unittest
 
 from automate_ytb.universal_subject_motion import (
-    ACTOR_DEPTHS, FAMILIES, VERSION, subject_pose, subject_motion_tracks)
+    ACTOR_DEPTHS, FAMILIES, VERSION, LEGACY_VERSION,
+    subject_pose, subject_motion_tracks)
 from automate_ytb.universal_subject_illustrations import (
     subject_layers, subject_tracks)
 from automate_ytb.universal_script import compile_original_script
@@ -190,6 +191,111 @@ class SubjectSpecificMotionTests(unittest.TestCase):
                 self.assertEqual(
                     next_frame.tobytes(),
                     render_art_stage(scenes[0],50,0,75).tobytes())
+
+    def test_new_secondary_motion_is_tied_only_to_flexible_art(self):
+        expected={
+            "botanical":{65},
+            "rail":{85},
+            "weather":{65},
+            "ocean":{45,65},
+            "celestial":set(),
+            "security":set(),
+        }
+        for family in FAMILIES:
+            with self.subTest(family=family):
+                tracks=subject_motion_tracks(family,0,3)
+                flex={t["z"] for t in tracks if "deform" in t}
+                self.assertEqual(flex,expected[family])
+                for track in tracks:
+                    if "deform" not in track:
+                        continue
+                    deform=track["deform"]
+                    self.assertEqual(deform["kind"],"sway")
+                    self.assertLessEqual(deform["amount"],.12)
+                    self.assertTrue(0<=deform["offset"]<=1)
+                    self.assertEqual(
+                        subject_motion_tracks(family,1,3)[
+                            [t["z"] for t in tracks].index(track["z"])]["deform"],
+                        deform)
+                old=subject_motion_tracks(family,0,3,
+                                          engine=LEGACY_VERSION)
+                self.assertTrue(all("deform" not in t for t in old))
+                self.assertTrue(all("pivot" not in t for t in old))
+                self.assertEqual(
+                    [t["keys"] for t in old],
+                    [t["keys"] for t in tracks])
+
+    def test_old_v16_original_stories_still_validate_unchanged(self):
+        for family in FAMILIES:
+            topic,script=EXAMPLES[family]
+            story=compile_original_script(topic=topic,script=script)
+            legacy=deepcopy(story)
+            legacy["proceduralMotionEngine"]=LEGACY_VERSION
+            for index,beat in enumerate(legacy["beats"]):
+                beat["actorTracks"]=subject_motion_tracks(
+                    family,index,len(legacy["beats"]),engine=LEGACY_VERSION)
+            with self.subTest(family=family),tempfile.TemporaryDirectory() as td:
+                path=Path(td)/"saved-v16.json"
+                path.write_text(json.dumps(legacy),encoding="utf8")
+                parsed=read_story(path)
+                self.assertEqual(parsed["proceduralMotionEngine"],LEGACY_VERSION)
+                self.assertEqual(validate_cut_continuity(parsed),1)
+                self.assertTrue(all(
+                    "deform" not in track
+                    for beat in parsed["beats"]
+                    for track in beat["actorTracks"]))
+
+    def test_secondary_bending_changes_real_pixels_and_is_deterministic(self):
+        for family in ("botanical","rail","weather","ocean"):
+            topic,script=EXAMPLES[family]
+            story=compile_original_script(topic=topic,script=script)
+            legacy=deepcopy(story)
+            legacy["proceduralMotionEngine"]=LEGACY_VERSION
+            for index,beat in enumerate(legacy["beats"]):
+                beat["actorTracks"]=subject_motion_tracks(
+                    family,index,len(legacy["beats"]),engine=LEGACY_VERSION)
+            with self.subTest(family=family),tempfile.TemporaryDirectory() as td:
+                root=Path(td)
+                new_path=root/"new.json"
+                old_path=root/"old.json"
+                new_path.write_text(json.dumps(story),encoding="utf8")
+                old_path.write_text(json.dumps(legacy),encoding="utf8")
+                current=read_story(new_path)
+                previous=read_story(old_path)
+                new_scenes,_=load_art_scenes(current,new_path,360,640)
+                old_scenes,_=load_art_scenes(previous,old_path,360,640)
+                bind_actor_camera_world(current,new_scenes,[0,75,150])
+                bind_actor_camera_world(previous,old_scenes,[0,75,150])
+                self.assertTrue(new_scenes[0].deformations)
+                self.assertFalse(old_scenes[0].deformations)
+                now=render_art_stage(new_scenes[0],38,0,75)
+                before=render_art_stage(old_scenes[0],38,0,75)
+                self.assertNotEqual(now.tobytes(),before.tobytes())
+                self.assertEqual(now.tobytes(),
+                                 render_art_stage(new_scenes[0],38,0,75).tobytes())
+
+    def test_tampering_v17_secondary_motion_fails_provenance(self):
+        topic,script=EXAMPLES["botanical"]
+        story=compile_original_script(topic=topic,script=script)
+        self.assertEqual(story["proceduralMotionEngine"],VERSION)
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td)/"altered.json"
+            for field,bad in (("amount",.119),("cycles",2.9),
+                              ("offset",.7)):
+                altered=deepcopy(story)
+                # An attacker can forge the same bend in every beat to
+                # preserve cut continuity; provenance must still reject it.
+                for beat in altered["beats"]:
+                    beat["actorTracks"][2]["deform"][field]=bad
+                path.write_text(json.dumps(altered),encoding="utf8")
+                with self.subTest(field=field),self.assertRaisesRegex(
+                        ValueError,"altered"):
+                    read_story(path)
+            altered=deepcopy(story)
+            altered["proceduralMotionEngine"]=LEGACY_VERSION
+            path.write_text(json.dumps(altered),encoding="utf8")
+            with self.assertRaisesRegex(ValueError,"altered"):
+                read_story(path)
 
     def test_invalid_parameters_do_not_become_video_keyframes(self):
         for family,z,moment in (
