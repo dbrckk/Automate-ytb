@@ -19,7 +19,7 @@ class PhraseSafeSubtitleTests(unittest.TestCase):
             "A hydrogen atom contains one proton, and may also contain a neutron.",
             "This short narration mentions a long scientific observation; without skipping a word.",
         )
-        for width in (360,720,1080):
+        for width in (360,480,720,1080):
             height=width*16//9
             for sentence in scripts:
                 for phrase in caption_phrases(sentence):
@@ -55,6 +55,16 @@ class PhraseSafeSubtitleTests(unittest.TestCase):
         paint_phrase_caption(second,phrase,frame=42,start=0,end=90,
                              layout=layout)
         self.assertEqual(image.tobytes(),second.tobytes())
+
+    def test_valid_480x853_editorial_preview_uses_same_caption_grammar(self):
+        canvas=Image.new("RGB",(480,853),(28,36,48))
+        caption="An original editorial preview needs the exact spoken words."
+        result=paint_phrase_caption(canvas,caption,
+                                    frame=24,start=0,end=90)
+        self.assertEqual(result.size,(480,853))
+        self.assertNotEqual(result.getpixel((240,round(853*.811))),
+                            (28,36,48))
+        self.assertEqual(result.getpixel((100,20)),(28,36,48))
 
     def test_caption_phrase_fades_follow_exact_speech_frame_bounds(self):
         self.assertLess(phrase_opacity(0,0,90),120)
