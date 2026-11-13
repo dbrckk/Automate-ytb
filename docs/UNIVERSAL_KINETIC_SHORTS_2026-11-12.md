@@ -494,3 +494,18 @@ animal, place, product, scientific mechanism or historical event from
 plain text. A semantically grounded scene specification or a separately
 validated generative/retrieval model is still required for those use
 cases. Source facts and publication require editorial verification.
+
+### Translucent vector material overlays
+
+An original vector shape may optionally declare an opacity between 0.05
+and 1.0. The default remains fully opaque for existing stories. Every
+primitive is rasterized into its own transparent RGBA plate and alpha-
+composited in author-defined order. This preserves the colors and details
+under semi-transparent glints, shadows, glass, haze, and highlights rather
+than replacing the earlier pixels. Gradients and outlines obey the same
+opacity. Non-finite, string, boolean and out-of-range values are rejected.
+
+The original flower fixture includes two separate translucent petal glints
+in both continuous shots, demonstrating reusable material layering without
+an external image generator or paid provider. This is an authored vector
+material tool, not an automatic semantic illustration model.

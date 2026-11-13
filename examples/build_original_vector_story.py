@@ -139,6 +139,9 @@ def blossom():
         line([[.477,.363],[.486,.324],[.474,.292]],"#FFE0B7",.003),
         line([[.578,.399],[.608,.364],[.642,.354]],"#FFE0B7",.003),
         line([[.412,.486],[.369,.5],[.354,.52]],"#F7D5B9",.003),
+        # Semi-transparent glints preserve petal gradients beneath them.
+        dict(ellipse(.444,.247,.496,.357,"#FFF4E1"),opacity=.34),
+        dict(ellipse(.594,.348,.649,.417,"#FFF7E8"),opacity=.27),
     ]
     return art("detailed-bloom",85,1.12,.55,shapes,"foliage")
 
