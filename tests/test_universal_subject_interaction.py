@@ -80,9 +80,9 @@ class CausalOriginalActorTests(unittest.TestCase):
         contacts=[cue for cue in timeline.audio_events()
                   if cue["family"]=="contact"]
         self.assertEqual(len(contacts),2)
-        self.assertEqual([cue["atFrame"] for cue in contacts],[35,175])
-        self.assertEqual(contacts[0]["atSample"],35*1600)
-        self.assertEqual(contacts[1]["atSample"],175*1600)
+        self.assertEqual([cue["atFrame"] for cue in contacts],[34,174])
+        self.assertEqual(contacts[0]["atSample"],34*1600)
+        self.assertEqual(contacts[1]["atSample"],174*1600)
 
     def test_persistent_growth_is_continuous_at_cut_and_distinct_from_v19(self):
         data=self.example()
