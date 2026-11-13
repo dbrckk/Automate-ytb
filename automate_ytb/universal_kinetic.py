@@ -790,7 +790,12 @@ def main(argv=None):
                 language=a.language)
             brief=a.output.with_suffix(".story.json")
             brief.parent.mkdir(parents=True,exist_ok=True)
-            brief.write_text(json.dumps(story,ensure_ascii=False,indent=2)+"\n",
+            # Generated declarative vector scenes are already schema-bounded.
+            # Pretty-printed deep geometry can exceed the fixed JSON byte
+            # ceiling for valid 5-12 beat original Shorts. Keep the exact
+            # same authenticated data but serialize it compactly.
+            brief.write_text(json.dumps(story,ensure_ascii=False,
+                                        separators=(",",":"))+"\n",
                              encoding="utf8")
         report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,
                        width=a.width,commons_art=a.commons_art,

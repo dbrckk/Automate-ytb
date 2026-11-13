@@ -1,0 +1,205 @@
+name: Create original TikTok — Coastal Storm 2026-11-13
+
+# Each main push of this original story makes a validated MP4 available as
+# a permanent public GitHub Release asset. This never posts to TikTok.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tiktok-coastal-storm-2026-11-13.yml'
+      - 'examples/tiktok_coastal_storm_2026_11_13.en.txt'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tiktok-coastal-storm-2026-11-13.yml'
+      - 'examples/tiktok_coastal_storm_2026_11_13.en.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tiktok-coastal-storm-2026-11-13-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  original-tiktok:
+    name: Generate real 1080x1920 video and validate permanent delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Install free CPU neural narration and video tools
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+            sudo timeout -k 10s 180s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Test five-scene vector JSON size and authenticated storyboard
+        run: |
+          python -m unittest discover -s tests -p test_universal_compact_story.py -v
+      - name: Verify actual source script and causal storyboard before rendering
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from automate_ytb.universal_script import compile_original_script
+          src=Path('examples/tiktok_coastal_storm_2026_11_13.en.txt')
+          story=compile_original_script(
+              topic='What if a storm hit a coastal railway?',
+              script=src.read_text(encoding='utf8'),language='en')
+          assert len(story['beats'])==5
+          assert story['language']=='en'
+          assert story['originalTextOnly'] is True
+          assert story['factualResearchPerformed'] is False
+          assert story['proceduralVisualInteractionEngine']=='source-verb-anchored-dual-actor-contact-v1'
+          contacts=story['proceduralVisualInteractions']
+          assert len(contacts)==5
+          assert [(i,e['kind']) for i,e in enumerate(contacts) if e] == [
+              (1,'rain-waters-plant'),(3,'wave-hits-train')]
+          print('Source-grounded original five-scene story: two real animated contacts')
+          PY
+      - name: Render a brand-new 9:16 original Short with actual Kokoro neural voice
+        run: |
+          set -euo pipefail
+          mkdir -p build/tiktok-coastal-storm
+          automate-ytb-short \
+            --topic "What if a storm hit a coastal railway?" \
+            --script-file examples/tiktok_coastal_storm_2026_11_13.en.txt \
+            --language en \
+            --voice kokoro --voice-name af_heart \
+            --width 1080 --export-narration-wav \
+            --output build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.mp4
+      - name: Verify genuine encoded media, original voice, animation and audio
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.shorts_delivery \
+            --video build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.mp4 \
+            --require-audio --report build/tiktok-coastal-storm/delivery-qa.json
+          python - <<'PY'
+          import hashlib, json, subprocess, wave
+          from pathlib import Path
+          from automate_ytb.universal_voice_evidence import inspect_narration
+          root=Path('build/tiktok-coastal-storm')
+          mp4=root/'coastal-storm-short-en-1080x1920.mp4'
+          report=json.loads((root/'coastal-storm-short-en-1080x1920.json').read_text())
+          source=json.loads((root/'coastal-storm-short-en-1080x1920.story.json').read_text())
+          qa=json.loads((root/'delivery-qa.json').read_text())
+          voice=inspect_narration(root/'coastal-storm-short-en-1080x1920.narration.wav',engine='kokoro')
+          assert report['delivery']['status']=='passed'
+          assert qa['status']=='passed'
+          assert (qa['media']['width'],qa['media']['height'])==(1080,1920)
+          assert 12<qa['media']['durationSeconds']<90
+          assert report['voiceEngine']=='kokoro' and report['voiceName']=='af_heart'
+          assert report['voiceEvidence']==voice
+          assert voice['sampleRateHz']==24000
+          assert report['captionWordsOmitted']==0
+          assert source['language']=='en'
+          assert source['proceduralVisualInteractions']==[
+              None,{'kind':'rain-waters-plant','at':.5},None,
+              {'kind':'wave-hits-train','at':.5},None]
+          assert report['proceduralCausalContactCount']==2
+          assert report['artwork']['authoredActorLinks']==2
+          assert report['authoredContactCues']==2
+          assert report['sound']=='original-event-locked-foley'
+          assert not report['publicationApproved']
+          assert (root/'coastal-storm-short-en-1080x1920.srt').stat().st_size>100
+          data=json.loads(subprocess.check_output([
+              'ffprobe','-v','error','-of','json','-show_entries',
+              'stream=codec_type,codec_name,width,height,avg_frame_rate:format=duration',
+              str(mp4)]))
+          video=[x for x in data['streams'] if x['codec_type']=='video']
+          audio=[x for x in data['streams'] if x['codec_type']=='audio']
+          assert len(video)==len(audio)==1
+          assert video[0]['codec_name']=='h264'
+          assert video[0]['avg_frame_rate']=='30/1'
+          assert audio[0]['codec_name']=='aac'
+          digest=hashlib.sha256(mp4.read_bytes()).hexdigest()
+          receipt={
+              'originalScript':'examples/tiktok_coastal_storm_2026_11_13.en.txt',
+              'video':mp4.name,'sha256':digest,
+              'bytes':mp4.stat().st_size,
+              'durationSeconds':qa['media']['durationSeconds'],
+              'resolution':[1080,1920],'fps':30,
+              'language':'en','narration':'real Kokoro af_heart',
+              'artwork':'original vector 2.5D source-anchored causal contacts',
+              'causalContacts':2,'technicalQaPassed':True,
+              'humanArtisticReview':False,'tiktokPublished':False,
+          }
+          (root/'release-provenance.json').write_text(
+              json.dumps(receipt,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
+          print('Validated native 1080x1920 MP4, real original voice, H264/AAC, two authored event-linked sounds',digest)
+          PY
+          ffmpeg -nostdin -hide_banner -loglevel error \
+            -i build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.mp4 \
+            -f null -
+          ffmpeg -nostdin -hide_banner -loglevel error -y -ss 2 \
+            -i build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.mp4 \
+            -frames:v 1 -q:v 3 build/tiktok-coastal-storm/coastal-storm-cover.jpg
+          test -s build/tiktok-coastal-storm/coastal-storm-cover.jpg
+      - name: Retain downloadable original MP4, captions, cover and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: coastal-storm-original-tiktok-short
+          path: |
+            build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.mp4
+            build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.srt
+            build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.json
+            build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.story.json
+            build/tiktok-coastal-storm/coastal-storm-short-en-1080x1920.narration.wav
+            build/tiktok-coastal-storm/coastal-storm-cover.jpg
+            build/tiktok-coastal-storm/delivery-qa.json
+            build/tiktok-coastal-storm/release-provenance.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish durable public original MP4 only from verified main branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="tiktok-coastal-storm-${GITHUB_SHA:0:12}"
+          root="build/tiktok-coastal-storm"
+          name="coastal-storm-short-en-1080x1920.mp4"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Immutable release tag already exists, refusing overwrite"
+            exit 1
+          fi
+          gh release create "$tag" \
+            "$root/$name" \
+            "$root/coastal-storm-short-en-1080x1920.srt" \
+            "$root/coastal-storm-cover.jpg" \
+            "$root/release-provenance.json" \
+            "$root/delivery-qa.json" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Coastal Storm — Original 2.5D TikTok Short — ${GITHUB_SHA:0:12}" \
+            --notes "Original English fictional coastal-storm Short, 1080x1920 30fps H264/AAC. Real Kokoro af_heart narration, original ambience, source-driven wave/train and rain/trees animated interactions. This is an unreviewed technical preview for download and manual TikTok posting, NOT a claim that it was posted or that facts/artistry were independently reviewed." \
+            --prerelease --latest=false
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$name"
+          curl --fail --silent --show-error --location \
+            --retry 4 --retry-delay 2 --retry-all-errors \
+            --max-time 180 "$url" --output "$RUNNER_TEMP/public-video.mp4"
+          expected="$(sha256sum "$root/$name" | cut -d' ' -f1)"
+          received="$(sha256sum "$RUNNER_TEMP/public-video.mp4" | cut -d' ' -f1)"
+          test "$expected" = "$received"
+          {
+            echo "## Verified public direct MP4 download"
+            echo
+            echo "$url"
+            echo
+            echo "Public full GET + SHA256 verified without authentication."
+            echo "Original 1080x1920 English Kokoro video; not posted to TikTok."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Update durable GitHub video-history catalog
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/update_video_history.py
