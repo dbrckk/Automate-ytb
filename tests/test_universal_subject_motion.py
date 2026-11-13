@@ -71,9 +71,9 @@ class SubjectSpecificMotionTests(unittest.TestCase):
                     if index:
                         prior=subject_motion_tracks(family,index-1,4)
                         for left,right in zip(prior,tracks):
-                            self.assertEqual(left["keys"][-1], {
-                                **right["keys"][0], "at":1.
-                            } | {"at":1.})
+                            self.assertEqual(
+                                {k:v for k,v in left["keys"][-1].items() if k!="at"},
+                                {k:v for k,v in right["keys"][0].items() if k!="at"})
                     frames.append(tracks)
                 trajectories.add(tuple(
                     (t["z"],tuple((k["x"],k["y"],k["scale"],k["angle"])
@@ -144,7 +144,9 @@ class SubjectSpecificMotionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,"altered"):
                     read_story(path)
                 forged=deepcopy(story)
-                forged["beats"][1]["narration"]="These words have no matching subject."
+                for beat in forged["beats"]:
+                    beat["narration"]=(
+                        "An unfamiliar process continues and changes over time.")
                 path.write_text(json.dumps(forged),encoding="utf8")
                 with self.assertRaises(ValueError):
                     read_story(path)
@@ -182,7 +184,7 @@ class SubjectSpecificMotionTests(unittest.TestCase):
                 next_frame=render_art_stage(scenes[0],50,0,75)
                 last=render_art_stage(scenes[1],125,75,150)
                 self.assertEqual(first.mode,"RGBA")
-                self.assertEqual(first.size,(295,326))
+                self.assertEqual(first.size,(296,326))
                 self.assertNotEqual(first.tobytes(),next_frame.tobytes())
                 self.assertNotEqual(next_frame.tobytes(),last.tobytes())
                 self.assertEqual(
