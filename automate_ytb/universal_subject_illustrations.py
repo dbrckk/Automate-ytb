@@ -155,8 +155,8 @@ def _world(family):
     ]
     if family=="celestial":
         terrain=[
-            _ell(.06,.65,.93,.89,mid,opacity=.10),
-            _ell(.20,.70,.83,.84,light,opacity=.09),
+            _ell(.06,.65,.93,.89,mid,opacity=.36),
+            _ell(.20,.70,.83,.84,light,opacity=.20),
             _line([[.08,.89],[.28,.74],[.56,.76],[.9,.67]],light,.004,.23),
         ]
     elif family=="ocean":
@@ -221,7 +221,7 @@ def _botanical():
     for i in range(19):
         x=.18+((i*71+31)%612)/1000
         y=.17+((i*41+23)%540)/1000
-        d=.011+(i%5)*.003
+        d=.016+(i%5)*.004
         details.append(_ell(x,y,x+d,y+d,light if i%2 else gold,opacity=.40))
     return trunk,leaves,details
 
@@ -253,7 +253,7 @@ def _celestial():
     for i in range(18):
         x=.23+((i*103+31)%555)/1000
         y=.17+((i*89+43)%640)/1000
-        d=.007+(i%4)*.004
+        d=.019+(i%4)*.008
         shine.append(_ell(x,y,x+d,y+d,gold if i%3==0 else light,
                           opacity=.32+.09*(i%3)))
     return globe,orbit,shine
@@ -320,7 +320,7 @@ def _weather():
     for i in range(15):
         x=.30+(i*97%400)/1000
         y=.14+(i*37%280)/1000
-        d=.012+(i%3)*.006
+        d=.020+(i%3)*.006
         details.append(_ell(x,y,x+d,y+d,light if i%2 else gold,opacity=.4))
     return body,rain,details
 
@@ -381,7 +381,7 @@ def _security():
     for i in range(16):
         x=.25+((i*47+21)%480)/1000
         y=.22+((i*73+19)%580)/1000
-        d=.012+(i%4)*.004
+        d=.018+(i%4)*.005
         signals.append(_ell(x,y,x+d,y+d,gold if i%3 else light,
                             opacity=.32+.1*(i%4)))
     return device,circuit,signals
