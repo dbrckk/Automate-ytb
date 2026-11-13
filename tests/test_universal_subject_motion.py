@@ -283,8 +283,10 @@ class SubjectSpecificMotionTests(unittest.TestCase):
             for field,bad in (("amount",.119),("cycles",2.9),
                               ("offset",.7)):
                 altered=deepcopy(story)
-                original=altered["beats"][0]["actorTracks"][2]["deform"]
-                original[field]=bad
+                # An attacker can forge the same bend in every beat to
+                # preserve cut continuity; provenance must still reject it.
+                for beat in altered["beats"]:
+                    beat["actorTracks"][2]["deform"][field]=bad
                 path.write_text(json.dumps(altered),encoding="utf8")
                 with self.subTest(field=field),self.assertRaisesRegex(
                         ValueError,"altered"):
