@@ -121,6 +121,61 @@ class OriginalVectorArtTests(unittest.TestCase):
             with self.subTest(opacity=opacity),self.assertRaises(ValueError):
                 validate_vector_layers([layer])
 
+    def test_shape_local_multistop_surface_lighting_is_real_and_repeatable(self):
+        flower=_example.blossom()
+        shape={"kind":"roundedRect","box":[.25,.25,.75,.75],
+               "radius":.03,"stroke":None,"strokeWidth":0,
+               "fill":{"colors":["#112233","#326699","#D3F3FF"],
+                       "direction":"horizontal","space":"shape"}}
+        flower["shapes"]=[shape]
+        original=validate_vector_layers([flower])[0]
+        a=render_vector_layer(original,(400,400))
+        b=render_vector_layer(original,(400,400))
+        self.assertEqual(a.tobytes(),b.tobytes())
+        self.assertEqual(a.getpixel((30,30))[3],0)
+        self.assertEqual(a.getpixel((200,200))[3],255)
+        self.assertNotEqual(a.getpixel((110,200)),a.getpixel((290,200)))
+        self.assertEqual(a.getpixel((110,140)),a.getpixel((110,260)))
+        # A radial four-stop source has materially different center / edge.
+        radial=deepcopy(flower)
+        radial["shapes"][0]["fill"]={
+            "colors":["#FFEAC4","#E4AF88","#7D5B75","#1B284B"],
+            "direction":"radial","space":"shape"}
+        valid=validate_vector_layers([radial])[0]
+        render=render_vector_layer(valid,(400,400))
+        self.assertNotEqual(render.getpixel((200,200)),
+                            render.getpixel((120,200)))
+        self.assertNotEqual(vector_sha256(original),vector_sha256(valid))
+        # Five color stops and stage-relative lighting are supported without
+        # silently interpreting spatial layout as a new factual assertion.
+        global_shading=deepcopy(flower)
+        global_shading["shapes"][0]["fill"]={
+            "colors":["#111111","#393939","#777777","#BBBBBB","#FFFFFF"],
+            "direction":"diagonal","space":"stage"}
+        shade=render_vector_layer(
+            validate_vector_layers([global_shading])[0],(400,400))
+        self.assertNotEqual(shade.getpixel((120,120)),
+                            shade.getpixel((280,280)))
+
+    def test_multistop_shading_invalid_inputs_are_rejected(self):
+        normal={"colors":["#112233","#445566","#DDEEFF"],
+                "direction":"horizontal","space":"shape"}
+        for bad in (
+                {"colors":["#000000"],"direction":"vertical","space":"shape"},
+                {"colors":["#000000"]*6,"direction":"vertical","space":"shape"},
+                {"colors":"#FFFFFF","direction":"vertical","space":"shape"},
+                dict(normal,direction="backward"),
+                dict(normal,space="unknown"),
+                dict(normal,extra="unsafe"),
+                dict(normal,colors=["#FFFFFF","not-a-color"]),
+                dict(normal,colors=["#FFFFFF",None]),
+                dict(normal,colors=[1,2]),
+        ):
+            layer=_example.blossom()
+            layer["shapes"][0]["fill"]=bad
+            with self.subTest(bad=bad),self.assertRaises(ValueError):
+                validate_vector_layers([layer])
+
     def test_lines_paths_and_gradients_all_create_real_pixels(self):
         art=_example.blossom()
         one=render_vector_layer(validate_vector_layers([art])[0],(360,540))
