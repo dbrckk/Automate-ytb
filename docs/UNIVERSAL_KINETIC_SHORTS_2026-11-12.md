@@ -940,3 +940,63 @@ the supplied private reference `3561.mp4`. Future priorities are meaningful
 cross-object causal interactions where authored source justifies them, finer
 original per-object geometry and materials, and more than six explicit
 visual families without hallucinating unsupported subjects.
+
+
+### v20 — Verbal cause → actor contact → persistent visual state → sound
+
+This is a bounded **extension of v19**, not an image model or a claim that
+any factual scene can be illustrated. An interaction is activated ONLY if an
+EN/FR source beat explicitly contains a positive relation of one of two
+supported types:
+
+- **Rain waters plant/tree:** rain particles approach the canopy during the
+  narrated contact, a small glint appears at the shared event time, an
+  original PCM contact cue is scheduled, and the canopy scale increases
+  smoothly afterwards. The positive growth delta (+0.07 per event, bounded
+  to +0.14) persists in subsequent source beats featuring the plant.
+- **Ocean wave strikes train:** the wave actor advances toward the engine,
+  the train body briefly reacts (small vertical recoil / rotation), a
+  localized flash appears, and the same authored PCM timeline schedules
+  a short contact sound. The transient recoil returns to baseline at the
+  scene boundary instead of incorrectly implying lasting damage.
+
+Both also recognize simple explicitly written French actions (e.g., "la
+pluie arrose un arbre", "une vague heurte un train"). **Noun co-occurrence
+is not an action**, and source clauses including negation such as "never"
+or "pas" are not interpreted as affirmative contacts. The two patterns are
+deliberately restrictive rather than attempting arbitrary NLP or inventing
+behavior from a topic.
+
+Every v20 storyboard stores an exact
+`proceduralVisualInteractionEngine=source-verb-anchored-dual-actor-contact-v1`
+and `proceduralVisualInteractions` list. The story reader recomputes the
+source-verb classification, all vector geometry, four actor trajectories,
+persistent growing state and exact audio/contact links. Invalid/missing
+provenance, unexpected actions, altered gestures and fictional audio contacts
+are rejected. Old v15–v19 serialized stories continue to be read using their
+original engine markers and unmodified motion paths. New scripts without
+affirmative source relations still use the previous v19 compositor exactly.
+
+The same free existing code performs the entire processing:
+Pillow vector art, scene25d with six layers/four independently moving
+actors, registered contact glints, MasterTimeline frames, sampled 48 kHz
+stereo Foley, CPU Kokoro (or eSpeak for smoke) and FFmpeg H.264/AAC.
+
+To reproduce:
+
+```sh
+python -m unittest discover -s tests -p test_universal_subject_interaction.py -v
+automate-ytb-short --topic "Rain waters trees and waves hit trains" \
+  --script-file examples/universal_causal_contact_story.en.txt \
+  --language en --voice espeak --width 720 \
+  --output build/universal/causal-contact-original.mp4
+python -m automate_ytb.shorts_delivery \
+  --video build/universal/causal-contact-original.mp4 --require-audio
+```
+
+**Limitations:** These are original illustrative 2.5D interactions, not
+simulated hydrodynamics or verified science. The fixed action vocabulary and
+six visual families do not support arbitrary video subjects. The timing is
+beat-relative to real synthesized narration, not yet phoneme/word-aligned.
+Aesthetics, sound design and music still require independent human A/B review
+against the private 3561.mp4 reference before any parity claim.

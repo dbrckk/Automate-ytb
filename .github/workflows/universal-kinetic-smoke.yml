@@ -34,6 +34,7 @@ on:
       - automate_ytb/universal_kinetic.py
       - automate_ytb/universal_script.py
       - automate_ytb/universal_subject_illustrations.py
+      - automate_ytb/universal_subject_interaction.py
       - automate_ytb/universal_subject_composition.py
       - automate_ytb/universal_subject_motion.py
       - automate_ytb/universal_art25d.py
@@ -58,6 +59,7 @@ on:
       - tests/test_universal_script.py
       - tests/test_universal_subject_illustrations.py
       - tests/test_universal_chapter_subjects.py
+      - tests/test_universal_subject_interaction.py
       - tests/test_universal_subject_composition.py
       - tests/test_universal_subject_motion.py
       - tests/test_universal_art25d.py
@@ -70,6 +72,7 @@ on:
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
+      - examples/universal_causal_contact_story.en.txt
       - examples/universal_dual_subject_story.en.txt
       - examples/universal_multichapter_story.en.txt
       - examples/universal_planet_story.en.txt
@@ -125,6 +128,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
           python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
+          python -m unittest discover -s tests -p test_universal_subject_interaction.py -v
           python -m unittest discover -s tests -p test_universal_subject_composition.py -v
           python -m unittest discover -s tests -p test_universal_subject_motion.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
@@ -274,6 +278,38 @@ jobs:
           seen={x['vectorId'] for x in report['artwork']['approvedLayerProvenance'] if x.get('vectorId','').startswith('dual-')}
           assert {'dual-botanical-hero','dual-celestial-hero','dual-weather-hero','dual-ocean-hero'}<=seen
           print('True two-subject original 2.5D scenes encoded and checked without external services')
+          PY
+      - name: Render a real original source-verb-triggered 2.5D contact Short
+        run: |
+          automate-ytb-short --topic "Rain waters trees and waves hit trains" --script-file examples/universal_causal_contact_story.en.txt --language en --output build/universal/causal-contact-original.mp4 --voice espeak --width 720
+      - name: Verify independently driven actors, persistent cause and exact contact audio
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/causal-contact-original.mp4 --require-audio --report build/universal/causal-contact-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('build/universal')
+          story=json.loads((root/'causal-contact-original.story.json').read_text())
+          report=json.loads((root/'causal-contact-original.json').read_text())
+          pairs=[['botanical','weather'],['botanical','weather'],['rail','ocean'],['rail','ocean']]
+          contacts=[{'kind':'rain-waters-plant','at':.5},None,{'kind':'wave-hits-train','at':.5},None]
+          assert story['proceduralVisualCompositionFamilies']==pairs
+          assert story['proceduralVisualInteractions']==contacts
+          assert report['proceduralVisualInteractionEngine']=='source-verb-anchored-dual-actor-contact-v1'
+          assert report['proceduralVisualInteractions']==contacts
+          assert report['proceduralCausalContactCount']==2
+          assert report['authoredContactCues']==2
+          assert report['artwork']['authoredActorLinks']==2
+          assert report['artwork']['originalVectorLayers']==24
+          assert report['artwork']['authoredActionActors']==16
+          assert len(report['artwork']['continuousCameraGroups'])==2
+          assert report['delivery']['status']=='passed'
+          assert report['delivery']['media']['width']==720
+          assert report['delivery']['media']['height']==1280
+          assert report['captionWordsOmitted']==0
+          assert not report['publicationApproved']
+          assert report['sound']=='original-event-locked-foley'
+          print('Actual narrated 2.5D contacts, persistent plant state and two PCM cues verified')
           PY
       - name: Render a genuine authored 2.5D actor encounter
         run: |
