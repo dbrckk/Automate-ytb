@@ -18,12 +18,12 @@ from PIL import Image, ImageDraw, ImageOps
 
 from .surface25d import MATERIALS
 
-VERSION = "original-bounded-antialiased-vector-layers-v1"
+VERSION = "original-bounded-antialiased-vector-layers-v2-ten-layers"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
 _RGB = re.compile(r"#[0-9a-fA-F]{6}\Z")
 _KINDS = frozenset(("ellipse", "roundedRect", "polygon", "bezier", "line"))
 _COMMON = frozenset(("kind", "fill", "stroke", "strokeWidth"))
-MAX_LAYERS = 6
+MAX_LAYERS = 10
 MAX_SHAPES = 48
 MAX_POINTS = 360
 
@@ -60,8 +60,10 @@ def validate_vector_layers(raw, owned_layers=None) -> list[dict]:
     if raw is None:
         return []
     if type(raw) is not list or len(raw) > MAX_LAYERS:
-        raise ValueError("visualVectors supports at most six original layers")
+        raise ValueError("visualVectors supports at most ten original layers")
     owned=owned_layers or []
+    if len(owned) + len(raw) > 16:
+        raise ValueError("At most sixteen combined original layers are supported")
     used={l["z"] for l in owned}
     names=set()
     results=[]

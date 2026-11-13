@@ -10,6 +10,7 @@ import argparse
 from array import array
 from decimal import Decimal, InvalidOperation
 import json
+import hashlib
 import math
 from pathlib import Path
 import re
@@ -32,7 +33,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v9-original-vector-art"
+VERSION = "universal-kinetic-cinematic-stage-v10-articulated-cues"
 
 
 def _text(value, name, limit=120):
@@ -126,10 +127,13 @@ def read_story(path: Path) -> dict:
         current["actorTracks"],current["actorLinks"]=validate_actor_rig(
             beat.get("actorTracks"),beat.get("actorLinks"),
             current["visualLayers"]+current["visualVectors"])
+        from .universal_actor_rig import validate_actor_cues
+        current["actorCues"] = validate_actor_cues(
+            beat.get("actorCues"), current["actorTracks"])
         validated.append(current)
     # Foley validates at most 64 real cues. Every beat contributes its own
     # entry cue; a designed actor link contributes one contact cue.
-    if len(validated)+sum(len(b["actorLinks"]) for b in validated)>64:
+    if len(validated)+sum(len(b["actorLinks"])+len(b["actorCues"]) for b in validated)>64:
         raise ValueError("Too many event-locked audio cues for one Short")
     from .universal_actor_rig import validate_cut_continuity
     validate_cut_continuity({"beats":validated})
@@ -255,6 +259,30 @@ def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
                   "sequence": "count", "concept": "whoosh"}[beat["kind"]]
         cues.append(SoundCue(f"story-cue-{i:02d}", event_id, family,
                              offset_frames=0, gain_db=-24.))
+        # Compile the exact moving actor properties, not a proxy flash/link.
+        # The renderer uses the same rounded key frames for these actors.
+        from .universal_actor_rig import actor_key_frames
+        actor_cues = beat.get("actorCues", [])
+        for actor in beat.get("actorTracks", []):
+            selected = [c for c in actor_cues if c["z"] == actor["z"]]
+            if not selected:
+                continue
+            ident = f"actor-{i:02d}-{actor['z']:03d}"
+            keys = actor["keys"]
+            frames = actor_key_frames(keys, start, end)
+            fields = {"x": "x", "y": "y", "scale": "scale", "angle": "rotation"}
+            objects.append(WorldObject(ident, {dest: keys[0][src] for src, dest in fields.items()}))
+            for j, (a, b) in enumerate(zip(keys, keys[1:])):
+                for src, dest in fields.items():
+                    tracks.append(PropertyEvent(
+                        f"{ident}-key-{j}-{dest}", ident, dest,
+                        frames[j], frames[j+1], a[src], b[src], easing="smoothstep"))
+            for cue in selected:
+                j = cue["keyIndex"]
+                field = next(dest for src, dest in fields.items()
+                             if keys[j][src] != keys[j+1][src])
+                cues.append(SoundCue(f"cue-{ident}-{j}",
+                    f"{ident}-key-{j}-{field}", cue["family"], gain_db=cue["gainDb"]))
         # A visual link has its own exact absolute source event. The shared
         # beat-progress cue only starts at beat boundaries and cannot carry
         # late cues (SoundCue offsets are limited to 300 frames).
@@ -450,7 +478,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
                           caption_cues=captions)
         timeline=timeline_for(story,stamps)
         sfx=work/"foley.wav"
-        create_causal_foley(timeline=timeline,output=sfx,
+        foley_report=create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
         background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
         from .universal_art25d import (
@@ -486,7 +514,13 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         if encoder.returncode or not silent.is_file():
             raise RuntimeError("FFmpeg video rendering failed: "+err.decode(errors="replace")[-1000:])
         ambient=work/"ambient.wav"
-        _music(ambient,timeline.total_frames)
+        if any(b.get("actorCues") for b in story["beats"]):
+            from .universal_score import write_score
+            write_score(ambient, stamps, fps=FPS)
+            music_engine = "original-continuous-stereo-score-48k-v1"
+        else:
+            _music(ambient,timeline.total_frames)
+            music_engine = "original-continuous-procedural-ambient"
         mix=mix_causal_foley(silent_video=silent,foley=sfx,output=output,
               duration_seconds=timeline.total_frames/FPS,profile="high",
               voice=voice_file,music=ambient)
@@ -496,11 +530,17 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         f"{i}\n{srt_time(c['startMs'])} --> {srt_time(c['endMs'])}\n"
         f"{c['text']}\n\n" for i,c in enumerate(captions,1)),encoding="utf8")
     delivery=validate_short(output,require_audio=True)
+    from .universal_actor_rig import VERSION as actor_version
+    from .universal_vector_art import VERSION as vector_version
+    with output.open("rb") as encoded:
+        video_sha256 = hashlib.file_digest(encoded, "sha256").hexdigest()
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "durationSeconds":timeline.total_frames/FPS,"beats":len(story["beats"]),
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,
+        "videoSha256":video_sha256,
+        "subtitleSha256":hashlib.sha256(subtitle_path.read_bytes()).hexdigest(),
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "commonsArtRequested":commons_art,
         "subjectSegmentationRequested":segment_art,
@@ -512,12 +552,17 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "subtitleTiming":"audio-derived-synthesized-phrases",
         "subtitleCues":len(captions),"subtitleFile":subtitle_path.name,
         "wordLevelAligned":False,
-        "music":"original-continuous-procedural-ambient",
+        "music":music_engine,
+        "actorCueCount":sum(len(b.get("actorCues", [])) for b in story["beats"]),
+        "audioEvents":timeline.audio_events(),
+        "beatBoundariesFrames":stamps,
+        "voiceName":voice_name or ("ff_siwis" if story["language"] == "fr" else "af_heart") if voice == "kokoro" else None,
         "sound":"original-event-locked-foley","mix":mix,
+        "foley":foley_report,
         "authoredContactCues":sum(len(b["actorLinks"]) for b in story["beats"]),
         "artwork":{
             "engine":"scene25d-original-vector-and-raster-illustrations",
-            "vectorArtEngine":"original-bounded-antialiased-vector-layers-v1",
+            "vectorArtEngine":vector_version,
             "originalVectorLayers":sum(len(b["visualVectors"]) for b in story["beats"]),
             "originalVectorShapes":sum(sum(len(l["shapes"]) for l in b["visualVectors"])
                                         for b in story["beats"]),
@@ -528,7 +573,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             "attachedActorParts":sum(
                 sum("parentZ" in t for t in b["actorTracks"])
                 for b in story["beats"]),
-            "actionEngine":"universal-authored-actor-rig-attached-hierarchy-v5",
+            "actionEngine":actor_version,
             "jointTreeEngine":"authored-2d-joint-tree-v1",
             "continuousCameraGroups":camera_groups},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,

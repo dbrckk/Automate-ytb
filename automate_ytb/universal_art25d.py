@@ -137,7 +137,8 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
         if beat.get("actorTracks"):
             from .universal_actor_rig import RiggedArtScene
             scenes[index]=RiggedArtScene(
-                scene,owned_layers,beat["actorTracks"],beat["actorLinks"])
+                scene,owned_layers,beat["actorTracks"],beat["actorLinks"],
+                beat.get("actorCues", []))
         else:
             scenes[index]=scene
     return scenes, manifest

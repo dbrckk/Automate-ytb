@@ -1,5 +1,10 @@
 # Automate-ytb — studio de vidéos YouTube originales
 
+**Pilote français : [fleur à cinq pétales réellement articulés](docs/ARTICULATED_FLOWER_PILOT.md).**
+Trois étapes continues, tige ancrée, bruitages liés aux clés d’animation,
+musique stéréo 48 kHz et QA du MP4 final. La livraison neuronale exige
+Kokoro et 1080p ; un rendu eSpeak reste un brouillon de test.
+
 **Pipeline audiovisuel V2 : [Foley causal synchronisé dans le MP4 final](docs/LOT3_FOLEY_CAUSAL_FINAL_AAC_V1_2026-11-11.md)** (WAV stéréo 48 kHz, événement visuel source, mix voix/musique, QA SHA-256). Implémentation opt-in, validation CI et audition humaine distinctes.
 
 **Animation narrative V2, optionnelle : [générer automatiquement un monde scientifique persistant dans cinq thèmes](docs/LOT1A_AUTOMATIC_SCIENCE_WORLD_V2.md).** Depuis le workflow One-click, cocher `continuous_world` uniquement pour des Shorts scientifiques originaux à cinq étapes validées. Les bruitages sont actuellement des repères temporels, pas encore mixés au MP4 final.

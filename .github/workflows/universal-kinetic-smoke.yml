@@ -3,6 +3,10 @@ name: Universal kinetic Short — real MP4/audio smoke
 on:
   workflow_dispatch:
     inputs:
+      flower_pilot:
+        description: Render the original French articulated flower in 1080p (Kokoro for release)
+        type: boolean
+        default: false
       topic:
         description: Original topic (requires a corresponding original_script)
         type: string
@@ -35,6 +39,7 @@ on:
       - automate_ytb/universal_script.py
       - automate_ytb/universal_art25d.py
       - automate_ytb/universal_vector_art.py
+      - automate_ytb/universal_score.py
       - automate_ytb/universal_actor_rig.py
       - automate_ytb/universal_joint_hierarchy.py
       - automate_ytb/universal_motion25d.py
@@ -49,6 +54,8 @@ on:
       - tests/test_universal_script.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
+      - tests/test_articulated_flower.py
+      - tests/test_flower_delivery.py
       - tests/test_universal_actor_rig.py
       - tests/test_universal_joint_hierarchy.py
       - tests/test_universal_motion25d.py
@@ -57,6 +64,8 @@ on:
       - examples/universal_web_request.json
       - examples/build_original_actor_rig_sample.py
       - examples/build_original_vector_story.py
+      - examples/build_articulated_flower_pilot.py
+      - scripts/prepare_flower_delivery.py
       - .github/workflows/universal-kinetic-smoke.yml
 
 permissions:
@@ -85,13 +94,13 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check -e .
       - name: Cache open neural narration model (requested runs only)
-        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && (inputs.topic != '' || inputs.flower_pilot)
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface/hub
           key: kokoro-82m-voice-${{ runner.os }}-v1
       - name: Install optional free neural narration (requested runs only)
-        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && inputs.topic != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.voice == 'kokoro' && (inputs.topic != '' || inputs.flower_pilot)
         run: |
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install --disable-pip-version-check -e '.[speech]'
@@ -109,6 +118,35 @@ jobs:
           python -m unittest discover -s tests -p test_universal_joint_hierarchy.py -v
           python -m unittest discover -s tests -p test_universal_motion25d.py -v
           python -m unittest discover -s tests -p test_universal_commons.py -v
+          python -m unittest discover -s tests -p test_articulated_flower.py -v
+          python -m unittest discover -s tests -p test_flower_delivery.py -v
+      - name: Render articulated French flower with real voice and causal sound
+        env:
+          FLOWER_PILOT: ${{ inputs.flower_pilot }}
+          FLOWER_VOICE: ${{ inputs.voice }}
+          OMP_NUM_THREADS: '2'
+          MKL_NUM_THREADS: '2'
+        run: |
+          python examples/build_articulated_flower_pilot.py --out-dir build/flower
+          voice=espeak
+          width=720
+          if [ "$FLOWER_PILOT" = "true" ]; then
+            voice="${FLOWER_VOICE:-kokoro}"
+            width=1080
+          fi
+          automate-ytb-short --brief build/flower/articulated-flower.story.json --output build/flower/flower-pilot.mp4 --voice "$voice" --width "$width"
+          release_args=()
+          if [ "$FLOWER_PILOT" = "true" ] && [ "$voice" = "kokoro" ]; then
+            release_args=(--release)
+          fi
+          python scripts/prepare_flower_delivery.py --video build/flower/flower-pilot.mp4 --output build/flower-delivery "${release_args[@]}"
+      - name: Archive checked flower pilot and review evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: articulated-flower-preview
+          path: build/flower-delivery/
+          if-no-files-found: error
+          retention-days: 14
       - name: Render real original 9:16 topic video
         env:
           YT_TOPIC: ${{ inputs.topic }}

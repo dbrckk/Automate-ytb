@@ -66,8 +66,8 @@ For a CPU-only fast fallback without model download, use `--voice espeak`
    universal subject research/story generation is a separate, currently
    missing module. The included example deliberately marks numeric timings
    as hypothetical.
-3. Subtitle segmentation is proportional to a whole beat, **not
-   word-aligned**. The manifest explicitly identifies this limitation.
+3. Subtitles follow the actual PCM of each synthesized phrase. They are
+   **not word-aligned**; the manifest explicitly identifies that limitation.
 4. A technically accepted MP4 is not a professional subjective quality score.
    Listening/visual A/B review against the privately supplied reference
    remains essential, along with Android safe-area verification.
@@ -82,8 +82,8 @@ For a CPU-only fast fallback without model download, use `--voice espeak`
 - **P1:** introduce a richer visual object/asset grammar (rigged 2.5D
   characters, maps, physical transformations, complex graphs) and native
   render adapters to the same persistent timeline.
-- **P2:** replace approximate subtitle timing with PCM phrase- and eventually
-  word-level alignment; attach scene-specific Foley and score motifs.
+- **P2:** retain measured PCM phrase timing and investigate word-level
+  alignment; extend actor-specific Foley and score motifs.
 - **P3:** automated multi-topic batch benchmark with authentic 30-fps motion
   QA, audio loudness, budgeted CPU/RAM and human review gates.
 
@@ -222,8 +222,8 @@ no science-specific, forest-specific or product-specific renderer is imported.
   automated**. Current script-only visuals are not reference-grade.
 - Motion studies must include meaningful physical change and actor
   transformations, not just adding camera noise or decorative particles.
-- Replace approximate subtitle timing with exact recorded phrase alignment
-  and verify natural Kokoro narration by ear. eSpeak is CI-only.
+- Verify the existing recorded phrase alignment and natural Kokoro narration
+  by ear. Word alignment remains unimplemented; eSpeak is a draft voice.
 
 
 ## Opt-in topic illustration search — Commons CC0 (incremental visual step)
@@ -425,7 +425,7 @@ Parent layers must be licensed, moving RGBA originals at a lower Z depth.
 The hierarchy is an acyclic tree. Missing parents, invalid normalized
 anchors, discontinuous joint attachment across shots and excessive inherited
 scale are rejected. Nested original parts are supported within the existing
-six-actor budget. This is not automatic anatomical or physics simulation.
+nine-actor budget. This is not automatic anatomical or physics simulation.
 
 The dedicated CI verifies three real 720x1280 portrait MP4s, including
 two continuous scenes with a truly parented antenna, and validates inherited
@@ -440,7 +440,7 @@ It is an **original illustration authoring engine**, not a text-to-image
 model: the vector shape descriptions must be supplied by the story
 author or a separate, audited scene-describing program.
 
-The vector stage accepts 1–6 independent original transparent layers,
+The vector stage accepts 1–10 independent original transparent layers,
 up to 48 shapes per layer, with:
 
 - original multi-segment cubic Bezier outlines, polygons, smooth ellipses,
@@ -494,3 +494,33 @@ animal, place, product, scientific mechanism or historical event from
 plain text. A semantically grounded scene specification or a separately
 validated generative/retrieval model is still required for those use
 cases. Source facts and publication require editorial verification.
+
+## French articulated flower pilot (13 November 2026)
+
+See [implementation, commands and review limits](ARTICULATED_FLOWER_PILOT.md).
+The pilot has ten layers and nine moving actors, including five separately
+hinged petals. Three beats preserve the same geometry, attachment points and
+end/start poses. The stem root stays fixed in world coordinates.
+
+An optional `actorCues` array connects a real moving keyframe segment to Foley:
+
+```json
+{"actorCues": [{"z": 45, "keyIndex": 1, "family": "growth", "gainDb": -30}]}
+```
+
+`keyIndex` is zero-based and identifies the **start** of a moving segment;
+the final endpoint, stationary segments, duplicate references, invalid actor
+depths, unsupported Foley families and nonfinite gains are rejected. Gains
+range from −60 to 0 dB. Each beat accepts at most 16 actor cues and the whole
+story still accepts at most 64 cues, including beat and link sounds.
+
+For cued actors, normalized keys are compiled to integer frames using actual
+PCM beat durations. Both the renderer and MasterTimeline use those frames;
+collapsed keys fail before encoding. Cues reference the actual interpolated
+actor property, not an invented flash or connection line. The manifest records
+the absolute frames, 48 kHz sample positions, and Foley evidence.
+
+Stories with actor cues receive a continuous 48 kHz stereo harmonic score
+with smooth transitions across beats. Stories without them retain their
+previous ambience and motion interpolation. The combined raster/vector limit
+is sixteen layers; the raster-only limit remains six.

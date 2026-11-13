@@ -1,0 +1,88 @@
+name: Stable direct MP4 download for articulated flower
+
+on:
+  workflow_run:
+    workflows: ["Universal kinetic Short — real MP4/audio smoke"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful main-branch manual Kokoro flower run ID
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: flower-delivery-${{ github.event.workflow_run.id || inputs.source_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Require successful trusted main-branch manual source run
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]{4,15}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > source-run.json
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .status == "completed" and .conclusion == "success" and
+            .event == "workflow_dispatch" and .head_branch == "main" and
+            .head_repository.full_name == $repo and
+            .path == ".github/workflows/universal-kinetic-smoke.yml" and
+            .name == "Universal kinetic Short — real MP4/audio smoke"
+          ' source-run.json >/dev/null
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name articulated-flower-preview --dir incoming
+      - name: Select only release-eligible neural flower renders
+        id: candidate
+        run: |
+          if jq -e '.releaseEligible == true' incoming/flower-manifest.json >/dev/null; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No neural 1080p flower release in this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.candidate.outputs.eligible == 'true'
+        with:
+          python-version: '3.12'
+      - name: Recheck hashes, entire MP4, subtitles and final AAC
+        if: steps.candidate.outputs.eligible == 'true'
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq ffmpeg
+          fi
+          python -m pip install --disable-pip-version-check -e .
+          python scripts/prepare_flower_delivery.py --video incoming/flower.mp4 --output delivered --release
+      - name: Publish immutable technical preview and verify anonymous download
+        if: steps.candidate.outputs.eligible == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="articulated-flower-${SOURCE_RUN_ID}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" delivered/* --repo "$GITHUB_REPOSITORY" \
+              --target "$(jq -r .head_sha source-run.json)" \
+              --title "UNREVIEWED — Fleur articulée, voix française" \
+              --notes "Original 1080x1920 / 30 fps H.264/AAC preview. French Kokoro narration, five articulated petals and causal Foley. Technical checks passed; human visual/audio review remains pending. Not published to YouTube. Source run: ${SOURCE_RUN_ID}." \
+              --prerelease --latest=false
+          fi
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/flower.mp4"
+          curl --fail --location --silent --show-error --retry 4 --max-time 180 "$url" --output "$RUNNER_TEMP/public-flower.mp4"
+          cmp delivered/flower.mp4 "$RUNNER_TEMP/public-flower.mp4"
+          echo "Verified complete anonymous download: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Update durable MP4 history
+        if: steps.candidate.outputs.eligible == 'true'
+        run: python scripts/update_video_history.py

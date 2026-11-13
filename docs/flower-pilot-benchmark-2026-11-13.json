@@ -1,0 +1,121 @@
+{
+  "automatedArtisticJudgment": false,
+  "engine": "av-reference-baseline-v1",
+  "humanAudioReviewCompleted": false,
+  "privacy": "No source media or absolute source path stored in this report",
+  "sample": {
+    "fps": 4,
+    "height": 256,
+    "lumaChangeThreshold": 8,
+    "maxSeconds": 120,
+    "width": 144
+  },
+  "schemaVersion": 1,
+  "videos": [
+    {
+      "audio": {
+        "integratedLufs": -16.3,
+        "loudnessRangeLu": 1.5,
+        "measurement": "ffmpeg-ebur128-peak-true",
+        "truePeakDbtp": -1.4
+      },
+      "fileBytes": 1936999,
+      "label": "rigid-flower-baseline",
+      "media": {
+        "audioBitrateKbps": 246.4,
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "audioSampleRateHz": 48000,
+        "durationSeconds": 25.267,
+        "frameRate": 30.0,
+        "hasAudio": true,
+        "height": 1280,
+        "portrait": true,
+        "videoCodec": "h264",
+        "width": 720
+      },
+      "motion": {
+        "maxConsecutiveNearFrozenPairs": 2,
+        "meanChangedPixelsPercent": 2.849,
+        "medianChangedPixelsPercent": 2.58,
+        "motionPairs": 100,
+        "nearBlackSamples": 0,
+        "p90ChangedPixelsPercent": 5.523,
+        "sampleCount": 101
+      },
+      "motionSampleWindowSeconds": 25.267,
+      "motionWindowTruncated": false,
+      "sha256": "e24712905ef69898bb56da9ada6c62688413daa3f6882da3d5dc143a82979160"
+    },
+    {
+      "audio": {
+        "integratedLufs": -16.3,
+        "loudnessRangeLu": 1.6,
+        "measurement": "ffmpeg-ebur128-peak-true",
+        "truePeakDbtp": -1.5
+      },
+      "fileBytes": 1734983,
+      "label": "articulated-flower-720",
+      "media": {
+        "audioBitrateKbps": 268.5,
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "audioSampleRateHz": 48000,
+        "durationSeconds": 25.267,
+        "frameRate": 30.0,
+        "hasAudio": true,
+        "height": 1280,
+        "portrait": true,
+        "videoCodec": "h264",
+        "width": 720
+      },
+      "motion": {
+        "maxConsecutiveNearFrozenPairs": 5,
+        "meanChangedPixelsPercent": 1.517,
+        "medianChangedPixelsPercent": 1.065,
+        "motionPairs": 100,
+        "nearBlackSamples": 0,
+        "p90ChangedPixelsPercent": 4.042,
+        "sampleCount": 101
+      },
+      "motionSampleWindowSeconds": 25.267,
+      "motionWindowTruncated": false,
+      "sha256": "2a66ff12b11a55b163b6c675a7646582397d828f21d7d958fc3019b618527d41"
+    },
+    {
+      "audio": {
+        "integratedLufs": -16.3,
+        "loudnessRangeLu": 1.6,
+        "measurement": "ffmpeg-ebur128-peak-true",
+        "truePeakDbtp": -1.5
+      },
+      "fileBytes": 2385488,
+      "label": "articulated-flower-1080",
+      "media": {
+        "audioBitrateKbps": 268.5,
+        "audioChannels": 2,
+        "audioCodec": "aac",
+        "audioSampleRateHz": 48000,
+        "durationSeconds": 25.267,
+        "frameRate": 30.0,
+        "hasAudio": true,
+        "height": 1920,
+        "portrait": true,
+        "videoCodec": "h264",
+        "width": 1080
+      },
+      "motion": {
+        "maxConsecutiveNearFrozenPairs": 3,
+        "meanChangedPixelsPercent": 1.35,
+        "medianChangedPixelsPercent": 0.806,
+        "motionPairs": 100,
+        "nearBlackSamples": 0,
+        "p90ChangedPixelsPercent": 3.689,
+        "sampleCount": 101
+      },
+      "motionSampleWindowSeconds": 25.267,
+      "motionWindowTruncated": false,
+      "sha256": "be8273c10845a46c2a4e33592b74b103aff27ed986f9cc996c0cc83338f53f5f"
+    }
+  ]
+}

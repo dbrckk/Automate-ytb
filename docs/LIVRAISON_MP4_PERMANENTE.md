@@ -38,6 +38,7 @@ https://docs.github.com/en/repositories/releasing-projects-on-github/about-relea
 | Forest Discovery 2.5D / Kokoro | `.github/workflows/forest-stable-video-download.yml` | Automatique quand le rendu sur `main` réussit |
 | Vidéos scientifiques du pipeline établi | `.github/workflows/science-preview-download.yml` | Automatique après un rendu scientifique `main` validé |
 | Solar Storm | `.github/workflows/publish-solar-storm-video.yml` | Sélection explicite d'un rendu validé |
+| Fleur articulée française / Kokoro | `.github/workflows/flower-stable-video-download.yml` | Après rendu manuel réussi sur `main`, empreintes et QA revérifiées |
 | Nouveau type ou nouveau sujet de Short | **Obligation d'intégrer cette étape avant de le dire « livré »** | À raccorder au workflow de sa catégorie |
 
 Le distributeur forêt accepte uniquement une exécution GitHub de

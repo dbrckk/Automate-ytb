@@ -15,7 +15,7 @@ from .optical_motion25d import translate_subpixel
 from .universal_joint_hierarchy import (
     resolved_actor_geometry, validate_joint_tree)
 
-VERSION = "universal-authored-actor-rig-safe-overscan-framing-v6"
+VERSION = "universal-authored-actor-rig-frame-locked-cues-v7"
 
 _KEYS = frozenset(("at", "x", "y", "scale", "angle"))
 
@@ -33,8 +33,8 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
         tracks = []
     if links is None:
         links = []
-    if type(tracks) is not list or len(tracks) > 6:
-        raise ValueError("actorTracks must be a list of <=6 actors")
+    if type(tracks) is not list or len(tracks) > 9:
+        raise ValueError("actorTracks must be a list of <=9 actors")
     if type(links) is not list or len(links) > 6:
         raise ValueError("actorLinks must be a list of <=6 relationships")
     layer_z = {l["z"] for l in layers}
@@ -105,6 +105,49 @@ def validate_actor_rig(tracks, links, layers: list[dict]) -> tuple[list[dict], l
             "at": _real(link["at"], "interaction at", .07, .93),
         })
     return parsed, edges
+
+
+def validate_actor_cues(raw, tracks):
+    """A cue names the start of an actual moving keyframe segment."""
+    from .foley_engine import PROFILES
+    if raw is None:
+        return []
+    if type(raw) is not list or len(raw) > 16:
+        raise ValueError("actorCues must contain at most 16 cues")
+    by_z = {t["z"]: t for t in tracks}
+    result, seen = [], set()
+    for cue in raw:
+        if (type(cue) is not dict or set(cue) != {"z", "keyIndex", "family", "gainDb"}
+                or type(cue["z"]) is not int or cue["z"] not in by_z
+                or type(cue["keyIndex"]) is not int
+                or type(cue["family"]) is not str or cue["family"] not in PROFILES):
+            raise ValueError("Invalid actor cue reference or sound family")
+        keys = by_z[cue["z"]]["keys"]
+        index = cue["keyIndex"]
+        if not 0 <= index < len(keys)-1:
+            raise ValueError("Actor cue must reference a rendered segment start")
+        if all(keys[index][p] == keys[index+1][p] for p in ("x", "y", "scale", "angle")):
+            raise ValueError("Actor cue cannot reference a stationary segment")
+        identity = (cue["z"], index)
+        if identity in seen:
+            raise ValueError("Duplicate actor cue")
+        seen.add(identity)
+        result.append(dict(cue, gainDb=_real(cue["gainDb"], "cue gain", -60, 0)))
+    return result
+
+
+def actor_key_frames(keys, first, last):
+    """Shared integer clock for opt-in articulated motion and its sound cues."""
+    frames = [first + round(k["at"] * (last-first)) for k in keys]
+    if any(b <= a for a, b in zip(frames, frames[1:])):
+        raise ValueError("Actor keys collapse onto the same video frame")
+    return frames
+
+
+def sampled_frame_pose(keys, frame, first, last):
+    frames = actor_key_frames(keys, first, last)
+    timed = [dict(k, at=(f-first)/(last-first)) for k, f in zip(keys, frames)]
+    return sampled_pose(timed, (frame-first)/(last-first))
 
 
 def _ease(t: float) -> float:
@@ -254,7 +297,7 @@ def validate_cut_continuity(story: dict) -> int:
 class RiggedArtScene:
     """Composite original RGBA layers and sampled authored object trajectories."""
 
-    def __init__(self, scene, layers, tracks, links):
+    def __init__(self, scene, layers, tracks, links, cues=()):
         self.size = scene.size
         self.layers = tuple(sorted(layers, key=lambda item: item.z))
         self.tracks = {t["z"]: t["keys"] for t in tracks}
@@ -263,6 +306,7 @@ class RiggedArtScene:
             t["z"]:(t["parentZ"],t["attach"]) for t in tracks
             if "parentZ" in t}
         self.links = tuple(links)
+        self.timed_actors = frozenset(c["z"] for c in cues)
         self.camera_window = None
         # Reserve camera room for animated petals, wings and long tools.
         # Pre-extend only static backdrops once, never once per video frame.
@@ -318,7 +362,9 @@ class RiggedArtScene:
                 result.alpha_composite(translate_subpixel(
                     self.extended_layers[layer.z],dx,dy))
                 continue
-            pose=sampled_pose(self.tracks[layer.z],phase)
+            pose=(sampled_frame_pose(self.tracks[layer.z],frame,first,last)
+                  if layer.z in self.timed_actors else
+                  sampled_pose(self.tracks[layer.z],phase))
             sprite,centre=self.crops[layer.z]
             parent_info=self.parents.get(layer.z)
             parent_geometry=(
