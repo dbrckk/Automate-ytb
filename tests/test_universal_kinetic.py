@@ -148,6 +148,21 @@ class UniversalKineticTests(unittest.TestCase):
         self.assertEqual(str(result["beats"][3]["rightValue"]), "300")
         self.assertFalse(result["beats"][0]["sources"])
 
+    def test_long_spoken_caption_cannot_be_silently_cut_during_export(self):
+        example=story()
+        example["beats"]=example["beats"][:2]
+        example["beats"][0]["narration"]=(
+            "Here is a very long original scientific identifier "
+            + "W"*210 + " in the narration.")
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            req=root/"story.json"
+            req.write_text(json.dumps(example),encoding="utf8")
+            # This rejects *before* starting speech, FFmpeg, music or artwork.
+            with self.assertRaisesRegex(ValueError,"without omitting text"):
+                produce(req,root/"never-rendered.mp4",voice="espeak",width=360)
+            self.assertFalse((root/"never-rendered.mp4").exists())
+
     @unittest.skipUnless(shutil.which("espeak-ng") or shutil.which("espeak"),
                          "Free narration engine unavailable")
     def test_exact_synthesized_phrase_boundaries(self):
@@ -188,6 +203,10 @@ class UniversalKineticTests(unittest.TestCase):
             self.assertGreater(manifest["subtitleCues"],1)
             self.assertEqual(manifest["subtitleTiming"],"audio-derived-synthesized-phrases")
             self.assertFalse(manifest["wordLevelAligned"])
+            self.assertEqual(manifest["captionOverlayEngine"],
+                             "pcm-phrase-cinematic-safe-caption-v1")
+            self.assertEqual(manifest["captionWordsOmitted"],0)
+            self.assertEqual(manifest["captionLayoutPreflight"],"passed")
 
 
 if __name__ == "__main__":
