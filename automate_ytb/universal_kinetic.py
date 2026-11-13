@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v12-world-first-layout-and-local-glints"
+VERSION = "universal-kinetic-cinematic-stage-v13-safe-phrase-captions"
 
 
 def _text(value, name, limit=120):
@@ -415,23 +415,24 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
             width=width-2*world_pad,height=round(height*.495),
             palette=palette,value_ratio=quantity_ratio)
         base.paste(stage,(world_pad,world_top))
-    # Speech-synthesized phrase boundaries are measured from actual PCM,
-    # never guessed word onsets or sliding seven-word subtitles.
+    # Canonical phonetic captions are phrase-timed from synthesized PCM.
+    # No word timing is guessed. Without PCM cues, an in-memory preview
+    # uses a static excerpt and makes no audio-alignment claim.
+    from .universal_caption_overlay import paint_phrase_caption
     if caption_cues is not None:
-        snippet=next((c["text"] for c in caption_cues
-                      if c["startFrame"] <= frame < c["endFrame"]), "")
+        active=next((c for c in caption_cues
+                     if c["startFrame"] <= frame < c["endFrame"]),None)
+        if active is not None:
+            paint_phrase_caption(
+                base,active["text"],frame=frame,
+                start=active["startFrame"],end=active["endFrame"],
+                layout=active.get("layout"))
     else:
         words=beat["narration"].split()
         offset=min(max(0,len(words)-7),int(f*len(words)))
         snippet=" ".join(words[offset:offset+7])
-    if snippet:
-        lines,subfont=_fit(d,snippet,width-2*pad,int(width*.047),
-                           bold=True,max_lines=2)
-        for j,line in enumerate(lines):
-            d.text((pad,int(height*.798)+j*int(subfont.size*1.32)),line,
-                   font=subfont,fill=(248,251,254),
-                   stroke_width=max(2,round(width*.004)),
-                   stroke_fill=(3,7,17))
+        if snippet:
+            paint_phrase_caption(base,snippet,frame=frame,start=start,end=end)
     return base
 
 
@@ -462,6 +463,14 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         raise ValueError("Voice kokoro/espeak and width 360/720/1080 required")
     story=read_story(brief)
     height=width*16//9
+    # Reject unrenderable spoken phrases *before* expensive Kokoro inference.
+    # Every delivered subtitle must show every authored word in a bounded
+    # mobile-safe line arrangement instead of silently truncating.
+    from .captions import caption_phrases
+    from .universal_caption_overlay import caption_layout
+    for beat in story["beats"]:
+        for phrase in caption_phrases(beat["narration"]):
+            caption_layout(phrase,width=width,height=height)
     output=output.resolve()
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="universal-original-") as temp:
@@ -470,6 +479,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         captions=[]
         stamps=synthesize(story,voice,voice_file,voice_name=voice_name,
                           caption_cues=captions)
+        for cue in captions:
+            cue["layout"]=caption_layout(cue["text"],width=width,height=height)
         timeline=timeline_for(story,stamps)
         sfx=work/"foley.wav"
         create_causal_foley(timeline=timeline,output=sfx,
@@ -533,6 +544,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "narrationTiming":"actual-PCM-beat-boundaries",
         "subtitleTiming":"audio-derived-synthesized-phrases",
         "subtitleCues":len(captions),"subtitleFile":subtitle_path.name,
+        "captionOverlayEngine":"pcm-phrase-cinematic-safe-caption-v1",
+        "captionWordsOmitted":0,"captionLayoutPreflight":"passed",
         "wordLevelAligned":False,
         "music":"original-continuous-procedural-ambient",
         "sound":"original-event-locked-foley","mix":mix,
