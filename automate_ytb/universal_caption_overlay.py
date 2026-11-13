@@ -75,9 +75,10 @@ def _cached_layout(original: str, width: int, height: int) -> tuple:
         if panel_width > width - 2 * inset:
             continue
         x = (width - panel_width) // 2
-        # Keep the panel over the lower part of the moving world, but above
-        # the right-hand TikTok/Shorts player and lower navigation region.
-        cy = round(height * .811)
+        # Overlay the *lower portion of the authored moving world*, not a
+        # detached footer. Remain above the player navigation and avoid the
+        # upper-third titles for both real scenes and editorial previews.
+        cy = round(height * .766)
         y = cy - panel_height // 2
         if y < round(height * .69) or y + panel_height > round(height * .89):
             continue
@@ -139,7 +140,7 @@ def paint_phrase_caption(canvas: Image.Image, text: str, *,
     radius = max(5, round(canvas.width*.016))
     painter.rounded_rectangle(
         (0,0,w-1,h-1), radius=radius,
-        fill=(3, 10, 22, round(alpha*.60)),
+        fill=(3, 10, 22, round(alpha*.48)),
     )
     font = _font(used["fontSize"])
     for index, line in enumerate(used["lines"]):
