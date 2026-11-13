@@ -18,11 +18,12 @@ from PIL import Image, ImageDraw, ImageOps
 
 from .surface25d import MATERIALS
 
-VERSION = "original-bounded-antialiased-vector-layers-v1"
+VERSION = "original-bounded-antialiased-translucent-vector-layers-v2"
 _ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
 _RGB = re.compile(r"#[0-9a-fA-F]{6}\Z")
 _KINDS = frozenset(("ellipse", "roundedRect", "polygon", "bezier", "line"))
 _COMMON = frozenset(("kind", "fill", "stroke", "strokeWidth"))
+_OPTIONAL = frozenset(("opacity",))
 MAX_LAYERS = 6
 MAX_SHAPES = 48
 MAX_POINTS = 360
@@ -97,7 +98,7 @@ def validate_vector_layers(raw, owned_layers=None) -> list[dict]:
                       _COMMON|{"box","radius"} if kind=="roundedRect" else
                       _COMMON|{"points"} if kind in ("line","polygon") else
                       _COMMON|{"points","closed"})
-            if set(shape)!=required:
+            if not required <= set(shape) or set(shape)-required-_OPTIONAL:
                 raise ValueError("Unknown/missing vector primitive properties")
             fill=_fill(shape["fill"])
             stroke=shape["stroke"]
@@ -113,7 +114,8 @@ def validate_vector_layers(raw, owned_layers=None) -> list[dict]:
             if kind=="line" and (fill is not None or stroke is None):
                 raise ValueError("Vector line must be stroke-only")
             record={"kind":kind,"fill":fill,
-                    "stroke":stroke,"strokeWidth":line_width}
+                    "stroke":stroke,"strokeWidth":line_width,
+                    "opacity":_unit(shape.get("opacity",1.),"opacity",low=.05,high=1.)}
             if kind in ("ellipse","roundedRect"):
                 box=shape["box"]
                 if type(box) is not list or len(box)!=4:
@@ -222,24 +224,25 @@ def render_vector_layer(layer: dict, size: tuple[int,int]) -> Image.Image:
             painter.polygon(geometry,fill=255)
         # A line or open bezier has no fill by construction.
         fill=shape["fill"]
+        # Each authored primitive is rendered onto an independent transparent
+        # plate. Alpha-composite preserves earlier details when translucent
+        # shadows, glazes, glass or highlights overlap existing geometry.
+        plate=Image.new("RGBA",work.size)
         if fill is not None:
             if type(fill) is str:
-                work.paste((*_rgb(fill),255),(0,0),mask)
+                plate.paste((*_rgb(fill),255),(0,0),mask)
             else:
                 colors=tuple(fill)
                 if colors not in gradients:
-                    # A 1080p episode can use 48 distinct gradients per layer.
-                    # Keep at most three large supersampled images in memory
-                    # rather than caching hundreds of megabytes of art.
                     if len(gradients)>=3:
                         gradients.pop(next(iter(gradients)))
                     gradient=Image.linear_gradient("L").resize(
                         work.size,Image.Resampling.BILINEAR)
                     gradients[colors]=ImageOps.colorize(
                         gradient,_rgb(colors[0]),_rgb(colors[1])).convert("RGBA")
-                work.paste(gradients[colors],(0,0),mask)
+                plate.paste(gradients[colors],(0,0),mask)
         if shape["stroke"] is not None:
-            d=ImageDraw.Draw(work)
+            d=ImageDraw.Draw(plate)
             color=(*_rgb(shape["stroke"]),255)
             thickness=max(1,round(shape["strokeWidth"]*min(work.size)))
             if kind=="ellipse":
@@ -255,4 +258,10 @@ def render_vector_layer(layer: dict, size: tuple[int,int]) -> Image.Image:
                 d.line(line,fill=color,width=thickness,joint="curve")
             else:
                 d.line(geometry,fill=color,width=thickness,joint="curve")
+        opacity=shape.get("opacity",1.)
+        if opacity<1.:
+            alpha=plate.getchannel("A").point(
+                lambda value: round(value*opacity))
+            plate.putalpha(alpha)
+        work=Image.alpha_composite(work,plate)
     return work.resize(size,Image.Resampling.LANCZOS)
