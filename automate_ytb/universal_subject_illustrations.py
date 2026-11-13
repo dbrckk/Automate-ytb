@@ -153,6 +153,37 @@ def _world(family):
               _multi([deep,dark],"vertical","stage"),opacity=.80),
         _ell(.07,.75,.94,.88,mid,opacity=.12),
     ]
+    if family=="celestial":
+        terrain=[
+            _ell(.06,.65,.93,.89,mid,opacity=.10),
+            _ell(.20,.70,.83,.84,light,opacity=.09),
+            _line([[.08,.89],[.28,.74],[.56,.76],[.9,.67]],light,.004,.23),
+        ]
+    elif family=="ocean":
+        terrain=[
+            _bezier([[0,.81],[.18,.71],[.33,.79],[.50,.73],
+                     [.67,.67],[.84,.76],[1,.69],
+                     [1,.87],[.66,.91],[.3,.91],[0,.94]],
+                    _multi([mid,deep,dark],"vertical"),opacity=.65),
+            _line([[.04,.8],[.3,.77],[.56,.79],[.8,.73],[.96,.76]],
+                  light,.003,.35),
+        ]
+    elif family=="rail":
+        terrain=[
+            _poly([[0,.805],[1,.805],[1,.93],[0,.93]],deep,opacity=.65),
+            _line([[0,.84],[1,.84]],light,.008,.62),
+            _line([[0,.89],[1,.89]],gold,.006,.49),
+            _line([[.12,.81],[.28,.92]],mid,.009,.55),
+            _line([[.46,.81],[.55,.92]],mid,.009,.55),
+            _line([[.82,.81],[.77,.92]],mid,.009,.55),
+        ]
+    elif family=="security":
+        terrain=[
+            _poly([[0,.80],[.31,.78],[.47,.84],[.7,.73],[1,.78],
+                   [1,.98],[0,.98]],_multi([deep,dark],"vertical"),opacity=.5),
+            _line([[.08,.72],[.35,.72],[.52,.81],[.89,.81]],mid,.004,.43),
+            _line([[.16,.88],[.37,.86],[.71,.91],[.95,.87]],light,.003,.27),
+        ]
     return sky,terrain
 
 
@@ -249,8 +280,6 @@ def _rail():
             _ell(x-.02,.672,x+.02,.716,gold,opacity=.7),
         ])
     machine=[
-        _box(.398,.417,.462,.489,light,.006,opacity if False else None),
-    ] if False else [
         _box(.38,.392,.468,.496,_multi(["#EFF3D6","#86B7B1","#285A6B"],
                                        "radial"),.013),
         _box(.483,.392,.58,.495,_multi(["#DFEACB","#84B8B3","#285C6C"],
@@ -282,6 +311,11 @@ def _weather():
         x=.29+i*.027
         y=.645+((i*11)%55)/1000
         rain.append(_line([[x,y],[x-.02,y+.057]],light,.005,opacity=.57))
+    for i in range(8):
+        x=.313+i*.051
+        y=.682+((i*17)%48)/1000
+        rain.append(_ell(x,y,x+.023,y+.032,
+                         _multi([light,mid,deep],"vertical"),opacity=.52))
     details=[]
     for i in range(15):
         x=.30+(i*97%400)/1000
