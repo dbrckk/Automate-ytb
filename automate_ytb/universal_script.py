@@ -107,9 +107,15 @@ def compile_original_script(*, topic: str, script: str,
         apply_compositions, composition_families,
         VERSION as composition_version)
     from .universal_subject_motion import VERSION as motion_version
-    compound=composition_families(beats)
+    from .universal_scale_journey import derive_scale_journey, VERSION as scale_version
+    # A whole-source quantitative progression gets one persistent measuring
+    # world. Other stories retain the established 2.5D actor compositions.
+    journey=derive_scale_journey(beats)
+    compound=composition_families(beats) if journey is None else None
     causal_events=None
-    if compound is not None:
+    if journey is not None:
+        family,sequence=None,None
+    elif compound is not None:
         # Only explicit, affirmative source verbs can activate the new
         # causal art path. Existing v19 noun-only stories stay unchanged.
         from .universal_subject_interaction import (
@@ -145,6 +151,9 @@ def compile_original_script(*, topic: str, script: str,
     if causal_events is not None:
         result["proceduralVisualInteractionEngine"]=contact_version
         result["proceduralVisualInteractions"]=causal_events
+    if journey is not None:
+        result["proceduralScaleJourneyEngine"]=scale_version
+        result["proceduralScaleJourney"]=journey
     return result
 
 
