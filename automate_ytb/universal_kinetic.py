@@ -140,9 +140,36 @@ def read_story(path: Path) -> dict:
     subject_family=story.get("proceduralVisualFamily")
     motion_engine=story.get("proceduralMotionEngine")
     chapter_engine=story.get("proceduralVisualChapterEngine")
+    compound_engine=story.get("proceduralVisualCompositionEngine")
+    has_compound=(compound_engine is not None
+                  or "proceduralVisualCompositionFamilies" in story)
     has_chapters=(chapter_engine is not None
                   or "proceduralVisualFamilies" in story)
-    if has_chapters:
+    if has_compound:
+        from .universal_subject_composition import (
+            composition_families, composition_layers, composition_tracks,
+            VERSION as composition_version)
+        from .universal_subject_illustrations import VERSION as template_version
+        from .universal_subject_motion import VERSION as motion_version
+        selected=story.get("proceduralVisualCompositionFamilies")
+        expected_compound=composition_families(validated)
+        if (type(selected) is not list or expected_compound is None
+                or selected!=expected_compound
+                or compound_engine!=composition_version
+                or has_chapters or subject_family is not None
+                or story.get("proceduralVisualEngine")!=template_version
+                or motion_engine!=motion_version):
+            raise ValueError("Untrusted dual-subject provenance")
+        for i,(beat,families) in enumerate(zip(validated,expected_compound)):
+            layers=(validate_vector_layers(composition_layers(families))
+                    if families else [])
+            tracks=(validate_actor_rig(
+                composition_tracks(families,i,len(validated)),[],layers)[0]
+                    if families else [])
+            if (beat["visualVectors"]!=layers or beat["actorTracks"]!=tracks
+                    or beat["actorLinks"] or beat["visualLayers"]):
+                raise ValueError("Dual-subject generated artwork was altered")
+    elif has_chapters:
         from .universal_subject_illustrations import (
             subject_chapter_families, subject_layers, subject_tracks,
             CHAPTER_VERSION, VERSION as template_version)
@@ -168,7 +195,7 @@ def read_story(path: Path) -> dict:
                 raise ValueError("Per-beat subject illustration was altered")
     elif motion_engine is not None and subject_family is None:
         raise ValueError("Subject motion must have grounded original artwork")
-    if subject_family is not None and not has_chapters:
+    if subject_family is not None and not has_chapters and not has_compound:
         from .universal_subject_illustrations import (
             select_subject, subject_layers, subject_tracks,
             VERSION as template_version)
@@ -193,12 +220,22 @@ def read_story(path: Path) -> dict:
                     or beat["actorTracks"]!=authored_tracks
                     or beat["actorLinks"] or beat["visualLayers"]):
                 raise ValueError("Procedural subject illustration was altered")
+    # A compiled source-only story must never be relabelled as manually
+    # rights-confirmed art simply by deleting all of its provenance markers.
+    # Editorial JSON briefs without originalTextOnly remain explicitly authored.
+    if (story.get("originalTextOnly") is True and
+            not (has_compound or has_chapters or subject_family is not None)
+            and any(b["visualVectors"] or b["actorTracks"] for b in validated)):
+        raise ValueError("Untrusted original-only storyboard provenance")
     result={"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1, "proceduralVisualFamily":subject_family,
             "proceduralMotionEngine":motion_engine}
     if has_chapters:
         result["proceduralVisualChapterEngine"]=chapter_engine
         result["proceduralVisualFamilies"]=expected_sequence
+    if has_compound:
+        result["proceduralVisualCompositionEngine"]=compound_engine
+        result["proceduralVisualCompositionFamilies"]=expected_compound
     return result
 
 
@@ -623,15 +660,20 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
+        "proceduralVisualCompositionEngine":story.get("proceduralVisualCompositionEngine"),
+        "proceduralVisualCompositionFamilies":story.get("proceduralVisualCompositionFamilies"),
         "proceduralMotionEngine":story.get("proceduralMotionEngine"),
         "proceduralVisualSceneCount":(
-            sum(f is not None for f in story["proceduralVisualFamilies"])
+            sum(bool(f) for f in story["proceduralVisualCompositionFamilies"])
+            if story.get("proceduralVisualCompositionFamilies") is not None
+            else sum(f is not None for f in story["proceduralVisualFamilies"])
             if story.get("proceduralVisualFamilies") is not None
             else len(story["beats"]) if story.get("proceduralVisualFamily") else 0),
         "proceduralVisualEngine":(
             "original-source-anchored-procedural-subjects-v1"
             if (story.get("proceduralVisualFamily")
-                or story.get("proceduralVisualFamilies")) else None),
+                or story.get("proceduralVisualFamilies")
+                or story.get("proceduralVisualCompositionFamilies")) else None),
         "durationSeconds":timeline.total_frames/FPS,"beats":len(story["beats"]),
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,

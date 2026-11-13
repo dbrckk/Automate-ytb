@@ -34,6 +34,7 @@ on:
       - automate_ytb/universal_kinetic.py
       - automate_ytb/universal_script.py
       - automate_ytb/universal_subject_illustrations.py
+      - automate_ytb/universal_subject_composition.py
       - automate_ytb/universal_subject_motion.py
       - automate_ytb/universal_art25d.py
       - automate_ytb/universal_vector_art.py
@@ -57,6 +58,7 @@ on:
       - tests/test_universal_script.py
       - tests/test_universal_subject_illustrations.py
       - tests/test_universal_chapter_subjects.py
+      - tests/test_universal_subject_composition.py
       - tests/test_universal_subject_motion.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
@@ -68,6 +70,7 @@ on:
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
+      - examples/universal_dual_subject_story.en.txt
       - examples/universal_multichapter_story.en.txt
       - examples/universal_planet_story.en.txt
       - examples/universal_web_request.json
@@ -122,6 +125,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
           python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
+          python -m unittest discover -s tests -p test_universal_subject_composition.py -v
           python -m unittest discover -s tests -p test_universal_subject_motion.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_vector_art.py -v
@@ -179,28 +183,36 @@ jobs:
           folder=Path('build/universal')
           flora=json.loads((folder/'seed-story-original.json').read_text())
           space=json.loads((folder/'planet-story-original.json').read_text())
-          assert flora['proceduralVisualFamily']=='botanical'
+          # The source says "seed" in beat one AND "rain" + "leaves"
+          # in beat two. V19 correctly composes garden vegetation and rain
+          # in that second shot; the former v17 one-family expectation is
+          # now obsolete, not a failure of original-world rendering.
+          assert flora['proceduralVisualFamily'] is None
+          assert flora['proceduralVisualCompositionEngine']=='source-grounded-dual-subject-six-layer-compositor-v1'
+          assert flora['proceduralVisualCompositionFamilies']==[
+              ['botanical'],['botanical','weather']]
           assert space['proceduralVisualFamily']=='celestial'
-          assert flora['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
-          assert space['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
-          # Botanical art must truly exercise the flexible 2.5D compositor;
-          # celestial orbits must remain rigid (no fabric-like bend).
-          assert flora['artwork']['flexibleActorParts']==2
-          assert space['artwork']['flexibleActorParts']==0
+          assert space['proceduralVisualCompositionFamilies'] is None
           for report in (flora,space):
+              assert report['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
               assert report['proceduralVisualSceneCount']==2
               assert report['proceduralVisualEngine']=='original-source-anchored-procedural-subjects-v1'
-              assert report['artwork']['originalVectorLayers']==10
               assert report['artwork']['authoredActionActors']==8
-              assert len(report['artwork']['continuousCameraGroups'])==1
               assert report['delivery']['status']=='passed'
               assert report['captionWordsOmitted']==0
               assert not report['publicationApproved']
+          assert flora['artwork']['originalVectorLayers']==11
+          assert flora['artwork']['flexibleActorParts']==3
+          assert len(flora['artwork']['continuousCameraGroups'])==0
+          assert space['artwork']['originalVectorLayers']==10
+          assert space['artwork']['flexibleActorParts']==0
+          assert len(space['artwork']['continuousCameraGroups'])==1
           flora_ids={x['sha256'] for x in flora['artwork']['approvedLayerProvenance']
                      if x.get('vectorId','').endswith('-hero')}
           space_ids={x['sha256'] for x in space['artwork']['approvedLayerProvenance']
                      if x.get('vectorId','').endswith('-hero')}
-          assert len(flora_ids)==len(space_ids)==1 and flora_ids!=space_ids
+          assert len(flora_ids)>=2 and len(space_ids)==1
+          assert flora_ids.isdisjoint(space_ids)
           print('Two distinct text-driven original subject worlds validated: botanical and celestial, real H264/AAC')
           PY
       - name: Render mixed-topic source-grounded chapter Short
@@ -232,6 +244,36 @@ jobs:
           seen={x['vectorId'].split('-')[0] for x in report['artwork']['approvedLayerProvenance'] if 'vectorId' in x}
           assert seen==set(families)
           print('Original per-beat illustrated families successfully encoded, narrated and checked')
+          PY
+      - name: Render two independent concrete subjects in the same original Short
+        run: |
+          automate-ytb-short --topic "Trees and planets, rain and waves" --script-file examples/universal_dual_subject_story.en.txt --language en --output build/universal/dual-subject-original.mp4 --voice espeak --width 720
+      - name: Verify source-grounded dual-object stage in real H264/AAC output
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/dual-subject-original.mp4 --require-audio --report build/universal/dual-subject-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('build/universal')
+          story=json.loads((root/'dual-subject-original.story.json').read_text())
+          report=json.loads((root/'dual-subject-original.json').read_text())
+          pairs=[['botanical','celestial'],['botanical','celestial'],['weather','ocean']]
+          assert story['proceduralVisualCompositionFamilies']==pairs
+          assert report['proceduralVisualCompositionFamilies']==pairs
+          assert report['proceduralVisualCompositionEngine']=='source-grounded-dual-subject-six-layer-compositor-v1'
+          assert report['proceduralVisualSceneCount']==3
+          assert report['proceduralVisualFamily'] is None
+          assert report['artwork']['originalVectorLayers']==18
+          assert report['artwork']['authoredActionActors']==12
+          assert len(report['artwork']['continuousCameraGroups'])==1
+          assert report['delivery']['status']=='passed'
+          assert report['delivery']['media']['width']==720
+          assert report['delivery']['media']['height']==1280
+          assert report['captionWordsOmitted']==0
+          assert report['publicationApproved'] is False
+          seen={x['vectorId'] for x in report['artwork']['approvedLayerProvenance'] if x.get('vectorId','').startswith('dual-')}
+          assert {'dual-botanical-hero','dual-celestial-hero','dual-weather-hero','dual-ocean-hero'}<=seen
+          print('True two-subject original 2.5D scenes encoded and checked without external services')
           PY
       - name: Render a genuine authored 2.5D actor encounter
         run: |
