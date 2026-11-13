@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "source-text-universal-beat-compiler-v3-causal-subject-storyboard"
+VERSION = "source-text-universal-beat-compiler-v4-grounded-chapter-storyboard"
 _STOP = frozenset((
     "about", "after", "again", "also", "avec", "avoir", "been", "before",
     "being", "between", "dans", "does", "dont", "elle", "elles", "encore",
@@ -100,16 +100,28 @@ def compile_original_script(*, topic: str, script: str,
         title = " ".join(raw_title.split()[:10])[:90].strip()
         beats.append({"title": title or f"Part {index}",
                       "narration": narration, "sources": [], **graphic})
-    from .universal_subject_illustrations import apply_original_subjects, VERSION as art_version
+    from .universal_subject_illustrations import (
+        apply_original_subjects, apply_chapter_subjects,
+        subject_chapter_families, CHAPTER_VERSION, VERSION as art_version)
     from .universal_subject_motion import VERSION as motion_version
-    family=apply_original_subjects(topic,beats)
-    return {"schemaVersion": 1, "topic": topic.strip(),
+    sequence=subject_chapter_families(beats)
+    if sequence is None:
+        # Preserve the exact homogeneous v17 source story and its camera.
+        family=apply_original_subjects(topic,beats)
+    else:
+        family=None
+        apply_chapter_subjects(beats,sequence)
+    result={"schemaVersion": 1, "topic": topic.strip(),
             "language": language, "beats": beats,
             "originalTextOnly": True,
             "factualResearchPerformed": False,
             "proceduralVisualFamily":family,
-            "proceduralVisualEngine":(art_version if family else None),
-            "proceduralMotionEngine":(motion_version if family else None)}
+            "proceduralVisualEngine":(art_version if family or sequence else None),
+            "proceduralMotionEngine":(motion_version if family or sequence else None)}
+    if sequence is not None:
+        result["proceduralVisualChapterEngine"]=CHAPTER_VERSION
+        result["proceduralVisualFamilies"]=sequence
+    return result
 
 
 __all__ = ("compile_original_script", "VERSION")
