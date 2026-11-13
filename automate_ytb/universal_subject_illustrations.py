@@ -14,6 +14,7 @@ import math
 import re
 
 VERSION = "original-source-anchored-procedural-subjects-v1"
+CHAPTER_VERSION = "source-grounded-per-beat-illustration-sequence-v1"
 RIGHTS = ("Original artwork generated locally by Automate-ytb procedural "
           "geometry authored in this repository; no external source images.")
 # Intentionally concrete words only, not untrusted semantic or fuzzy matching.
@@ -467,3 +468,39 @@ def apply_original_subjects(topic: str, beats: list[dict]) -> str | None:
         beat["visualVectors"]=deepcopy(layers)
         beat["actorTracks"]=subject_tracks(i,len(beats),family=family)
     return family
+
+
+def subject_chapter_families(beats: list[dict]) -> list[str | None] | None:
+    """Discover a mixed-topic visual sequence from the words in EACH beat.
+
+    No title-only guess, conversational pronoun inference, or invented facts:
+    an unrecognized beat has no concrete original illustration. Single-domain
+    videos continue through the unchanged v17 continuous-world pipeline.
+    """
+    if (type(beats) is not list or not 2 <= len(beats) <= 12
+            or any(type(b) is not dict or type(b.get("narration")) is not str
+                   for b in beats)):
+        raise ValueError("Invalid bounded original mixed-topic storyboard")
+    families=[select_subject("",beat["narration"]) for beat in beats]
+    return families if len({family for family in families if family}) >= 2 else None
+
+
+def apply_chapter_subjects(beats: list[dict],
+                           families: list[str | None]) -> None:
+    """Attach original artwork and continuous global-time poses per beat.
+
+    Same-family adjacent beats have exact matching end/start actor poses and
+    source-image hashes. A changed or unrecognized family is a deliberate edit
+    with no fabricated actor continuity.
+    """
+    if (type(families) is not list
+            or families != subject_chapter_families(beats)):
+        raise ValueError("Chapter art must match multiple narrated source subjects")
+    total=len(beats)
+    for index,(beat,family) in enumerate(zip(beats,families)):
+        if any(key in beat for key in ("visualLayers","visualVectors","actorTracks")):
+            raise ValueError("Cannot replace manually authored scene artwork")
+        if family is None:
+            continue
+        beat["visualVectors"]=subject_layers(family)
+        beat["actorTracks"]=subject_tracks(index,total,family=family)
