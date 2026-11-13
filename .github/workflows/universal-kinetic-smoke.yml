@@ -56,6 +56,7 @@ on:
       - tests/test_universal_voice_evidence.py
       - tests/test_universal_script.py
       - tests/test_universal_subject_illustrations.py
+      - tests/test_universal_chapter_subjects.py
       - tests/test_universal_subject_motion.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
@@ -67,6 +68,7 @@ on:
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
+      - examples/universal_multichapter_story.en.txt
       - examples/universal_planet_story.en.txt
       - examples/universal_web_request.json
       - examples/build_original_actor_rig_sample.py
@@ -119,6 +121,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_voice_evidence.py -v
           python -m unittest discover -s tests -p test_universal_script.py -v
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
+          python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
           python -m unittest discover -s tests -p test_universal_subject_motion.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_vector_art.py -v
@@ -199,6 +202,36 @@ jobs:
                      if x.get('vectorId','').endswith('-hero')}
           assert len(flora_ids)==len(space_ids)==1 and flora_ids!=space_ids
           print('Two distinct text-driven original subject worlds validated: botanical and celestial, real H264/AAC')
+          PY
+      - name: Render mixed-topic source-grounded chapter Short
+        run: |
+          automate-ytb-short --topic "Plants planets and oceans" --script-file examples/universal_multichapter_story.en.txt --language en --output build/universal/multichapter-story-original.mp4 --voice espeak --width 720
+      - name: Validate actual 720x1280 multi-chapter MP4 and exact source selection
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/multichapter-story-original.mp4 --require-audio --report build/universal/multichapter-story-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('build/universal')
+          compiled=json.loads((root/'multichapter-story-original.story.json').read_text())
+          report=json.loads((root/'multichapter-story-original.json').read_text())
+          families=['botanical','celestial','ocean']
+          assert compiled['proceduralVisualFamilies']==families
+          assert report['proceduralVisualFamilies']==families
+          assert report['proceduralVisualFamily'] is None
+          assert report['proceduralVisualSceneCount']==3
+          assert report['proceduralVisualChapterEngine']=='source-grounded-per-beat-illustration-sequence-v1'
+          assert report['proceduralMotionEngine']=='grounded-causal-subject-choreography-v2-organic-secondary-sway'
+          assert report['artwork']['originalVectorLayers']==15
+          assert report['artwork']['authoredActionActors']==12
+          assert report['delivery']['status']=='passed'
+          assert report['delivery']['media']['width']==720
+          assert report['delivery']['media']['height']==1280
+          assert report['captionWordsOmitted']==0
+          assert report['publicationApproved'] is False
+          seen={x['vectorId'].split('-')[0] for x in report['artwork']['approvedLayerProvenance'] if 'vectorId' in x}
+          assert seen==set(families)
+          print('Original per-beat illustrated families successfully encoded, narrated and checked')
           PY
       - name: Render a genuine authored 2.5D actor encounter
         run: |
