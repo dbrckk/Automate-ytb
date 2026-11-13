@@ -99,7 +99,7 @@ class AuthoredDeformTests(unittest.TestCase):
         bent,p1=warp_sway_sprite(img,pivot=[.5,1.],deform=settings,phase=.25)
         self.assertEqual(p0,p1)
         # Zero displacement at the bottom pivot, but visible movement above.
-        row=img.height-3
+        row=img.height-11
         alpha0=zero.getchannel("A").crop((0,row,zero.width,row+1))
         alpha1=bent.getchannel("A").crop((0,row,bent.width,row+1))
         self.assertLessEqual(abs(alpha0.getbbox()[0]-alpha1.getbbox()[0]),2)
