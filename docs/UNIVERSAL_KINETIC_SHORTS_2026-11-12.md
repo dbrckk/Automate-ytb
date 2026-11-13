@@ -579,3 +579,38 @@ plus independently rigged flexible parts, in two continuous shots.
 This feature improves the **reusable renderer** for any authored object.
 It does not claim to invent a semantically correct object from an arbitrary
 topic or to replace factual/visual editorial review.
+
+### Cinematic authored-world presentation and local contact cues (v12)
+
+**Why:** previous authored visuals occupied a boxed 51%-height stage beneath
+persistent title/progress UI; the event compositor drew a straight beam
+between every pair of subjects even when they never touched. Those lines
+looked like diagrams rather than genuine moving objects.
+
+**New reusable defaults for original PNG/WebP and vector shots:**
+
+- Composite the original 2.5D scene as an aspect-preserving *full-width*
+  portrait world, up to 63% of the frame height. The top/bottom 4.6% of
+  that picture fades into an existing generated backdrop. Source art is never
+  stretched, cropped, hallucinated or blurred to fake more detail.
+- Keep a smaller topic label; replace the persistent big headline and data
+  progress bar with a short narrated beat title which fades out after an
+  authored shot begins. This is temporal editorial typography, not a slide.
+  PCM-derived narration captions remain below the imagery.
+- Actor links keep the **exact same authored beat time and Foley cue**.
+  For nearby centres, render a brief warm-localized glint at the midpoint.
+  For distant actor centres, show two independent subtle local responses
+  instead of pretending the subjects are physically connected by a beam.
+  There is no universal full-width connector line or orbit circle.
+- These changes apply to *every* properly authored art-layer/rigged shot,
+  independently of subject matter. Exact numerical diagrams without authored
+  artwork retain the older readable data/chart layout.
+- Manifest reports `portraitCompositionEngine` and
+  `contactVisualEngine`; pixel-level safety and media tests guard both.
+
+**Remaining gaps:** this is not image generation from arbitrary natural
+language, and a transient glint is only a visually coherent event marker;
+it does not establish factual causality. Still required: object-specific
+visual generation, movement/storyboard planning, sound/music aesthetic
+evaluation and successful neural Kokoro narration in a complete original
+episode. Human editorial approval is still required to publish.

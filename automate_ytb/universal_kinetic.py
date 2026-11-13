@@ -32,7 +32,7 @@ PALETTES = (
     ((12, 19, 32), (29, 50, 62), (234, 199, 114), (135, 206, 180)),
     ((20, 14, 44), (42, 30, 75), (241, 167, 190), (167, 196, 247)),
 )
-VERSION = "universal-kinetic-cinematic-stage-v11-directional-surface-shading"
+VERSION = "universal-kinetic-cinematic-stage-v12-world-first-layout-and-local-glints"
 
 
 def _text(value, name, limit=120):
@@ -347,28 +347,50 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     f = (frame-start)/max(1,end-start)
     ease = f*f*(3-2*f)
     pad=int(width*.09)
-    stage_top=int(height*.34)
-    stage_bottom=int(height*.74)
-    # One persistent continuous editorial clock (same MasterTimeline as Foley).
-    measured=timeline.state_at(frame)["objects"]["progress"]["value"]
-    _bar(d,pad,int(height*.107),width-2*pad,max(3,width//140),measured,extra,palette)
-    title_lines, font=_fit(d,story["topic"],width-2*pad,int(width*.055),bold=True,max_lines=2)
-    for j,line in enumerate(title_lines):
-        d.text((pad,int(height*.038)+j*font.size*1.18),line,font=font,fill=(241,245,252))
-    header, hf=_fit(d,beat["title"],width-2*pad,int(width*.075),bold=True,max_lines=2)
-    for j,line in enumerate(header):
-        d.text((pad,int(height*.166)+j*hf.size*1.20),line,
-               font=hf,fill=accent,stroke_width=1,stroke_fill=dark)
-    # Licensed original illustration can replace a conceptual schematic.
-    # The same authored shot clock drives independent depth-layer movement.
+    # Author-supplied real world art receives a cinematic treatment; numeric
+    # and conceptual diagrams retain their explicit reviewable data layout.
     art=art_scenes.get(pos) if art_scenes is not None else None
+    if art is None:
+        measured=timeline.state_at(frame)["objects"]["progress"]["value"]
+        _bar(d,pad,int(height*.107),width-2*pad,max(3,width//140),
+             measured,extra,palette)
+        title_lines,font=_fit(d,story["topic"],width-2*pad,
+                              int(width*.055),bold=True,max_lines=2)
+        for j,line in enumerate(title_lines):
+            d.text((pad,int(height*.038)+j*font.size*1.18),
+                   line,font=font,fill=(241,245,252))
+        header,hf=_fit(d,beat["title"],width-2*pad,
+                       int(width*.075),bold=True,max_lines=2)
+        for j,line in enumerate(header):
+            d.text((pad,int(height*.166)+j*hf.size*1.20),
+                   line,font=hf,fill=accent,stroke_width=1,stroke_fill=dark)
     if art is not None:
         from .universal_art25d import render_art_stage
+        from .universal_cinematic_portrait import (
+            composite_authored_world,shot_title_alpha)
         artwork=render_art_stage(art,frame,start,end)
-        # Give the real illustrated world over half the portrait frame.
-        # Two-line headers remain above it; PCM captions remain below.
-        art_top=round(height*.27)
-        base.paste(artwork,(pad,art_top),artwork)
+        base=composite_authored_world(base,artwork)
+        d=ImageDraw.Draw(base)
+        # Small stable context label; the large narration heading is a brief
+        # introductory overlay rather than a permanent PowerPoint title.
+        title_lines,font=_fit(d,story["topic"],width-2*pad,
+                              int(width*.040),bold=True,max_lines=2)
+        for j,line in enumerate(title_lines):
+            d.text((pad,int(height*.038)+j*font.size*1.18),
+                   line,font=font,fill=(242,246,250))
+        opacity=shot_title_alpha(frame,start,end)
+        if opacity:
+            overlay=Image.new("RGBA",base.size)
+            od=ImageDraw.Draw(overlay)
+            header,hf=_fit(od,beat["title"],width-2*pad,
+                           int(width*.066),bold=True,max_lines=2)
+            for j,line in enumerate(header):
+                od.text((pad,int(height*.163)+j*hf.size*1.20),
+                        line,font=hf,fill=(*accent,opacity),
+                        stroke_width=max(2,round(width*.003)),
+                        stroke_fill=(4,8,18,opacity))
+            base=Image.alpha_composite(base.convert("RGBA"),overlay).convert("RGB")
+            d=ImageDraw.Draw(base)
     elif commons_scenes is not None and pos in commons_scenes:
         # Optional CC0 media can illustrate arbitrary authored concepts.
         # It is a moving crop of a real photo, NOT invented scene geometry.
@@ -533,6 +555,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
                 for b in story["beats"]),
             "actionEngine":"universal-authored-actor-rig-hinge-flex-and-overscan-v7",
             "deformationEngine":"bounded-hinge-anchored-rgba-sway-v1",
+            "contactVisualEngine":"localized-causal-glints-without-connector-beams-v1",
+            "portraitCompositionEngine":"edge-matted-full-width-authored-world-v1",
             "jointTreeEngine":"authored-2d-joint-tree-v1",
             "continuousCameraGroups":camera_groups},
         "factsReviewed":False,"humanReviewed":False,"publicationApproved":False,
