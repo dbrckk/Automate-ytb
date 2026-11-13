@@ -139,9 +139,36 @@ def read_story(path: Path) -> dict:
     # with the actual source-anchored deterministic template library.
     subject_family=story.get("proceduralVisualFamily")
     motion_engine=story.get("proceduralMotionEngine")
-    if motion_engine is not None and subject_family is None:
+    chapter_engine=story.get("proceduralVisualChapterEngine")
+    has_chapters=(chapter_engine is not None
+                  or "proceduralVisualFamilies" in story)
+    if has_chapters:
+        from .universal_subject_illustrations import (
+            subject_chapter_families, subject_layers, subject_tracks,
+            CHAPTER_VERSION, VERSION as template_version)
+        from .universal_subject_motion import VERSION as motion_version
+        sequence=story.get("proceduralVisualFamilies")
+        expected_sequence=subject_chapter_families(validated)
+        if (type(sequence) is not list or expected_sequence is None
+                or sequence != expected_sequence
+                or chapter_engine != CHAPTER_VERSION
+                or subject_family is not None
+                or story.get("proceduralVisualEngine") != template_version
+                or motion_engine != motion_version):
+            raise ValueError("Untrusted per-beat subject provenance")
+        for i,(beat,family) in enumerate(zip(validated,expected_sequence)):
+            layers=(validate_vector_layers(subject_layers(family))
+                    if family is not None else [])
+            tracks=(validate_actor_rig(
+                subject_tracks(i,len(validated),family=family,
+                               engine=motion_version),[],layers)[0]
+                    if family is not None else [])
+            if (beat["visualVectors"]!=layers or beat["actorTracks"]!=tracks
+                    or beat["actorLinks"] or beat["visualLayers"]):
+                raise ValueError("Per-beat subject illustration was altered")
+    elif motion_engine is not None and subject_family is None:
         raise ValueError("Subject motion must have grounded original artwork")
-    if subject_family is not None:
+    if subject_family is not None and not has_chapters:
         from .universal_subject_illustrations import (
             select_subject, subject_layers, subject_tracks,
             VERSION as template_version)
@@ -166,9 +193,13 @@ def read_story(path: Path) -> dict:
                     or beat["actorTracks"]!=authored_tracks
                     or beat["actorLinks"] or beat["visualLayers"]):
                 raise ValueError("Procedural subject illustration was altered")
-    return {"topic": topic, "language": language, "beats": validated,
+    result={"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1, "proceduralVisualFamily":subject_family,
             "proceduralMotionEngine":motion_engine}
+    if has_chapters:
+        result["proceduralVisualChapterEngine"]=chapter_engine
+        result["proceduralVisualFamilies"]=expected_sequence
+    return result
 
 
 def _font(size: int, bold=False):
@@ -590,12 +621,17 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
+        "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
+        "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
         "proceduralMotionEngine":story.get("proceduralMotionEngine"),
         "proceduralVisualSceneCount":(
-            len(story["beats"]) if story.get("proceduralVisualFamily") else 0),
+            sum(f is not None for f in story["proceduralVisualFamilies"])
+            if story.get("proceduralVisualFamilies") is not None
+            else len(story["beats"]) if story.get("proceduralVisualFamily") else 0),
         "proceduralVisualEngine":(
             "original-source-anchored-procedural-subjects-v1"
-            if story.get("proceduralVisualFamily") else None),
+            if (story.get("proceduralVisualFamily")
+                or story.get("proceduralVisualFamilies")) else None),
         "durationSeconds":timeline.total_frames/FPS,"beats":len(story["beats"]),
         "visualKinds":sorted(set(b["kind"] for b in story["beats"])),
         "resolution":[width,height],"fps":FPS,"voiceEngine":voice,

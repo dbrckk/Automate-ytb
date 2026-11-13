@@ -824,3 +824,64 @@ release gates.
 simulated clouds, liquid or cloth. They improve motion quality but do not
 establish reference-video-grade realism or broad semantic coverage beyond
 the existing source-anchored subject families.
+
+
+### v18 — Source-grounded multi-chapter illustrated Shorts
+
+**Problem corrected:** the previous text-to-video compiler picked one concrete
+2.5D subject for *the entire Short*. A narration that progressed from a forest
+to a planet and then to the ocean kept showing only the most frequent category.
+This is a failure of story direction, despite valid audio/video encoding.
+
+**Behavior for newly compiled source-text scripts:**
+
+1. Split the *user-supplied* EN/FR narration into its existing 2–12 beats.
+2. Match the finite, explicitly recognized noun vocabulary separately against
+   each beat's narration, without using the title to invent scene content.
+3. If at least **two different recognized subjects** occur in different
+   beats, choose each beat's own original vector illustration and independent
+   actor grammar. An unrecognized beat uses the existing neutral diagrams
+   rather than drawing an unsupported object.
+4. Keep the global story-clock keyframes and exact source identity for
+   adjacent beats of the **same** family, enabling continuous animation and
+   camera framing through those cuts. Switching families is a deliberate
+   editorial cut, not a fictitious continuation of the old actor.
+5. If only one family is represented, the existing v17 full-episode scene and
+   its original serialized JSON are **unchanged**. Legacy v15/v16 saved JSON
+   uses the same existing validators and renderers as before.
+
+The generated mixed-topic stories carry
+`proceduralVisualChapterEngine=source-grounded-per-beat-illustration-sequence-v1`
+and an exact, ordered `proceduralVisualFamilies` array (which may contain
+`null` for an unrecognized beat). This record is **not trusted at face value**:
+read-time verification recomputes the classification from each actual
+narration, checks every vector and motion key against the repository's
+original definitions, validates the engine versions, and rejects extra
+assets, mismatched families, forged tracks and removal of provenance markers.
+The MP4 manifest reports the actual illustrated scene count and ordered
+families. No browser, external API, paid model or subjective artistic score
+is involved.
+
+Reproduce the three-domain real-media smoke on Linux:
+
+```sh
+automate-ytb-short --topic "Plants planets and oceans" \
+  --script-file examples/universal_multichapter_story.en.txt \
+  --language en --voice espeak --width 720 \
+  --output build/universal/multichapter-story-original.mp4
+python -m automate_ytb.shorts_delivery \
+  --video build/universal/multichapter-story-original.mp4 --require-audio
+python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
+```
+
+`espeak` is used only for the freely reproducible media smoke. The existing
+free neural Kokoro pipeline remains the preferred real-video voice; the
+benchmark does **not** claim eSpeak sounds natural.
+
+**Remaining limitations and next work:** recognition is a conservative finite
+dictionary across six visual families, not general image generation or factual
+research. Narrations that name multiple objects in the *same beat*, use only
+pronouns, or discuss unsupported subjects may still receive simplified
+graphics. Add independently evaluated object composition, richer art
+geometries, story-state continuity and original semantic effects before
+claiming coverage of arbitrary TikTok topics or reference-video parity.
