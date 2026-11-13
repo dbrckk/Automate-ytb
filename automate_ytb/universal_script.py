@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-VERSION = "source-text-universal-beat-compiler-v1"
+VERSION = "source-text-universal-beat-compiler-v2-procedural-subject-art"
 _STOP = frozenset((
     "about", "after", "again", "also", "avec", "avoir", "been", "before",
     "being", "between", "dans", "does", "dont", "elle", "elles", "encore",
@@ -100,10 +100,14 @@ def compile_original_script(*, topic: str, script: str,
         title = " ".join(raw_title.split()[:10])[:90].strip()
         beats.append({"title": title or f"Part {index}",
                       "narration": narration, "sources": [], **graphic})
+    from .universal_subject_illustrations import apply_original_subjects, VERSION as art_version
+    family=apply_original_subjects(topic,beats)
     return {"schemaVersion": 1, "topic": topic.strip(),
             "language": language, "beats": beats,
             "originalTextOnly": True,
-            "factualResearchPerformed": False}
+            "factualResearchPerformed": False,
+            "proceduralVisualFamily":family,
+            "proceduralVisualEngine":(art_version if family else None)}
 
 
 __all__ = ("compile_original_script", "VERSION")

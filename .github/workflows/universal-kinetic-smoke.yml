@@ -33,6 +33,7 @@ on:
     paths:
       - automate_ytb/universal_kinetic.py
       - automate_ytb/universal_script.py
+      - automate_ytb/universal_subject_illustrations.py
       - automate_ytb/universal_art25d.py
       - automate_ytb/universal_vector_art.py
       - automate_ytb/universal_actor_rig.py
@@ -53,6 +54,7 @@ on:
       - tests/test_universal_kinetic.py
       - tests/test_universal_voice_evidence.py
       - tests/test_universal_script.py
+      - tests/test_universal_subject_illustrations.py
       - tests/test_universal_art25d.py
       - tests/test_universal_vector_art.py
       - tests/test_universal_actor_rig.py
@@ -63,6 +65,7 @@ on:
       - tests/test_universal_motion25d.py
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
+      - examples/universal_planet_story.en.txt
       - examples/universal_web_request.json
       - examples/build_original_actor_rig_sample.py
       - examples/build_original_vector_story.py
@@ -113,6 +116,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_kinetic.py -v
           python -m unittest discover -s tests -p test_universal_voice_evidence.py -v
           python -m unittest discover -s tests -p test_universal_script.py -v
+          python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
           python -m unittest discover -s tests -p test_universal_art25d.py -v
           python -m unittest discover -s tests -p test_universal_vector_art.py -v
           python -m unittest discover -s tests -p test_universal_actor_rig.py -v
@@ -156,6 +160,37 @@ jobs:
       - name: Render another subject from original narration alone
         run: |
           automate-ytb-short --topic "A seed comes to life" --script-file examples/universal_seed_story.en.txt --language en --output build/universal/seed-story-original.mp4 --voice espeak --width 720
+      - name: Render a second semantically distinct original subject from only its source text
+        run: |
+          automate-ytb-short --topic "An illustrated planetary journey" --script-file examples/universal_planet_story.en.txt --language en --output build/universal/planet-story-original.mp4 --voice espeak --width 720
+      - name: Verify two different automatically generated original 2.5D subject worlds
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/seed-story-original.mp4 --require-audio --report build/universal/seed-story-delivery-qa.json
+          python -m automate_ytb.shorts_delivery --video build/universal/planet-story-original.mp4 --require-audio --report build/universal/planet-story-delivery-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          folder=Path('build/universal')
+          flora=json.loads((folder/'seed-story-original.json').read_text())
+          space=json.loads((folder/'planet-story-original.json').read_text())
+          assert flora['proceduralVisualFamily']=='botanical'
+          assert space['proceduralVisualFamily']=='celestial'
+          for report in (flora,space):
+              assert report['proceduralVisualSceneCount']==2
+              assert report['proceduralVisualEngine']=='original-source-anchored-procedural-subjects-v1'
+              assert report['artwork']['originalVectorLayers']==10
+              assert report['artwork']['authoredActionActors']==8
+              assert len(report['artwork']['continuousCameraGroups'])==1
+              assert report['delivery']['status']=='passed'
+              assert report['captionWordsOmitted']==0
+              assert not report['publicationApproved']
+          flora_ids={x['sha256'] for x in flora['artwork']['approvedLayerProvenance']
+                     if x.get('vectorId','').endswith('-hero')}
+          space_ids={x['sha256'] for x in space['artwork']['approvedLayerProvenance']
+                     if x.get('vectorId','').endswith('-hero')}
+          assert len(flora_ids)==len(space_ids)==1 and flora_ids!=space_ids
+          print('Two distinct text-driven original subject worlds validated: botanical and celestial, real H264/AAC')
+          PY
       - name: Render a genuine authored 2.5D actor encounter
         run: |
           python examples/build_original_actor_rig_sample.py --out-dir build/universal/rig
