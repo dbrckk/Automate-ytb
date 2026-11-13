@@ -83,6 +83,44 @@ class OriginalVectorArtTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render_vector_layer(layer,(9999,9999))
 
+    def test_translucent_overlays_blend_without_erasing_underlying_art(self):
+        # Reusable material grammar: shadow, translucent glass, reflection.
+        base=_example.blossom()
+        base["shapes"]=[
+            {"kind":"roundedRect","box":[.1,.1,.9,.9],"radius":.04,
+             "fill":"#203040","stroke":None,"strokeWidth":0},
+            {"kind":"ellipse","box":[.2,.2,.8,.8],
+             "fill":"#FFFFFF","stroke":None,"strokeWidth":0,
+             "opacity":.25},
+        ]
+        approved=validate_vector_layers([base])[0]
+        self.assertEqual(approved["shapes"][0]["opacity"],1.)
+        self.assertEqual(approved["shapes"][1]["opacity"],.25)
+        a=render_vector_layer(approved,(240,240))
+        b=render_vector_layer(approved,(240,240))
+        self.assertEqual(a.tobytes(),b.tobytes())
+        center=a.getpixel((120,120))
+        outside=a.getpixel((40,40))
+        self.assertEqual(center[3],255)
+        self.assertGreater(center[0],outside[0])
+        self.assertLess(center[0],255)
+        self.assertEqual(a.getpixel((0,0))[3],0)
+        self.assertNotEqual(vector_sha256(approved),vector_sha256(
+            validate_vector_layers([dict(base,shapes=base["shapes"][:1])])[0]))
+        # On a transparent layer, translucent ink must keep its own alpha.
+        isolated=dict(base,shapes=[base["shapes"][1]])
+        alpha=render_vector_layer(validate_vector_layers([isolated])[0],
+                                  (240,240)).getpixel((120,120))[3]
+        self.assertTrue(50<=alpha<=80)
+
+    def test_transparency_validation_rejects_invalid_opacity(self):
+        for opacity in (0,-.1,1.01,True,"0.5",float("nan"),
+                        float("inf"),None):
+            layer=_example.blossom()
+            layer["shapes"][0]["opacity"]=opacity
+            with self.subTest(opacity=opacity),self.assertRaises(ValueError):
+                validate_vector_layers([layer])
+
     def test_lines_paths_and_gradients_all_create_real_pixels(self):
         art=_example.blossom()
         one=render_vector_layer(validate_vector_layers([art])[0],(360,540))
