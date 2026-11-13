@@ -783,3 +783,44 @@ physically integrated and canopy growth is not skeletal botany. Such
 physical realism requires richer subjects with independently animated
 components and editorial supervision rather than misrepresenting a
 decorative effect as factual documentary animation.
+
+### v17 — Flexible source-grounded secondary motion
+
+The generated source-text video pipeline now applies **bounded, articulated
+secondary deformation** to flexible sublayers of existing original visuals,
+not to a chosen video only. Five original layer roles use the common
+`warp_sway_sprite` mesh deformation renderer:
+
+- Botanical: canopy leaves bend around the lower canopy anchor while trunk
+  growth remains a separate rigid track.
+- Rail: vapor curls around its lower anchor as the locomotive and attached
+  windows continue travelling together; solid wheels are not deformed.
+- Weather: rain strokes sway below their cloud attachment while cloud motion
+  remains independent.
+- Ocean: wave body and foam flex with separate amplitudes and phases,
+  respecting the scene's source-drawn outline.
+- Planet and cybersecurity scenes retain rigid orbital, lock and circuit
+  motion: distorting those objects as fabric would be misleading.
+
+The deformation phase is sampled on the **continuous camera clock across
+linked cuts**, not reset at each beat. All authored amplitudes and pivots are
+finite and validated by the existing rig. The added compositor uses the
+already installed, deterministic Pillow mesh path; no paid image/video APIs,
+downloaded assets or frame-wise model inference. Cost is extra per-frame
+sprite resampling only for the five eligible layers, not all artwork.
+
+`proceduralMotionEngine` advances to
+`grounded-causal-subject-choreography-v2-organic-secondary-sway` for newly
+compiled text scripts. Previous v16 source-text stories carrying the v1
+engine marker retain their **exact original rigid tracks**; marker-free v15
+stories keep the old three-key trajectory. Read-time provenance verifies
+the exact family, approved source geometry, keyframes, pivot and deform
+parameters. New regression tests inspect actual transformed RGBA pixels,
+old saved stories, unchanged rigid families, deterministic replay and
+tampering rejection. Full GitHub Actions and actual video encoding remain
+release gates.
+
+**Limitation:** These are stylized bounded sprite bends, not physically
+simulated clouds, liquid or cloth. They improve motion quality but do not
+establish reference-video-grade realism or broad semantic coverage beyond
+the existing source-anchored subject families.
