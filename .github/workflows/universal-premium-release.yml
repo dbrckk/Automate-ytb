@@ -1,6 +1,12 @@
 name: Universal premium Short — neural 1080p and verified permanent MP4
 
 on:
+  # A new immutable request committed on main triggers a production without
+  # Android GitHub Actions forms or API credentials.
+  push:
+    branches: [main]
+    paths:
+      - 'video_requests/*.json'
   workflow_dispatch:
     inputs:
       topic:
@@ -32,6 +38,8 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -55,28 +63,53 @@ jobs:
           VIDEO_TOPIC: ${{ inputs.topic }}
           VIDEO_SCRIPT: ${{ inputs.original_script }}
           VIDEO_LANGUAGE: ${{ inputs.language }}
+          BEFORE_COMMIT: ${{ github.event.before }}
         run: |
           set -euo pipefail
           mkdir -p build/premium
           python - <<'PY'
-          import os
+          import json, os, re, subprocess
           from pathlib import Path
-          topic=os.environ["VIDEO_TOPIC"].strip()
-          script=os.environ["VIDEO_SCRIPT"].strip()
-          language=os.environ["VIDEO_LANGUAGE"]
-          if not 3<=len(topic)<=120 or not 40<=len(script)<=8000:
-              raise SystemExit("Provide a 3–120-character topic and 40–8000 characters of original narration.")
+          if os.environ["GITHUB_EVENT_NAME"] == "push":
+              before=os.environ["BEFORE_COMMIT"]
+              sha=os.environ["GITHUB_SHA"]
+              if not re.fullmatch(r"[0-9a-f]{40}",before):
+                  raise SystemExit("Cannot prove source request commit")
+              changed=subprocess.check_output([
+                  "git","diff","--name-only","--diff-filter=A",
+                  before,sha,"--","video_requests"],text=True).splitlines()
+              if len(changed)!=1 or not re.fullmatch(r"video_requests/[a-z0-9][a-z0-9_-]{0,70}\\.json",changed[0]):
+                  raise SystemExit("Require exactly one newly added safe video request JSON file")
+              source=Path(changed[0])
+              if source.is_symlink() or not source.is_file() or source.stat().st_size>12000:
+                  raise SystemExit("Invalid or oversized source request")
+              data=json.loads(source.read_text(encoding="utf-8"))
+              if type(data) is not dict or set(data)!={"topic","script","language"}:
+                  raise SystemExit("Request must only contain topic, script and language")
+              topic,script,language=data["topic"],data["script"],data["language"]
+          else:
+              topic=os.environ["VIDEO_TOPIC"]
+              script=os.environ["VIDEO_SCRIPT"]
+              language=os.environ["VIDEO_LANGUAGE"]
+          if type(topic) is not str or type(script) is not str or type(language) is not str:
+              raise SystemExit("Video request fields must be strings")
+          topic,script=topic.strip(),script.strip()
+          if ("\n" in topic or "\r" in topic
+                  or not 3<=len(topic)<=120 or not 40<=len(script)<=8000):
+              raise SystemExit("Provide a one-line topic and 40–8000 original narration characters")
           if language not in ("en","fr"):
               raise SystemExit("Invalid narration language")
-          Path("build/premium/original-script.txt").write_text(script+"\n",encoding="utf-8")
-          print("Verified original script length and chosen narration language.")
+          root=Path("build/premium")
+          (root/"original-script.txt").write_text(script+"\n",encoding="utf-8")
+          (root/"topic.txt").write_text(topic,encoding="utf-8")
+          (root/"language.txt").write_text(language,encoding="utf-8")
+          print("Original video request accepted; no user script is executed.")
           PY
       - name: Produce original 1080x1920 cinematic Short with actual Kokoro neural narration
-        env:
-          VIDEO_TOPIC: ${{ inputs.topic }}
-          VIDEO_LANGUAGE: ${{ inputs.language }}
         run: |
           set -euo pipefail
+          VIDEO_TOPIC="$(cat build/premium/topic.txt)"
+          VIDEO_LANGUAGE="$(cat build/premium/language.txt)"
           automate-ytb-short \
             --topic "$VIDEO_TOPIC" \
             --script-file build/premium/original-script.txt \
