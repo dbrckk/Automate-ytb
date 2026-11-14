@@ -35,6 +35,7 @@ on:
       - automate_ytb/universal_script.py
       - automate_ytb/universal_subject_illustrations.py
       - automate_ytb/universal_subject_interaction.py
+      - automate_ytb/universal_scale_speech.py
       - automate_ytb/universal_scale_camera.py
       - automate_ytb/universal_scale_journey.py
       - automate_ytb/universal_subject_composition.py
@@ -62,6 +63,7 @@ on:
       - tests/test_universal_subject_illustrations.py
       - tests/test_universal_chapter_subjects.py
       - tests/test_universal_subject_interaction.py
+      - tests/test_universal_scale_speech.py
       - tests/test_universal_scale_camera.py
       - tests/test_universal_scale_journey.py
       - tests/test_universal_subject_composition.py
@@ -77,6 +79,7 @@ on:
       - tests/test_universal_commons.py
       - examples/universal_seed_story.en.txt
       - examples/universal_causal_contact_story.en.txt
+      - examples/universal_pcm_phrase_scale_story.en.txt
       - examples/universal_scale_journey_story.en.txt
       - examples/universal_dual_subject_story.en.txt
       - examples/universal_multichapter_story.en.txt
@@ -134,6 +137,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
           python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
           python -m unittest discover -s tests -p test_universal_subject_interaction.py -v
+          python -m unittest discover -s tests -p test_universal_scale_speech.py -v
           python -m unittest discover -s tests -p test_universal_scale_camera.py -v
           python -m unittest discover -s tests -p test_universal_scale_journey.py -v
           python -m unittest discover -s tests -p test_universal_subject_composition.py -v
@@ -276,6 +280,9 @@ jobs:
           assert manifest['proceduralScaleJourneyEngine']=='source-anchored-continuous-log-scale-cinematic-v1'
           assert manifest['proceduralScaleCameraEngine']=='source-scale-continuous-world-camera-landmarks-v22'
           assert story['proceduralScaleCameraEngine']==manifest['proceduralScaleCameraEngine']
+          assert manifest['proceduralScaleSpeechEngine']=='source-scale-real-pcm-phrase-choreography-v23'
+          assert manifest['proceduralScaleSpeechEventCount']==6
+          assert manifest['proceduralScaleSpeechTiming']['wordLevelAligned'] is False
           assert manifest['proceduralScaleLandmarkArtStyle']=='original-illustrative-not-physical-scale'
           assert manifest['proceduralScaleLandmarkCount']==6
           assert manifest['proceduralScaleNumbersSourceVerified'] is True
@@ -287,6 +294,37 @@ jobs:
           assert manifest['publicationApproved'] is False
           assert not manifest['factsReviewed']
           print('Real H.264/AAC 9:16 source-authored continuous scale stage verified')
+          PY
+      - name: Render new PCM phrase-triggered visual narrative with exact narration sound events
+        run: |
+          automate-ytb-short --topic "How a glowing thread changes scale" --script-file examples/universal_pcm_phrase_scale_story.en.txt --language en --output build/universal/pcm-phrase-scale-original.mp4 --voice espeak --width 720
+      - name: Verify narrated measurements and objects reveal on actual synthesized PCM phrases
+        run: |
+          python -m automate_ytb.shorts_delivery --video build/universal/pcm-phrase-scale-original.mp4 --require-audio --report build/universal/pcm-phrase-scale-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path("build/universal")
+          manifest=json.loads((base/"pcm-phrase-scale-original.json").read_text())
+          story=json.loads((base/"pcm-phrase-scale-original.story.json").read_text())
+          source=manifest["proceduralScaleSpeechTiming"]
+          assert manifest["proceduralScaleSpeechEngine"]=="source-scale-real-pcm-phrase-choreography-v23"
+          assert story["proceduralScaleSpeechEngine"]==manifest["proceduralScaleSpeechEngine"]
+          assert source["method"]=="measured-synthesized-pcm-phrase-onsets-not-word-aligned"
+          assert source["wordLevelAligned"] is False
+          assert manifest["wordLevelAligned"] is False
+          assert manifest["proceduralScaleSpeechWordAligned"] is False
+          assert manifest["proceduralScaleSpeechEventCount"]==4
+          assert manifest["proceduralScaleSpeechFoleyCueCount"]==8
+          assert [e["sourceSpan"] for e in source["events"]]==["1 mm","2 cm","2 m","1 km"]
+          assert all(e["valueStartFrame"] < e["landmarkStartFrame"] for e in source["events"])
+          assert all(e["sourceSpan"] in e["valuePhrase"] for e in source["events"])
+          assert manifest["delivery"]["status"]=="passed"
+          assert manifest["delivery"]["media"]["width"]==720
+          assert manifest["delivery"]["media"]["height"]==1280
+          assert manifest["captionWordsOmitted"]==0
+          assert not manifest["publicationApproved"]
+          print("Genuine H.264/AAC video with eight phrase-triggered original Foley accents and two exact PCM milestones per beat verified")
           PY
       - name: Render two independent concrete subjects in the same original Short
         run: |

@@ -242,7 +242,8 @@ def _beam_glow(width: int, length: int, start: int, end: int):
 
 def render_cinematic_scale_frame(
     journey: dict, topic: str, frame: int,
-    boundaries: list[int], position: int, width: int, height: int
+    boundaries: list[int], position: int, width: int, height: int,
+    speech_timing: dict | None = None,
 ) -> Image.Image:
     """One optical world and continuous camera, with source-only numbers."""
     if (type(frame) is not int or type(boundaries) is not list
@@ -254,6 +255,11 @@ def render_cinematic_scale_frame(
         raise ValueError("Invalid original world-camera frame")
     first,last=boundaries[position:position+2]
     phase=(frame-first)/max(1,last-first)
+    phrase_event=None
+    if speech_timing is not None:
+        from .universal_scale_speech import scale_speech_event, measured_phase
+        phrase_event=scale_speech_event(speech_timing,position,boundaries)
+        phase=measured_phase(frame,last,phrase_event["valueStartFrame"])
     pose=camera_pose(journey,position,phase)
     q=pose["progress"]
     base=_backdrop(width,height).copy()
@@ -312,7 +318,12 @@ def render_cinematic_scale_frame(
     # space. They shift automatically under the moving camera.
     for i,point in enumerate(journey["points"]):
         coord=scale_coordinate(journey,Decimal(point["metres"]))
-        activation=landmark_reveal(i,position,phase)
+        if phrase_event is not None and i==position:
+            from .universal_scale_speech import measured_reveal
+            activation=measured_reveal(
+                frame,last,phrase_event["landmarkStartFrame"])
+        else:
+            activation=landmark_reveal(i,position,phase)
         if activation<=0:
             continue
         alpha=round(255*activation)
@@ -359,6 +370,10 @@ def render_cinematic_scale_frame(
     # Crossfade only between two actually authored adjacent measurements.
     # The transition does NOT display an invented intermediate measurement.
     alpha=min(1.,phase/.13) if position else 1.
+    if phrase_event is not None:
+        # Phrase onset is measured from the actual synthesized WAV. Hold the
+        # previous verified number during the spoken introduction, then reveal.
+        alpha=min(1.,max(0.,(frame-phrase_event["valueStartFrame"])/8.))
     cy=round(height*.126)
     if alpha<1. and position:
         past=journey["points"][position-1]["sourceSpan"]
@@ -373,6 +388,14 @@ def render_cinematic_scale_frame(
         od.text(((width-od.textlength(value,font=vf))/2,0),value,
                 font=vf,fill=(116,242,216,round(255*alpha)))
         base.paste(overlay,(0,cy),overlay)
+    elif phrase_event is not None and position==0 and alpha<1.:
+        # No invented previous measurement at the beginning of the story.
+        if alpha>0:
+            overlay=Image.new("RGBA",(width,round(height*.11)))
+            od=ImageDraw.Draw(overlay)
+            od.text(((width-od.textlength(value,font=vf))/2,0),value,
+                    font=vf,fill=(116,242,216,round(255*alpha)))
+            base.paste(overlay,(0,cy),overlay)
     else:
         d.text(((width-d.textlength(value,font=vf))/2,cy),
                value,font=vf,fill=(116,242,216))

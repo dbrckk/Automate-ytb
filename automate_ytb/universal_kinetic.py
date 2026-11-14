@@ -141,6 +141,12 @@ def read_story(path: Path) -> dict:
     has_scale=("proceduralScaleJourney" in story
                or "proceduralScaleJourneyEngine" in story)
     has_camera="proceduralScaleCameraEngine" in story
+    has_speech="proceduralScaleSpeechEngine" in story
+    if has_speech:
+        from .universal_scale_speech import VERSION as speech_version
+        if (not has_camera
+                or story["proceduralScaleSpeechEngine"]!=speech_version):
+            raise ValueError("Untrusted source-PCM phrase choreography provenance")
     if has_camera:
         from .universal_scale_camera import VERSION as camera_version
         if (not has_scale
@@ -293,6 +299,8 @@ def read_story(path: Path) -> dict:
         result["proceduralScaleJourney"]=expected_journey
     if has_camera:
         result["proceduralScaleCameraEngine"]=camera_version
+    if has_speech:
+        result["proceduralScaleSpeechEngine"]=speech_version
     return result
 
 
@@ -392,13 +400,20 @@ def synthesize(story: dict, engine: str, output: Path, voice_name=None,
     return stamps
 
 
-def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
+def timeline_for(story: dict, boundaries: list[int],
+                 scale_speech_timing: dict | None = None) -> MasterTimeline:
     n = len(story["beats"])
     if (type(boundaries) is not list or len(boundaries) != n+1 or
             boundaries[0] != 0 or boundaries[-1] > FPS*180 or
             any(type(a) is not int or type(b) is not int or
                 b-a < FPS for a, b in zip(boundaries, boundaries[1:]))):
         raise ValueError("Invalid PCM-derived scene boundaries")
+    if scale_speech_timing is not None:
+        from .universal_scale_speech import scale_speech_event
+        if story.get("proceduralScaleSpeechEngine") is None:
+            raise ValueError("PCM phrase timing requires a sourced numeric journey")
+        for i in range(n):
+            scale_speech_event(scale_speech_timing,i,boundaries)
     tracks, cues = [], []
     # A quantity is an enduring world object, not a scene-local counter.
     # Reappearance after unrelated beats resumes its last verified value.
@@ -412,8 +427,34 @@ def timeline_for(story: dict, boundaries: list[int]) -> MasterTimeline:
                                     start, end, i/n, (i+1)/n))
         family = {"measure": "growth", "compare": "reveal",
                   "sequence": "count", "concept": "whoosh"}[beat["kind"]]
-        cues.append(SoundCue(f"story-cue-{i:02d}", event_id, family,
-                             offset_frames=0, gain_db=-24.))
+        if scale_speech_timing is None:
+            cues.append(SoundCue(f"story-cue-{i:02d}", event_id, family,
+                                 offset_frames=0, gain_db=-24.))
+        else:
+            from .universal_scale_speech import scale_speech_event
+            trigger=scale_speech_event(scale_speech_timing,i,boundaries)
+            at=trigger["valueStartFrame"]
+            actor_id=f"source-scale-{i:02d}"
+            visual_event_id=f"source-scale-reveal-{i:02d}"
+            objects.append(WorldObject(actor_id, {"opacity":0.}))
+            tracks.append(PropertyEvent(
+                visual_event_id,actor_id,"opacity",at,at+2,0.,1.))
+            cues.append(SoundCue(f"source-scale-tone-{i:02d}",
+                                 visual_event_id,"scale-transition",
+                                 offset_frames=0,gain_db=-28.))
+            # A separate, quieter illustration chime is only justified
+            # when narration mentions the object in a different PCM phrase.
+            icon_at=trigger["landmarkStartFrame"]
+            if (trigger["landmark"]!="ruler"
+                    and icon_at>=at+5 and icon_at+2<=end):
+                icon_id=f"source-landmark-{i:02d}"
+                event=f"source-landmark-reveal-{i:02d}"
+                objects.append(WorldObject(icon_id, {"opacity":0.}))
+                tracks.append(PropertyEvent(
+                    event,icon_id,"opacity",icon_at,icon_at+2,0.,1.))
+                cues.append(SoundCue(f"source-landmark-tone-{i:02d}",
+                                     event,"reveal",
+                                     offset_frames=0,gain_db=-33.))
         # A visual link has its own exact absolute source event. The shared
         # beat-progress cue only starts at beat boundaries and cannot carry
         # late cues (SoundCue offsets are limited to 300 frames).
@@ -493,7 +534,8 @@ def _bar(draw, x, y, w, h, fraction, color, palette):
 def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 frame: int, width: int, height: int, backdrop=None,
                 art_scenes=None, caption_cues=None,
-                commons_scenes=None) -> Image.Image:
+                commons_scenes=None,
+                scale_speech_timing=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
     palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
@@ -514,7 +556,10 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         if story.get("proceduralScaleCameraEngine"):
             from .universal_scale_camera import render_cinematic_scale_frame
             base=render_cinematic_scale_frame(journey,story["topic"],frame,
-                                               boundaries,pos,width,height)
+                                               boundaries,pos,width,height,
+                                               speech_timing=(scale_speech_timing if
+                                                   story.get("proceduralScaleSpeechEngine")
+                                                   else None))
         else:
             # Preserve pixel-level compatibility with old saved v21 stories.
             from .universal_scale_journey import render_scale_frame
@@ -661,7 +706,11 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             raise RuntimeError("Real synthesized PCM disagrees with video frame clock")
         for cue in captions:
             cue["layout"]=caption_layout(cue["text"],width=width,height=height)
-        timeline=timeline_for(story,stamps)
+        scale_speech_timing=None
+        if story.get("proceduralScaleSpeechEngine"):
+            from .universal_scale_speech import build_pcm_scale_timing
+            scale_speech_timing=build_pcm_scale_timing(story,captions,stamps)
+        timeline=timeline_for(story,stamps,scale_speech_timing)
         sfx=work/"foley.wav"
         create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
@@ -689,7 +738,8 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
                 encoder.stdin.write(frame_image(story,timeline,stamps,frame,
                                                width,height,background,
                                                art_scenes,captions,
-                                               commons_scenes).tobytes())
+                                               commons_scenes,
+                                               scale_speech_timing).tobytes())
             encoder.stdin.close()
             encoder.stdin=None
             _,err=encoder.communicate(timeout=600)
@@ -737,6 +787,15 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralVisualInteractions":story.get("proceduralVisualInteractions"),
         "proceduralScaleJourneyEngine":story.get("proceduralScaleJourneyEngine"),
         "proceduralScaleCameraEngine":story.get("proceduralScaleCameraEngine"),
+        "proceduralScaleSpeechEngine":story.get("proceduralScaleSpeechEngine"),
+        "proceduralScaleSpeechTiming":scale_speech_timing,
+        "proceduralScaleSpeechEventCount":(
+            len(scale_speech_timing["events"]) if scale_speech_timing else 0),
+        "proceduralScaleSpeechWordAligned":False,
+        "proceduralScaleSpeechFoleyCueCount":sum(
+            c["id"].startswith("source-scale-tone-")
+            or c["id"].startswith("source-landmark-tone-")
+            for c in timeline.audio_events()),
         "proceduralScaleLandmarkArtStyle":(
             "original-illustrative-not-physical-scale"
             if story.get("proceduralScaleCameraEngine") else None),

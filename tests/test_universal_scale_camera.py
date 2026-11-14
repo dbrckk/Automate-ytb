@@ -114,6 +114,7 @@ class WorldCameraV22Tests(unittest.TestCase):
     def test_preexisting_v21_saved_story_renders_identical_legacy_pixels(self):
         original=self.compiled()
         original.pop("proceduralScaleCameraEngine")
+        original.pop("proceduralScaleSpeechEngine")
         old=load(original)
         self.assertIsNone(old.get("proceduralScaleCameraEngine"))
         timeline=timeline_for(old,TIMES)
