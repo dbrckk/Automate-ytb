@@ -69,7 +69,7 @@ class PremiumNarrativeActionTests(unittest.TestCase):
             images.append(img)
         for a,b in zip(images,images[1:]):
             self.assertIsNotNone(
-                ImageChops.difference(a,b).getbbox(),
+                ImageChops.difference(a.convert('RGB'),b.convert('RGB')).getbbox(),
                 "Two adjacent source mechanisms must not look identical")
 
     def test_same_scene_has_true_frame_motion_not_a_still(self):
@@ -80,7 +80,7 @@ class PremiumNarrativeActionTests(unittest.TestCase):
             late=render_maglev_action(source,scene["narration"],
                                      frame=90,first=0,last=120)
             self.assertIsNotNone(
-                ImageChops.difference(early,late).getbbox(),
+                ImageChops.difference(early.convert('RGB'),late.convert('RGB')).getbbox(),
                 f"No dynamic pixel changes for {cue_for_narration(scene['narration'])}")
 
     def test_unillustrated_repetitive_script_fails_before_neural_download(self):
