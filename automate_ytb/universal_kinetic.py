@@ -792,6 +792,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralScaleSpeechEventCount":(
             len(scale_speech_timing["events"]) if scale_speech_timing else 0),
         "proceduralScaleSpeechWordAligned":False,
+        "proceduralScaleSpeechFoleyCueCount":sum(
+            c["id"].startswith("source-scale-tone-")
+            or c["id"].startswith("source-landmark-tone-")
+            for c in timeline.audio_events()),
         "proceduralScaleLandmarkArtStyle":(
             "original-illustrative-not-physical-scale"
             if story.get("proceduralScaleCameraEngine") else None),
