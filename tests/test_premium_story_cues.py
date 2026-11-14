@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 import unittest
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageStat
 
 from automate_ytb.premium_story_cues import (
     VERSION, cue_for_narration, action_sequence, render_maglev_action)
@@ -82,6 +82,19 @@ class PremiumNarrativeActionTests(unittest.TestCase):
             self.assertIsNotNone(
                 ImageChops.difference(early.convert('RGB'),late.convert('RGB')).getbbox(),
                 f"No dynamic pixel changes for {cue_for_narration(scene['narration'])}")
+
+    def test_wheels_and_field_remain_aligned_with_visible_vehicle_gap(self):
+        base=Image.new("RGBA",(296,326),(13,23,42,255))
+        for beat in (self.story["beats"][1],self.story["beats"][2]):
+            frame=render_maglev_action(
+                base,beat["narration"],frame=58,first=0,last=100)
+            diff=ImageChops.difference(
+                frame.convert("RGB"),base.convert("RGB"))
+            active=diff.crop((0,round(326*.48),296,round(326*.70)))
+            detached=diff.crop((0,round(326*.75),296,326))
+            self.assertGreater(sum(ImageStat.Stat(active).mean),1.)
+            self.assertEqual(detached.getbbox(),None,
+                             "Wheel or magnet overlay fell below the guideway")
 
     def test_unillustrated_repetitive_script_fails_before_neural_download(self):
         bad=("A maglev train glides along its track in a long straight line. "
