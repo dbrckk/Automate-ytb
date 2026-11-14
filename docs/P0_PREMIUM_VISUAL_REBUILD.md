@@ -38,8 +38,8 @@ was mistakenly treated as a premium visual success.
    continuous source-grounded scale world) now fail before installing
    heavyweight speech models. It is better to refuse an under-illustrated
    premium job than publish generic rings as a successful production.
-6. **Real regression harness.** The PR workflow encodes an actual 360×640
-   original maglev video with free eSpeak **for visual verification only**,
+6. **Real regression harness.** The PR workflow encodes an actual 720×1280
+   original maglev video (two authentic source beats) with free eSpeak **for visual verification only**,
    checks all decoded frames/audio, verifies full artwork provenance, and
    uploads five JPG frames, a contact sheet, SRT, manifest and MP4.
    This is not a neural premium release or a TikTok publication.
