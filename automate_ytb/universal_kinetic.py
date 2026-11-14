@@ -440,8 +440,21 @@ def timeline_for(story: dict, boundaries: list[int],
             tracks.append(PropertyEvent(
                 visual_event_id,actor_id,"opacity",at,at+2,0.,1.))
             cues.append(SoundCue(f"source-scale-tone-{i:02d}",
-                                 visual_event_id,"reveal",
+                                 visual_event_id,"scale-transition",
                                  offset_frames=0,gain_db=-28.))
+            # A separate, quieter illustration chime is only justified
+            # when narration mentions the object in a different PCM phrase.
+            icon_at=trigger["landmarkStartFrame"]
+            if (trigger["landmark"]!="ruler"
+                    and icon_at>=at+5 and icon_at+2<=end):
+                icon_id=f"source-landmark-{i:02d}"
+                event=f"source-landmark-reveal-{i:02d}"
+                objects.append(WorldObject(icon_id, {"opacity":0.}))
+                tracks.append(PropertyEvent(
+                    event,icon_id,"opacity",icon_at,icon_at+2,0.,1.))
+                cues.append(SoundCue(f"source-landmark-tone-{i:02d}",
+                                     event,"reveal",
+                                     offset_frames=0,gain_db=-33.))
         # A visual link has its own exact absolute source event. The shared
         # beat-progress cue only starts at beat boundaries and cannot carry
         # late cues (SoundCue offsets are limited to 300 frames).
