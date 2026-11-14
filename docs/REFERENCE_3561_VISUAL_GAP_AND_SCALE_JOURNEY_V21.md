@@ -194,3 +194,86 @@ real comparable objects, shot-level timing by spoken words (not just PCM
 phrase boundaries), richer lighting/material depth, music dramaturgy and
 cross-genre narrative planning. Technical CI success cannot validate
 artistic likeness or audio naturalness.
+
+
+## v23 — Synchronisation audiovisuelle fondée sur le PCM réel
+
+### Problème corrigé
+
+En v22 les repères chiffrés et les silhouettes étaient déclenchés à des
+**fractions arbitraires de la scène** (par ex. 12–39 %), même lorsqu'un
+narrateur ne prononçait le nombre ou le nom de l'objet que bien plus tard.
+Les effets sonores tombaient au début des scènes, séparément de ces
+apparitions. Cela produisait un décalage perceptible avec la référence
+3561.mp4, malgré une bonne synchronisation des sous-titres.
+
+### Moteur v23
+
+- Nouveau fichier : \`automate_ytb/universal_scale_speech.py\`.
+- Marqueur de provenance distinct :
+  \`proceduralScaleSpeechEngine=source-scale-real-pcm-phrase-choreography-v23\`.
+- Le générateur produit **d'abord** le véritable WAV mono du narrateur
+  (Kokoro ou eSpeak) et collecte les débuts/fins de chaque phrase via le
+  nombre exact d'échantillons PCM écrits dans le WAV.
+- Le compilateur recoupe chaque valeur de mesure \`sourceSpan\` avec
+  **une seule phrase réellement synthétisée** de la scène. L'illustration
+  est associée à la première phrase qui nomme réellement sa famille de
+  sujet. En l'absence d'un nom explicite, le repère géométrique reste
+  une illustration générique et réutilise le début mesuré du nombre.
+- Avant la phrase chiffrée, le moteur conserve la dernière mesure
+  explicitement annoncée ; ensuite, la nouvelle mesure apparaît et la
+  caméra commence sa progression. Pas de nouvelle mesure inventée.
+- L'icône, éventuellement citée dans une phrase différente, apparaît
+  au début **mesuré** de cette phrase et reste dans le même monde animé.
+- Les accents Foley 48 kHz « scale-transition » et « reveal » sont liés à
+  des \`PropertyEvent\` du MasterTimeline aux mêmes frames que leurs
+  mouvements visuels. Ils ne reposent ni sur une durée calculée d'après
+  la longueur des mots, ni sur des échantillons externes.
+- Le rapport MP4 archive les phrases, frames, types d'événements et
+  nombres de sons réellement associés. Les scènes non numériques et les
+  histoires v22 déjà sauvegardées conservent leur ancien comportement.
+- Les événements et la liste de phrases sont validés avant l'encodage.
+  Une phrase manquante, falsifiée, non ordonnée, sans la mesure source,
+  ou un prétendu alignement mot à mot sont refusés.
+
+### Limite essentielle
+
+**Il s'agit d'une synchronisation exacte à l'échelle de la phrase
+synthétisée, PAS à l'échelle du mot.** Le nombre lui-même peut être prononcé
+après le début de la phrase sélectionnée. Le rapport indique donc
+\`wordLevelAligned=false\` et la méthode
+\`measured-synthesized-pcm-phrase-onsets-not-word-aligned\`. Sans
+reconnaissance acoustique ou alignement forcé supplémentaire (par
+exemple une voie locale optionnelle Whisper avec contrôle de confiance),
+prétendre à une précision phonème/mot serait inexact.
+
+Cette évolution est une amélioration du pipeline réutilisable pour les
+**explications quantitatives source-authentifiées**, et non une nouvelle
+vidéo optimisée spécifiquement pour le benchmark.
+
+### Tests et reproduction
+
+\`\`\`bash
+python -m unittest discover -s tests -p test_universal_scale_speech.py -v
+automate-ytb-short \
+  --topic "How a glowing thread changes scale" \
+  --script-file examples/universal_pcm_phrase_scale_story.en.txt \
+  --language en --voice espeak --width 720 \
+  --output build/universal/pcm-phrase-scale-original.mp4
+python -m automate_ytb.shorts_delivery \
+  --video build/universal/pcm-phrase-scale-original.mp4 --require-audio
+\`\`\`
+
+Le workflow GitHub encode un MP4 720×1280 H.264/AAC avec **quatre phrases
+de nombre et quatre phrases d'objet** distinctes. Le contrôle vérifie
+leurs décalages réels, leur conservation dans le rapport et les huit
+effets sonores correspondants. Les tests du repo entier et le vrai rendu
+neural Kokoro restent des portes de validation séparées avant toute fusion.
+
+### Étape suivante
+
+L'alignement acoustique mot à mot optionnel, avec couverture/confidence
+vérifiables, devra compléter — et non remplacer mensongèrement — ces
+ancrages de phrases. Ensuite, améliorer l'élasticité des mouvements,
+la direction visuelle et la dramaturgie musicale et sonore pour réduire
+l'écart encore considérable avec 3561.mp4.
