@@ -60,12 +60,13 @@ Le workflow [Universal premium Short — neural 1080p and verified permanent MP4
 est une voie **distincte des essais rapides 720p** du workflow universel.
 Depuis GitHub Actions sur la branche `main`, sélectionner ce workflow,
 appuyer sur **Run workflow**, saisir `topic`, une **narration originale**
-dans `original_script` (40 à 8 000 caractères), puis choisir `en` ou
+dans `original_script` (40 à 1 800 caractères, maximum 240 mots,
+au moins deux segments de narration), puis choisir `en` ou
 `fr`. Il n'utilise aucun token d'API payant et ne remplace pas la
 rédaction/recherche factuelle : un sujet seul ne fournit pas des faits
 vérifiés.
 
-Ce chemin impose Kokoro réel, sans remplacement silencieux par eSpeak,
+Une validation **avant téléchargement des modèles** refuse les scripts\nincomplets, trop longs, non segmentables et les changements Git ambigus.\nLe plafond permet de conserver un rendu court avec une consommation CPU\nraisonnable ; pour un format plus long, il faut employer un autre workflow.\n\nCe chemin impose Kokoro réel, sans remplacement silencieux par eSpeak,
 `1080x1920`, 30 images/s, audio H.264/AAC, PCM source exporté, sous-titres
 et manifeste d'origine. Le contrôle indépendant
 `python -m automate_ytb.shorts_delivery --video ... --require-audio --full-decode`
