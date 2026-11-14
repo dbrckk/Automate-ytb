@@ -70,6 +70,13 @@ class PremiumVoiceDirectionTests(unittest.TestCase):
             self.assertGreater(natural_pause_ms("A sentence.",neural=True),0)
             self.assertEqual(natural_pause_ms("An unfinished phrase",neural=True),0)
 
+    def test_1080p_premium_release_uses_neural_expressive_voice(self):
+        workflow=(Path(__file__).resolve().parents[1]/".github"/"workflows"/
+                  "universal-premium-release.yml").read_text(encoding="utf8")
+        self.assertIn("--voice kokoro --voice-style expressive",workflow)
+        self.assertIn('assert report["voiceStyle"]=="expressive"',workflow)
+        self.assertNotIn("--voice espeak",workflow)
+
     def test_invalid_style_fails_closed_before_synthesis(self):
         story={"language":"en","beats":[{"narration":"Hello world."},
                                          {"narration":"Good morning."}]}
