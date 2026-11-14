@@ -22,8 +22,8 @@ VERSION = "original-narration-cued-2p5d-actions-v1"
 _CUES = (
     ("airflow", re.compile(r"\b(?:air resistance|air drag|aerodynamic drag|wind resistance|résistance de l.air|traînée aérodynamique)\b", re.I)),
     ("propulsion", re.compile(r"\b(?:propulsion|propel\w*|poles?\b|motor\b|motors\b|pulled forward|pushed from behind|moteur|propulsion)\b", re.I)),
-    ("levitation", re.compile(r"\b(?:levitat\w*|lift\w*\b|magnet\w*\b|centered|centré\w*|lévitat\w*|aimant\w*)\b", re.I)),
     ("wheels", re.compile(r"\b(?:rubber wheels|wheel\w*|retract\w*|roues?|rétract\w*)\b", re.I)),
+    ("levitation", re.compile(r"\b(?:levitat\w*|lift\w*\b|magnet\w*\b|centered|centré\w*|lévitat\w*|aimant\w*)\b", re.I)),
     ("glide", re.compile(r"\b(?:maglev|train|guideway|track|rail|glid\w*|gliss\w*)\b", re.I)),
 )
 
@@ -36,12 +36,12 @@ def cue_for_narration(narration: str) -> str | None:
         raise ValueError("Expected original bounded narration")
     # Air drag is the distinct terminal mechanism even when the
     # sentence also recalls an earlier contact-free stage.
-    for label, pattern in _CUES[:3]:
+    for label, pattern in _CUES[:2]:
         if pattern.search(narration):
             return label
     if _NO_CONTACT.search(narration):
         return "gap"
-    for label, pattern in _CUES[3:]:
+    for label, pattern in _CUES[2:]:
         if pattern.search(narration):
             return label
     return None
