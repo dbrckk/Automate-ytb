@@ -1,0 +1,54 @@
+name: Verify continuous original score in real encoded AAC
+
+on:
+  pull_request:
+    paths:
+      - "automate_ytb/score_composer.py"
+      - "automate_ytb/episode.py"
+      - "automate_ytb/quality.py"
+      - "tests/test_score_composer.py"
+      - ".github/workflows/original-score-composer.yml"
+      - ".github/workflows/one-click-preview.yml"
+  push:
+    branches: [main]
+    paths:
+      - "automate_ytb/score_composer.py"
+      - "automate_ytb/episode.py"
+      - "automate_ytb/quality.py"
+      - "tests/test_score_composer.py"
+      - ".github/workflows/original-score-composer.yml"
+      - ".github/workflows/one-click-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-continuous-score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install free local media tools
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout -k 10s 120s apt-get update -qq
+            sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check -e .
+      - name: Compile continuous scorer and QA wiring
+        run: |
+          python -m py_compile automate_ytb/score_composer.py automate_ytb/episode.py automate_ytb/quality.py tests/test_score_composer.py
+      - name: Deterministic PCM, event anchors, real AAC export and integrity checks
+        run: |
+          python -m unittest discover -s tests -p test_score_composer.py -v
+      - name: Legacy ambient soundtrack regression
+        run: |
+          python -m unittest discover -s tests -p test_soundtrack.py -v
+      - name: Causal Foley regression
+        run: |
+          python -m unittest discover -s tests -p test_foley_engine.py -v
