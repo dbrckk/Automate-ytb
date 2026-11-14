@@ -12,9 +12,11 @@ background, so every chapter inherited almost the same blue-green look.
 
 - **Real voice for qualitative previews:** the maglev review pipeline now
   installs free CPU Kokoro and uses `af_heart` with the expressive delivery
-  profile; retains the original WAV as a QA artifact. Any purely technical
-  eSpeak checks elsewhere remain explicitly technical. Neither one proves
-  subjective naturalness without listening.
+  profile; retains the original WAV as a QA artifact. The complete five-beat
+  original script is now rendered rather than a two-beat excerpt, so every
+  palette can be heard and seen. Any purely technical eSpeak checks elsewhere
+  remain explicitly technical. Neither one proves subjective naturalness
+  without listening.
 - **Phrasing and pacing:** original source words are unchanged. Narration
   uses the already maintained voice-pacing module's bounded phrase-rate
   and punctuation pauses, with frame boundaries derived from generated PCM.
@@ -77,3 +79,16 @@ insufficient to reliably illustrate *arbitrary* topics at premium studio
 quality. Better subject object geometry, asset-specific art-direction packs,
 scene-editing grammar, camera choreography and human visual evaluation are
 still necessary. Changing color and speaker alone does not close that gap.
+
+## Persistent Android-friendly preview delivery
+
+After all unit and real media checks pass, a **main-branch push** runs the
+full Kokoro audiovisual review and creates an immutable GitHub prerelease
+with the real MP4, captions, full-decode report, contact sheet and SHA256
+ledger. The workflow performs an anonymous HTTP download and compares
+SHA256 bytes before reporting a success or a permanent direct link. The
+source narration WAV remains a time-limited GitHub Actions artifact for
+focused human listening and is not passed off as the public final video.
+
+A pull request never publishes a release, and no preliminary release URL
+should be given to a user until the actual anonymous GET succeeds.
