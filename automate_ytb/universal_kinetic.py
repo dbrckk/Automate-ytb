@@ -546,11 +546,18 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 scale_speech_timing=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
-    palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
-    dark, tint, accent, extra = palette
-    base = backdrop.copy() if backdrop is not None else _backdrop(width,height,palette)
-    d = ImageDraw.Draw(base)
     pos = next(i for i in range(len(boundaries)-1) if boundaries[i] <= frame < boundaries[i+1])
+    palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
+    if story.get("proceduralVisualFinishEngine"):
+        from .premium_chapter_palette import palette_for_beat
+        chapter=palette_for_beat(story,pos)
+        if chapter is not None:
+            palette=chapter.backdrop()
+    dark, tint, accent, extra = palette
+    # A cached, per-beat backdrop is prepared only once in produce().
+    selected=backdrop[pos] if type(backdrop) is list else backdrop
+    base = selected.copy() if selected is not None else _backdrop(width,height,palette)
+    d = ImageDraw.Draw(base)
     beat = story["beats"][pos]
     start,end=boundaries[pos:pos+2]
     f = (frame-start)/max(1,end-start)
@@ -727,7 +734,17 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         sfx=work/"foley.wav"
         create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
-        background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
+        background=_backdrop(width,height,PALETTES[
+            sum(story["topic"].encode())%len(PALETTES)])
+        if story.get("proceduralVisualFinishEngine"):
+            from .premium_chapter_palette import palette_for_beat
+            themes=[palette_for_beat(story,index)
+                    for index in range(len(story["beats"]))]
+            if any(theme is not None for theme in themes):
+                background=[_backdrop(
+                    width,height,theme.backdrop() if theme is not None
+                    else PALETTES[sum(story["topic"].encode())%len(PALETTES)])
+                    for theme in themes]
         from .universal_art25d import (
             bind_actor_camera_world, load_art_scenes)
         art_scenes,art_provenance=load_art_scenes(story,brief,width,height)
@@ -796,11 +813,21 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         from .premium_story_cues import action_sequence, VERSION as cue_engine
         semantic_actions=action_sequence(story["beats"])
         semantic_engine=cue_engine
+    palette_names=None
+    palette_engine=None
+    if story.get("proceduralVisualFinishEngine"):
+        from .premium_chapter_palette import palette_for_beat
+        palette_names=[style.name if style else None for style in
+                       (palette_for_beat(story,i) for i in range(len(story["beats"])))]
+        if any(name is not None for name in palette_names):
+            from .premium_chapter_palette import VERSION as palette_engine
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
         "proceduralVisualFinishEngine":story.get("proceduralVisualFinishEngine"),
         "proceduralVisualActionEngine":semantic_engine,
+        "proceduralVisualPaletteEngine":palette_engine,
+        "proceduralVisualChapterPalettes":palette_names,
         "proceduralVisualActions":semantic_actions,
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
