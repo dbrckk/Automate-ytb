@@ -98,7 +98,10 @@ def render_maglev_action(artwork: Image.Image, narration: str, *,
     pulse=.5+.5*math.sin(2*math.pi*(frame/30.)*1.05)
     # Integrate within the real vehicle/guideway stage, never over captions.
     left,right=int(w*.13),int(w*.95)
-    ground=int(h*.752)
+    # Anchored to the visible train/guideway separation AFTER the actor rig's
+    # camera crop. Raw source coordinates (~.74) cannot be reused here:
+    # that would put the wheels *below* the guideway in delivered frames.
+    ground=int(h*.595)
     layer=Image.new("RGBA",artwork.size)
     d=ImageDraw.Draw(layer)
     mint=(84,244,221)
@@ -136,8 +139,8 @@ def render_maglev_action(artwork: Image.Image, narration: str, *,
                fill=(*mint,round(110*reveal)),width=line_w)
         # An animated height bracket, not an invented numeric distance.
         x=int(w*.91)
-        a=round(h*.704)
-        b=round(h*.75)
+        a=round(h*.535)
+        b=round(h*.605)
         d.line((x,a,x,b),fill=(*white,round(220*reveal)),width=line_w)
         for y in (a,b):
             d.line((x-round(w*.014),y,x+round(w*.014),y),
