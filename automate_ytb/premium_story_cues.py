@@ -104,8 +104,12 @@ def render_maglev_action(artwork: Image.Image, narration: str, *,
     ground=int(h*.595)
     layer=Image.new("RGBA",artwork.size)
     d=ImageDraw.Draw(layer)
-    mint=(84,244,221)
-    gold=(250,182,109)
+    # Lighting and interaction accents are directed per narrated mechanism.
+    # Real subject movement is independent from the RGB selection.
+    from .premium_chapter_palette import scene_palette
+    chapter=scene_palette("maglev",narration,0)
+    mint=chapter.accent
+    gold=chapter.secondary
     white=(237,252,246)
     line_w=max(2,round(w*.007))
 

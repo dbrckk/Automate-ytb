@@ -359,10 +359,15 @@ def _display(value: Decimal) -> str:
 
 
 def synthesize(story: dict, engine: str, output: Path, voice_name=None,
-               caption_cues: list[dict] | None = None) -> list[int]:
+               caption_cues: list[dict] | None = None,
+               voice_style: str = "natural") -> list[int]:
     """Generate real PCM per caption phrase; no estimated word alignment."""
     from .captions import caption_phrases
+    from .voice_pacing import speaking_speed,phrase_speed,natural_pause_ms
+    speaking_speed(style=voice_style)
     speech = SpeechEngine(engine=engine, language=story["language"], voice=voice_name)
+    if engine=="kokoro":
+        speech.speed=speaking_speed(style=voice_style)
     rate = None
     cursor, boundaries, cues = 0, [0], []
     with wave.open(str(output), "wb") as wav:
@@ -370,6 +375,8 @@ def synthesize(story: dict, engine: str, output: Path, voice_name=None,
         wav.setsampwidth(2)
         for beat_index, beat in enumerate(story["beats"]):
             for phrase in caption_phrases(beat["narration"]):
+                if engine=="kokoro":
+                    speech.speed=phrase_speed(phrase,style=voice_style)
                 pcm, sample_rate = speech.audio(phrase)
                 if rate is None:
                     rate = sample_rate
@@ -379,7 +386,11 @@ def synthesize(story: dict, engine: str, output: Path, voice_name=None,
                 start_sample = cursor
                 wav.writeframesraw(pcm)
                 cursor += len(pcm) // 2
-                pause = .095 if phrase.rstrip().endswith((".", "!", "?", "…")) else .045
+                if engine=="kokoro":
+                    pause=natural_pause_ms(phrase,neural=True)/1000
+                else:
+                    # Preserve the established cheap technical-preview audio.
+                    pause = .095 if phrase.rstrip().endswith((".", "!", "?", "…")) else .045
                 pad = round(rate * pause)
                 wav.writeframesraw(b"\0\0" * pad)
                 cursor += pad
@@ -546,11 +557,18 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
                 scale_speech_timing=None) -> Image.Image:
     if type(frame) is not int or not 0 <= frame < timeline.total_frames:
         raise ValueError("Invalid frame number")
-    palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
-    dark, tint, accent, extra = palette
-    base = backdrop.copy() if backdrop is not None else _backdrop(width,height,palette)
-    d = ImageDraw.Draw(base)
     pos = next(i for i in range(len(boundaries)-1) if boundaries[i] <= frame < boundaries[i+1])
+    palette = PALETTES[sum(story["topic"].encode("utf-8")) % len(PALETTES)]
+    if story.get("proceduralVisualFinishEngine"):
+        from .premium_chapter_palette import palette_for_beat
+        chapter=palette_for_beat(story,pos)
+        if chapter is not None:
+            palette=chapter.backdrop()
+    dark, tint, accent, extra = palette
+    # A cached, per-beat backdrop is prepared only once in produce().
+    selected=backdrop[pos] if type(backdrop) is list else backdrop
+    base = selected.copy() if selected is not None else _backdrop(width,height,palette)
+    d = ImageDraw.Draw(base)
     beat = story["beats"][pos]
     start,end=boundaries[pos:pos+2]
     f = (frame-start)/max(1,end-start)
@@ -688,12 +706,14 @@ def _music(output:Path,total_frames:int):
 
 def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
             width=720,commons_art=False,segment_art=False,
-            export_narration=False) -> dict:
+            export_narration=False,voice_style="natural") -> dict:
     if (voice not in ("kokoro","espeak") or type(width) is not int
             or width not in (360,720,1080) or type(commons_art) is not bool
             or type(segment_art) is not bool or (segment_art and not commons_art)
             or type(export_narration) is not bool):
         raise ValueError("Voice kokoro/espeak and width 360/720/1080 required")
+    from .voice_pacing import speaking_speed
+    speaking_speed(style=voice_style)
     story=read_story(brief)
     height=width*16//9
     # Reject unrenderable spoken phrases *before* expensive Kokoro inference.
@@ -711,7 +731,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         voice_file=work/"narration.wav"
         captions=[]
         stamps=synthesize(story,voice,voice_file,voice_name=voice_name,
-                          caption_cues=captions)
+                          caption_cues=captions,voice_style=voice_style)
         from .universal_voice_evidence import inspect_narration
         voice_proof=inspect_narration(voice_file,engine=voice)
         if abs(voice_proof["durationMs"]-
@@ -727,7 +747,20 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         sfx=work/"foley.wav"
         create_causal_foley(timeline=timeline,output=sfx,
                             duration_seconds=timeline.total_frames/FPS)
-        background=_backdrop(width,height,PALETTES[sum(story["topic"].encode())%3])
+        background=_backdrop(width,height,PALETTES[
+            sum(story["topic"].encode())%len(PALETTES)])
+        if story.get("proceduralVisualFinishEngine"):
+            from .premium_chapter_palette import (
+                palette_for_beat,cinematic_chapter_backdrop)
+            themes=[palette_for_beat(story,index)
+                    for index in range(len(story["beats"]))]
+            if any(theme is not None for theme in themes):
+                background=[
+                    cinematic_chapter_backdrop(width,height,theme)
+                    if theme is not None else _backdrop(
+                        width,height,PALETTES[
+                            sum(story["topic"].encode())%len(PALETTES)])
+                    for theme in themes]
         from .universal_art25d import (
             bind_actor_camera_world, load_art_scenes)
         art_scenes,art_provenance=load_art_scenes(story,brief,width,height)
@@ -796,11 +829,21 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         from .premium_story_cues import action_sequence, VERSION as cue_engine
         semantic_actions=action_sequence(story["beats"])
         semantic_engine=cue_engine
+    palette_names=None
+    palette_engine=None
+    if story.get("proceduralVisualFinishEngine"):
+        from .premium_chapter_palette import palette_for_beat
+        palette_names=[style.name if style else None for style in
+                       (palette_for_beat(story,i) for i in range(len(story["beats"])))]
+        if any(name is not None for name in palette_names):
+            from .premium_chapter_palette import VERSION as palette_engine
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
         "proceduralVisualFinishEngine":story.get("proceduralVisualFinishEngine"),
         "proceduralVisualActionEngine":semantic_engine,
+        "proceduralVisualPaletteEngine":palette_engine,
+        "proceduralVisualChapterPalettes":palette_names,
         "proceduralVisualActions":semantic_actions,
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
@@ -846,6 +889,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "voiceName":(voice_name or ("ff_siwis" if story["language"]=="fr"
                                       else "af_heart")) if voice=="kokoro" else None,
         "voiceEvidence":voice_proof,
+        "voiceStyle":voice_style if voice=="kokoro" else "technical-espeak",
         "narrationWavFile":(narration_export.name if narration_export else None),
         "visualFallbackEngine":"generic-cinematic-kinetic-stage-v1",
         "commonsArtRequested":commons_art,
@@ -906,6 +950,8 @@ def main(argv=None):
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--voice",choices=("kokoro","espeak"),default="kokoro")
     p.add_argument("--voice-name")
+    p.add_argument("--voice-style",choices=("natural","gentle","lively","expressive"),
+                   default="natural",help="Natural neural phrasing; eSpeak remains technical only")
     p.add_argument("--export-narration-wav",action="store_true",
                    help="Preserve verified source PCM as a separately inspectable WAV")
     p.add_argument("--width",type=int,choices=(360,720,1080),default=720)
@@ -935,7 +981,8 @@ def main(argv=None):
         report=produce(brief,a.output,voice=a.voice,voice_name=a.voice_name,
                        width=a.width,commons_art=a.commons_art,
                        segment_art=a.segment_art,
-                       export_narration=a.export_narration_wav)
+                       export_narration=a.export_narration_wav,
+                       voice_style=a.voice_style)
         print(json.dumps(report,ensure_ascii=False,indent=2))
         return 0 if report["delivery"]["status"]=="passed" else 2
     except (OSError,ValueError,RuntimeError,subprocess.SubprocessError) as exc:

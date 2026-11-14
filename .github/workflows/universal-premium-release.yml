@@ -76,7 +76,7 @@ jobs:
             --topic "$VIDEO_TOPIC" \
             --script-file build/premium/original-script.txt \
             --language "$VIDEO_LANGUAGE" \
-            --voice kokoro \
+            --voice kokoro --voice-style expressive \
             --width 1080 \
             --export-narration-wav \
             --output build/premium/original-premium-short.mp4
@@ -102,6 +102,7 @@ jobs:
           assert abs(qa["media"]["fps"]-30)<.01
           assert qa["media"]["audioCodec"]=="aac"
           assert report["voiceEngine"]=="kokoro" and report["voiceEvidence"]==voice
+          assert report["voiceStyle"]=="expressive"
           assert report["language"] in ("en","fr")
           assert voice["sampleRateHz"]==24000 and voice["activeFraction"]>.012
           assert report["captionWordsOmitted"]==0 and report["subtitleCues"]>=1
