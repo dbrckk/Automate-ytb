@@ -595,6 +595,11 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
         from .universal_cinematic_portrait import (
             composite_authored_world,shot_title_alpha)
         artwork=render_art_stage(art,frame,start,end)
+        if (story.get("proceduralVisualFamily")=="maglev"
+                and story.get("proceduralVisualFinishEngine")):
+            from .premium_story_cues import render_maglev_action
+            artwork=render_maglev_action(
+                artwork,beat["narration"],frame=frame,first=start,last=end)
         base=composite_authored_world(base,artwork)
         d=ImageDraw.Draw(base)
         # Small stable context label; the large narration heading is a brief
@@ -788,6 +793,15 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
         "proceduralVisualFinishEngine":story.get("proceduralVisualFinishEngine"),
+        "proceduralVisualActionEngine":(
+            "original-narration-cued-2p5d-actions-v1"
+            if story.get("proceduralVisualFamily")=="maglev"
+               and story.get("proceduralVisualFinishEngine") else None),
+        "proceduralVisualActions":(
+            [__import__("automate_ytb.premium_story_cues",fromlist=["cue_for_narration"])
+             .cue_for_narration(b["narration"]) for b in story["beats"]]
+            if story.get("proceduralVisualFamily")=="maglev"
+               and story.get("proceduralVisualFinishEngine") else None),
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
         "proceduralVisualCompositionEngine":story.get("proceduralVisualCompositionEngine"),
