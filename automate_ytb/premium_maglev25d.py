@@ -129,6 +129,14 @@ def maglev_scene():
             _line([[x,y],[min(.999,x+.031+(i%3)*.011),y-.002]],
                   ice if i%4 else gold,.0022,
                   opacity=.21+.05*(i%3)))
+        # A broad tapered, translucent speed reflection has enough actual
+        # surface to remain an independent moving subject in the rig.
+        # Fine 1px strokes alone would not pass the alpha-coverage guard.
+        tail=min(.992,x+.095)
+        particles.append(_poly([
+            [x,y+.009],[tail,y+.006],[min(.998,tail+.006),y+.012],
+            [min(.998,x+.014),y+.015]],
+            teal if i%3 else gold,opacity=.26))
     for i in range(8):
         x=.08+i*.110
         particles.append(
