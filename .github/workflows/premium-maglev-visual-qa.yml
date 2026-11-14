@@ -6,6 +6,7 @@ on:
     paths:
       - 'automate_ytb/premium_chapter_palette.py'
       - 'automate_ytb/universal_kinetic.py'
+      - '.github/workflows/universal-premium-release.yml'
       - 'automate_ytb/universal_art25d.py'
       - 'automate_ytb/premium_story_cues.py'
       - 'automate_ytb/voice_pacing.py'
