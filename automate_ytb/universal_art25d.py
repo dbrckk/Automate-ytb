@@ -127,6 +127,13 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
             # Relight once at source creation time. Actors transform cached
             # RGBA source pixels for every subsequent 30-fps animation frame.
             canvas=relight_surface(canvas,item["material"])
+            if (source_kind=="vector" and
+                    story.get("proceduralVisualFinishEngine")):
+                from .premium_chapter_palette import (
+                    palette_for_beat,tint_authored_layer)
+                chapter=palette_for_beat(story,index)
+                if chapter is not None:
+                    canvas=tint_authored_layer(canvas,chapter,item["z"])
             if (source_kind=="vector"
                     and story.get("proceduralVisualFinishEngine")):
                 from .premium_finish25d import finish_vector_layer
