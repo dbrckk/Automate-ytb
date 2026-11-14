@@ -17,6 +17,7 @@ from automate_ytb.universal_vector_art import (
 from automate_ytb.universal_kinetic import read_story
 from automate_ytb.universal_art25d import load_art_scenes, render_art_stage
 from automate_ytb.premium_finish25d import VERSION, finish_vector_layer
+from automate_ytb.premium_request import validate_request
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -36,6 +37,19 @@ class PremiumMaglevWorldTests(unittest.TestCase):
         self.assertTrue(all(beat["visualVectors"]==story["beats"][0]["visualVectors"]
                             for beat in story["beats"]))
         self.assertTrue(all(len(beat["actorTracks"])==4 for beat in story["beats"]))
+        accepted=validate_request(event_name="workflow_dispatch",
+                                  topic=request["topic"],script=request["script"],
+                                  language=request["language"])
+        self.assertEqual(accepted["topic"],request["topic"])
+
+    def test_premium_preflight_rejects_pretty_but_unillustrated_diagrams(self):
+        with self.assertRaisesRegex(ValueError,"generic circle-and-label"):
+            validate_request(
+                event_name="workflow_dispatch",topic="Abstract phenomenon",
+                script=("A mysterious mechanism repeats a pattern at regular times. "
+                        "An observer records what happens in detail. "
+                        "The process keeps repeating even as time goes by."),
+                language="en")
 
     def test_detailed_maglev_has_five_valid_layers_with_distinct_rig(self):
         layers=validate_vector_layers(subject_layers("maglev"))
