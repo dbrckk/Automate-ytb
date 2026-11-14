@@ -157,7 +157,9 @@ def compile_original_script(*, topic: str, script: str,
         # Opt in to a separately versioned world-camera renderer. Saved
         # v21 stories without this field retain their old pixel semantics.
         from .universal_scale_camera import VERSION as scale_camera_version
+        from .universal_scale_speech import VERSION as scale_speech_version
         result["proceduralScaleCameraEngine"]=scale_camera_version
+        result["proceduralScaleSpeechEngine"]=scale_speech_version
     return result
 
 
