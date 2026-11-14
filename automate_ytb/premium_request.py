@@ -75,6 +75,25 @@ def validate_request(*, event_name: str, before: str = "", head: str = "",
     # a one-sentence or malformed narration fails before pip/torch/model IO.
     for beat in _chunks(script):
         _concepts(beat, topic)
+    # Rendering arbitrary generic circles is technically possible but was
+    # rejected by human review (0/20). Premium production now refuses to
+    # release a falsely advertised visual if the source vocabulary cannot
+    # ground an original scene pack or continuous sourced scale world.
+    from .universal_script import compile_original_script
+    compiled=compile_original_script(topic=topic,script=script,language=language)
+    has_scale=compiled.get("proceduralScaleJourney") is not None
+    if not has_scale and any(not beat.get("visualVectors") for beat in compiled["beats"]):
+        raise ValueError(
+            "Premium artwork unavailable for one or more narrated scenes. "
+            "Author an original visual pack for this subject before release; "
+            "generic circle-and-label fallback is not premium.")
+    if compiled.get("proceduralVisualFamily")=="maglev":
+        from .premium_story_cues import action_sequence
+        cues=action_sequence(compiled["beats"])
+        if None in cues or len(set(cues))<2:
+            raise ValueError(
+                "Premium maglev narration needs two or more grounded, "
+                "distinct visual actions, not a repeated static scene")
     return {"topic": topic, "script": script, "language": language}
 
 

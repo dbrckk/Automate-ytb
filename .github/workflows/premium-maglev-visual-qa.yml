@@ -1,0 +1,128 @@
+name: Premium original maglev art — encoded 2.5D visual review
+
+on:
+  pull_request:
+    paths:
+      - 'automate_ytb/premium_maglev25d.py'
+      - 'automate_ytb/premium_finish25d.py'
+      - 'automate_ytb/premium_story_cues.py'
+      - 'automate_ytb/premium_request.py'
+      - 'automate_ytb/universal_script.py'
+      - 'automate_ytb/universal_subject_illustrations.py'
+      - 'automate_ytb/universal_subject_composition.py'
+      - 'automate_ytb/universal_subject_motion.py'
+      - 'automate_ytb/universal_art25d.py'
+      - 'automate_ytb/universal_kinetic.py'
+      - 'tests/test_premium_maglev_world.py'
+      - 'tests/test_premium_story_cues.py'
+      - '.github/workflows/premium-maglev-visual-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-visual-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original illustration and cheap test narration
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || { ! command -v espeak-ng >/dev/null && ! command -v espeak >/dev/null; }; then
+            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng; then
+              sudo timeout -k 10s 120s apt-get update -qq
+              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng
+            fi
+          fi
+          python -m pip install --disable-pip-version-check -e .
+      - name: Test exact source-grounded premium scene and old family regression
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_premium_maglev_world.py' -v
+          python -m unittest discover -s tests -p 'test_premium_story_cues.py' -v
+          python -m unittest discover -s tests -p 'test_universal_subject_illustrations.py' -v
+          python -m unittest discover -s tests -p 'test_universal_subject_motion.py' -v
+      - name: Produce actually encoded 9:16 maglev draft for visual inspection
+        run: |
+          set -euo pipefail
+          mkdir -p build/maglev-visual-review
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("build/maglev-visual-review")
+          req=json.loads(Path("video_requests/maglev-floating-train-20261114-original.json").read_text())
+          # Two real source beats are sufficient for an encoded visual QA
+          # without wasting four times the CPU of a complete long episode.
+          preview="\n\n".join(req["script"].split("\n\n")[:2])
+          (root/"original-script.txt").write_text(preview,encoding="utf-8")
+          (root/"topic.txt").write_text(req["topic"],encoding="utf-8")
+          PY
+          python -m automate_ytb.universal_kinetic \
+            --topic "$(cat build/maglev-visual-review/topic.txt)" \
+            --script-file build/maglev-visual-review/original-script.txt \
+            --language en --voice espeak --width 720 \
+            --output build/maglev-visual-review/maglev-visual-draft.mp4
+      - name: Verify encoded media, art provenance and actual visual coverage
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.shorts_delivery \
+            --video build/maglev-visual-review/maglev-visual-draft.mp4 \
+            --require-audio --full-decode \
+            --report build/maglev-visual-review/full-decoding-qa.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from automate_ytb.premium_finish25d import VERSION
+          root=Path("build/maglev-visual-review")
+          report=json.loads((root/"maglev-visual-draft.json").read_text())
+          qa=json.loads((root/"full-decoding-qa.json").read_text())
+          assert report["proceduralVisualFamily"]=="maglev"
+          assert report["proceduralVisualFinishEngine"]==VERSION
+          assert report["proceduralVisualActionEngine"]=="original-narration-cued-2p5d-actions-v1"
+          assert report["proceduralVisualActions"]==["gap","wheels"]
+          assert report["artwork"]["originalVectorShapes"]>=85*2
+          assert report["beats"]==2
+          assert report["proceduralVisualSceneCount"]==report["beats"]
+          assert qa["status"]=="passed" and qa["fullDecodeVerified"] is True
+          assert report["delivery"]["status"]=="passed"
+          assert qa["media"]["width"]==720 and qa["media"]["height"]==1280
+          assert report["voiceEngine"]=="espeak"
+          assert report["publicationApproved"] is False
+          print("Original subject art, full 9:16 MP4 decoding and retained rights proof verified.")
+          PY
+          for sec in 1 4 7 10 13; do
+            ffmpeg -nostdin -hide_banner -loglevel error -y \
+              -ss "$sec" -i build/maglev-visual-review/maglev-visual-draft.mp4 \
+              -frames:v 1 -q:v 2 \
+              "build/maglev-visual-review/frame-$(printf '%02d' "$sec").jpg"
+          done
+          python - <<'PY'
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+          root=Path("build/maglev-visual-review")
+          frames=sorted(root.glob("frame-*.jpg"))
+          assert len(frames)==5
+          sheet=Image.new("RGB",(360*len(frames),640),(8,11,22))
+          for index,src in enumerate(frames):
+              with Image.open(src) as frame:
+                  sheet.paste(frame.convert("RGB").resize((360,640)),(index*360,0))
+          sheet.save(root/"contact-sheet.jpg",quality=90)
+          PY
+      - name: Preserve original encoded draft and inspectable contact sheet
+        uses: actions/upload-artifact@v4
+        with:
+          name: maglev-2p5d-visual-review
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            build/maglev-visual-review/maglev-visual-draft.mp4
+            build/maglev-visual-review/maglev-visual-draft.json
+            build/maglev-visual-review/maglev-visual-draft.srt
+            build/maglev-visual-review/full-decoding-qa.json
+            build/maglev-visual-review/contact-sheet.jpg
+            build/maglev-visual-review/frame-*.jpg

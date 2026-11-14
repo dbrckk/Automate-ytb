@@ -27,7 +27,7 @@ _FLEXIBLE = {
 
 
 FAMILIES = frozenset((
-    "botanical", "celestial", "rail", "weather", "ocean", "security"
+    "botanical", "celestial", "rail", "maglev", "weather", "ocean", "security"
 ))
 ACTOR_DEPTHS = (25, 45, 65, 85)
 
@@ -77,6 +77,21 @@ def subject_pose(family: str, z: int, moment: float) -> dict:
             65:(.026*math.cos(a*1.2)-.026, .025*math.sin(a*1.2),
                 .98, -52.+104.*t),
             85:(-.075*t, .018*math.sin(a*.56), 1.03, -8.+16.*t),
+        }
+    elif family=="maglev":
+        # A rigid superconducting train glides smoothly. The guideway
+        # stays put, its field-and-gap accents and light streaks move on
+        # one global clock. No wheels, smoke or oscillating steam engine.
+        glide=-.17+.34*growth
+        # A slow, cumulative lift is legible against the stationary guideway.
+        # Do not teleport the original car at cut boundaries: t is global.
+        lift=_ease((t-.12)/.42)
+        hovering=-.026*lift+.0035*math.sin(a*2.4)
+        values={
+            25:(-.012*growth, 0., 1., 0.),
+            45:(glide,hovering,1.05,0.),
+            65:(glide,hovering+.003*math.sin(a*3.),1.05,0.),
+            85:(-.085+.18*growth,-.007*math.sin(a*1.7),1.01,0.),
         }
     elif family=="rail":
         # Motor and windows travel together; vapor trails behind the body.

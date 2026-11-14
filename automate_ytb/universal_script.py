@@ -142,6 +142,9 @@ def compile_original_script(*, topic: str, script: str,
             "proceduralVisualFamily":family,
             "proceduralVisualEngine":(art_version if family or sequence or compound else None),
             "proceduralMotionEngine":(motion_version if family or sequence or compound else None)}
+    if family or sequence or compound:
+        from .premium_finish25d import VERSION as finish_version
+        result["proceduralVisualFinishEngine"]=finish_version
     if sequence is not None:
         result["proceduralVisualChapterEngine"]=CHAPTER_VERSION
         result["proceduralVisualFamilies"]=sequence

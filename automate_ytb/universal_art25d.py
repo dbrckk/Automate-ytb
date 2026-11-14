@@ -127,6 +127,10 @@ def load_art_scenes(story: dict, brief_path: Path, width: int, height: int):
             # Relight once at source creation time. Actors transform cached
             # RGBA source pixels for every subsequent 30-fps animation frame.
             canvas=relight_surface(canvas,item["material"])
+            if (source_kind=="vector"
+                    and story.get("proceduralVisualFinishEngine")):
+                from .premium_finish25d import finish_vector_layer
+                canvas=finish_vector_layer(canvas,item["z"])
             layer=Layer25D(
                 name=f"visual-{index:02d}-{n:02d}",z=item["z"],image=canvas,
                 parallax_x=item["parallaxX"],parallax_y=item["parallaxY"],

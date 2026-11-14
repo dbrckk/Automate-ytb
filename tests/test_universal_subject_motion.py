@@ -1,7 +1,7 @@
 """Causal original subject animations: continuous time, real frames, safe provenance.
 
 The full 2.5D renderer is reused; no frame-wise asset generation or network
-image service is introduced. Tests exercise all six subject families and
+image service is introduced. Tests exercise all seven subject families and
 stored version-15 original JSON for backwards compatibility.
 """
 from __future__ import annotations
@@ -37,6 +37,10 @@ EXAMPLES={
     "rail":("A moving train",
             "A locomotive travels along the rails past the railway station.\n\n"
             "The train proceeds toward the next platform with a trail of smoke."),
+    "maglev":("How a superconducting maglev glides",
+              "A maglev train levitates above a linear motor guideway. "
+              "Superconducting magnets interact with coils.\n\n"
+              "The maglev train glides smoothly along its track with an air gap."),
     "weather":("Rain in clouds",
                "Clouds drift while rain begins to fall.\n\n"
                "Wind moves the cloud and raindrops descend toward the ground."),
@@ -80,7 +84,7 @@ class SubjectSpecificMotionTests(unittest.TestCase):
                     (t["z"],tuple((k["x"],k["y"],k["scale"],k["angle"])
                                   for k in t["keys"]))
                     for t in frames[0]))
-        self.assertEqual(len(trajectories),6)
+        self.assertEqual(len(trajectories),len(FAMILIES))
 
     def test_causes_are_specific_and_not_recolored_generic_sines(self):
         plant_first=subject_pose("botanical",45,0)
@@ -170,7 +174,7 @@ class SubjectSpecificMotionTests(unittest.TestCase):
     def test_actual_25d_pixels_move_with_subject_specific_actions(self):
         # Rendering sampled frames exercises the actual existing actor path,
         # not a chart or a mocked motion preview.
-        for family in ("botanical","celestial","rail","weather","ocean","security"):
+        for family in ("botanical","celestial","rail","maglev","weather","ocean","security"):
             with self.subTest(family=family),tempfile.TemporaryDirectory() as td:
                 topic,script=EXAMPLES[family]
                 story=compile_original_script(topic=topic,script=script)
@@ -196,6 +200,7 @@ class SubjectSpecificMotionTests(unittest.TestCase):
         expected={
             "botanical":{65},
             "rail":{85},
+            "maglev":set(),
             "weather":{65},
             "ocean":{45,65},
             "celestial":set(),
