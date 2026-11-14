@@ -789,19 +789,19 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
     subtitle_path.write_text("".join(
         f"{i}\n{srt_time(c['startMs'])} --> {srt_time(c['endMs'])}\n"
         f"{c['text']}\n\n" for i,c in enumerate(captions,1)),encoding="utf8")
+    semantic_actions=None
+    semantic_engine=None
+    if (story.get("proceduralVisualFamily")=="maglev"
+            and story.get("proceduralVisualFinishEngine")):
+        from .premium_story_cues import action_sequence, VERSION as cue_engine
+        semantic_actions=action_sequence(story["beats"])
+        semantic_engine=cue_engine
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
         "proceduralVisualFinishEngine":story.get("proceduralVisualFinishEngine"),
-        "proceduralVisualActionEngine":(
-            "original-narration-cued-2p5d-actions-v1"
-            if story.get("proceduralVisualFamily")=="maglev"
-               and story.get("proceduralVisualFinishEngine") else None),
-        "proceduralVisualActions":(
-            [__import__("automate_ytb.premium_story_cues",fromlist=["cue_for_narration"])
-             .cue_for_narration(b["narration"]) for b in story["beats"]]
-            if story.get("proceduralVisualFamily")=="maglev"
-               and story.get("proceduralVisualFinishEngine") else None),
+        "proceduralVisualActionEngine":semantic_engine,
+        "proceduralVisualActions":semantic_actions,
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
         "proceduralVisualCompositionEngine":story.get("proceduralVisualCompositionEngine"),
