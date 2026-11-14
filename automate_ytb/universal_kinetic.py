@@ -282,9 +282,17 @@ def read_story(path: Path) -> dict:
             not (has_compound or has_chapters or subject_family is not None)
             and any(b["visualVectors"] or b["actorTracks"] for b in validated)):
         raise ValueError("Untrusted original-only storyboard provenance")
+    finishing=story.get("proceduralVisualFinishEngine")
+    if finishing is not None:
+        from .premium_finish25d import VERSION as finish_version
+        if (finishing!=finish_version or story.get("originalTextOnly") is not True
+                or not (has_compound or has_chapters or subject_family is not None)):
+            raise ValueError("Untrusted original premium-finishing provenance")
     result={"topic": topic, "language": language, "beats": validated,
             "schemaVersion": 1, "proceduralVisualFamily":subject_family,
             "proceduralMotionEngine":motion_engine}
+    if finishing is not None:
+        result["proceduralVisualFinishEngine"]=finishing
     if has_chapters:
         result["proceduralVisualChapterEngine"]=chapter_engine
         result["proceduralVisualFamilies"]=expected_sequence
@@ -779,6 +787,7 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
     manifest={
         "engine":VERSION,"topic":story["topic"],"language":story["language"],
         "proceduralVisualFamily":story.get("proceduralVisualFamily"),
+        "proceduralVisualFinishEngine":story.get("proceduralVisualFinishEngine"),
         "proceduralVisualFamilies":story.get("proceduralVisualFamilies"),
         "proceduralVisualChapterEngine":story.get("proceduralVisualChapterEngine"),
         "proceduralVisualCompositionEngine":story.get("proceduralVisualCompositionEngine"),
