@@ -25,20 +25,30 @@ was mistakenly treated as a premium visual success.
    later generic mentions of "train" keep the same maglev art and actor
    family rather than changing vehicles between spoken beats. Maglev and
    rail are not composited as two independent objects.
-3. **Shared optical finish.** For freshly compiled, source-provenanced
+3. **Narration-specific animated mechanisms.** The same source-grounded
+   maglev hero now switches *actions* across beats: a highlighted gap,
+   real illustrated wheel support and retraction, electromagnetic ribbons,
+   motor-coil propagation and aerodynamic flow. Motion remains deterministic
+   and the original narration selects which effects are allowed. The visual
+   manifest records the exact action grammar and scene-level action names.
+4. **Shared optical finish.** For freshly compiled, source-provenanced
    illustrated episodes, hero layers 40–100 receive a cached colored
    emission plate computed once per vector layer (downscaled Gaussian
    blur). Dark world layers stay unchanged; no full-frame per-fps blur.
-4. **Serialized episode compatibility.** The new
+5. **Serialized episode compatibility.** The new
    `proceduralVisualFinishEngine` marker is validated by the renderer.
    Older generated JSON without this marker keeps its prior treatment.
    Falsified markers and altered generated geometry fail validation.
-5. **Fail-closed premium gate.** New public premium requests lacking
+6. **Fail-closed premium gate.** For maglev, at least two distinct
+   source-grounded actions must be present; a long static two-paragraph
+   script is rejected before neural model downloads.
+
+7. **Fail-closed premium gate (generic).** New public premium requests lacking
    authored/grounded visual vectors for one or more beats (and lacking a
    continuous source-grounded scale world) now fail before installing
    heavyweight speech models. It is better to refuse an under-illustrated
    premium job than publish generic rings as a successful production.
-6. **Real regression harness.** The PR workflow encodes an actual 720×1280
+8. **Real regression harness.** The PR workflow encodes an actual 720×1280
    original maglev video (two authentic source beats) with free eSpeak **for visual verification only**,
    checks all decoded frames/audio, verifies full artwork provenance, and
    uploads five JPG frames, a contact sheet, SRT, manifest and MP4.
@@ -51,6 +61,8 @@ was mistakenly treated as a premium visual success.
   reused across the five narrated beats with actor continuity.
 - Every narrated scene must have actual original generated artwork; a
   generic circle fallback is a **blocking release failure**.
+- QA must prove at least two semantically distinct narrated action types in the
+  actual generated video manifest, not only a recurring silhouette.
 - QA must confirm H.264 video, audio and complete decode, and the image
   contact sheet must be reviewable as a human visual quality checkpoint.
 - No invented quantitative facts, copyrighted media, video publication,
