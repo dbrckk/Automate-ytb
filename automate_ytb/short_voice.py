@@ -17,6 +17,8 @@ import wave
 
 from .narration import SpeechEngine, VOICE_CHOICES
 from .voice_pacing import speaking_speed
+from .speech_pcm import compact_speech_pcm
+from .short_captions import caption_fragments, verify_measured_beats
 
 SAMPLE_RATE = 24000
 
@@ -42,24 +44,38 @@ def synthesize(*, script_path: Path, destination: Path,
     # Segment timing comes from actual generated PCM, never a word count guess.
     silence_before = int(.17 * SAMPLE_RATE)
     between = int(.17 * SAMPLE_RATE)
+    between_captions = int(.035 * SAMPLE_RATE)
     after = int(.4 * SAMPLE_RATE)
     pcm = bytearray(b"\0\0" * silence_before)
     timestamps = []
     for index, phrase in enumerate(beats):
+        # Every displayed caption is rendered from its own true Kokoro
+        # speech PCM, not word-proportional or post-hoc guessed timing.
         start = round(len(pcm) / 2 / SAMPLE_RATE * 1000)
-        frames, rate = engine.audio(phrase)
-        if rate != SAMPLE_RATE or len(frames) == 0 or len(frames) % 2:
-            raise RuntimeError("Kokoro returned invalid 24kHz/16-bit mono PCM")
-        pcm.extend(frames)
+        captions = []
+        pieces = caption_fragments(phrase)
+        for piece_index, words in enumerate(pieces):
+            a = round(len(pcm) / 2 / SAMPLE_RATE * 1000)
+            frames, rate = engine.audio(words)
+            if rate != SAMPLE_RATE or len(frames) == 0 or len(frames) % 2:
+                raise RuntimeError("Kokoro returned invalid 24kHz/16-bit mono PCM")
+            frames, _trim = compact_speech_pcm(frames, rate)
+            pcm.extend(frames)
+            b = round(len(pcm) / 2 / SAMPLE_RATE * 1000)
+            captions.append({"text": words, "startMs": a, "endMs": b})
+            if piece_index + 1 < len(pieces):
+                pcm.extend(b"\0\0" * between_captions)
         end = round(len(pcm) / 2 / SAMPLE_RATE * 1000)
         timestamps.append({"index": index + 1, "text": phrase,
                            "startMs": start, "endMs": end,
-                           "speechDurationMs": end - start})
+                           "speechDurationMs": end - start,
+                           "captionSegments": captions})
         pcm.extend(b"\0\0" * between)
     pcm.extend(b"\0\0" * after)
     duration = len(pcm) / 2 / SAMPLE_RATE
     if not math.isfinite(duration) or not 8 <= duration <= 90:
         raise ValueError("Synthesized speech is outside the 8–90 second short-video window")
+    measured = verify_measured_beats(timestamps, duration_ms=round(duration * 1000))
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="kokoro-voice-", dir=destination.parent) as td:
         tmp = Path(td) / "narration.wav"
@@ -78,6 +94,9 @@ def synthesize(*, script_path: Path, destination: Path,
             "channels": 1,
             "durationSeconds": round(duration, 3),
             "beats": timestamps,
+            "captionCount": len(measured),
+            "captionTimingMethod": "individual-Kokoro-PCM-phrase-samples",
+            "wordLevelAligned": False,
             "sha256": sha,
             "publicationApproved": False,
             "requiresListeningReview": True,

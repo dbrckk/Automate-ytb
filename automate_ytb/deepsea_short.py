@@ -18,6 +18,7 @@ import wave
 
 from .soundtrack import _loop, SAMPLERATE
 from .subject_reframe import track_crop, crop_expression
+from .short_captions import export_caption_assets
 
 SOURCES = {
     "crossota": "72053267ced4a58c9c28e865937d00c0a35bb667da010b9b115558fbcfd12595",
@@ -31,9 +32,10 @@ SHOTS = (
 )
 
 
-def _run(cmd: list[str], *, timeout: int = 300):
+def _run(cmd: list[str], *, timeout: int = 300, cwd: Path | None = None):
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(cmd, capture_output=True, text=True,
+                                timeout=timeout, cwd=cwd)
     except (subprocess.TimeoutExpired, OSError) as exc:
         raise RuntimeError("FFmpeg processing unavailable or timed out") from exc
     if result.returncode:
@@ -102,6 +104,8 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="deepsea-master-",dir=output.parent) as td:
         work = Path(td)
+        captions = export_caption_assets(
+            beats, duration_ms=round(duration * 1000), directory=work)
         clips = []
         shot_tracking = []
         for i, ((name, offset, _old_x, _old_title), length) in enumerate(zip(SHOTS,lengths),1):
@@ -126,13 +130,15 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
                 "scale=1080:1920:flags=lanczos",
                 "fps=30",
                 "eq=contrast=1.045:saturation=1.06:brightness=-0.005",
+                f"ass=filename=scene-{i:02}.ass",
                 "format=yuv420p",
             ])
             clip=work/f"scene-{i:02}.mp4"
             _run(["ffmpeg","-nostdin","-hide_banner","-loglevel","error","-y",
                   "-ss",f"{offset:.3f}","-i",str(paths[name]),"-t",f"{length:.3f}",
                   "-vf",vf,"-an","-r","30","-c:v","libx264",
-                  "-preset","veryfast","-crf","19","-pix_fmt","yuv420p",str(clip)])
+                  "-preset","veryfast","-crf","19","-pix_fmt","yuv420p",str(clip)],
+                 cwd=work)
             if not clip.is_file() or clip.stat().st_size < 30000:
                 raise RuntimeError("Encoded real-footage video scene is missing")
             clips.append(clip)
@@ -174,9 +180,8 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
         _run(["ffmpeg","-nostdin","-v","error","-i",str(rendered),
               "-f","null","-"],timeout=300)
         output_srt=output.with_suffix(".srt")
-        captions = "".join(f"{i}\n{_srt(int(b['startMs']))} --> "
-                           f"{_srt(int(b['endMs']))}\n{b['text']}\n\n"
-                           for i,b in enumerate(beats,1))
+        # Same audio-sourced phrase cues in the portable SRT companion.
+        output_srt.write_bytes(Path(captions["srtPath"]).read_bytes())
         result={
             "status": "rendered",
             "video": str(output),
@@ -191,14 +196,18 @@ def build(*, crossota: Path, medusa: Path, voice: Path,
             "portraitTracking": shot_tracking,
             "staticTitleCards": False,
             "opticalSubjectDetection": False,
-            "captionMode": "external-srt-no-burned-in-slides",
+            "captionMode": "speech-measured-ass-mobile-overlay-plus-srt",
+            "captionTimingMethod": captions["timestampMethod"],
+            "captionCount": captions["captionCount"],
+            "burnedInCaptions": True,
+            "wordLevelAligned": False,
+            "captionSafeZoneNeedsHumanReview": True,
             "bioluminescenceActuallyRecorded": False,
             "copyrightedMusic": False,
             "publicationApproved": False,
             "humanReviewRequired": True
         }
         rendered.replace(output)
-        output_srt.write_text(captions,encoding="utf-8")
         output.with_suffix(".json").write_text(json.dumps(result,indent=2)+"\n",
                                                encoding="utf-8")
     return result
