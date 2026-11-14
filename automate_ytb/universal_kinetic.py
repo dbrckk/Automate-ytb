@@ -750,13 +750,16 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         background=_backdrop(width,height,PALETTES[
             sum(story["topic"].encode())%len(PALETTES)])
         if story.get("proceduralVisualFinishEngine"):
-            from .premium_chapter_palette import palette_for_beat
+            from .premium_chapter_palette import (
+                palette_for_beat,cinematic_chapter_backdrop)
             themes=[palette_for_beat(story,index)
                     for index in range(len(story["beats"]))]
             if any(theme is not None for theme in themes):
-                background=[_backdrop(
-                    width,height,theme.backdrop() if theme is not None
-                    else PALETTES[sum(story["topic"].encode())%len(PALETTES)])
+                background=[
+                    cinematic_chapter_backdrop(width,height,theme)
+                    if theme is not None else _backdrop(
+                        width,height,PALETTES[
+                            sum(story["topic"].encode())%len(PALETTES)])
                     for theme in themes]
         from .universal_art25d import (
             bind_actor_camera_world, load_art_scenes)
