@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 187,
+  "count": 188,
   "videos": [
+    {
+      "id": "universal-premium-43632339017-1/original-premium-short.mp4",
+      "topic": "original-premium-short",
+      "category": "other",
+      "releaseTag": "universal-premium-43632339017-1",
+      "publishedAt": "2026-11-14T19:36:56Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/universal-premium-43632339017-1/original-premium-short.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/universal-premium-43632339017-1",
+      "bytes": 4137223,
+      "sha256": "sha256:42b8ac86f255549f9f872e84bd4c6f1608cbefb2f88d28c481b057daa48aa90d"
+    },
     {
       "id": "tiktok-coastal-storm-d812c11d6e33/coastal-storm-short-en-1080x1920.mp4",
       "topic": "coastal-storm-short-en-1080x1920",
