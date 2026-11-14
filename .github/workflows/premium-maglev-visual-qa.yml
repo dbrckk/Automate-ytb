@@ -1,6 +1,15 @@
 name: Premium original maglev art — encoded 2.5D visual review
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'automate_ytb/premium_chapter_palette.py'
+      - 'automate_ytb/universal_kinetic.py'
+      - 'automate_ytb/universal_art25d.py'
+      - 'automate_ytb/premium_story_cues.py'
+      - 'automate_ytb/voice_pacing.py'
+      - '.github/workflows/premium-maglev-visual-qa.yml'
   pull_request:
     paths:
       - 'automate_ytb/premium_maglev25d.py'
@@ -22,7 +31,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   original-visual-review:
@@ -66,10 +75,9 @@ jobs:
           from pathlib import Path
           root=Path("build/maglev-visual-review")
           req=json.loads(Path("video_requests/maglev-floating-train-20261114-original.json").read_text())
-          # Two real source beats are sufficient for an encoded visual QA
-          # without wasting four times the CPU of a complete long episode.
-          preview="\n\n".join(req["script"].split("\n\n")[:2])
-          (root/"original-script.txt").write_text(preview,encoding="utf-8")
+          # Human-quality review must include all five causal scenes and
+          # all five original palette looks; do not inspect a truncated demo.
+          (root/"original-script.txt").write_text(req["script"],encoding="utf-8")
           (root/"topic.txt").write_text(req["topic"],encoding="utf-8")
           PY
           python -m automate_ytb.universal_kinetic \
@@ -95,11 +103,13 @@ jobs:
           assert report["proceduralVisualFamily"]=="maglev"
           assert report["proceduralVisualFinishEngine"]==VERSION
           assert report["proceduralVisualActionEngine"]=="original-narration-cued-2p5d-actions-v1"
-          assert report["proceduralVisualActions"]==["gap","wheels"]
+          assert report["proceduralVisualActions"]==[
+              "gap","wheels","levitation","propulsion","airflow"]
           assert report["proceduralVisualPaletteEngine"]=="chapter-art-directed-color-grading-v1"
-          assert report["proceduralVisualChapterPalettes"]==["copper","amber"]
-          assert report["artwork"]["originalVectorShapes"]>=85*2
-          assert report["beats"]==2
+          assert report["proceduralVisualChapterPalettes"]==[
+              "copper","amber","violet","cobalt","rose"]
+          assert report["artwork"]["originalVectorShapes"]>=85*5
+          assert report["beats"]==5
           assert report["proceduralVisualSceneCount"]==report["beats"]
           assert qa["status"]=="passed" and qa["fullDecodeVerified"] is True
           assert report["delivery"]["status"]=="passed"
@@ -113,12 +123,24 @@ jobs:
           assert report["publicationApproved"] is False
           print("Original subject art, full 9:16 MP4 decoding and retained rights proof verified.")
           PY
-          for sec in 1 4 7 10 13; do
-            ffmpeg -nostdin -hide_banner -loglevel error -y \
-              -ss "$sec" -i build/maglev-visual-review/maglev-visual-draft.mp4 \
-              -frames:v 1 -q:v 2 \
-              "build/maglev-visual-review/frame-$(printf '%02d' "$sec").jpg"
-          done
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          root=Path("build/maglev-visual-review")
+          video=root/"maglev-visual-draft.mp4"
+          metadata=json.loads(subprocess.check_output([
+              "ffprobe","-v","error","-show_entries","format=duration",
+              "-of","json",str(video)]))
+          duration=float(metadata["format"]["duration"])
+          assert 20<duration<130
+          for i in range(5):
+              moment=duration*(i+.5)/5
+              subprocess.run([
+                  "ffmpeg","-nostdin","-hide_banner","-loglevel","error",
+                  "-y","-ss",f"{moment:.3f}","-i",str(video),
+                  "-frames:v","1","-q:v","2",
+                  str(root/f"frame-{i+1:02}.jpg")],check=True)
+          PY
           python - <<'PY'
           from PIL import Image, ImageDraw
           from pathlib import Path
@@ -145,3 +167,40 @@ jobs:
             build/maglev-visual-review/full-decoding-qa.json
             build/maglev-visual-review/contact-sheet.jpg
             build/maglev-visual-review/frame-*.jpg
+
+      - name: Publish verified permanent quality-review MP4 on main only
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="premium-chapters-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          root="build/maglev-visual-review"
+          asset="maglev-visual-draft.mp4"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Immutable review release already exists"; exit 1
+          fi
+          sha256sum "$root/$asset" > "$root/SHA256SUMS.txt"
+          gh release create "$tag" \
+            "$root/$asset" \
+            "$root/maglev-visual-draft.srt" \
+            "$root/contact-sheet.jpg" \
+            "$root/full-decoding-qa.json" \
+            "$root/SHA256SUMS.txt" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Original premium chapter-color neural review — ${GITHUB_RUN_ID}" \
+            --notes "Unreviewed original 720x1280 MP4 video with real Kokoro af_heart English narration, five source-grounded 2.5D visual actions and distinct palettes. This is a qualitative preview, not a claim of studio-grade human-reviewed voice, facts, artistic quality, or TikTok/YouTube publication." \
+            --prerelease --latest=false
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset"
+          curl --fail --silent --show-error --location --retry 5 \
+            --retry-delay 3 --retry-all-errors --max-time 240 \
+            "$url" --output "$RUNNER_TEMP/public-quality-preview.mp4"
+          test "$(sha256sum "$root/$asset" | cut -d' ' -f1)" = \
+               "$(sha256sum "$RUNNER_TEMP/public-quality-preview.mp4" | cut -d' ' -f1)"
+          {
+            echo "## Verified, stable, direct MP4 download"
+            echo
+            echo "$url"
+            echo
+            echo "Full 720x1280 H264/AAC decode, real Kokoro PCM and anonymous SHA256 GET verified."
+          } >> "$GITHUB_STEP_SUMMARY"
