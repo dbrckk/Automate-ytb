@@ -33,6 +33,7 @@ class ShortsDeliveryTests(unittest.TestCase):
         command += [
             "-c:v", "libx264", "-preset", "ultrafast",
             "-crf", "30", "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
         ]
         if with_audio:
             command += ["-c:a", "aac", "-ar", "48000", "-b:a", "96k"]
@@ -53,6 +54,27 @@ class ShortsDeliveryTests(unittest.TestCase):
         self.assertEqual(report["targetPlatforms"],
                          ["TikTok", "YouTube Shorts"])
         self.assertEqual(report["media"]["audioCodec"], "aac")
+        self.assertFalse(report["fullDecodeVerified"])
+
+    def test_full_decode_proves_all_audio_and_video_packets(self):
+        video = self._render("verified.mp4", "720x1280", 30, True)
+        report = validate_short(video, require_audio=True, full_decode=True)
+        self.assertEqual(report["status"], "passed")
+        self.assertTrue(report["fullDecodeVerified"])
+
+    def test_truncated_faststart_mp4_is_not_release_ready(self):
+        video = self._render("source.mp4", "720x1280", 30, True)
+        truncated = self.root / "truncated.mp4"
+        data = video.read_bytes()
+        truncated.write_bytes(data[:round(len(data) * .8)])
+        # Faststart keeps the metadata readable although media packets are lost.
+        shallow = validate_short(truncated, require_audio=True)
+        self.assertEqual(shallow["status"], "passed")
+        self.assertFalse(shallow["fullDecodeVerified"])
+        deep = validate_short(truncated, require_audio=True, full_decode=True)
+        self.assertEqual(deep["status"], "failed")
+        self.assertFalse(deep["fullDecodeVerified"])
+        self.assertTrue(any("decoding" in e for e in deep["errors"]))
 
     def test_horizontal_and_missing_audio_fail_closed(self):
         report = validate_short(
@@ -67,6 +89,8 @@ class ShortsDeliveryTests(unittest.TestCase):
             validate_short(self.root / "missing.mp4")
         with self.assertRaises(ValueError):
             validate_short(self.root / "missing.mp4", require_audio="true")
+        with self.assertRaises(ValueError):
+            validate_short(self.root / "missing.mp4", full_decode="yes")
 
 
 if __name__ == "__main__":
