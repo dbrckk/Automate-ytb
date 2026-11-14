@@ -50,7 +50,12 @@ def _explicit_families(text: str) -> list[str]:
         if found:
             score=len(set(found))+.1*min(2,len(found))
             candidates.append((-score,index,family))
-    return [family for _,_,family in sorted(candidates)]
+    selected=[family for _,_,family in sorted(candidates)]
+    # A maglev train is a railway vehicle, not a second independent
+    # subject. Do not composite it beside an unrelated steam locomotive.
+    if "maglev" in selected:
+        selected=[family for family in selected if family!="rail"]
+    return selected
 
 
 def composition_families(beats: list[dict]) -> list[list[str]] | None:
