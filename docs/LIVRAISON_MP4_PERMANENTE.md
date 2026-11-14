@@ -74,6 +74,30 @@ valide n'est plus considéré comme prêt pour livraison. La Release unique
 n'est publiée que sur `main`, après les vérifications, puis le téléchargement
 HTTP public est comparé au SHA-256 local.
 
+### Déclenchement automatique depuis le dépôt
+
+Il existe une seconde entrée, pratique lorsque la demande est préparée
+directement dans ChatGPT : ajouter **un seul nouveau** fichier
+`video_requests/<identifiant>.json` sur `main`, avec exactement
+`topic`, `script` et `language` :
+
+```json
+{
+  "topic": "How the ocean makes its own weather",
+  "script": "Warm water feeds rising air above the sea. As humid air climbs, it cools and forms clouds. Pressure and wind then help move that moisture over land. This narration is an original description and must be fact-checked before release.",
+  "language": "en"
+}
+```
+
+Chaque nouveau fichier valide déclenche le même moteur et les mêmes
+portes de QA : voix Kokoro, rendu 1080p, décodage complet, publication
+en pré-release avec SHA vérifié. Le pipeline refuse les modifications
+d'anciens fichiers, les créations multiples dans un même push, les noms
+suspects, les données non conformes et les champs exécutables. Les
+demandes étant enregistrées dans un dépôt public, elles ne doivent pas
+contenir de données confidentielles. L'exemple est une illustration du
+format, pas une vidéo générée ni un fait indépendamment vérifié.
+
 Cette voie conserve une **prévisualisation technique non approuvée** : même
 avec un rendu vérifié, voix naturelle, exactitude, droits, design, mouvement et
 musique doivent encore être appréciés humainement. Les vidéos sont publiées
