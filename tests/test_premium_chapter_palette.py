@@ -43,7 +43,12 @@ class CinematicChapterColorTests(unittest.TestCase):
         backgrounds=[cinematic_chapter_backdrop(360,640,style) for style in palettes]
         colors=[image.getpixel((180,300)) for image in backgrounds]
         self.assertEqual(len(set(colors)),5)
-        self.assertGreater(max(max(c) for c in colors)-min(max(c) for c in colors),30)
+        # Palette richness is variation across RGB channels, not just
+        # the peak channel brightness: amber/cobalt may have equally
+        # bright highlights while looking completely different.
+        differences=[sum(abs(a-b) for a,b in zip(left,right))
+                     for left in colors for right in colors]
+        self.assertGreater(max(differences),90)
 
     def test_cached_source_art_has_distinct_reflections_and_same_alpha(self):
         art=Image.new("RGBA",(180,200))
