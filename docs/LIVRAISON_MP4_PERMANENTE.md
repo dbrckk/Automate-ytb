@@ -54,6 +54,39 @@ Les commentaires, la qualité artistique, la voix et la conformité éditoriale
 restent à contrôler séparément. Aucun MP4 confidentiel ne doit être versé
 dans les Releases de ce dépôt public.
 
+## Nouveaux Shorts originaux universels — rendu premium vérifié
+
+Le workflow [Universal premium Short — neural 1080p and verified permanent MP4](../.github/workflows/universal-premium-release.yml)
+est une voie **distincte des essais rapides 720p** du workflow universel.
+Depuis GitHub Actions sur la branche `main`, sélectionner ce workflow,
+appuyer sur **Run workflow**, saisir `topic`, une **narration originale**
+dans `original_script` (40 à 8 000 caractères), puis choisir `en` ou
+`fr`. Il n'utilise aucun token d'API payant et ne remplace pas la
+rédaction/recherche factuelle : un sujet seul ne fournit pas des faits
+vérifiés.
+
+Ce chemin impose Kokoro réel, sans remplacement silencieux par eSpeak,
+`1080x1920`, 30 images/s, audio H.264/AAC, PCM source exporté, sous-titres
+et manifeste d'origine. Le contrôle indépendant
+`python -m automate_ytb.shorts_delivery --video ... --require-audio --full-decode`
+décode **tous les paquets vidéo et audio** ; un MP4 tronqué avec un en-tête
+valide n'est plus considéré comme prêt pour livraison. La Release unique
+n'est publiée que sur `main`, après les vérifications, puis le téléchargement
+HTTP public est comparé au SHA-256 local.
+
+Cette voie conserve une **prévisualisation technique non approuvée** : même
+avec un rendu vérifié, voix naturelle, exactitude, droits, design, mouvement et
+musique doivent encore être appréciés humainement. Les vidéos sont publiées
+dans les Releases d'un **dépôt public** : ne pas y insérer de narration privée.
+Ne communiquer l'URL `.mp4` qu'après la réussite du dernier contrôle de
+téléchargement (résumé de l'exécution Actions).
+
+La qualité peut être inférieure à la référence 3561.mp4 pour les sujets dont
+le moteur n'a pas encore de géométrie/acteurs originaux adaptés. Le rendu
+premium garantit le format, la vraie voix neurale, les vérifications et une
+livraison stable ; il ne prétend pas garantir la richesse artistique de
+n'importe quel sujet.
+
 ## Récupérer la vidéo depuis Android
 
 Ouvrir directement le lien `.mp4` communiqué après la vérification, ou :
