@@ -19,6 +19,9 @@ RIGHTS = ("Original artwork generated locally by Automate-ytb procedural "
           "geometry authored in this repository; no external source images.")
 # Intentionally concrete words only, not untrusted semantic or fuzzy matching.
 _TERMS = {
+    "maglev": ("maglev", "scmaglev", "magnetic levitation",
+               "magnetic-levitation", "lévitation magnétique",
+               "train à lévitation"),
     "botanical": ("forest","forests","tree","trees","seed","seeds",
                   "plant","plants","leaf","leaves","garden","gardens",
                   "forêt","forêts","arbre","arbres","graine","graines",
@@ -48,6 +51,7 @@ _PATTERN = {
     for family,terms in _TERMS.items()
 }
 _PALETTE = {
+    "maglev": ("#070E22","#111D3B","#203D58","#40D6CF","#F2B67D"),
     "botanical": ("#092533","#174C50","#4D8173","#B8E5A2","#EBCA8A"),
     "celestial": ("#09142D","#26345A","#5F659F","#C3B7E8","#F9D7A0"),
     "rail": ("#141F38","#344A5C","#6C9295","#E2BB82","#F5E3C5"),
@@ -82,6 +86,10 @@ def select_subject(topic: str, narration: str) -> str | None:
         in_topic=sum(bool(p.search(leading)) for p in _PATTERN[family])
         ranking.append((len(set(matches))+min(2,len(matches))*.1+in_topic*2,
                         -_ORDER.index(family),family))
+    # A source-explicit precise subject wins over a generic train mention.
+    # No title-only guess: 'maglev' must really be in narrated text.
+    if any(record[2]=="maglev" for record in ranking):
+        return "maglev"
     return max(ranking)[2] if ranking else None
 
 
@@ -399,10 +407,14 @@ _BUILDERS={
 
 
 def subject_layers(family: str) -> list[dict]:
-    if family not in _BUILDERS:
+    if family=="maglev":
+        from .premium_maglev25d import maglev_scene
+        sky,terrain,hero,mid,foreground=maglev_scene()
+    elif family in _BUILDERS:
+        sky,terrain=_world(family)
+        hero,mid,foreground=_BUILDERS[family]()
+    else:
         raise ValueError("Unsupported concrete original subject")
-    sky,terrain=_world(family)
-    hero,mid,foreground=_BUILDERS[family]()
     return [
         _layer(family,5,"atmosphere",sky,(.12,.08)),
         _layer(family,25,"landscape",terrain,(.34,.17)),
