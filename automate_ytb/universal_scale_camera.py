@@ -33,6 +33,25 @@ def camera_pose(journey: dict, index: int, phase: float) -> dict:
     }
 
 
+def landmark_reveal(landmark_index: int, beat_index: int,
+                    phase: float) -> float:
+    """Introduce a narrated comparison early, then keep it in world space.
+
+    An icon is illustrative and may appear before the growing beam
+    reaches its anchored world position. It never disappears at a cut.
+    """
+    if (type(landmark_index) is not int or type(beat_index) is not int
+            or type(phase) not in (int,float) or not math.isfinite(phase)
+            or not 0 <= phase <= 1 or landmark_index < 0 or beat_index < 0):
+        raise ValueError("Invalid source-landmark reveal clock")
+    if landmark_index < beat_index:
+        return 1.
+    if landmark_index > beat_index:
+        return 0.
+    t=max(0.,min(1.,(phase-.12)/.27))
+    return t*t*(3.-2.*t)
+
+
 def world_y(pose: dict, world_position: float) -> float:
     """Project a source waypoint into screen height (normalized)."""
     if (type(world_position) not in (int,float)
@@ -293,10 +312,10 @@ def render_cinematic_scale_frame(
     # space. They shift automatically under the moving camera.
     for i,point in enumerate(journey["points"]):
         coord=scale_coordinate(journey,Decimal(point["metres"]))
-        activation=(q-coord+.017)/.047
+        activation=landmark_reveal(i,position,phase)
         if activation<=0:
             continue
-        alpha=round(255*max(0.,min(1.,activation)))
+        alpha=round(255*activation)
         y=round(height*world_y(pose,coord))-lo
         if not -width*.3<=y<=hi-lo+width*.3:
             continue
