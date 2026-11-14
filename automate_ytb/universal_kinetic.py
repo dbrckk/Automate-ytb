@@ -140,6 +140,12 @@ def read_story(path: Path) -> dict:
     source_journey=story.get("proceduralScaleJourney")
     has_scale=("proceduralScaleJourney" in story
                or "proceduralScaleJourneyEngine" in story)
+    has_camera="proceduralScaleCameraEngine" in story
+    if has_camera:
+        from .universal_scale_camera import VERSION as camera_version
+        if (not has_scale
+                or story["proceduralScaleCameraEngine"]!=camera_version):
+            raise ValueError("Untrusted original world-camera provenance")
     if has_scale:
         from .universal_scale_journey import (
             VERSION as scale_version, derive_scale_journey)
@@ -285,6 +291,8 @@ def read_story(path: Path) -> dict:
     if has_scale:
         result["proceduralScaleJourneyEngine"]=scale_version
         result["proceduralScaleJourney"]=expected_journey
+    if has_camera:
+        result["proceduralScaleCameraEngine"]=camera_version
     return result
 
 
@@ -503,9 +511,15 @@ def frame_image(story: dict, timeline: MasterTimeline, boundaries: list[int],
     art=art_scenes.get(pos) if art_scenes is not None else None
     journey=story.get("proceduralScaleJourney")
     if journey is not None:
-        from .universal_scale_journey import render_scale_frame
-        base=render_scale_frame(journey,story["topic"],frame,
-                                boundaries,pos,width,height)
+        if story.get("proceduralScaleCameraEngine"):
+            from .universal_scale_camera import render_cinematic_scale_frame
+            base=render_cinematic_scale_frame(journey,story["topic"],frame,
+                                               boundaries,pos,width,height)
+        else:
+            # Preserve pixel-level compatibility with old saved v21 stories.
+            from .universal_scale_journey import render_scale_frame
+            base=render_scale_frame(journey,story["topic"],frame,
+                                    boundaries,pos,width,height)
         d=ImageDraw.Draw(base)
     elif art is None:
         measured=timeline.state_at(frame)["objects"]["progress"]["value"]
@@ -722,6 +736,10 @@ def produce(brief:Path,output:Path,*,voice="kokoro",voice_name=None,
         "proceduralVisualInteractionEngine":story.get("proceduralVisualInteractionEngine"),
         "proceduralVisualInteractions":story.get("proceduralVisualInteractions"),
         "proceduralScaleJourneyEngine":story.get("proceduralScaleJourneyEngine"),
+        "proceduralScaleCameraEngine":story.get("proceduralScaleCameraEngine"),
+        "proceduralScaleLandmarkArtStyle":(
+            "original-illustrative-not-physical-scale"
+            if story.get("proceduralScaleCameraEngine") else None),
         "proceduralScaleLandmarkCount":len(
             (story.get("proceduralScaleJourney") or {}).get("points",[])),
         "proceduralScaleNumbersSourceVerified":bool(
