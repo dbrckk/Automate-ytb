@@ -50,10 +50,10 @@ jobs:
       - name: Install open-source CPU narration and media dependencies
         run: |
           set -euo pipefail
-          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v fc-match >/dev/null || ! fc-match DejaVuSans >/dev/null; then
-            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core; then
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v fc-match >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core; then
               sudo timeout -k 10s 120s apt-get update -qq
-              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
             fi
           fi
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
