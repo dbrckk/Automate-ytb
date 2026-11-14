@@ -35,6 +35,7 @@ on:
       - automate_ytb/universal_script.py
       - automate_ytb/universal_subject_illustrations.py
       - automate_ytb/universal_subject_interaction.py
+      - automate_ytb/universal_scale_camera.py
       - automate_ytb/universal_scale_journey.py
       - automate_ytb/universal_subject_composition.py
       - automate_ytb/universal_subject_motion.py
@@ -61,6 +62,7 @@ on:
       - tests/test_universal_subject_illustrations.py
       - tests/test_universal_chapter_subjects.py
       - tests/test_universal_subject_interaction.py
+      - tests/test_universal_scale_camera.py
       - tests/test_universal_scale_journey.py
       - tests/test_universal_subject_composition.py
       - tests/test_universal_subject_motion.py
@@ -132,6 +134,7 @@ jobs:
           python -m unittest discover -s tests -p test_universal_subject_illustrations.py -v
           python -m unittest discover -s tests -p test_universal_chapter_subjects.py -v
           python -m unittest discover -s tests -p test_universal_subject_interaction.py -v
+          python -m unittest discover -s tests -p test_universal_scale_camera.py -v
           python -m unittest discover -s tests -p test_universal_scale_journey.py -v
           python -m unittest discover -s tests -p test_universal_subject_composition.py -v
           python -m unittest discover -s tests -p test_universal_subject_motion.py -v
@@ -271,6 +274,9 @@ jobs:
           assert [p['sourceSpan'] for p in points]==['1 mm','1 cm','1 m','100 m','1 km','100 km']
           assert [p['metres'] for p in points]==['0.001','0.01','1','100','1000','100000']
           assert manifest['proceduralScaleJourneyEngine']=='source-anchored-continuous-log-scale-cinematic-v1'
+          assert manifest['proceduralScaleCameraEngine']=='source-scale-continuous-world-camera-landmarks-v22'
+          assert story['proceduralScaleCameraEngine']==manifest['proceduralScaleCameraEngine']
+          assert manifest['proceduralScaleLandmarkArtStyle']=='original-illustrative-not-physical-scale'
           assert manifest['proceduralScaleLandmarkCount']==6
           assert manifest['proceduralScaleNumbersSourceVerified'] is True
           assert manifest['voiceEngine']=='espeak'
