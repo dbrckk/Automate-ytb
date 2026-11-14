@@ -82,8 +82,11 @@ def subject_pose(family: str, z: int, moment: float) -> dict:
         # A rigid superconducting train glides smoothly. The guideway
         # stays put, its field-and-gap accents and light streaks move on
         # one global clock. No wheels, smoke or oscillating steam engine.
-        glide=-.105+.205*growth
-        hovering=.0035*math.sin(a*2.4)
+        glide=-.17+.34*growth
+        # A slow, cumulative lift is legible against the stationary guideway.
+        # Do not teleport the original car at cut boundaries: t is global.
+        lift=_ease((t-.12)/.42)
+        hovering=-.026*lift+.0035*math.sin(a*2.4)
         values={
             25:(-.012*growth, 0., 1., 0.),
             45:(glide,hovering,1.05,0.),
