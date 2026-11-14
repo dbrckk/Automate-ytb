@@ -133,3 +133,64 @@ Never describe one narrow genre grammar as being able to animate "any topic".
 - Source and generated story, video, manifest, subtitles, voice proof and
   creation history remain auditable. No automatic TikTok posting or
   unsupported subjective quality claim.
+
+
+## v22 — Global camera + original landmark artwork (14 Nov 2026)
+
+The v21 source-authenticated length sequence was real but visually static:
+its background stayed fixed, its glowing column stretched in a scene-local
+composition, and contextual objects were small line icons. This was not
+comparable to the reference's continuous visual escalation.
+
+The new, reusable renderer
+\`automate_ytb/universal_scale_camera.py\` adds a genuine global moving
+*illustrative* world, not per-shot Ken Burns animations. An absolute camera
+pose is derived only from the continuously interpolated base-10 scale
+coordinate. The camera center, lens scale and gentle horizontal pan are
+mathematically identical at consecutive scene boundaries. Once a sourced
+landmark becomes visible, it occupies a fixed world coordinate and
+automatically moves down-screen as the camera climbs. Earlier landmarks
+remain part of the same world until outside the crop. Stars and particles
+have independently moving depth planes tied to that global progress.
+
+The artwork is procedurally authored inside the repository: seven original
+detailed object silhouettes (metal ruler, articulated person, textured
+tree, perspective-windowed tower, multi-plane snow mountain, latitude-
+marked Earth and cratered Moon). Their **icon sizes are explicitly
+illustrative** and do not purport to be physically calibrated. A visible
+label confirms that they are not to scale. The actual comparison numbers
+and visible labeled milestones remain verified against exact source spans.
+The source-authored numerical ruler and animated central beam continue
+across cuts and cannot fabricate intermediate measured numbers. Numeric
+text crossfades between the two actually authored adjacent quantities.
+
+Compatibility: new original-text stories with an eligible numeric
+sequence store
+\`proceduralScaleCameraEngine=source-scale-continuous-world-camera-landmarks-v22\`.
+Saved v21 JSON stories without that field retain the original renderer
+pixel-for-pixel. Invalid version markers, unsupported camera-only claims,
+forged scale values and unsourced artwork are rejected by the JSON reader.
+Other 2.5D subject, collision and authored JSON routes remain unchanged.
+
+Reproduce locally with free dependencies:
+
+\`\`\`bash
+python -m unittest discover -s tests -p test_universal_scale_camera.py -v
+automate-ytb-short --topic "What if a glowing thread kept growing?" \
+  --script-file examples/universal_scale_journey_story.en.txt \
+  --language en --voice espeak --width 720 \
+  --output build/universal/continuous-scale-original.mp4
+python -m automate_ytb.shorts_delivery \
+  --video build/universal/continuous-scale-original.mp4 --require-audio
+\`\`\`
+
+The GitHub Actions universal video workflow performs actual 720×1280
+H.264/AAC encoding and checks the source-derived six-waypoint camera
+manifest. The full production tests and real CPU Kokoro neural narration
+CI must also pass at the same commit SHA before merge.
+
+**Still to improve:** reference-like composition, sophisticated motion of
+real comparable objects, shot-level timing by spoken words (not just PCM
+phrase boundaries), richer lighting/material depth, music dramaturgy and
+cross-genre narrative planning. Technical CI success cannot validate
+artistic likeness or audio naturalness.
