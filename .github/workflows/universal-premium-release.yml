@@ -47,6 +47,15 @@ jobs:
         with:
           path: ~/.cache/huggingface/hub
           key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Validate new original request before any model downloads
+        env:
+          VIDEO_TOPIC: ${{ inputs.topic }}
+          VIDEO_SCRIPT: ${{ inputs.original_script }}
+          VIDEO_LANGUAGE: ${{ inputs.language }}
+          BEFORE_COMMIT: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.premium_request
       - name: Install open-source CPU narration and media dependencies
         run: |
           set -euo pipefail
@@ -58,53 +67,6 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install --disable-pip-version-check -e '.[speech]'
-      - name: Validate public-source topic and original narration
-        env:
-          VIDEO_TOPIC: ${{ inputs.topic }}
-          VIDEO_SCRIPT: ${{ inputs.original_script }}
-          VIDEO_LANGUAGE: ${{ inputs.language }}
-          BEFORE_COMMIT: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          mkdir -p build/premium
-          python - <<'PY'
-          import json, os, re, subprocess
-          from pathlib import Path
-          if os.environ["GITHUB_EVENT_NAME"] == "push":
-              before=os.environ["BEFORE_COMMIT"]
-              sha=os.environ["GITHUB_SHA"]
-              if not re.fullmatch(r"[0-9a-f]{40}",before):
-                  raise SystemExit("Cannot prove source request commit")
-              changed=subprocess.check_output([
-                  "git","diff","--name-only","--diff-filter=A",
-                  before,sha,"--","video_requests"],text=True).splitlines()
-              if len(changed)!=1 or not re.fullmatch(r"video_requests/[a-z0-9][a-z0-9_-]{0,70}\.json",changed[0]):
-                  raise SystemExit("Require exactly one newly added safe video request JSON file")
-              source=Path(changed[0])
-              if source.is_symlink() or not source.is_file() or source.stat().st_size>12000:
-                  raise SystemExit("Invalid or oversized source request")
-              data=json.loads(source.read_text(encoding="utf-8"))
-              if type(data) is not dict or set(data)!={"topic","script","language"}:
-                  raise SystemExit("Request must only contain topic, script and language")
-              topic,script,language=data["topic"],data["script"],data["language"]
-          else:
-              topic=os.environ["VIDEO_TOPIC"]
-              script=os.environ["VIDEO_SCRIPT"]
-              language=os.environ["VIDEO_LANGUAGE"]
-          if type(topic) is not str or type(script) is not str or type(language) is not str:
-              raise SystemExit("Video request fields must be strings")
-          topic,script=topic.strip(),script.strip()
-          if ("\n" in topic or "\r" in topic
-                  or not 3<=len(topic)<=120 or not 40<=len(script)<=8000):
-              raise SystemExit("Provide a one-line topic and 40–8000 original narration characters")
-          if language not in ("en","fr"):
-              raise SystemExit("Invalid narration language")
-          root=Path("build/premium")
-          (root/"original-script.txt").write_text(script+"\n",encoding="utf-8")
-          (root/"topic.txt").write_text(topic,encoding="utf-8")
-          (root/"language.txt").write_text(language,encoding="utf-8")
-          print("Original video request accepted; no user script is executed.")
-          PY
       - name: Produce original 1080x1920 cinematic Short with actual Kokoro neural narration
         run: |
           set -euo pipefail
