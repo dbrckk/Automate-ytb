@@ -494,7 +494,13 @@ def subject_chapter_families(beats: list[dict]) -> list[str | None] | None:
                    for b in beats)):
         raise ValueError("Invalid bounded original mixed-topic storyboard")
     families=[select_subject("",beat["narration"]) for beat in beats]
-    return families if len({family for family in families if family}) >= 2 else None
+    distinct={family for family in families if family}
+    # Explicit maglev in any beat defines one continuous modern train world;
+    # subsequent references to 'the train' do not switch back to a
+    # different cartoon locomotive between spoken phrases.
+    if distinct <= {"maglev","rail"} and "maglev" in distinct:
+        return None
+    return families if len(distinct) >= 2 else None
 
 
 def apply_chapter_subjects(beats: list[dict],
