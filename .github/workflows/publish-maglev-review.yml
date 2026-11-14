@@ -50,6 +50,12 @@ jobs:
           assert qa["publicationApproved"] is False
           print("Verified genuine 720x1280 artifact, immutable bytes and original media QA")
           PY
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg; then
+              sudo timeout -k 10s 120s apt-get update -qq
+              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg
+            fi
+          fi
           ffmpeg -nostdin -v error -xerror -i maglev-visual-draft.mp4 -f null -
           mv maglev-visual-draft.mp4 maglev-premium-2p5d-preview.mp4
           sha256sum maglev-premium-2p5d-preview.mp4 > SHA256SUMS.txt
