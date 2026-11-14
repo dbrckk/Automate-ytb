@@ -10,7 +10,7 @@ from PIL import Image, ImageChops, ImageDraw
 
 from automate_ytb.premium_chapter_palette import (
     VERSION, MAGLEV_CUES, STYLES, palette_for_beat,scene_palette,
-    tint_authored_layer)
+    cinematic_chapter_backdrop,tint_authored_layer)
 from automate_ytb.universal_script import compile_original_script
 from automate_ytb.universal_kinetic import read_story,_backdrop
 from automate_ytb.universal_art25d import load_art_scenes,render_art_stage
@@ -40,7 +40,7 @@ class CinematicChapterColorTests(unittest.TestCase):
 
     def test_backdrops_show_visible_color_changes_not_just_labels(self):
         palettes=[palette_for_beat(self.story,i) for i in range(5)]
-        backgrounds=[_backdrop(360,640,style.backdrop()) for style in palettes]
+        backgrounds=[cinematic_chapter_backdrop(360,640,style) for style in palettes]
         colors=[image.getpixel((180,300)) for image in backgrounds]
         self.assertEqual(len(set(colors)),5)
         self.assertGreater(max(max(c) for c in colors)-min(max(c) for c in colors),30)
@@ -64,7 +64,8 @@ class CinematicChapterColorTests(unittest.TestCase):
     def test_actual_cinematic_source_layers_rasterize_in_distinct_chapters(self):
         with tempfile.TemporaryDirectory() as temp:
             story_path=Path(temp)/"story.json"
-            story_path.write_text(json.dumps(self.story),encoding="utf-8")
+            story_path.write_text(
+                json.dumps(self.story,separators=(",",":")),encoding="utf-8")
             parsed=read_story(story_path)
             scenes,manifest=load_art_scenes(parsed,story_path,360,640)
             self.assertEqual(len(scenes),5)
