@@ -1,0 +1,177 @@
+name: Universal premium Short — neural 1080p and verified permanent MP4
+
+on:
+  # A new immutable request committed on main triggers a production without
+  # Android GitHub Actions forms or API credentials.
+  push:
+    branches: [main]
+    paths:
+      - 'video_requests/*.json'
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: Original topic for this new Short (public preview)
+        type: string
+        required: true
+      original_script:
+        description: Original factual narration in paragraphs; never paste private text
+        type: string
+        required: true
+      language:
+        description: Narration language
+        type: choice
+        options: [en, fr]
+        default: en
+
+permissions:
+  contents: write
+
+# Each manually requested video receives a unique immutable release tag.
+concurrency:
+  group: universal-premium-${{ github.run_id }}-${{ github.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  permanent-1080p-short:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-82m-voice-${{ runner.os }}-v1
+      - name: Validate new original request before any model downloads
+        env:
+          VIDEO_TOPIC: ${{ inputs.topic }}
+          VIDEO_SCRIPT: ${{ inputs.original_script }}
+          VIDEO_LANGUAGE: ${{ inputs.language }}
+          BEFORE_COMMIT: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.premium_request
+      - name: Install open-source CPU narration and media dependencies
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v fc-match >/dev/null || ! command -v espeak-ng >/dev/null || ! fc-match DejaVuSans >/dev/null; then
+            if ! sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core; then
+              sudo timeout -k 10s 120s apt-get update -qq
+              sudo timeout -k 10s 180s apt-get install -y -qq --no-install-recommends ffmpeg espeak-ng fonts-dejavu-core
+            fi
+          fi
+          python -m pip install --disable-pip-version-check --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
+          python -m pip install --disable-pip-version-check -e '.[speech]'
+      - name: Produce original 1080x1920 cinematic Short with actual Kokoro neural narration
+        run: |
+          set -euo pipefail
+          VIDEO_TOPIC="$(cat build/premium/topic.txt)"
+          VIDEO_LANGUAGE="$(cat build/premium/language.txt)"
+          automate-ytb-short \
+            --topic "$VIDEO_TOPIC" \
+            --script-file build/premium/original-script.txt \
+            --language "$VIDEO_LANGUAGE" \
+            --voice kokoro \
+            --width 1080 \
+            --export-narration-wav \
+            --output build/premium/original-premium-short.mp4
+      - name: Verify 1080p voice provenance, subtitles and complete H264/AAC decoding
+        run: |
+          set -euo pipefail
+          python -m automate_ytb.shorts_delivery \
+            --video build/premium/original-premium-short.mp4 \
+            --require-audio --full-decode \
+            --report build/premium/full-decoding-qa.json
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          from automate_ytb.universal_voice_evidence import inspect_narration
+          root=Path("build/premium")
+          video=root/"original-premium-short.mp4"
+          report=json.loads((root/"original-premium-short.json").read_text())
+          qa=json.loads((root/"full-decoding-qa.json").read_text())
+          wav=root/"original-premium-short.narration.wav"
+          voice=inspect_narration(wav,engine="kokoro")
+          assert qa["status"]=="passed" and qa["fullDecodeVerified"] is True
+          assert (qa["media"]["width"],qa["media"]["height"])==(1080,1920)
+          assert abs(qa["media"]["fps"]-30)<.01
+          assert qa["media"]["audioCodec"]=="aac"
+          assert report["voiceEngine"]=="kokoro" and report["voiceEvidence"]==voice
+          assert report["language"] in ("en","fr")
+          assert voice["sampleRateHz"]==24000 and voice["activeFraction"]>.012
+          assert report["captionWordsOmitted"]==0 and report["subtitleCues"]>=1
+          assert report["delivery"]["status"]=="passed"
+          assert report["publicationApproved"] is False
+          assert (root/"original-premium-short.srt").stat().st_size>0
+          sha=hashlib.sha256(video.read_bytes()).hexdigest()
+          (root/"release-provenance.json").write_text(json.dumps({
+              "video":video.name,"sha256":sha,"fullDecodeVerified":True,
+              "voiceEngine":"kokoro","width":1080,"height":1920,
+              "fps":30,"publicationApproved":False},indent=2)+"\n")
+          print("Full H264/AAC decode, true neural WAV provenance, captions and SHA256 verified.")
+          PY
+          ffmpeg -nostdin -hide_banner -loglevel error -y \
+            -ss 2 -i build/premium/original-premium-short.mp4 \
+            -frames:v 1 -q:v 3 build/premium/original-premium-cover.jpg
+          test -s build/premium/original-premium-cover.jpg
+      - name: Retain all validated media and source proof in Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-premium-short-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/premium/original-premium-short.mp4
+            build/premium/original-premium-short.srt
+            build/premium/original-premium-short.json
+            build/premium/original-premium-short.story.json
+            build/premium/original-premium-short.narration.wav
+            build/premium/original-premium-cover.jpg
+            build/premium/full-decoding-qa.json
+            build/premium/release-provenance.json
+      - name: Publish immutable public prerelease and verify anonymous MP4 GET byte-for-byte
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="universal-premium-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          root="build/premium"
+          mp4="original-premium-short.mp4"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Immutable release tag already exists"; exit 1
+          fi
+          gh release create "$tag" \
+            "$root/$mp4" \
+            "$root/original-premium-short.srt" \
+            "$root/original-premium-cover.jpg" \
+            "$root/full-decoding-qa.json" \
+            "$root/release-provenance.json" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Original premium Short — ${GITHUB_RUN_ID}" \
+            --notes "Unreviewed original 1080x1920 H264/AAC vertical video; Kokoro neural narration, original procedural animation and sound. Download preview only. Not published to TikTok or YouTube; human voice, fact, music, animation and rights review required." \
+            --prerelease --latest=false
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$mp4"
+          curl --fail --silent --show-error --location \
+            --retry 4 --retry-delay 2 --retry-all-errors --max-time 240 \
+            "$url" --output "$RUNNER_TEMP/premium-public-copy.mp4"
+          local_hash="$(sha256sum "$root/$mp4" | cut -d' ' -f1)"
+          remote_hash="$(sha256sum "$RUNNER_TEMP/premium-public-copy.mp4" | cut -d' ' -f1)"
+          test "$local_hash" = "$remote_hash"
+          {
+            echo "## Verified direct MP4 download (anonymous GET + SHA256)"
+            echo
+            echo "$url"
+            echo
+            echo "Full 1080x1920 30 FPS decode, AAC, original neural WAV and SHA256 verified."
+            echo "This is a technical preview, NOT a TikTok/YouTube publication."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Update permanent video history (best-effort catalog only)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/update_video_history.py

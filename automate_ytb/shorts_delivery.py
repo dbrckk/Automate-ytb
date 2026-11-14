@@ -37,10 +37,28 @@ def _inspect(path: Path) -> dict:
         raise RuntimeError("Invalid ffprobe data") from exc
 
 
-def validate_short(path: Path, *, require_audio: bool = False) -> dict:
-    """Validate actual encoded content; never claim platform publication."""
-    if type(require_audio) is not bool:
-        raise ValueError("require_audio must be a boolean")
+def _full_decode(path: Path, duration: float) -> str | None:
+    """Read every decoded video/audio packet, not merely an MP4 header."""
+    timeout = max(60, min(600, math.ceil(duration * 6)))
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-nostdin", "-hide_banner", "-v", "error",
+             "-xerror", "-i", str(path), "-map", "0:v:0",
+             "-map", "0:a:0?", "-f", "null", "-"],
+            capture_output=True, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return "Full audio/video decoding failed or timed out"
+    if result.returncode:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        return "Full audio/video decoding failed: " + detail[-350:]
+    return None
+
+
+def validate_short(path: Path, *, require_audio: bool = False,
+                   full_decode: bool = False) -> dict:
+    """Validate encoded media; opt into a release-grade full decode."""
+    if type(require_audio) is not bool or type(full_decode) is not bool:
+        raise ValueError("require_audio and full_decode must be booleans")
     path = Path(path).resolve()
     info = _inspect(path)
     vids = [s for s in info.get("streams", []) if s.get("codec_type") == "video"]
@@ -81,8 +99,16 @@ def validate_short(path: Path, *, require_audio: bool = False) -> dict:
         warnings.append("44.1 or 48 kHz AAC sampling preferred")
     if path.stat().st_size > 500 * 1024 * 1024:
         warnings.append("Review platform upload size limits before publication")
+    full_decode_verified = False
+    if full_decode and not errors:
+        decode_error = _full_decode(path, duration)
+        if decode_error:
+            errors.append(decode_error)
+        else:
+            full_decode_verified = True
     return {
         "status": "failed" if errors else "passed",
+        "fullDecodeVerified": full_decode_verified,
         "uploadTechnicallyReady": not errors,
         "publicationApproved": False,
         "humanReviewRequired": True,
@@ -110,9 +136,12 @@ def main(argv=None) -> int:
     parser.add_argument("--video", type=Path, required=True)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--require-audio", action="store_true")
+    parser.add_argument("--full-decode", action="store_true",
+                        help="Decode all audio and video before release delivery")
     args = parser.parse_args(argv)
     try:
-        report = validate_short(args.video, require_audio=args.require_audio)
+        report = validate_short(args.video, require_audio=args.require_audio,
+                                full_decode=args.full_decode)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(
