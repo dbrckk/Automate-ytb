@@ -123,10 +123,10 @@ class WorldCameraV22Tests(unittest.TestCase):
                 old["proceduralScaleJourney"],TITLE,
                 frame,TIMES,position,360,640)
             # frame_image paints a fallback caption, so compare a central
-            # pixel region above it and below the top text graphics.
+            # pixel region safely above the >=69%-height caption panel.
             self.assertEqual(
-                actual.crop((0,0,360,455)).tobytes(),
-                legacy.crop((0,0,360,455)).tobytes())
+                actual.crop((0,0,360,420)).tobytes(),
+                legacy.crop((0,0,360,420)).tobytes())
 
     def test_forged_camera_provenance_or_unsourced_value_is_rejected(self):
         clean=self.compiled()
