@@ -18,6 +18,7 @@ from automate_ytb.universal_kinetic import read_story
 from automate_ytb.universal_art25d import load_art_scenes, render_art_stage
 from automate_ytb.premium_finish25d import VERSION, finish_vector_layer
 from automate_ytb.premium_request import validate_request
+from automate_ytb.surface25d import relight_surface
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -76,6 +77,21 @@ class PremiumMaglevWorldTests(unittest.TestCase):
             source.write_text(json.dumps(data),encoding="utf-8")
             parsed=read_story(source)
             self.assertEqual(parsed["proceduralVisualFinishEngine"],VERSION)
+            # Check source alpha coverage at each moving plane before
+            # binding the actor rig: distant 1px particles are not enough.
+            stage_size=(360-2*round(360*.09),round(640*.51))
+            for layer in parsed["beats"][0]["visualVectors"]:
+                if layer["z"]<25:
+                    continue
+                src=render_vector_layer(layer,stage_size)
+                src=relight_surface(src,layer["material"])
+                src=finish_vector_layer(src,layer["z"])
+                alpha=src.getchannel("A")
+                occupied=sum(alpha.histogram()[32:])/(stage_size[0]*stage_size[1])
+                self.assertGreaterEqual(occupied,.005,
+                                        f"Depth {layer['z']} too sparse: {occupied}")
+                self.assertLessEqual(occupied,.75,
+                                     f"Depth {layer['z']} too opaque: {occupied}")
             scenes,manifest=load_art_scenes(parsed,source,360,640)
             self.assertEqual(len(scenes),2)
             self.assertEqual(len(manifest),10)
