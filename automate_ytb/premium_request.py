@@ -87,6 +87,13 @@ def validate_request(*, event_name: str, before: str = "", head: str = "",
             "Premium artwork unavailable for one or more narrated scenes. "
             "Author an original visual pack for this subject before release; "
             "generic circle-and-label fallback is not premium.")
+    if compiled.get("proceduralVisualFamily")=="maglev":
+        from .premium_story_cues import action_sequence
+        cues=action_sequence(compiled["beats"])
+        if None in cues or len(set(cues))<2:
+            raise ValueError(
+                "Premium maglev narration needs two or more grounded, "
+                "distinct visual actions, not a repeated static scene")
     return {"topic": topic, "script": script, "language": language}
 
 
