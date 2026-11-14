@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PIL import Image, ImageChops, ImageOps
+from PIL import Image, ImageChops, ImageOps, ImageDraw, ImageFilter
 
 VERSION = "chapter-art-directed-color-grading-v1"
 
@@ -106,6 +106,36 @@ def palette_for_beat(story: dict, index: int) -> ChapterPalette | None:
     return scene_palette(family,beat["narration"],index)
 
 
+
+def cinematic_chapter_backdrop(width: int, height: int,
+                               style: ChapterPalette) -> Image.Image:
+    """Render a cached chapter-specific ambient light scene.
+
+    This is not an RGB filter on a fixed navy frame: each palette gets
+    independently shaded vertical atmosphere and two wide, soft light
+    pools, following the original subject's central composition.
+    """
+    if (type(width) is not int or type(height) is not int
+            or width not in (360,720,1080) or height!=width*16//9
+            or not isinstance(style,ChapterPalette)):
+        raise ValueError("Invalid cinematic portrait backdrop")
+    from .universal_kinetic import _backdrop
+    base=_backdrop(width,height,style.backdrop()).convert("RGBA")
+    w,h=max(40,width//5),max(60,height//5)
+    pool=Image.new("RGBA",(w,h))
+    draw=ImageDraw.Draw(pool)
+    # The large active light pool sits behind the moving physical subject.
+    draw.ellipse((round(w*.21),round(h*.22),round(w*1.02),round(h*.80)),
+                 fill=(*style.accent,126))
+    # A low, warm/cool rim makes the guideway read independently of the sky.
+    draw.ellipse((-round(w*.26),round(h*.56),round(w*.64),round(h*.92)),
+                 fill=(*style.secondary,82))
+    pool=pool.filter(ImageFilter.GaussianBlur(max(5,round(w*.055))))
+    pool=pool.resize((width,height),Image.Resampling.BILINEAR)
+    base.alpha_composite(pool)
+    return base.convert("RGB")
+
+
 def tint_authored_layer(source: Image.Image, style: ChapterPalette,
                        depth: int) -> Image.Image:
     """Color-direction once per cached scene layer without flattening shading."""
@@ -138,4 +168,5 @@ def tint_authored_layer(source: Image.Image, style: ChapterPalette,
 
 
 __all__=("VERSION","STYLES","MAGLEV_CUES","ChapterPalette",
-         "scene_palette","palette_for_beat","tint_authored_layer")
+         "scene_palette","palette_for_beat","cinematic_chapter_backdrop",
+         "tint_authored_layer")
