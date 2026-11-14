@@ -78,7 +78,7 @@ jobs:
               changed=subprocess.check_output([
                   "git","diff","--name-only","--diff-filter=A",
                   before,sha,"--","video_requests"],text=True).splitlines()
-              if len(changed)!=1 or not re.fullmatch(r"video_requests/[a-z0-9][a-z0-9_-]{0,70}\\.json",changed[0]):
+              if len(changed)!=1 or not re.fullmatch(r"video_requests/[a-z0-9][a-z0-9_-]{0,70}\.json",changed[0]):
                   raise SystemExit("Require exactly one newly added safe video request JSON file")
               source=Path(changed[0])
               if source.is_symlink() or not source.is_file() or source.stat().st_size>12000:
