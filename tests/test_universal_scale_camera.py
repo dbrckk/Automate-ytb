@@ -8,8 +8,8 @@ import tempfile
 import unittest
 
 from automate_ytb.universal_scale_camera import (
-    VERSION, _landmark_icon, camera_pose, render_cinematic_scale_frame,
-    world_y)
+    VERSION, _landmark_icon, camera_pose, landmark_reveal,
+    render_cinematic_scale_frame, world_y)
 from automate_ytb.universal_scale_journey import render_scale_frame
 from automate_ytb.universal_script import compile_original_script
 from automate_ytb.universal_kinetic import frame_image, read_story, timeline_for
@@ -68,6 +68,16 @@ class WorldCameraV22Tests(unittest.TestCase):
         self.assertGreater(final_y,start_y)
         with self.assertRaises(ValueError):
             world_y(camera_pose(source,0,0.),1.1)
+
+    def test_landmarks_reveal_in_current_beat_and_persist_after_cut(self):
+        self.assertEqual(landmark_reveal(2,1,.7),0.)
+        self.assertEqual(landmark_reveal(2,2,0.),0.)
+        self.assertGreater(landmark_reveal(2,2,.25),0.)
+        self.assertEqual(landmark_reveal(2,2,.6),1.)
+        self.assertEqual(landmark_reveal(2,2,1.),1.)
+        self.assertEqual(landmark_reveal(2,3,0.),1.)
+        with self.assertRaises(ValueError):
+            landmark_reveal(2,2,1.2)
 
     def test_actual_original_raster_detail_for_all_source_landmarks(self):
         artwork={}
