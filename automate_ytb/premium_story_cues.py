@@ -34,9 +34,14 @@ _NO_CONTACT = re.compile(r"\b(?:no wheels touching|without wheel contact|no whee
 def cue_for_narration(narration: str) -> str | None:
     if type(narration) is not str or not 3 <= len(narration) <= 650:
         raise ValueError("Expected original bounded narration")
+    # Air drag is the distinct terminal mechanism even when the
+    # sentence also recalls an earlier contact-free stage.
+    for label, pattern in _CUES[:3]:
+        if pattern.search(narration):
+            return label
     if _NO_CONTACT.search(narration):
         return "gap"
-    for label, pattern in _CUES:
+    for label, pattern in _CUES[3:]:
         if pattern.search(narration):
             return label
     return None
