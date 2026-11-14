@@ -173,7 +173,11 @@ class SourcePCMPhraseTimingTests(unittest.TestCase):
             scale_speech_event(forged,0,bounds)
 
     def test_previous_v22_story_has_no_new_timing_claims(self):
-        old=self.prepared()
+        # Reopen authored compiler output; read_story's normalized beats
+        # have "items" rather than compiler-side concept "nodes".
+        old=compile_original_script(
+            topic=TITLE,script=SOURCE.read_text(encoding="utf8"),
+            language="en")
         old.pop("proceduralScaleSpeechEngine")
         restored=encoded(old)
         self.assertNotIn("proceduralScaleSpeechEngine",restored)
@@ -181,11 +185,12 @@ class SourcePCMPhraseTimingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_pcm_scale_timing(restored,cues,bounds)
         for bad in ("fabricated-aligner-v1",None,True):
-            forge=deepcopy(self.prepared())
+            forge=deepcopy(old)
             forge["proceduralScaleSpeechEngine"]=bad
             with self.subTest(bad=bad),self.assertRaises(ValueError):
                 encoded(forge)
-        forge=deepcopy(self.prepared())
+        forge=deepcopy(old)
+        forge["proceduralScaleSpeechEngine"]=VERSION
         forge.pop("proceduralScaleCameraEngine")
         with self.assertRaises(ValueError):
             encoded(forge)
