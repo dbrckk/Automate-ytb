@@ -32,7 +32,7 @@ def maglev_scene():
     for i in range(24):
         x=.035+((i*167+11)%895)/1000
         y=.09+((i*173+29)%480)/1000
-        r=.0019+(i%3)*.00065
+        r=.0026+(i%3)*.00065
         sky.append(_ell(x,y,x+r,y+r,ice if i%5 else gold,
                         opacity=.21+.1*(i%3)))
     # 2. Grounded physical guideway: ties, center keel, and illuminated
