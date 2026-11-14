@@ -210,13 +210,13 @@ def _paint_ruler(canvas: Image.Image, journey: dict,
            fill=(104,147,160),font=font)
 
 
-def _cached_glow(width: int, length: int):
-    # Narrow independent buffer is faster than blurring a full 1080p frame.
+def _beam_glow(width: int, length: int, start: int, end: int):
+    """Blur only the illuminated beam interval, never the entire picture."""
     strip=max(40,round(width*.16))
     gl=Image.new("RGBA",(strip,length))
     gd=ImageDraw.Draw(gl)
     center=strip//2
-    gd.line((center,0,center,length),
+    gd.line((center,start,center,end),
             fill=(249,159,86,160),width=max(4,round(width*.026)))
     return gl.filter(ImageFilter.GaussianBlur(radius=max(3,round(width*.024))))
 
@@ -274,7 +274,7 @@ def render_cinematic_scale_frame(
         visible_start=max(0,beam_top)
         visible_end=min(hi-lo,beam_bottom)
         if visible_end>visible_start:
-            gl=_cached_glow(width,hi-lo)
+            gl=_beam_glow(width,hi-lo,visible_start,visible_end)
             stage.alpha_composite(gl,(cx-gl.width//2,0))
             d=ImageDraw.Draw(stage)
             d.line((cx,visible_start,cx,visible_end),
