@@ -440,6 +440,10 @@ Aujourd'hui soundtrack.py crée des motifs simples sur des cycles de 8 s à 16 k
 
 ### 10.2 Direction vocale
 
+**Direction par défaut des Shorts Automate-ytb (15 novembre 2026).** Garder `3561.mp4` comme référence éditoriale. Ouvrir sur une question, suivre une grandeur ou une action dans le même univers visuel, puis utiliser des repères concrets qui donnent un sens aux changements d’échelle. Synchroniser musique et bruitages avec les événements et soigner le raccord final lorsque le sujet se prête à une boucle. La vidéo sur le riz et l’échiquier constitue un exemple original approuvé pour cette direction visuelle.
+
+Pour les Shorts scientifiques en anglais, viser une voix masculine grave et naturelle, avec une diction nette, des pauses courtes et des variations d’intonation adaptées au sens. Préférer un timbre naturellement bas et juger la voix sur le mix final, en particulier sur haut-parleur de téléphone. L’anglais reste la langue par défaut des Shorts scientifiques. Une autre langue ou direction de voix peut être demandée pour une vidéo précise.
+
 1. Préparer le script pour être lu à voix haute : phrases courtes, verbes concrets, pauses logiques, chiffres exprimés oralement de façon naturelle.
 2. Choisir la voix par audition A/B sur le **même script** ; Kokoro af_heart/bella/nicole/sarah/michael selon langue autorisée.
 3. Conserver l'expressivité à petite dose : pas de pitch/tempo exagérés ni de ralentissement artificiel d'un enregistrement.
