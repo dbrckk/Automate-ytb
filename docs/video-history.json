@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 194,
+  "count": 195,
   "videos": [
+    {
+      "id": "saturn-six-corners-25d-20261121/saturn-six-corners-25d.mp4",
+      "topic": "saturn-six-corners-25d",
+      "category": "other",
+      "releaseTag": "saturn-six-corners-25d-20261121",
+      "publishedAt": "2026-11-21T13:28:21Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/saturn-six-corners-25d-20261121/saturn-six-corners-25d.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/saturn-six-corners-25d-20261121",
+      "bytes": 36829442,
+      "sha256": "sha256:4be9db0bc80ef9cd18b74c191fb7f3c3acc014d727b3e8727d7ca5afe2314c0b"
+    },
     {
       "id": "saturn-six-corners-20261121/saturn-six-corners.mp4",
       "topic": "saturn-six-corners",
