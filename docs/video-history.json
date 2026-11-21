@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 195,
+  "count": 196,
   "videos": [
+    {
+      "id": "how-far-can-light-go-20261121/how-far-can-light-go.mp4",
+      "topic": "how-far-can-light-go",
+      "category": "other",
+      "releaseTag": "how-far-can-light-go-20261121",
+      "publishedAt": "2026-11-21T13:39:08Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/how-far-can-light-go-20261121/how-far-can-light-go.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/how-far-can-light-go-20261121",
+      "bytes": 4093809,
+      "sha256": "sha256:ef3a081e6d2327fc46e212141173077df558859ee8f99d8bcdefba6e5f081266"
+    },
     {
       "id": "saturn-six-corners-25d-20261121/saturn-six-corners-25d.mp4",
       "topic": "saturn-six-corners-25d",
