@@ -16,7 +16,7 @@ OUT = Path("build/saturn-corners")
 OUT.mkdir(parents=True, exist_ok=True)
 ROOT = "https://assets.science.nasa.gov/content/dam/science/psd/photojournal/pia/"
 VOICE_ROOT = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
-EARTH = "https://eol.jsc.nasa.gov/DatabaseImages/ESC/large/AS17/AS17-148-22727.JPG"
+EARTH = "https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/imagerecords/1000/1133/AS17-148-22727_lrg.jpg?fit=clip&h=1024&w=1024"
 W, H, FPS, SR = 900, 1600, 30, 24000
 cv2.setNumThreads(2)
 RNG = np.random.default_rng(112126)
@@ -47,9 +47,9 @@ def download(url, name):
                     handle.write(block)
             path.with_suffix(".tmp").replace(path)
             return path
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
             if attempt == 2:
-                raise
+                raise RuntimeError(f"Cannot download {name} from {url}") from exc
             time.sleep(2 + attempt)
     raise RuntimeError(url)
 
