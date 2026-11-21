@@ -6,6 +6,9 @@ on:
       - ".github/workflows/kokoro-short-voice.yml"
       - "automate_ytb/short_voice.py"
       - "automate_ytb/deepsea_short.py"
+      - "automate_ytb/short_captions.py"
+      - "automate_ytb/speech_pcm.py"
+      - "tests/test_short_captions.py"
       - "automate_ytb/subject_reframe.py"
       - "automate_ytb/soundtrack.py"
       - "automate_ytb/media_qa.py"
@@ -15,6 +18,12 @@ on:
 
 permissions:
   contents: read
+
+# A superseded PR commit must not keep rendering the same 1080p NOAA
+# documentary and downloading the same model/footage repeatedly.
+concurrency:
+  group: kokoro-documentary-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   voice:
@@ -33,7 +42,8 @@ jobs:
       - name: Install free open-source neural speech
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg espeak-ng
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          ffmpeg -hide_banner -filters 2>&1 | grep -E '[[:space:]]ass[[:space:]]' > /dev/null
           python -m pip install --index-url https://download.pytorch.org/whl/cpu 'torch>=2.3,<3'
           python -m pip install -e '.[speech]'
       - name: Generate original English narrator and beat timings
@@ -61,6 +71,13 @@ jobs:
           assert len(report["beats"]) == 4
           assert all(0<=x["startMs"]<x["endMs"] for x in report["beats"])
           assert report["engine"] == "kokoro-natural"
+          assert report["captionCount"] >= 7
+          assert report["wordLevelAligned"] is False
+          assert all(len(b["captionSegments"]) >= 1 for b in report["beats"])
+          from automate_ytb.short_captions import verify_measured_beats
+          cues=verify_measured_beats(
+              report["beats"],duration_ms=round(report["durationSeconds"]*1000))
+          assert len(cues)==report["captionCount"]
           print("Verified true neural voice, non-silent PCM and actual beat timecodes")
           PY
       - name: Acquire attributed real-world jellyfish footage for the final edit
@@ -110,11 +127,16 @@ jobs:
           PY
       - name: Independently verify real H264 MP4 audio and subtitle timing
         run: |
+          EXPECTED_DURATION=$(python -c "import json; print(json.load(open('build/shorts-narrator/narration.json'))['durationSeconds'])")
           python -m automate_ytb.media_qa \
             --video build/shorts-narrator/deep-sea-short.mp4 \
             --srt build/shorts-narrator/deep-sea-short.srt \
-            --duration 22.05 --require-audio --target-lufs -16 \
+            --duration "$EXPECTED_DURATION" --require-audio --target-lufs -16 \
             --report build/shorts-narrator/deep-sea-media-qa.json
+          python -m automate_ytb.shorts_delivery \
+            --video build/shorts-narrator/deep-sea-short.mp4 \
+            --require-audio \
+            --report build/shorts-narrator/platform-shorts-report.json
           python - <<'PY'
           import json, subprocess
           from pathlib import Path
@@ -122,6 +144,10 @@ jobs:
           assert media["voiceEngine"]=="kokoro-natural"
           assert media["resolution"]==[1080,1920]
           assert not media["publicationApproved"]
+          assert media["burnedInCaptions"] is True
+          assert media["wordLevelAligned"] is False
+          assert media["captionCount"] >= 7
+          assert media["captionTimingMethod"] == "individual-Kokoro-PCM-phrase-samples"
           raw=subprocess.check_output([
               "ffprobe","-v","error","-show_entries",
               "stream=codec_type,codec_name,width,height,avg_frame_rate",
@@ -132,8 +158,46 @@ jobs:
           audio=[s for s in streams if s["codec_type"]=="audio"]
           assert len(vids)==1 and len(audio)==1
           assert vids[0]["codec_name"]=="h264" and vids[0]["width"]==1080 and vids[0]["height"]==1920
-          assert vids[0]["avg_frame_rate"]=="30/1" and audio[0]["codec_name"]=="aac"
+          from fractions import Fraction
+          actual_fps=float(Fraction(vids[0]["avg_frame_rate"]))
+          assert abs(actual_fps-30) < 0.1 and audio[0]["codec_name"]=="aac"
           print("Real fully narrated NOAA jellyfish MP4 passed 9:16 30 FPS H264 AAC checks")
+          PY
+      - name: Export actual mobile subtitle contact sheet for visual review
+        run: |
+          python - <<'PY'
+          import json, subprocess, tempfile
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          root=Path("build/shorts-narrator")
+          beats=json.loads((root/"narration.json").read_text())["beats"]
+          movie=root/"deep-sea-short.mp4"
+          board=Image.new("RGB",(780,1390),(18,24,34))
+          draw=ImageDraw.Draw(board)
+          with tempfile.TemporaryDirectory(prefix="real-caption-frames-") as temp:
+              for index,beat in enumerate(beats):
+                  caption=beat["captionSegments"][0]
+                  second=(caption["startMs"]+caption["endMs"])/2000
+                  frame=Path(temp)/f"frame-{index}.png"
+                  subprocess.run([
+                      "ffmpeg","-nostdin","-v","error","-y",
+                      "-ss",f"{second:.3f}","-i",str(movie),
+                      "-vf","scale=360:640:flags=fast_bilinear",
+                      "-frames:v","1","-update","1",str(frame),
+                  ],check=True,timeout=90)
+                  with Image.open(frame) as opened:
+                      opened.load()
+                      assert opened.size==(360,640)
+                      x=20+(index%2)*390
+                      y=30+(index//2)*690
+                      board.paste(opened.convert("RGB"),(x,y))
+                      draw.text((x,y+647),
+                                f"SCENE {index+1} / {second:.1f}s",
+                                fill=(240,245,250))
+          destination=root/"caption-review.jpg"
+          board.save(destination,quality=90,optimize=True)
+          assert destination.stat().st_size > 25000
+          print("Actual 1080x1920 MP4 mobile caption samples:",destination)
           PY
       - name: Upload complete narrated Short, rights, subtitles and QC
         uses: actions/upload-artifact@v4
@@ -146,6 +210,8 @@ jobs:
             build/shorts-narrator/deep-sea-short.srt
             build/shorts-narrator/deep-sea-short.json
             build/shorts-narrator/deep-sea-media-qa.json
+            build/shorts-narrator/platform-shorts-report.json
+            build/shorts-narrator/caption-review.jpg
             examples/deep-ocean-jellyfish-short.en.txt
             docs/VOICE_CREDITS.md
             build/shorts-footage/*.webm
