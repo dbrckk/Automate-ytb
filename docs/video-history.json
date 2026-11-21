@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 196,
+  "count": 197,
   "videos": [
+    {
+      "id": "how-far-can-light-go-remix-20261121/how-far-can-light-go-remix.mp4",
+      "topic": "how-far-can-light-go-remix",
+      "category": "other",
+      "releaseTag": "how-far-can-light-go-remix-20261121",
+      "publishedAt": "2026-11-21T13:47:42Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/how-far-can-light-go-remix-20261121/how-far-can-light-go-remix.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/how-far-can-light-go-remix-20261121",
+      "bytes": 4208106,
+      "sha256": "sha256:0de0e5eff2ba7a035240289c8641db24dd96b0af3a20ebe10153e353d5211275"
+    },
     {
       "id": "how-far-can-light-go-20261121/how-far-can-light-go.mp4",
       "topic": "how-far-can-light-go",
