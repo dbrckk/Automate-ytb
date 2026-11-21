@@ -292,15 +292,18 @@ def build_preview(*, plan_path: Path, output: Path,
                   transition: str = "dissolve",
                   voice_style: str = "natural",
                   render_profile: str = "preview",
-                  voice_preflight: Path | None = None) -> dict:
+                  voice_preflight: Path | None = None,
+                  score_mode: str = "documentary") -> dict:
     from .voice_pacing import speaking_speed
     from .encoding_profiles import settings as export_settings
     export_settings(render_profile)
     speaking_speed(style=voice_style)
     if voice not in {"espeak", "kokoro", "none"}:
         raise ValueError("Voice must be espeak, kokoro or none")
-    if soundtrack not in {"none", "ambient"}:
-        raise ValueError("Soundtrack must be none or ambient")
+    if soundtrack not in {"none", "ambient", "score"}:
+        raise ValueError("Soundtrack must be none, ambient or score")
+    if soundtrack == "score" and limit is not None:
+        raise ValueError("Continuous score needs the full narrative, not a scene limit")
     if caption_timing not in {"estimated", "audio"}:
         raise ValueError("Caption timing must be estimated or audio")
     if transition not in {"cut", "dissolve", "adaptive"}:
@@ -378,6 +381,12 @@ def build_preview(*, plan_path: Path, output: Path,
         soundtrack_file = output / "background-original.wav"
         soundtrack_report = create_bed(plan_path=plan_path,
                                        output=soundtrack_file, limit=limit)
+    elif soundtrack == "score":
+        from .score_composer import create_score
+        soundtrack_file = output / "background-original.wav"
+        soundtrack_report = create_score(plan_path=plan_path,
+                                         output=soundtrack_file,
+                                         mode=score_mode)
     # Preserve authored narration; evaluate repetition and planned speaking
     # pace after TTS has adjusted scene durations but before costly FFmpeg.
     from .story_preflight import inspect as inspect_story
@@ -431,8 +440,10 @@ def main(argv=None) -> int:
     p.add_argument("--voice-style", choices=["natural", "gentle", "lively", "expressive"],
                    default="natural", help="Kokoro delivery; eSpeak remains unchanged")
     p.add_argument("--voice-name", help="Optional supported Kokoro voice ID")
-    p.add_argument("--soundtrack", choices=["none", "ambient"], default="none",
-                   help="Original local ambient backing track with narration ducking")
+    p.add_argument("--soundtrack", choices=["none", "ambient", "score"], default="none",
+                   help="Original ambient bed or continuous 48k stereo narrative score")
+    p.add_argument("--score-mode", choices=["discreet", "documentary", "mysterious", "energetic"],
+                   default="documentary", help="Narrative profile for original scores")
     p.add_argument("--transition", choices=["adaptive", "dissolve", "cut"],
                    default="adaptive",
                    help="Cut on large visual differences, dissolve on similar shots; no audio shift")
@@ -455,7 +466,8 @@ def main(argv=None) -> int:
                                caption_timing=args.caption_timing,
                                transition=args.transition,
                                render_profile=args.render_profile,
-                               voice_preflight=args.voice_preflight)
+                               voice_preflight=args.voice_preflight,
+                                score_mode=args.score_mode)
         print(json.dumps({"video": result["render"]["video"],
                           "scenes": result["render"]["scenesRendered"],
                           "speech": result["voice"]["engine"],

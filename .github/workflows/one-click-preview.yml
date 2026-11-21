@@ -102,7 +102,7 @@ on:
       soundtrack:
         type: choice
         description: "Procedural original background music (no copyrighted samples)"
-        options: [ambient, none]
+        options: [ambient, score, none]
         default: ambient
       transition:
         type: choice
@@ -379,7 +379,7 @@ jobs:
           PARAMS=()
           if [ "$EXPECT_AUDIO" != "none" ]; then
             PARAMS+=(--require-audio --target-lufs -16)
-          elif [ "$EXPECT_SOUNDTRACK" == "ambient" ]; then
+          elif [ "$EXPECT_SOUNDTRACK" != "none" ]; then
             PARAMS+=(--target-lufs -24)
           fi
           python -m automate_ytb.media_qa --video build/video/preview.mp4 --srt build/video/draft-captions.srt --vtt build/video/draft-captions.vtt --report build/video/media-report.json "${PARAMS[@]}"
@@ -467,6 +467,7 @@ jobs:
             build/aurora-3d/motion-comparison.jpg
             build/video/VOICE_CREDITS.md
             build/video/background-original.wav
+            build/video/score-report.json
             build/video/draft-captions.srt
             build/video/draft-captions.vtt
             build/video/quality-report.json

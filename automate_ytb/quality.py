@@ -93,8 +93,8 @@ def check(*, plan: Path, output: Path, expected_voice: str,
           decode_frames: bool = True, expected_render_profile: str = "preview") -> dict:
     if expected_voice not in ("none", "espeak", "kokoro"):
         raise ValueError("Expected voice must be none, espeak or kokoro")
-    if expected_soundtrack not in ("none", "ambient"):
-        raise ValueError("Expected soundtrack must be none or ambient")
+    if expected_soundtrack not in ("none", "ambient", "score"):
+        raise ValueError("Expected soundtrack must be none, ambient or score")
     from .encoding_profiles import settings
     codec = settings(expected_render_profile)
     data = load_plan(plan)
@@ -200,7 +200,7 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         if rendered.get("videoSha256") != _digest(video):
             errors.append("Rendered video checksum mismatch")
         wanted_speech = expected_voice != "none"
-        wanted_music = expected_soundtrack == "ambient"
+        wanted_music = expected_soundtrack != "none"
         if rendered.get("hasNarrationAudio") is not wanted_speech:
             errors.append("Requested narration does not match final render report")
         if rendered.get("hasBackgroundMusic") is not wanted_music:
@@ -249,8 +249,31 @@ def check(*, plan: Path, output: Path, expected_voice: str,
         if wanted_music and not (output / "background-original.wav").is_file():
             errors.append("Requested original music WAV missing")
         if episode.get("soundtrack", {}).get("engine") != (
-                "ambient-original-v1" if wanted_music else "none"):
+                {"none": "none", "ambient": "ambient-original-v1",
+                 "score": "score-original-continuous-v1"}[expected_soundtrack]):
             errors.append("Incorrect soundtrack source in episode report")
+        if expected_soundtrack == "score":
+            stem = output / "background-original.wav"
+            manifest = output / "score-report.json"
+            music_report = episode.get("soundtrack")
+            if (not stem.is_file() or not manifest.is_file() or
+                    not isinstance(music_report, dict)):
+                errors.append("Continuous score WAV, evidence or metadata missing")
+            else:
+                try:
+                    actual = json.loads(manifest.read_text(encoding="utf-8"))
+                    if (actual != music_report or
+                            actual.get("wavSha256") != _digest(stem) or
+                            actual.get("sampleRateHz") != 48000 or
+                            actual.get("channels") != 2 or
+                            actual.get("continuousGlobalClock") is not True or
+                            actual.get("sceneBoundaryResets") != 0 or
+                            actual.get("containsThirdPartyMusic") is not False or
+                            actual.get("publicationApproved") is not False or
+                            abs(float(actual.get("durationSeconds", -1)) - planned_duration) > .001):
+                        errors.append("Continuous score provenance or PCM timing mismatch")
+                except (OSError, ValueError, TypeError, OverflowError):
+                    errors.append("Cannot authenticate continuous score evidence")
         info = _probe(video)
         streams = info.get("streams", [])
         kinds = [s.get("codec_type") for s in streams]
@@ -375,7 +398,7 @@ def main(argv=None) -> int:
     p.add_argument("--plan", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--expect-voice", choices=["none", "espeak", "kokoro"], required=True)
-    p.add_argument("--expect-soundtrack", choices=["none", "ambient"], required=True)
+    p.add_argument("--expect-soundtrack", choices=["none", "ambient", "score"], required=True)
     p.add_argument("--report", type=Path)
     p.add_argument("--expect-render-profile", choices=["preview", "high"],
                    default="preview")
