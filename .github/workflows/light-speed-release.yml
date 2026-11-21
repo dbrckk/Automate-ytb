@@ -33,7 +33,7 @@ jobs:
           fi
           python -m pip install --disable-pip-version-check 'Pillow>=10,<14' 'opencv-python-headless>=4.10,<5'
       - name: Animate the light pulse and six scale landmarks
-        run: python production/light-speed/render.py
+        run: PYTHONPATH=. python production/light-speed/render.py
       - name: Verify the full MP4 and its metadata
         run: |
           set -euo pipefail
