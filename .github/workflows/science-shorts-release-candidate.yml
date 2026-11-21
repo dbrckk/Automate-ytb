@@ -10,6 +10,8 @@ on:
       - .github/workflows/one-click-preview.yml
       - automate_ytb/science_causal_vfx.py
       - automate_ytb/science_ocean_depth.py
+      - automate_ytb/flow_material25d.py
+      - tests/test_organic_vortex25d.py
       - automate_ytb/semantic_geometry25d.py
       - automate_ytb/science_aurora.py
       - automate_ytb/science_volcano.py
@@ -36,6 +38,7 @@ on:
       - automate_ytb/optical_motion25d.py
       - automate_ytb/finish25d.py
       - automate_ytb/scene25d.py
+      - automate_ytb/flow_material25d.py
       - automate_ytb/science_storyboards.py
       - automate_ytb/semantic_geometry25d.py
       - automate_ytb/science_aurora.py
