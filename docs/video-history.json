@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 197,
+  "count": 198,
   "videos": [
+    {
+      "id": "how-deep-did-we-drill-sync-20261122/how-deep-did-we-drill.mp4",
+      "topic": "how-deep-did-we-drill",
+      "category": "other",
+      "releaseTag": "how-deep-did-we-drill-sync-20261122",
+      "publishedAt": "2026-11-22T10:20:06Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/how-deep-did-we-drill-sync-20261122/how-deep-did-we-drill.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/how-deep-did-we-drill-sync-20261122",
+      "bytes": 8572085,
+      "sha256": "sha256:ea8bf5a9c53e20a3d009aded04aafafa440bf8fb416545e83619055c54481601"
+    },
     {
       "id": "how-far-can-light-go-remix-20261121/how-far-can-light-go-remix.mp4",
       "topic": "how-far-can-light-go-remix",
