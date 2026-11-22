@@ -1,0 +1,88 @@
+name: How Deep Did We Drill — frame-locked sound
+on:
+  push:
+    branches: [main]
+    paths:
+      - production/deepest-hole/*.py
+      - .github/workflows/deepest-hole-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: deepest-hole-video-release
+  cancel-in-progress: false
+jobs:
+  render:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the portrait renderer
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<14' 'opencv-python-headless>=4.10,<5'
+      - name: Animate the borehole and verify seven encoded soundtrack onsets
+        run: PYTHONPATH=. python production/deepest-hole/render.py
+      - name: Verify the full MP4 and its metadata
+        run: |
+          set -euo pipefail
+          root=build/deepest-hole
+          file="$root/how-deep-did-we-drill.mp4"
+          python -m automate_ytb.shorts_delivery --video "$file" --require-audio --full-decode --report "$root/qa.json"
+          ffprobe -v error -show_format -show_streams -show_chapters -of json "$file" > "$root/probe.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('build/deepest-hole')
+          qa=json.loads((root/'qa.json').read_text())
+          p=json.loads((root/'probe.json').read_text())
+          assert qa['status']=='passed' and qa['fullDecodeVerified']
+          assert (qa['media']['width'],qa['media']['height'],qa['media']['fps'])==(1080,1920,30)
+          assert abs(qa['media']['durationSeconds']-32)<.05 and not p.get('chapters')
+          sync=json.loads((root/'audio-sync.json').read_text())
+          assert len(sync)==7 and all(abs(c['offsetMs']) <= 1000/30 for c in sync)
+          tags=p['format'].get('tags',{})
+          assert set(tags) <= {'major_brand','minor_version','compatible_brands'}, tags
+          for stream in p['streams']:
+              tags=stream.get('tags',{})
+              assert set(tags) <= {'language','handler_name','vendor_id'}, tags
+          print('1080×1920, 30 fps, full video/audio decode, no optional export tags or chapters.')
+          PY
+      - name: Publish and verify anonymous direct MP4 download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root="build/deepest-hole"
+          tag=how-deep-did-we-drill-20261122
+          name=how-deep-did-we-drill.mp4
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$name"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            cat > "$RUNNER_TEMP/light-speed-release.md" <<'NOTES'
+          An original vertical 2.5D scale journey about Kola SG-3. The animated drill, stereo score and effects share a 30 fps / 48 kHz timing grid. The seven cue offsets are verified against the decoded AAC audio. The rock cross-section is illustrative. Mponeng uses the depth reported by Harmony, and the Grand Canyon uses average depth.
+
+          Research: https://dfg-spp-icdp.de/en/icdp/icdp-projects/53 , https://www.harmony.co.za/operations/south-africa/mponeng/ , https://www.nps.gov/grca/learn/management/statistics.htm .
+          NOTES
+            gh release create "$tag" "$root/$name" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "How Deep Did We Drill?" --notes-file "$RUNNER_TEMP/light-speed-release.md" --prerelease --latest=false
+          fi
+          curl -fsSL --retry 4 --retry-all-errors --max-time 180 "$url" -o "$RUNNER_TEMP/light-speed-public.mp4"
+          cmp "$root/$name" "$RUNNER_TEMP/light-speed-public.mp4"
+          sha256sum "$root/$name"
+          echo "Verified direct MP4: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Refresh video catalog
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/update_video_history.py
