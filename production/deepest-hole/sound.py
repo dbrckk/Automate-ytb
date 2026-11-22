@@ -92,6 +92,14 @@ def compose(path):
     motor=np.sin(TAU*(67*t+1.09*t*t))+.30*np.sin(TAU*(138*t+2.4*t*t))
     lay(mix,(.48*grit+.20*motor)*envelope,start,.127,-.10)
 
+    # Let the score recede around the drill stop and scale reveal so the
+    # mechanical hit and the final chord each have room to land.
+    clock=np.arange(N,dtype=np.float64)/RATE
+    automation=np.interp(clock,
+        [0,1.6,4.3,8.0,12.4,16.8,18.22,19.04,20.5,21.83,22.35,23.45,24.75,26.35,27.3,29.6,31.8],
+        [.55,.69,.89,1.0,1.17,1.23,.78,.46,.71,.53,.17,.35,.87,.38,1.38,1.23,.74])
+    mix*=automation[:,None]
+
     for i,c in enumerate(CUES):
         at=c.frame*SAMPLES
         transient=signature(c.frequency,i)

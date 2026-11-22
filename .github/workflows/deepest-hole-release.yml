@@ -10,7 +10,7 @@ permissions:
   contents: write
 concurrency:
   group: deepest-hole-video-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   render:
     if: github.ref == 'refs/heads/main'
@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           root="build/deepest-hole"
-          tag=how-deep-did-we-drill-20261122
+          tag=how-deep-did-we-drill-sync-20261122
           name=how-deep-did-we-drill.mp4
           url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$name"
           if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
