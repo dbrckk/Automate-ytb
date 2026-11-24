@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 198,
+  "count": 199,
   "videos": [
+    {
+      "id": "tsunami-the-invisible-wave-20261124/tsunami-the-invisible-wave.mp4",
+      "topic": "tsunami-the-invisible-wave",
+      "category": "other",
+      "releaseTag": "tsunami-the-invisible-wave-20261124",
+      "publishedAt": "2026-11-24T17:00:31Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/tsunami-the-invisible-wave-20261124/tsunami-the-invisible-wave.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/tsunami-the-invisible-wave-20261124",
+      "bytes": 13152543,
+      "sha256": "sha256:b5ac70439efa4f8f60101162b7cc4d9ccd63315b92bcbdbcc38384969439ce76"
+    },
     {
       "id": "how-deep-did-we-drill-sync-20261122/how-deep-did-we-drill.mp4",
       "topic": "how-deep-did-we-drill",
