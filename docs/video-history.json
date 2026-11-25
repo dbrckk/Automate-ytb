@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 200,
+  "count": 201,
   "videos": [
+    {
+      "id": "lightning-made-glass-20261125/lightning-made-glass.mp4",
+      "topic": "lightning-made-glass",
+      "category": "other",
+      "releaseTag": "lightning-made-glass-20261125",
+      "publishedAt": "2026-11-25T19:51:24Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/lightning-made-glass-20261125/lightning-made-glass.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/lightning-made-glass-20261125",
+      "bytes": 15801830,
+      "sha256": "sha256:1af8c075838c54a968e1ca756cc1022f93987401f585e6627ac4bc3104512bf8"
+    },
     {
       "id": "earth-black-hole-20261125/earth-into-black-hole.mp4",
       "topic": "earth-into-black-hole",
