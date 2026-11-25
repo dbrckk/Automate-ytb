@@ -6,7 +6,7 @@ Science: https://home.nps.gov/articles/grsa-fulgurites.htm and https://www.canad
 The geometry and timing are an artistic visualization, not a simulation.
 """
 from __future__ import annotations
-import os, math, json, hashlib, subprocess, wave, pathlib, argparse
+import os, math, json, hashlib, subprocess, wave, pathlib, argparse, re
 from functools import lru_cache
 import numpy as np
 import cv2
@@ -680,7 +680,7 @@ def render_movie():
           '-c:v','libx264','-pix_fmt','yuv420p','-preset','faster','-crf','19','-threads','4',
           '-colorspace','bt709','-color_primaries','bt709','-color_trc','bt709',
           '-c:a','aac','-b:a','224k','-ar',str(SR),
-          '-af','loudnorm=I=-14.4:TP=-1.4:LRA=9,alimiter=limit=0.82',
+          '-af','loudnorm=I=-14.4:TP=-1.8:LRA=9,alimiter=limit=0.78:level=false',
           '-map_metadata','-1','-map_metadata:s','-1','-map_chapters','-1',
           '-movflags','+faststart',FILE]
     pipe=subprocess.Popen([str(v) for v in args],stdin=subprocess.PIPE)
@@ -707,10 +707,19 @@ def qa_video(cue_data):
     assert set(probe['format'].get('tags',{}))<={'major_brand','minor_version','compatible_brands','encoder'}
     assert not probe.get('chapters')
     assert all(x['audioSample']==x['frame']*SP for x in cue_data['cues'])
+    measure=subprocess.run(['ffmpeg','-hide_banner','-nostats','-i',str(FILE),'-vn','-af',
+              'loudnorm=I=-14:TP=-1.5:LRA=8:print_format=json','-f','null','-'],
+              capture_output=True,text=True,check=True)
+    peak_match=re.search(r'"input_tp"\s*:\s*"([-+0-9.]+)"',measure.stderr)
+    lu_match=re.search(r'"input_i"\s*:\s*"([-+0-9.]+)"',measure.stderr)
+    if not peak_match or not lu_match: raise RuntimeError('EBU R128 measurement unavailable')
+    truepeak=float(peak_match.group(1)); loudness=float(lu_match.group(1))
+    if truepeak > -1.0 or not (-16.5 <= loudness <= -12.0):
+        raise RuntimeError(f'Mastering outside safe range: {loudness} LUFS, {truepeak} dBTP')
     sha=hashlib.sha256(FILE.read_bytes()).hexdigest()
     info={'sha256':sha,'size':FILE.stat().st_size,'duration':DUR,'fps':FPS,'frames':FRAMES,
           'resolution':[1080,1920],'audioSampleRate':SR,'music':'original, stereo',
-          'originalAssets':True,'cues':cue_data['cues'],'science':'Natural fulgurites: lightning fuses silicate sand into hollow glass tubes','probe':probe}
+          'originalAssets':True,'loudnessLUFS':loudness,'truePeakDbTP':truepeak,'cues':cue_data['cues'],'science':'Natural fulgurites: lightning fuses silicate sand into hollow glass tubes','probe':probe}
     (ROOT/'qa.json').write_text(json.dumps(info,indent=2)+'\n')
     print('PASS',sha,FILE.stat().st_size,flush=True)
     return info

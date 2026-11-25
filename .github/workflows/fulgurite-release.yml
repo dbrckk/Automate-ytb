@@ -9,7 +9,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: fulgurite-20261125
+  group: fulgurite-final-20261125
   cancel-in-progress: false
 jobs:
   render-and-publish:
@@ -54,6 +54,8 @@ jobs:
           assert v['codec_name']=='h264' and a['codec_name']=='aac'
           assert int(v['nb_frames'])==990
           assert abs(float(p['format']['duration'])-33)<.07
+          assert -16.5 <= q['loudnessLUFS'] <= -12.0
+          assert q['truePeakDbTP'] <= -1.0
           assert len(q['cues'])==12
           assert all(c['audioSample']==1600*c['frame'] for c in q['cues'])
           assert not p.get('chapters')
@@ -65,7 +67,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=lightning-made-glass-20261125
+          tag=lightning-made-glass-final-20261125
           asset=build/fulgurite/lightning-made-glass.mp4
           name=lightning-made-glass.mp4
           url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$name"
