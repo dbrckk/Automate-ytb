@@ -1,0 +1,87 @@
+name: Earth Into a Black Hole — 2.5D premium short
+on:
+  push:
+    branches: [main]
+    paths:
+      - production/earth-black-hole/**
+      - .github/workflows/earth-black-hole-release.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: earth-black-hole-20261125
+  cancel-in-progress: false
+jobs:
+  render:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      EARTH_BLACKHOLE_OUTPUT: build/earth-black-hole
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install original visual and audio renderer
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          python -m pip install --disable-pip-version-check 'numpy>=2,<3' 'Pillow>=10,<14' 'opencv-python-headless>=4.10,<5' 'scipy>=1.12,<2'
+      - name: Render 960 unique frames and original stereo 120 BPM score
+        run: |
+          set -euo pipefail
+          python production/earth-black-hole/render.py
+      - name: Verify decoded MP4, sample/frame clocks, metadata and peak
+        run: |
+          set -euo pipefail
+          file=build/earth-black-hole/earth-into-black-hole.mp4
+          ffmpeg -v error -xerror -i "$file" -f null -
+          ffprobe -v error -show_format -show_streams -show_chapters -of json "$file" > build/earth-black-hole/probe.json
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('build/earth-black-hole')
+          p=json.loads((root/'probe.json').read_text())
+          qa=json.loads((root/'qa.json').read_text())
+          v=next(s for s in p['streams'] if s['codec_type']=='video')
+          a=next(s for s in p['streams'] if s['codec_type']=='audio')
+          assert (v['width'],v['height'],v['avg_frame_rate'])==(1080,1920,'30/1')
+          assert v['codec_name']=='h264' and a['codec_name']=='aac'
+          assert int(v['nb_frames'])==960
+          assert abs(float(p['format']['duration'])-32)<.08
+          assert not p.get('chapters')
+          assert set(p['format'].get('tags',{})) <= {'major_brand','minor_version','compatible_brands','encoder'}
+          assert len(qa['syncClocks'])==8
+          assert all(x['videoSeconds']==x['frame']/30 and x['audioSample']==x['frame']*1600 for x in qa['syncClocks'])
+          print('Validated 1080x1920, 30fps, 32sec, H264+AAC, 8 frame-locked cues, no optional tags.')
+          PY
+      - name: Publish and verify public direct MP4 download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=earth-black-hole-20261125
+          name=earth-into-black-hole.mp4
+          asset=build/earth-black-hole/earth-into-black-hole.mp4
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$name"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" "$asset" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Squeeze The Earth Into A Black Hole?" \
+              --notes "Original, entirely procedural 32-second 2.5D portrait science short. Eight exact 30fps/48kHz frame/sample-locked events, bespoke 120 BPM stereo score, 1080x1920 AVC+AAC, clean metadata. Thought experiment, not a physical process: Earth's mass corresponds to a Schwarzschild radius of about 8.9mm. Source: NASA https://imagine.gsfc.nasa.gov/science/objects/black_holes1.html . Scale comparisons are illustrative." \
+              --prerelease --latest=false
+          fi
+          curl -fsSL --retry 4 --retry-all-errors --max-time 240 "$url" -o "$RUNNER_TEMP/earth-public.mp4"
+          cmp "$asset" "$RUNNER_TEMP/earth-public.mp4"
+          sha256sum "$asset"
+          echo "Verified direct MP4: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Refresh video catalog
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/update_video_history.py
