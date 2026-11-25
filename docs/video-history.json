@@ -2,8 +2,20 @@
   "schemaVersion": 1,
   "source": "GitHub Releases, not temporary GitHub Actions artifacts",
   "publicationApproved": false,
-  "count": 201,
+  "count": 202,
   "videos": [
+    {
+      "id": "lightning-made-glass-final-20261125/lightning-made-glass.mp4",
+      "topic": "lightning-made-glass",
+      "category": "other",
+      "releaseTag": "lightning-made-glass-final-20261125",
+      "publishedAt": "2026-11-25T19:53:58Z",
+      "status": "technical-preview-unreviewed",
+      "mp4": "https://github.com/dbrckk/Automate-ytb/releases/download/lightning-made-glass-final-20261125/lightning-made-glass.mp4",
+      "release": "https://github.com/dbrckk/Automate-ytb/releases/tag/lightning-made-glass-final-20261125",
+      "bytes": 15799714,
+      "sha256": "sha256:9204a809d8d7036da42216392ab3609fa09fa9eda092fbf643296719ed5533dc"
+    },
     {
       "id": "lightning-made-glass-20261125/lightning-made-glass.mp4",
       "topic": "lightning-made-glass",
